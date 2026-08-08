@@ -4,6 +4,14 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [2.8.6] — 2026-08-08
+
+### Desktop
+- **Rain animation, properly fixed.** The previous pass still pulsed: it used a shared start-delay plus
+  repeating durations, so the drops re-synchronised on a cycle and showed a recurring "wave" the longer
+  it ran. Every drop now has a unique, non-repeating fall duration and a unique start height with no
+  delay, so they scatter immediately and never line back up — steady, subtle rain at any runtime.
+
 ## [2.8.5] — 2026-08-08
 
 ### Desktop

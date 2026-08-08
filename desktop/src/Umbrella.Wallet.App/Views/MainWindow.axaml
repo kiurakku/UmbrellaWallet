@@ -2174,20 +2174,16 @@
          other animations. Sits above the content but below the modals that follow. -->
     <Canvas Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" ClipToBounds="True"
             IsVisible="{Binding AnimationsEnabled}">
-      <Rectangle Classes="raindrop rain1" Height="52" Canvas.Left="70"/>
-      <Rectangle Classes="raindrop rain4" Height="34" Canvas.Left="150"/>
-      <Rectangle Classes="raindrop rain2" Height="60" Canvas.Left="235"/>
-      <Rectangle Classes="raindrop rain6" Height="40" Canvas.Left="320"/>
-      <Rectangle Classes="raindrop rain3" Height="48" Canvas.Left="405"/>
-      <Rectangle Classes="raindrop rain5" Height="30" Canvas.Left="500"/>
-      <Rectangle Classes="raindrop rain1" Height="58" Canvas.Left="590"/>
-      <Rectangle Classes="raindrop rain3" Height="36" Canvas.Left="680"/>
-      <Rectangle Classes="raindrop rain6" Height="50" Canvas.Left="770"/>
-      <Rectangle Classes="raindrop rain2" Height="42" Canvas.Left="860"/>
-      <Rectangle Classes="raindrop rain5" Height="62" Canvas.Left="950"/>
-      <Rectangle Classes="raindrop rain4" Height="34" Canvas.Left="1045"/>
-      <Rectangle Classes="raindrop rain1" Height="54" Canvas.Left="1135"/>
-      <Rectangle Classes="raindrop rain3" Height="38" Canvas.Left="1225"/>
+      <Rectangle Classes="raindrop rd3" Height="50" Canvas.Left="90"/>
+      <Rectangle Classes="raindrop rd7" Height="34" Canvas.Left="210"/>
+      <Rectangle Classes="raindrop rd1" Height="60" Canvas.Left="330"/>
+      <Rectangle Classes="raindrop rd9" Height="40" Canvas.Left="440"/>
+      <Rectangle Classes="raindrop rd5" Height="30" Canvas.Left="560"/>
+      <Rectangle Classes="raindrop rd10" Height="58" Canvas.Left="680"/>
+      <Rectangle Classes="raindrop rd2" Height="44" Canvas.Left="800"/>
+      <Rectangle Classes="raindrop rd6" Height="62" Canvas.Left="920"/>
+      <Rectangle Classes="raindrop rd8" Height="36" Canvas.Left="1050"/>
+      <Rectangle Classes="raindrop rd4" Height="52" Canvas.Left="1180"/>
     </Canvas>
 
     <!-- ============================ QR POPUP ============================
