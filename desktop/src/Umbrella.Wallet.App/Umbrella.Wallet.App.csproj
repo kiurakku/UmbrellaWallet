@@ -9,7 +9,7 @@
     <AssemblyName>Umbrella.Wallet.App</AssemblyName>
     <Product>Umbrella Wallet</Product>
     <AssemblyTitle>Umbrella Wallet</AssemblyTitle>
-    <Version>2.8.8</Version>
+    <Version>3.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

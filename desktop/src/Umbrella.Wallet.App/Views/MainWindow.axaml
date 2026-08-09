@@ -197,7 +197,7 @@
             <TextBox Text="{Binding ImportPhrase}" AcceptsReturn="True" Height="120"
                      TextWrapping="Wrap" Watermark="word1 word2 word3 …  (numbers and commas are fine)"/>
             <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap" Margin="2,8,0,0"
-                       Text="Works with any BIP39 wallet — MetaMask, Kraken Wallet, Trust, Ledger, Exodus, Coinbase Wallet and most others (12 or 24 words). Telegram Wallet / Tonkeeper (TON) use a different, non-BIP39 standard and can't be imported here."/>
+                       Text="Works with any BIP39 wallet — MetaMask, Kraken Wallet, Trust, Ledger, Exodus, Coinbase Wallet and most others (12 or 24 words). TON wallets (Telegram Wallet / Tonkeeper) are supported too: a 24-word TON phrase imports as a Toncoin-only wallet."/>
 
             <StackPanel Spacing="0" IsVisible="{Binding ShowVaultPasswordFields}">
               <TextBlock Classes="eyebrow" Text="VAULT PASSWORD" Margin="0,16,0,8"/>
@@ -369,25 +369,25 @@
                       Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio"/>
               <Button Classes="nav" Content="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsReceive}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Receive"/>
-              <Button Classes="nav" Content="Buy" Classes.active="{Binding IsBuy}"
+              <Button Classes="nav" Content="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsBuy}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Buy"/>
               <Button Classes="nav" Content="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsSend}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Send"/>
-              <Button Classes="nav" Content="Swap" Classes.active="{Binding IsSwap}"
+              <Button Classes="nav" Content="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsSwap}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Swap"/>
-              <Button Classes="nav" Content="P2P &amp; DEX" Classes.active="{Binding IsP2p}"
+              <Button Classes="nav" Content="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsP2p}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="P2p"/>
               <Button Classes="nav" Content="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsConnect}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Connect"/>
               <Button Classes="nav" Content="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsMarket}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Market"/>
-              <Button Classes="nav" Content="NFTs" Classes.active="{Binding IsNfts}"
+              <Button Classes="nav" Content="{Binding [nav.nfts], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsNfts}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Nfts"/>
-              <Button Classes="nav" Content="Staking" Classes.active="{Binding IsStaking}"
+              <Button Classes="nav" Content="{Binding [nav.staking], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsStaking}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Staking"/>
               <Button Classes="nav" Content="{Binding [nav.news], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsNews}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="News"/>
-              <Button Classes="nav" Content="Transactions" Classes.active="{Binding IsTransactions}"
+              <Button Classes="nav" Content="{Binding [nav.transactions], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsTransactions}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Transactions"/>
               <Button Classes="nav" Content="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsActivity}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Activity"/>
@@ -418,14 +418,14 @@
           <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
             <Button Classes="chip" Content="{Binding [nav.portfolio], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio" Classes.active="{Binding IsPortfolio}"/>
             <Button Classes="chip" Content="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Receive" Classes.active="{Binding IsReceive}"/>
-            <Button Classes="chip" Content="Buy" Command="{Binding SelectSectionCommand}" CommandParameter="Buy" Classes.active="{Binding IsBuy}"/>
+            <Button Classes="chip" Content="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Buy" Classes.active="{Binding IsBuy}"/>
             <Button Classes="chip" Content="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Send" Classes.active="{Binding IsSend}"/>
-            <Button Classes="chip" Content="Swap" Command="{Binding SelectSectionCommand}" CommandParameter="Swap" Classes.active="{Binding IsSwap}"/>
-            <Button Classes="chip" Content="P2P" Command="{Binding SelectSectionCommand}" CommandParameter="P2p" Classes.active="{Binding IsP2p}"/>
+            <Button Classes="chip" Content="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Swap" Classes.active="{Binding IsSwap}"/>
+            <Button Classes="chip" Content="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="P2p" Classes.active="{Binding IsP2p}"/>
             <Button Classes="chip" Content="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Connect" Classes.active="{Binding IsConnect}"/>
             <Button Classes="chip" Content="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Market" Classes.active="{Binding IsMarket}"/>
             <Button Classes="chip" Content="{Binding [nav.news], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="News" Classes.active="{Binding IsNews}"/>
-            <Button Classes="chip" Content="Transactions" Command="{Binding SelectSectionCommand}" CommandParameter="Transactions" Classes.active="{Binding IsTransactions}"/>
+            <Button Classes="chip" Content="{Binding [nav.transactions], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Transactions" Classes.active="{Binding IsTransactions}"/>
             <Button Classes="chip" Content="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Activity" Classes.active="{Binding IsActivity}"/>
             <Button Classes="chip" Content="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Settings" Classes.active="{Binding IsSettings}"/>
             <Button Classes="chip" Content="{Binding [nav.lock], Source={x:Static app:Loc.Instance}}" Command="{Binding LockCommand}"/>
@@ -1757,6 +1757,17 @@
                     <ToggleSwitch IsChecked="{Binding AnimationsEnabled, Mode=TwoWay}"
                                   OnContent="{Binding [settings.animOn], Source={x:Static app:Loc.Instance}}"
                                   OffContent="{Binding [settings.animOff], Source={x:Static app:Loc.Instance}}"/>
+                    <!-- Individual toggles (only meaningful while the master toggle is on). -->
+                    <StackPanel IsVisible="{Binding AnimationsEnabled}" Spacing="6" Margin="0,4,0,0">
+                      <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding [settings.rain], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding RainEnabled, Mode=TwoWay}" OnContent="" OffContent=""/>
+                      </Grid>
+                      <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding [settings.stickers], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding StickersEnabled, Mode=TwoWay}" OnContent="" OffContent=""/>
+                      </Grid>
+                    </StackPanel>
                   </StackPanel>
                 </Border>
 
@@ -2224,7 +2235,7 @@
          fear theme. Non-interactive, and gated by the motion toggle so it vanishes with the
          other animations. Sits above the content but below the modals that follow. -->
     <Canvas Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" ClipToBounds="True"
-            IsVisible="{Binding AnimationsEnabled}">
+            IsVisible="{Binding RainVisible}">
       <Rectangle Classes="raindrop rd3" Height="50" Canvas.Left="90"/>
       <Rectangle Classes="raindrop rd7" Height="34" Canvas.Left="210"/>
       <Rectangle Classes="raindrop rd1" Height="60" Canvas.Left="330"/>

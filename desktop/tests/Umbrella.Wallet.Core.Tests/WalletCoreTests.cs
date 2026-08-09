@@ -138,10 +138,10 @@ public class Bip39MnemonicServiceTests
         Assert.Contains("aboutx", result.Error);
     }
 
-    /// <summary>All-valid words but a failing checksum means a non-BIP39 wallet (e.g. TON/Telegram) —
-    /// the message must say so rather than a bare "invalid".</summary>
+    /// <summary>All-valid words but a failing checksum: the message must be specific (a typo / wrong
+    /// order) and reference that TON wallets import fine, rather than a bare "invalid".</summary>
     [Fact]
-    public void Validate_explains_non_bip39_when_words_valid_but_checksum_fails()
+    public void Validate_explains_checksum_failure_helpfully()
     {
         const string allValidBadChecksum =
             "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon " +
@@ -150,7 +150,8 @@ public class Bip39MnemonicServiceTests
         var result = _sut.Validate(allValidBadChecksum);
 
         Assert.False(result.IsValid);
-        Assert.Contains("non-BIP39", result.Error);
+        Assert.Contains("checksum", result.Error);
+        Assert.Contains("TON", result.Error);
     }
 }
 

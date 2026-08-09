@@ -4,6 +4,24 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [3.0.0] — 2026-08-09
+
+### Desktop
+- **Import your Telegram / TON wallet.** Umbrella now understands the TON-native 24-word standard used
+  by **Telegram Wallet, Tonkeeper and TON Space** — paste that phrase and it imports as a Toncoin wallet,
+  showing the exact same TON address (and balance) those wallets display. The whole derivation
+  (mnemonic → ed25519 seed → wallet v4R2 address) is pinned byte-for-byte against `@ton/crypto` +
+  `@ton/ton`. You can receive and send TON from it.
+- **Full Ukrainian (and RU/ZH) navigation.** Every menu item is now translated — Buy, Swap, P2P & DEX,
+  NFTs, Staking and Transactions no longer sit in English next to the translated ones.
+- **Individual animation toggles.** Turn the ambient rain and the animated stickers on or off
+  independently in Settings → Appearance (under the master motion switch).
+- **Six more themes** — Solana, Ethereum, Monero, Kraken, Nord and Dracula — bringing the total to 27.
+
+### Verified
+138/138 tests pass, including the TON reference vector, all BIP39/TON validation, every chain's address
+derivation and signing, developer fees, and the multi-wallet / password flows.
+
 ## [2.8.8] — 2026-08-08
 
 ### Desktop

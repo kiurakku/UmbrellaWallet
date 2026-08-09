@@ -418,6 +418,29 @@ public sealed class MainViewModelTests : IDisposable
         Assert.True(vm.IsUnlocked);
     }
 
+    /// <summary>Importing a TON-native phrase (Telegram Wallet / Tonkeeper) creates a Toncoin-only
+    /// wallet showing the exact TON address that wallet displays.</summary>
+    [Fact]
+    public async Task Import_TonMnemonic_CreatesTonOnlyWallet_WithCorrectAddress()
+    {
+        const string tonPhrase =
+            "derive earn future trumpet gallery nation antique cabin seat object rival wrong thank humor " +
+            "glide mobile reduce often scale beauty youth base horn brisk";
+        var vm = NewViewModel();
+
+        vm.GoToImportCommand.Execute(null);
+        vm.ImportPhrase = tonPhrase;
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.ImportWalletCommand.ExecuteAsync(null);
+
+        Assert.Empty(vm.FormError);
+        Assert.True(vm.IsUnlocked);
+        Assert.Contains(vm.Accounts, a =>
+            a.Symbol == "TON" && a.Address == "UQCLhuuBbuTzBY7oDkmYAF8vhnB7c2f0XDDWUflQUvHdLYFm");
+        Assert.DoesNotContain(vm.Accounts, a => a.Symbol == "BTC"); // TON-only, no BIP39 chains
+    }
+
     [Fact]
     public async Task DeleteVault_RequiresTypedConfirmation()
     {

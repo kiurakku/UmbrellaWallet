@@ -208,12 +208,45 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.Save();
             OnPropertyChanged();
             OnPropertyChanged(nameof(LottieRepeat));
+            OnPropertyChanged(nameof(RainVisible));
             if (IsUnlocked) PushActivity("Settings", "Animations", value ? "on" : "off", "changed", "now");
         }
     }
 
-    /// <summary>-1 = loop forever (animations on); 0 = play once and settle (animations off).</summary>
-    public int LottieRepeat => AnimationsEnabled ? -1 : 0;
+    /// <summary>Rain layer toggle — individual, gated by the master motion toggle.</summary>
+    public bool RainEnabled
+    {
+        get => _uiSettings.RainEnabled;
+        set
+        {
+            if (_uiSettings.RainEnabled == value) return;
+            _uiSettings.RainEnabled = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(RainVisible));
+        }
+    }
+
+    /// <summary>Sticker (Lottie) toggle — individual, gated by the master motion toggle.</summary>
+    public bool StickersEnabled
+    {
+        get => _uiSettings.StickersEnabled;
+        set
+        {
+            if (_uiSettings.StickersEnabled == value) return;
+            _uiSettings.StickersEnabled = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(LottieRepeat));
+        }
+    }
+
+    /// <summary>The ambient rain shows only when both the master motion toggle and the rain toggle are on.</summary>
+    public bool RainVisible => AnimationsEnabled && RainEnabled;
+
+    /// <summary>-1 = loop forever (stickers on); 0 = play once and settle. Off if either the master or
+    /// the sticker toggle is disabled.</summary>
+    public int LottieRepeat => AnimationsEnabled && StickersEnabled ? -1 : 0;
 
     /// <summary>Where the navigation panel sits. Persisted like the theme.</summary>
     public string SidebarPosition
@@ -715,6 +748,14 @@ public partial class MainViewModel : ViewModelBase
     /// Click an item to read the full note. Newest first.</summary>
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("3.0", "Version 3.0 — Telegram/TON import, full translation, more themes",
+            "A big one:\n\n" +
+            "• Import your Telegram / TON wallet. Umbrella now speaks the TON-native recovery standard (Telegram Wallet, Tonkeeper, TON Space). Paste that 24-word phrase and it imports as a Toncoin wallet showing the very same TON address those wallets do — receive and send included. The derivation is pinned byte-for-byte against the official @ton libraries.\n" +
+            "• Fully translated menu. Buy, Swap, P2P & DEX, NFTs, Staking and Transactions are now translated too — no more English mixed into the Ukrainian sidebar.\n" +
+            "• Turn animations on/off individually — the ambient rain and the stickers each have their own switch in Settings → Appearance.\n" +
+            "• Six new themes: Solana, Ethereum, Monero, Kraken, Nord and Dracula — 27 in total.\n\n" +
+            "138/138 tests pass, including a TON reference vector and every chain's derivation, signing and fees.",
+            "2026-08-09"),
         new("NEW", "Fixed: create/import was stuck — plus password tools",
             "A blocking bug and two much-requested features:\n\n" +
             "• Fixed the stuck onboarding. Adding a wallet could leave the create/import screen demanding a password it had hidden, which blocked creating OR importing any wallet. Your app password is now kept through the add step and reused directly, so it can't be wiped out from under you.\n" +
@@ -1112,10 +1153,21 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task ImportWalletAsync()
     {
-        var result = _mnemonics.Validate(ImportPhrase);
-        if (!result.IsValid || result.NormalizedMnemonic is null)
+        // Accept either a BIP39 seed (multi-chain) or a TON-native mnemonic (Telegram Wallet /
+        // Tonkeeper → a TON-only wallet).
+        string normalized;
+        var bip39 = _mnemonics.Validate(ImportPhrase);
+        if (bip39.IsValid && bip39.NormalizedMnemonic is not null)
         {
-            Fail(result.Error ?? "Recovery phrase is invalid");
+            normalized = bip39.NormalizedMnemonic;
+        }
+        else if (TonMnemonic.IsTonMnemonic(ImportPhrase))
+        {
+            normalized = TonMnemonic.Normalize(ImportPhrase);
+        }
+        else
+        {
+            Fail(bip39.Error ?? "Recovery phrase is invalid");
             return;
         }
 
@@ -1124,18 +1176,20 @@ public partial class MainViewModel : ViewModelBase
 
         await RunBusyAsync(async () =>
         {
-            await _vault.CreateAsync(result.NormalizedMnemonic, pw);
+            await _vault.CreateAsync(normalized, pw);
             SetSessionPassword(pw);
             HasVault = true;
             FinalizeWalletRegistration();
-            SetUnlocked(result.NormalizedMnemonic);
+            SetUnlocked(normalized);
             // Imported wallets already have a backup — go straight to the workspace.
             RecoveryPhrase = string.Empty;
             PendingPhraseBackup = false;
             ImportPhrase = string.Empty;
             ClearPasswordFields();
             ActiveSection = "Portfolio";
-            StatusMessage = "Wallet imported · fetching live balances";
+            StatusMessage = _isTonWallet
+                ? "TON wallet imported · fetching your Toncoin balance"
+                : "Wallet imported · fetching live balances";
             await RefreshLiveDataAsync();
         });
     }
@@ -1784,19 +1838,20 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task ResetWithSeedAsync()
     {
-        var result = _mnemonics.Validate(ImportPhrase);
-        if (!result.IsValid || result.NormalizedMnemonic is null)
-        {
-            Fail(result.Error ?? "Recovery phrase is invalid"); return;
-        }
+        string normalized;
+        var bip39 = _mnemonics.Validate(ImportPhrase);
+        if (bip39.IsValid && bip39.NormalizedMnemonic is not null) normalized = bip39.NormalizedMnemonic;
+        else if (TonMnemonic.IsTonMnemonic(ImportPhrase)) normalized = TonMnemonic.Normalize(ImportPhrase);
+        else { Fail(bip39.Error ?? "Recovery phrase is invalid"); return; }
+
         if (!ValidatePasswords()) return;
 
         await RunBusyAsync(async () =>
         {
-            await _vault.CreateAsync(result.NormalizedMnemonic, Password); // overwrite the active vault
+            await _vault.CreateAsync(normalized, Password); // overwrite the active vault
             SetSessionPassword(Password);
             IsResettingPassword = false;
-            SetUnlocked(result.NormalizedMnemonic);
+            SetUnlocked(normalized);
             ImportPhrase = string.Empty;
             ClearPasswordFields();
             ActiveSection = "Portfolio";
@@ -3233,7 +3288,11 @@ public partial class MainViewModel : ViewModelBase
                 case "TON" when _tonQuote is not null:
                 {
                     var quote = _tonQuote;
-                    var priv = _deriver.DeriveTonPrivateKey(_unlockedMnemonic!);
+                    // A TON-native wallet signs with the TON-mnemonic seed; a BIP39 wallet uses its
+                    // m/44'/607'/0' key. Both are the 32-byte ed25519 seed the sender expects.
+                    var priv = _isTonWallet
+                        ? TonMnemonic.ToSeed(_unlockedMnemonic!)
+                        : _deriver.DeriveTonPrivateKey(_unlockedMnemonic!);
                     try
                     {
                         var (ok, _, error) = await _tonSender.SignAndBroadcastAsync(quote, priv);
@@ -3497,9 +3556,14 @@ public partial class MainViewModel : ViewModelBase
         StatusMessage = "Swap cancelled — nothing was signed";
     }
 
+    // True when the unlocked wallet is a TON-native mnemonic (Telegram Wallet / Tonkeeper) rather than
+    // a BIP39 seed — it derives ONLY a TON address, not the multi-chain BIP39 set.
+    private bool _isTonWallet;
+
     private void SetUnlocked(string mnemonic)
     {
         _unlockedMnemonic = mnemonic;
+        _isTonWallet = !_mnemonics.Validate(mnemonic).IsValid && TonMnemonic.IsTonMnemonic(mnemonic);
         IsUnlocked = true;
         RefreshWalletList(); // reflect which wallet is now active in the switcher
         // Exchange keys are encrypted with a key derived from the seed, so they can only be
@@ -3520,6 +3584,21 @@ public partial class MainViewModel : ViewModelBase
     private void DeriveAccounts(string mnemonic)
     {
         Accounts.Clear();
+
+        // A TON-native wallet (imported from Telegram Wallet / Tonkeeper) derives only its TON address.
+        if (_isTonWallet)
+        {
+            var (address, _) = TonMnemonic.DeriveWallet(mnemonic);
+            Accounts.Add(new WalletAccountViewModel(
+                "TON", "Toncoin", "Ready", address, "TON mnemonic · wallet v4R2",
+                0, 0, "The Open Network", 0));
+            ShortAddress = Shorten(address);
+            WalletLabel = ActiveWalletLabel;
+            RefreshHoldings();
+            RecalcBalance();
+            return;
+        }
+
         foreach (var chain in ChainCatalog.All)
         {
             if (!ChainCatalog.HasRealAddress(chain.Id))

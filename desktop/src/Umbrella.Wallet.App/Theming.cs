@@ -40,6 +40,12 @@ public static class Theming
         new("tron", "TRON · red"),
         new("whitebit", "WhiteBit · green"),
         new("bitcoin", "Bitcoin · orange"),
+        new("solana", "Solana · violet"),
+        new("ethereum", "Ethereum · periwinkle"),
+        new("monero", "Monero · orange"),
+        new("kraken", "Kraken · violet"),
+        new("nord", "Nord · arctic"),
+        new("dracula", "Dracula · dev"),
     ];
 
     /// <summary>Order matters only for readability; every theme must define every key.</summary>
@@ -241,6 +247,60 @@ public static class Theming
             "#C0700A", "#F7931A", "#FFAE42", "#3A2A0C", "#2E2109",
             "#FBF3EA", "#E2CFB8", "#AD9578", "#8E7C64", "#7DCF8F",
             "#FBF3EA", "#FFFFFF", "#0D0A06",
+        ],
+        // Solana — the purple→green gradient brand: violet accent, mint positives.
+        ["solana"] =
+        [
+            "#0A0710", "#100A18", "#150E20", "#120B1C", "#241634", "#301E45",
+            "#241634", "#392455", "#4E3170",
+            "#7A2FD0", "#9945FF", "#B76BFF", "#2A1240", "#1F0D30",
+            "#F2ECFB", "#D3C4E8", "#9C89B8", "#7F6E99", "#14F195",
+            "#F2ECFB", "#FFFFFF", "#0A0710",
+        ],
+        // Ethereum — the #627EEA periwinkle on cool near-black.
+        ["ethereum"] =
+        [
+            "#080A12", "#0D1019", "#111524", "#0E1220", "#1B2138", "#252D4C",
+            "#1A2038", "#2A3350", "#3B466C",
+            "#3C55C0", "#627EEA", "#89A0F5", "#161E3A", "#101630",
+            "#EDF0FB", "#CBD3EF", "#8E97B8", "#727C9C", "#7CD0A0",
+            "#EDF0FB", "#FFFFFF", "#080A12",
+        ],
+        // Monero — the #FF6600 orange on warm near-black.
+        ["monero"] =
+        [
+            "#0C0805", "#140D07", "#1B120A", "#160F08", "#2C1C0E", "#3E2812",
+            "#26190E", "#3C2818", "#513622",
+            "#CC5200", "#FF6600", "#FF8A3D", "#3A2109", "#2C1907",
+            "#FBF0E8", "#E6CDB6", "#B08F75", "#8C725D", "#7DCF8F",
+            "#FBF0E8", "#FFFFFF", "#0C0805",
+        ],
+        // Kraken — the #7132F5 violet on deep indigo.
+        ["kraken"] =
+        [
+            "#08060F", "#0D0A18", "#120D20", "#0F0A1C", "#201634", "#2C1F48",
+            "#1D1636", "#2E2352", "#41306F",
+            "#5A28D0", "#7132F5", "#9256FF", "#221542", "#190F31",
+            "#EFEBFB", "#CFC6EC", "#978BBC", "#7B70A0", "#7CD0A0",
+            "#EFEBFB", "#FFFFFF", "#08060F",
+        ],
+        // Nord — the arctic palette: cool slate greys, frost-blue accent.
+        ["nord"] =
+        [
+            "#242933", "#2E3440", "#3B4252", "#353C4A", "#434C5E", "#4C566A",
+            "#434C5E", "#4C566A", "#616E88",
+            "#5E81AC", "#88C0D0", "#8FBCBB", "#3B4252", "#2E3440",
+            "#ECEFF4", "#D8DEE9", "#A9B3C4", "#8892A4", "#A3BE8C",
+            "#ECEFF4", "#FFFFFF", "#242933",
+        ],
+        // Dracula — the classic dev theme: #BD93F9 purple, #50FA7B green, on #282A36.
+        ["dracula"] =
+        [
+            "#21222C", "#282A36", "#343746", "#2C2E3A", "#44475A", "#4E5267",
+            "#343746", "#44475A", "#565A70",
+            "#9B72E0", "#BD93F9", "#D0AEFF", "#3A2F55", "#2E2545",
+            "#F8F8F2", "#DCDCE4", "#A8A8B8", "#8A8A9C", "#50FA7B",
+            "#F8F8F2", "#FFFFFF", "#21222C",
         ],
     };
 

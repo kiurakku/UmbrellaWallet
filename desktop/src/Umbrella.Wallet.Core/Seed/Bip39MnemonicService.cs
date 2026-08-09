@@ -74,14 +74,12 @@ public sealed class Bip39MnemonicService
             if (!parsed.IsValidChecksum)
             {
                 // Reaching here means every word IS in the BIP39 English list, but the checksum
-                // doesn't match. That is either a typo / wrong order, or — very commonly — a phrase
-                // from a wallet that isn't BIP39. Telegram Wallet, Tonkeeper and TON Space use the
-                // same wordlist but the TON mnemonic standard, which fails a BIP39 checksum by design.
+                // doesn't match — and (the import flow already checked) it isn't a valid TON phrase
+                // either. So it's a typo or the words are out of order.
                 return MnemonicValidationResult.Fail(
-                    "Recovery phrase checksum is invalid. Every word is spelled correctly, so either a " +
-                    "word is out of order, or this phrase is from a non-BIP39 wallet. Telegram Wallet / " +
-                    "Tonkeeper (TON) use their own 24-word standard that can't be imported here — your " +
-                    "funds stay safe in that wallet.");
+                    "Recovery phrase checksum is invalid. Every word is spelled correctly, so a word is " +
+                    "out of order or slightly wrong — double-check the phrase against your backup. " +
+                    "(TON wallets like Telegram Wallet / Tonkeeper import fine; this doesn't match those either.)");
             }
 
             return MnemonicValidationResult.Success(string.Join(' ', parsed.Words));

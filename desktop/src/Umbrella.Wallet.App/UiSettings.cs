@@ -16,6 +16,9 @@ public sealed class UiSettings
     public string Currency { get; set; } = "USD";
     public string SidebarPosition { get; set; } = "Left";
     public bool AnimationsEnabled { get; set; } = true;
+    /// <summary>Individual motion toggles (gated by the master AnimationsEnabled above).</summary>
+    public bool RainEnabled { get; set; } = true;
+    public bool StickersEnabled { get; set; } = true;
 
     /// <summary>Idle minutes before the vault auto-locks; 0 disables auto-lock entirely.</summary>
     public int AutoLockMinutes { get; set; } = 5;
