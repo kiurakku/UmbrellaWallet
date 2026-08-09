@@ -556,6 +556,28 @@ public partial class MainViewModel : ViewModelBase
     /// onboarding can offer a Cancel back to the existing wallet).</summary>
     [ObservableProperty] private bool _isAddingWallet;
 
+    public bool HasSessionPassword => !string.IsNullOrEmpty(_sessionPassword);
+    /// <summary>An additional wallet silently reuses the one app password — but only when we actually
+    /// have it. Without it, the password fields must show so the user is never stuck.</summary>
+    public bool ReuseAppPassword => IsAddingWallet && HasSessionPassword;
+    /// <summary>Whether the create/import screens show the password fields (hidden only when reusing).</summary>
+    public bool ShowVaultPasswordFields => !ReuseAppPassword;
+
+    /// <summary>Single place that changes the in-memory app password, so every dependent flag updates.</summary>
+    private void SetSessionPassword(string? pw)
+    {
+        _sessionPassword = pw;
+        OnPropertyChanged(nameof(HasSessionPassword));
+        OnPropertyChanged(nameof(ReuseAppPassword));
+        OnPropertyChanged(nameof(ShowVaultPasswordFields));
+    }
+
+    partial void OnIsAddingWalletChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ReuseAppPassword));
+        OnPropertyChanged(nameof(ShowVaultPasswordFields));
+    }
+
     /// <summary>Compatibility overload (tests / callers with a single vault): wraps that vault as the
     /// one-and-only "Main" wallet in a registry rooted beside it.</summary>
     public MainViewModel(EncryptedFileSeedVault vault)
@@ -576,6 +598,7 @@ public partial class MainViewModel : ViewModelBase
     {
         _registry = registry;
         _vault = BuildActiveVault();
+        SelfHealWallets();
         HasVault = _vault.Exists;
         RefreshWalletList();
         StatusMessage = HasVault
@@ -692,6 +715,14 @@ public partial class MainViewModel : ViewModelBase
     /// Click an item to read the full note. Newest first.</summary>
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("NEW", "Fixed: create/import was stuck — plus password tools",
+            "A blocking bug and two much-requested features:\n\n" +
+            "• Fixed the stuck onboarding. Adding a wallet could leave the create/import screen demanding a password it had hidden, which blocked creating OR importing any wallet. Your app password is now kept through the add step and reused directly, so it can't be wiped out from under you.\n" +
+            "• Self-healing. If an add-wallet was interrupted, the app now falls back to a wallet that actually exists instead of stranding you on the welcome screen.\n" +
+            "• Change password. Settings → Wallets lets you set a new app password; every wallet on your current password is re-encrypted, so one password still unlocks them all.\n" +
+            "• Forgot your password? The unlock screen now has \"Forgot your password?\" — enter your recovery phrase and a new password to restore access. Same phrase, same funds.\n\n" +
+            "On going fully password-less: we don't offer that, because it would leave your seed effectively unencrypted on this PC. Pick a simple password and write it down — and now, if you forget it, your phrase gets you back in.",
+            "2026-08-08"),
         new("NEW", "Importing wallets just got much easier",
             "Bringing another wallet in should just work now:\n\n" +
             "• Paste-proof import. A recovery phrase from any BIP39 wallet — Kraken Wallet, MetaMask, Trust, Ledger, Exodus, Coinbase Wallet and most others — imports even if you paste it with numbers (\"1. word 2. word\"), commas or line breaks. The words are pulled out cleanly.\n" +
@@ -1048,12 +1079,13 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task CreateWalletAsync()
     {
-        if (!ValidatePasswords()) return;
+        var pw = ReuseAppPassword ? _sessionPassword! : Password;
+        if (!ValidateVaultPassword(pw)) return;
         await RunBusyAsync(async () =>
         {
             var mnemonic = _mnemonics.Generate();
-            await _vault.CreateAsync(mnemonic, Password);
-            _sessionPassword = Password;
+            await _vault.CreateAsync(mnemonic, pw);
+            SetSessionPassword(pw);
             HasVault = true;
             FinalizeWalletRegistration();
             SetUnlocked(mnemonic);
@@ -1080,7 +1112,6 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task ImportWalletAsync()
     {
-        if (!ValidatePasswords()) return;
         var result = _mnemonics.Validate(ImportPhrase);
         if (!result.IsValid || result.NormalizedMnemonic is null)
         {
@@ -1088,10 +1119,13 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
+        var pw = ReuseAppPassword ? _sessionPassword! : Password;
+        if (!ValidateVaultPassword(pw)) return;
+
         await RunBusyAsync(async () =>
         {
-            await _vault.CreateAsync(result.NormalizedMnemonic, Password);
-            _sessionPassword = Password;
+            await _vault.CreateAsync(result.NormalizedMnemonic, pw);
+            SetSessionPassword(pw);
             HasVault = true;
             FinalizeWalletRegistration();
             SetUnlocked(result.NormalizedMnemonic);
@@ -1469,7 +1503,8 @@ public partial class MainViewModel : ViewModelBase
             _unlockedMnemonic = string.Empty;
             _unlockedMnemonic = null;
         }
-        _sessionPassword = null;
+        SetSessionPassword(null);
+        IsResettingPassword = false;
 
         IsUnlocked = false;
         PendingPhraseBackup = false;
@@ -1504,6 +1539,37 @@ public partial class MainViewModel : ViewModelBase
         return new EncryptedFileSeedVault(path);
     }
 
+    /// <summary>Startup self-heal: if the active wallet's vault is missing (e.g. an add-wallet was
+    /// interrupted before its seed was written — the state that stranded the onboarding), switch to a
+    /// wallet that actually has a vault, and drop any leftover managed wallets with no vault so the
+    /// switcher stays clean. Only ever changes which wallet is selected; never touches a seed.</summary>
+    private void SelfHealWallets()
+    {
+        try
+        {
+            if (!_vault.Exists)
+            {
+                var existing = _registry.Wallets
+                    .FirstOrDefault(w => System.IO.File.Exists(_registry.VaultPathFor(w)));
+                if (existing is not null)
+                {
+                    _registry.SetActive(existing.Id);
+                    _vault = BuildActiveVault();
+                }
+            }
+
+            foreach (var w in _registry.Wallets
+                         .Where(w => !w.IsLegacy
+                                     && w.Id != _registry.Active?.Id
+                                     && !System.IO.File.Exists(_registry.VaultPathFor(w)))
+                         .ToList())
+            {
+                try { _registry.Remove(w.Id); } catch { /* leftover entry is harmless */ }
+            }
+        }
+        catch { /* self-heal is best-effort and must never block startup */ }
+    }
+
     private void RefreshWalletList()
     {
         Wallets.Clear();
@@ -1535,7 +1601,7 @@ public partial class MainViewModel : ViewModelBase
             try
             {
                 var mnemonic = await _vault.UnlockAsync(pw);
-                _sessionPassword = pw;
+                SetSessionPassword(pw);
                 SetUnlocked(mnemonic);
                 ActiveSection = "Portfolio";
                 StatusMessage = $"Switched to “{ActiveWalletLabel}”";
@@ -1560,20 +1626,17 @@ public partial class MainViewModel : ViewModelBase
     private void BeginAddWallet()
     {
         var label = string.IsNullOrWhiteSpace(NewWalletLabel) ? $"Wallet {_registry.Wallets.Count + 1}" : NewWalletLabel.Trim();
-        var pw = _sessionPassword;             // reuse the one common password (captured before LockVault)
+        var pw = _sessionPassword;             // capture the app password before LockVault wipes it
         _previousActiveWalletId = _registry.Active?.Id;
         var entry = _registry.Add(label);
         _pendingNewWalletId = entry.Id;
-        IsAddingWallet = true;
         _registry.SetActive(entry.Id);
-        LockVault();
+        LockVault();                       // clears the seed + session password of the current wallet…
+        SetSessionPassword(pw);            // …but keep the app password so the new wallet reuses it
+        IsAddingWallet = true;
         _vault = BuildActiveVault();       // points at the new (not-yet-created) vault → HasVault=false
         HasVault = false;
         NewWalletLabel = string.Empty;
-        // Pre-fill the common password so the new wallet reuses it — the onboarding hides the password
-        // fields while IsAddingWallet, so there is one login password for the whole app.
-        Password = pw ?? string.Empty;
-        ConfirmPassword = pw ?? string.Empty;
         SetupStage = "Welcome";
         RefreshWalletList();
         StatusMessage = $"New wallet “{label}” · create or import its seed";
@@ -1582,9 +1645,10 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Abort an in-progress add-wallet: de-registers the pending wallet and returns to the
     /// previous one's unlock screen.</summary>
     [RelayCommand]
-    private void CancelAddWallet()
+    private async Task CancelAddWalletAsync()
     {
         if (!IsAddingWallet) return;
+        var pw = _sessionPassword;
         if (_previousActiveWalletId is not null) _registry.SetActive(_previousActiveWalletId);
         if (_pendingNewWalletId is not null)
         {
@@ -1595,6 +1659,23 @@ public partial class MainViewModel : ViewModelBase
         _vault = BuildActiveVault();
         HasVault = _vault.Exists;
         RefreshWalletList();
+
+        // Slip straight back into the previous wallet if the app password still opens it.
+        if (HasVault && !string.IsNullOrEmpty(pw))
+        {
+            try
+            {
+                var mnemonic = await _vault.UnlockAsync(pw);
+                SetSessionPassword(pw);
+                SetUnlocked(mnemonic);
+                ActiveSection = "Portfolio";
+                StatusMessage = $"Back to “{ActiveWalletLabel}”";
+                await RefreshLiveDataAsync();
+                return;
+            }
+            catch { /* fall back to the unlock screen */ }
+        }
+
         StatusMessage = $"Back to “{ActiveWalletLabel}”";
     }
 
@@ -1625,6 +1706,103 @@ public partial class MainViewModel : ViewModelBase
         {
             Fail(ex.Message);
         }
+    }
+
+    // --- Change password ----------------------------------------------------
+    [ObservableProperty] private string _changePwCurrent = string.Empty;
+    [ObservableProperty] private string _changePwNew = string.Empty;
+    [ObservableProperty] private string _changePwConfirm = string.Empty;
+
+    /// <summary>Changes the app password by re-encrypting, in place, every wallet that opens with the
+    /// current password — so the one common password stays unified. Requires the current password;
+    /// wallets on a different password are left untouched.</summary>
+    [RelayCommand]
+    private async Task ChangePasswordAsync()
+    {
+        if (ChangePwNew.Length < MinPasswordLength)
+        {
+            Fail($"New password needs at least {MinPasswordLength} characters."); return;
+        }
+        if (!string.Equals(ChangePwNew, ChangePwConfirm, StringComparison.Ordinal))
+        {
+            Fail("The two new passwords do not match."); return;
+        }
+
+        await RunBusyAsync(async () =>
+        {
+            var changed = 0;
+            foreach (var w in _registry.Wallets.ToList())
+            {
+                var path = _registry.VaultPathFor(w);
+                if (!System.IO.File.Exists(path)) continue;
+                var v = new EncryptedFileSeedVault(path);
+                try
+                {
+                    var seed = await v.UnlockAsync(ChangePwCurrent);
+                    await v.CreateAsync(seed, ChangePwNew);   // re-encrypts the same seed with the new password
+                    changed++;
+                }
+                catch { /* this wallet uses a different password — leave it as is */ }
+            }
+
+            if (changed == 0)
+            {
+                Fail("Current password is incorrect."); return;
+            }
+
+            SetSessionPassword(ChangePwNew);
+            _vault = BuildActiveVault();
+            ChangePwCurrent = ChangePwNew = ChangePwConfirm = string.Empty;
+            StatusMessage = changed > 1 ? $"Password changed for {changed} wallets." : "Password changed.";
+        });
+    }
+
+    // --- Forgot password: restore this wallet from its recovery phrase -------
+    [ObservableProperty] private bool _isResettingPassword;
+
+    /// <summary>From the unlock screen: "forgot password" — reveal the phrase + new-password form.</summary>
+    [RelayCommand]
+    private void BeginPasswordReset()
+    {
+        ImportPhrase = string.Empty;
+        ClearPasswordFields();
+        FormError = string.Empty;
+        IsResettingPassword = true;
+    }
+
+    [RelayCommand]
+    private void CancelPasswordReset()
+    {
+        IsResettingPassword = false;
+        ImportPhrase = string.Empty;
+        ClearPasswordFields();
+    }
+
+    /// <summary>Recovers access without the old password: re-creates the active wallet's vault from the
+    /// entered recovery phrase and a new password. The seed is the wallet, so the same phrase restores
+    /// the same addresses and funds; a correct phrase is the user's responsibility.</summary>
+    [RelayCommand]
+    private async Task ResetWithSeedAsync()
+    {
+        var result = _mnemonics.Validate(ImportPhrase);
+        if (!result.IsValid || result.NormalizedMnemonic is null)
+        {
+            Fail(result.Error ?? "Recovery phrase is invalid"); return;
+        }
+        if (!ValidatePasswords()) return;
+
+        await RunBusyAsync(async () =>
+        {
+            await _vault.CreateAsync(result.NormalizedMnemonic, Password); // overwrite the active vault
+            SetSessionPassword(Password);
+            IsResettingPassword = false;
+            SetUnlocked(result.NormalizedMnemonic);
+            ImportPhrase = string.Empty;
+            ClearPasswordFields();
+            ActiveSection = "Portfolio";
+            StatusMessage = "Wallet restored from your recovery phrase with a new password.";
+            await RefreshLiveDataAsync();
+        });
     }
 
     /// <summary>Called after a create/import succeeds, to keep the registry in step.</summary>
@@ -3691,6 +3869,24 @@ public partial class MainViewModel : ViewModelBase
     {
         if (string.IsNullOrWhiteSpace(address) || address.Length < 12) return address;
         return $"{address[..6]}…{address[^4..]}";
+    }
+
+    /// <summary>Validates the password actually used to encrypt a new/imported wallet. When an additional
+    /// wallet is silently reusing the one app password, that password is already valid, so we skip the
+    /// on-screen confirm check; otherwise the normal two-field validation runs.</summary>
+    private bool ValidateVaultPassword(string pw)
+    {
+        if (ReuseAppPassword)
+        {
+            if (string.IsNullOrEmpty(pw))
+            {
+                Fail("Your app password isn't available — unlock a wallet first, then add another.");
+                return false;
+            }
+            return true;
+        }
+
+        return ValidatePasswords();
     }
 
     private bool ValidatePasswords()

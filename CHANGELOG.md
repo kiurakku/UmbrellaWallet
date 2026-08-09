@@ -4,6 +4,25 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [2.8.8] — 2026-08-08
+
+### Desktop
+- **Fixed: couldn't create or import *any* wallet.** "Add wallet" locked the current wallet (wiping the
+  app password) and then the create/import screen cleared the pre-filled password — leaving the password
+  fields hidden with a "enter a vault password" error and no way forward, which blocked creating or
+  importing anything. The app password is now retained across the add-lock and the create/import flow
+  reuses it directly, so it can't be cleared out from under you. If the fields ever have no password to
+  reuse, they simply show again.
+- **Self-healing on startup.** If an add-wallet was interrupted before its seed was written, the app now
+  switches to a wallet that actually has a vault (so you're never stranded on onboarding) and clears the
+  leftover empty wallet.
+- **Change password (Settings → Wallets).** Set a new app password; every wallet on your current password
+  is re-encrypted so one password keeps unlocking them all.
+- **Forgot your password?** The unlock screen now has a recovery path: enter the wallet's recovery phrase
+  and a new password to restore access — the same phrase restores the same addresses and funds.
+- Note: a truly password-less vault isn't offered, because it would leave your seed effectively
+  unencrypted on disk. Use a simple password you write down, plus the new recovery path, instead.
+
 ## [2.8.7] — 2026-08-08
 
 ### Desktop

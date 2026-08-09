@@ -227,57 +227,58 @@ public sealed class MainViewModelTests : IDisposable
     }
 
     /// <summary>
-    /// Binance-style multi-wallet: add a second independent wallet, switch between them, and prove
-    /// each is locked behind its own password. This pins the fund-critical VM flow end to end.
+    /// Regression for the stranded-onboarding bug: after "Add wallet" the create/import screen must NOT
+    /// get stuck asking for a password it hides (which blocked creating OR importing any wallet).
+    /// Creating the added wallet with no password typed must succeed and open it.
     /// </summary>
     [Fact]
-    public async Task MultiWallet_AddSwitchAndUnlock_KeepsEachWalletIndependent()
+    public async Task MultiWallet_AddWallet_IsNeverStranded_WithoutAPassword()
     {
-        const string secondPassword = "second-wallet-password-2026";
         var vm = NewViewModel();
-
-        // First wallet becomes the "Main" wallet.
         vm.Password = GoodPassword;
         vm.ConfirmPassword = GoodPassword;
         await vm.CreateWalletCommand.ExecuteAsync(null);
         vm.ConfirmPhraseBackupCommand.Execute(null);
-        Assert.Single(vm.Wallets);
-        Assert.True(vm.IsUnlocked);
-        var mainId = vm.Wallets.Single(w => w.IsActive).Id;
 
-        // Add a second, independent wallet: current one locks, onboarding opens for the empty vault.
-        vm.NewWalletLabel = "Savings";
+        vm.NewWalletLabel = "Second";
         vm.BeginAddWalletCommand.Execute(null);
-        Assert.True(vm.IsAddingWallet);
-        Assert.False(vm.IsUnlocked);
-        Assert.True(vm.IsWelcomeStage);
-        Assert.Equal(2, vm.Wallets.Count);
 
-        vm.Password = secondPassword;
-        vm.ConfirmPassword = secondPassword;
+        // The app password is retained across the add-lock, so the fields hide and reuse kicks in.
+        Assert.True(vm.HasSessionPassword);
+        Assert.True(vm.ReuseAppPassword);
+
+        // Create with NOTHING typed into the (hidden) password fields — must not fail with a password error.
         await vm.CreateWalletCommand.ExecuteAsync(null);
         vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        Assert.Empty(vm.FormError);
         Assert.False(vm.IsAddingWallet);
         Assert.True(vm.IsUnlocked);
-        Assert.Equal("Savings", vm.ActiveWalletLabel);
         Assert.Equal(2, vm.Wallets.Count);
+    }
 
-        // Switch back to Main → its password differs, so it must re-prompt (no seamless unlock).
-        await vm.SwitchWalletCommand.ExecuteAsync(mainId);
-        Assert.False(vm.IsUnlocked);
-        Assert.True(vm.IsUnlockStage);
-        Assert.Equal("Main wallet", vm.ActiveWalletLabel);
-
-        // The second wallet's password must NOT open Main.
-        vm.Password = secondPassword;
-        await vm.UnlockCommand.ExecuteAsync(null);
-        Assert.False(vm.IsUnlocked);
-
-        // Main's own password does.
+    /// <summary>An import into an additional wallet must also work with no password typed (same bug).</summary>
+    [Fact]
+    public async Task MultiWallet_AddWallet_ViaImport_ReusesAppPassword()
+    {
+        var vm = NewViewModel();
         vm.Password = GoodPassword;
-        await vm.UnlockCommand.ExecuteAsync(null);
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        vm.NewWalletLabel = "Imported";
+        vm.BeginAddWalletCommand.Execute(null);
+
+        // A valid 12-word phrase, no password typed.
+        vm.ImportPhrase =
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+        await vm.ImportWalletCommand.ExecuteAsync(null);
+
+        Assert.Empty(vm.FormError);
         Assert.True(vm.IsUnlocked);
-        Assert.Equal("Main wallet", vm.ActiveWalletLabel);
+        Assert.Equal("Imported", vm.ActiveWalletLabel);
+        Assert.Equal(2, vm.Wallets.Count);
     }
 
     /// <summary>One common app password: adding a wallet reuses it (no new password asked), and
@@ -292,10 +293,11 @@ public sealed class MainViewModelTests : IDisposable
         vm.ConfirmPhraseBackupCommand.Execute(null);
         var mainId = vm.Wallets.Single(w => w.IsActive).Id;
 
-        // Add a second wallet WITHOUT setting a new password — BeginAddWallet pre-fills the common one.
+        // Add a second wallet WITHOUT typing any password — it silently reuses the app password.
         vm.NewWalletLabel = "Savings";
         vm.BeginAddWalletCommand.Execute(null);
-        Assert.Equal(GoodPassword, vm.Password); // reused, not blank
+        Assert.True(vm.ReuseAppPassword);          // reusing, so no password prompt
+        Assert.False(vm.ShowVaultPasswordFields);  // password fields hidden
         await vm.CreateWalletCommand.ExecuteAsync(null);
         vm.ConfirmPhraseBackupCommand.Execute(null);
         Assert.True(vm.IsUnlocked);
@@ -328,10 +330,92 @@ public sealed class MainViewModelTests : IDisposable
         vm.BeginAddWalletCommand.Execute(null);
         Assert.Equal(2, vm.Wallets.Count);
 
-        vm.CancelAddWalletCommand.Execute(null);
+        await vm.CancelAddWalletCommand.ExecuteAsync(null);
         Assert.False(vm.IsAddingWallet);
         Assert.Single(vm.Wallets);
         Assert.Equal("Main wallet", vm.ActiveWalletLabel);
+    }
+
+    /// <summary>Change password re-encrypts the vault: afterwards the old password fails and the new
+    /// one unlocks.</summary>
+    [Fact]
+    public async Task ChangePassword_ReEncryptsSoNewPasswordUnlocks()
+    {
+        const string newPw = "brand-new-password-2026";
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        vm.ChangePwCurrent = GoodPassword;
+        vm.ChangePwNew = newPw;
+        vm.ChangePwConfirm = newPw;
+        await vm.ChangePasswordCommand.ExecuteAsync(null);
+        Assert.Empty(vm.FormError);
+
+        vm.LockVault();
+        vm.Password = GoodPassword;            // old password no longer works
+        await vm.UnlockCommand.ExecuteAsync(null);
+        Assert.False(vm.IsUnlocked);
+
+        vm.Password = newPw;                   // new password does
+        await vm.UnlockCommand.ExecuteAsync(null);
+        Assert.True(vm.IsUnlocked);
+    }
+
+    [Fact]
+    public async Task ChangePassword_WrongCurrentPassword_IsRejected()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        vm.ChangePwCurrent = "not-the-current-password";
+        vm.ChangePwNew = "another-long-password-2026";
+        vm.ChangePwConfirm = "another-long-password-2026";
+        await vm.ChangePasswordCommand.ExecuteAsync(null);
+
+        Assert.Contains("incorrect", vm.FormError);
+    }
+
+    /// <summary>Forgot password: restoring the active wallet from its recovery phrase sets a new
+    /// password and unlocks it.</summary>
+    [Fact]
+    public async Task ForgotPassword_RestoreWithSeed_SetsNewPasswordAndUnlocks()
+    {
+        const string seed =
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+        const string newPw = "restored-password-2026";
+        var vm = NewViewModel();
+
+        vm.GoToImportCommand.Execute(null);
+        vm.ImportPhrase = seed;
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.ImportWalletCommand.ExecuteAsync(null);
+        Assert.True(vm.IsUnlocked);
+
+        vm.LockVault();
+        Assert.True(vm.IsUnlockStage);
+
+        vm.BeginPasswordResetCommand.Execute(null);
+        Assert.True(vm.IsResettingPassword);
+
+        vm.ImportPhrase = seed;
+        vm.Password = newPw;
+        vm.ConfirmPassword = newPw;
+        await vm.ResetWithSeedCommand.ExecuteAsync(null);
+        Assert.Empty(vm.FormError);
+        Assert.True(vm.IsUnlocked);
+        Assert.False(vm.IsResettingPassword);
+
+        vm.LockVault();
+        vm.Password = newPw;
+        await vm.UnlockCommand.ExecuteAsync(null);
+        Assert.True(vm.IsUnlocked);
     }
 
     [Fact]

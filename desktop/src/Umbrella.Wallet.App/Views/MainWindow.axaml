@@ -157,7 +157,7 @@
             <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Margin="0,8,0,0"
                        Text="A fresh 24-word BIP39 seed is generated on this PC and encrypted with a password only you know."/>
 
-            <StackPanel Spacing="0" IsVisible="{Binding !IsAddingWallet}">
+            <StackPanel Spacing="0" IsVisible="{Binding ShowVaultPasswordFields}">
               <TextBlock Classes="eyebrow" Text="VAULT PASSWORD" Margin="0,22,0,8"/>
               <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="At least 12 characters"/>
               <TextBlock Classes="mono" FontSize="11" Margin="2,8,0,0"
@@ -166,7 +166,7 @@
               <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="Repeat password"/>
             </StackPanel>
             <!-- Additional wallets reuse the one app password, so no new password is asked. -->
-            <Border IsVisible="{Binding IsAddingWallet}" Background="{DynamicResource UmCardAlt}"
+            <Border IsVisible="{Binding ReuseAppPassword}" Background="{DynamicResource UmCardAlt}"
                     CornerRadius="8" Padding="12,9" Margin="0,20,0,0">
               <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
                          Text="This new wallet uses your current app password — one login unlocks every wallet."/>
@@ -199,7 +199,7 @@
             <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap" Margin="2,8,0,0"
                        Text="Works with any BIP39 wallet — MetaMask, Kraken Wallet, Trust, Ledger, Exodus, Coinbase Wallet and most others (12 or 24 words). Telegram Wallet / Tonkeeper (TON) use a different, non-BIP39 standard and can't be imported here."/>
 
-            <StackPanel Spacing="0" IsVisible="{Binding !IsAddingWallet}">
+            <StackPanel Spacing="0" IsVisible="{Binding ShowVaultPasswordFields}">
               <TextBlock Classes="eyebrow" Text="VAULT PASSWORD" Margin="0,16,0,8"/>
               <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="At least 12 characters"/>
               <TextBlock Classes="mono" FontSize="11" Margin="2,8,0,0"
@@ -207,7 +207,7 @@
               <TextBlock Classes="eyebrow" Text="CONFIRM PASSWORD" Margin="0,16,0,8"/>
               <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="Repeat password"/>
             </StackPanel>
-            <Border IsVisible="{Binding IsAddingWallet}" Background="{DynamicResource UmCardAlt}"
+            <Border IsVisible="{Binding ReuseAppPassword}" Background="{DynamicResource UmCardAlt}"
                     CornerRadius="8" Padding="12,9" Margin="0,16,0,0">
               <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
                          Text="This wallet uses your current app password — one login unlocks every wallet."/>
@@ -224,21 +224,56 @@
           </StackPanel>
 
           <!-- Unlock -->
-          <StackPanel IsVisible="{Binding IsUnlockStage}" MaxWidth="440" Margin="24,64,24,24"
+          <StackPanel IsVisible="{Binding IsUnlockStage}" MaxWidth="460" Margin="24,52,24,24"
                       HorizontalAlignment="Center" Spacing="0">
             <Image Source="{Binding LogoImage}"
-                   Width="120" Stretch="Uniform" HorizontalAlignment="Center"/>
-            <TextBlock Classes="serif" FontSize="28" Text="Unlock your vault" HorizontalAlignment="Center" Margin="0,24,0,0"/>
-            <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0"
-                       Text="Your seed is encrypted on this PC. Enter the vault password to load live balances."/>
-            <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="Vault password" Margin="0,22,0,0"/>
-            <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
-                    BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
-              <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
-            </Border>
-            <Button Classes="primary" Content="Unlock" HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Center" Margin="0,16,0,0"
-                    IsEnabled="{Binding !IsBusy}" Command="{Binding UnlockCommand}"/>
+                   Width="110" Stretch="Uniform" HorizontalAlignment="Center"/>
+
+            <!-- Normal unlock -->
+            <StackPanel IsVisible="{Binding !IsResettingPassword}" Spacing="0">
+              <TextBlock Classes="serif" FontSize="28" Text="Unlock your vault" HorizontalAlignment="Center" Margin="0,22,0,0"/>
+              <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0"
+                         Text="Your seed is encrypted on this PC. Enter the vault password to load live balances."/>
+              <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="Vault password" Margin="0,22,0,0"/>
+              <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
+                      BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
+                <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+              </Border>
+              <Button Classes="primary" Content="Unlock" HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center" Margin="0,16,0,0"
+                      IsEnabled="{Binding !IsBusy}" Command="{Binding UnlockCommand}"/>
+              <Button Classes="ghost" Content="Forgot your password?" HorizontalAlignment="Center" Margin="0,12,0,0"
+                      FontSize="12" Command="{Binding BeginPasswordResetCommand}"/>
+            </StackPanel>
+
+            <!-- Forgot-password: restore this wallet from its recovery phrase + a new password -->
+            <StackPanel IsVisible="{Binding IsResettingPassword}" Spacing="0">
+              <TextBlock Classes="serif" FontSize="26" Text="Restore with your phrase" HorizontalAlignment="Center" Margin="0,22,0,0"/>
+              <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0"
+                         Text="Forgot the password? Enter this wallet's recovery phrase and set a new password. The same phrase restores the same addresses and funds."/>
+              <TextBlock Classes="eyebrow" Text="RECOVERY PHRASE" Margin="0,20,0,8"/>
+              <TextBox Text="{Binding ImportPhrase}" AcceptsReturn="True" Height="110" TextWrapping="Wrap"
+                       Watermark="word1 word2 word3 …"/>
+              <TextBlock Classes="eyebrow" Text="NEW PASSWORD" Margin="0,14,0,8"/>
+              <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="At least 12 characters"/>
+              <TextBlock Classes="mono" FontSize="11" Margin="2,8,0,0"
+                         Text="{Binding PasswordMeterLabel}" Foreground="{Binding PasswordMeterColor}"/>
+              <TextBlock Classes="eyebrow" Text="CONFIRM NEW PASSWORD" Margin="0,14,0,8"/>
+              <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="Repeat new password"/>
+              <Border Background="#2A2016" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
+                <TextBlock Foreground="#E7CA83" TextWrapping="Wrap" FontSize="11.5"
+                           Text="This overwrites this wallet's saved seed with the phrase you enter — make sure it's the correct phrase for this wallet."/>
+              </Border>
+              <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
+                      BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,12,0,0">
+                <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+              </Border>
+              <Button Classes="primary" Content="Restore &amp; set new password" HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center" Margin="0,16,0,0"
+                      IsEnabled="{Binding !IsBusy}" Command="{Binding ResetWithSeedCommand}"/>
+              <Button Classes="ghost" Content="← Back to unlock" HorizontalAlignment="Center" Margin="0,10,0,0"
+                      FontSize="12" Command="{Binding CancelPasswordResetCommand}"/>
+            </StackPanel>
           </StackPanel>
 
           <!-- Backup phrase (after create) -->
@@ -1619,6 +1654,20 @@
                           <TextBox Text="{Binding NewWalletLabel, Mode=TwoWay}" Watermark="Name for the new wallet (e.g. Savings)" VerticalAlignment="Center"/>
                           <Button Grid.Column="1" Classes="primary" Content="＋ Add wallet" Command="{Binding BeginAddWalletCommand}"/>
                         </Grid>
+                      </StackPanel>
+                    </Border>
+
+                    <!-- Change the app password (re-encrypts every wallet on the common password). -->
+                    <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+                      <StackPanel Spacing="8">
+                        <TextBlock Text="Change password" FontWeight="SemiBold" FontSize="13"/>
+                        <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640"
+                                   Text="Sets a new app password. Every wallet that opens with your current password is re-encrypted, so one password keeps unlocking them all. There is no way to store your seed without a password — if you'd rather not remember one, keep it simple but write it down."/>
+                        <TextBox Text="{Binding ChangePwCurrent, Mode=TwoWay}" PasswordChar="●" Watermark="Current password"/>
+                        <TextBox Text="{Binding ChangePwNew, Mode=TwoWay}" PasswordChar="●" Watermark="New password (at least 12 characters)"/>
+                        <TextBox Text="{Binding ChangePwConfirm, Mode=TwoWay}" PasswordChar="●" Watermark="Confirm new password"/>
+                        <Button Classes="ghost" Content="Update password" HorizontalAlignment="Left"
+                                IsEnabled="{Binding !IsBusy}" Command="{Binding ChangePasswordCommand}"/>
                       </StackPanel>
                     </Border>
                   </StackPanel>
