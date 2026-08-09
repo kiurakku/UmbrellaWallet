@@ -106,6 +106,52 @@ public class Bip39MnemonicServiceTests
         Assert.False(result.IsValid);
         Assert.NotNull(result.Error);
     }
+
+    /// <summary>Wallets present phrases in many shapes on export — numbered lists, commas, line breaks.
+    /// A valid phrase must import regardless of that surrounding punctuation.</summary>
+    [Fact]
+    public void Validate_tolerates_numbered_and_punctuated_paste()
+    {
+        const string messy =
+            "1. abandon  2. abandon\n3. abandon,4. abandon 5. abandon 6. abandon " +
+            "7. abandon 8. abandon 9. abandon 10. abandon 11. abandon 12. about";
+
+        var result = _sut.Validate(messy);
+
+        Assert.True(result.IsValid);
+        Assert.Equal(
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            result.NormalizedMnemonic);
+    }
+
+    /// <summary>A single mistyped word is the usual cause of a rejected phrase — name it, don't just
+    /// say "invalid".</summary>
+    [Fact]
+    public void Validate_names_the_offending_word()
+    {
+        const string typo =
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon aboutx";
+
+        var result = _sut.Validate(typo);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("aboutx", result.Error);
+    }
+
+    /// <summary>All-valid words but a failing checksum means a non-BIP39 wallet (e.g. TON/Telegram) —
+    /// the message must say so rather than a bare "invalid".</summary>
+    [Fact]
+    public void Validate_explains_non_bip39_when_words_valid_but_checksum_fails()
+    {
+        const string allValidBadChecksum =
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon " +
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon";
+
+        var result = _sut.Validate(allValidBadChecksum);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("non-BIP39", result.Error);
+    }
 }
 
 public class HdAddressDeriverTests

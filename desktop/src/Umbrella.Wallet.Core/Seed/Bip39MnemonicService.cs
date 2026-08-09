@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using NBitcoin;
 
 namespace Umbrella.Wallet.Core.Seed;
@@ -34,15 +35,35 @@ public sealed class Bip39MnemonicService
             return MnemonicValidationResult.Fail("Recovery phrase is required.");
         }
 
-        var words = mnemonic
-            .Trim()
-            .ToLowerInvariant()
-            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        // Robust extraction: BIP39 English words are pure a–z, so pull out every run of letters.
+        // This tolerates how wallets present a phrase on export — numbered lists ("1. ship 2. subway"),
+        // commas, tabs, line breaks or multiple spaces all normalise to a clean word list.
+        var words = Regex.Matches(mnemonic.ToLowerInvariant(), "[a-z]+")
+            .Select(m => m.Value)
+            .ToArray();
+
+        if (words.Length == 0)
+        {
+            return MnemonicValidationResult.Fail("Recovery phrase is required.");
+        }
 
         if (!AllowedWordCounts.Contains(words.Length))
         {
             return MnemonicValidationResult.Fail(
-                $"A recovery phrase has 12, 15, 18, 21, or 24 words — found {words.Length}.");
+                $"A recovery phrase has 12, 15, 18, 21, or 24 words — found {words.Length}. " +
+                "Paste the whole phrase (Kraken Wallet and most wallets use 12 or 24 words).");
+        }
+
+        // Name the first word that isn't in the BIP39 list — usually a typo or autocorrect, and far
+        // more useful than a blanket "invalid".
+        foreach (var w in words)
+        {
+            if (!Wordlist.English.WordExists(w, out _))
+            {
+                return MnemonicValidationResult.Fail(
+                    $"“{w}” isn't a valid recovery word — check for a typo or autocorrect. Every word " +
+                    "must be from the BIP39 English list.");
+            }
         }
 
         var normalized = string.Join(' ', words);

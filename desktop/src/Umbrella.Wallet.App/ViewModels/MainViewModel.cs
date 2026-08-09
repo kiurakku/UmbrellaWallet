@@ -692,6 +692,13 @@ public partial class MainViewModel : ViewModelBase
     /// Click an item to read the full note. Newest first.</summary>
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("NEW", "Importing wallets just got much easier",
+            "Bringing another wallet in should just work now:\n\n" +
+            "• Paste-proof import. A recovery phrase from any BIP39 wallet — Kraken Wallet, MetaMask, Trust, Ledger, Exodus, Coinbase Wallet and most others — imports even if you paste it with numbers (\"1. word 2. word\"), commas or line breaks. The words are pulled out cleanly.\n" +
+            "• It tells you what's wrong. If one word is mistyped, the error names that exact word instead of a vague \"invalid phrase\".\n" +
+            "• Telegram / TON. If a phrase looks right but is rejected, it's almost certainly from Telegram Wallet / Tonkeeper — those use a non-BIP39 standard and can't be imported here. Your coins are safe in that wallet; native TON import is planned.\n\n" +
+            "Tip: after importing, your BTC/ETH/SOL and other main-chain addresses match the source wallet. If a balance looks empty, it may be on a network Umbrella doesn't sync yet.",
+            "2026-08-08"),
         new("NEW", "One password for all wallets, plus fixes",
             "Follow-ups from your feedback:\n\n" +
             "• One login password. Adding a wallet now reuses your app password instead of asking for a new one, and switching between wallets unlocks instantly. The password lives only in memory while you're unlocked and is wiped on lock.\n" +

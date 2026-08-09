@@ -195,7 +195,9 @@
 
             <TextBlock Classes="eyebrow" Text="RECOVERY PHRASE" Margin="0,22,0,8"/>
             <TextBox Text="{Binding ImportPhrase}" AcceptsReturn="True" Height="120"
-                     TextWrapping="Wrap" Watermark="word1 word2 word3 …"/>
+                     TextWrapping="Wrap" Watermark="word1 word2 word3 …  (numbers and commas are fine)"/>
+            <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap" Margin="2,8,0,0"
+                       Text="Works with any BIP39 wallet — MetaMask, Kraken Wallet, Trust, Ledger, Exodus, Coinbase Wallet and most others (12 or 24 words). Telegram Wallet / Tonkeeper (TON) use a different, non-BIP39 standard and can't be imported here."/>
 
             <StackPanel Spacing="0" IsVisible="{Binding !IsAddingWallet}">
               <TextBlock Classes="eyebrow" Text="VAULT PASSWORD" Margin="0,16,0,8"/>

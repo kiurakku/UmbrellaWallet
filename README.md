@@ -17,7 +17,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-![Version](https://img.shields.io/badge/version-2.8.6-4B3F86)
+![Version](https://img.shields.io/badge/version-2.8.7-4B3F86)
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-ready-6E5FB8?logo=linux&logoColor=white)
 ![Desktop](https://img.shields.io/badge/desktop-Avalonia%20·%20.NET%208-8A5FD6)
@@ -37,7 +37,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-**[⬇️ Installer (v2.8.6)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-2.8.6.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-2.8.6-win-x64-portable.zip)** · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
+**[⬇️ Installer (v2.8.7)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-2.8.7.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-2.8.7-win-x64-portable.zip)** · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
 
 <br/>
 
@@ -119,9 +119,9 @@ Umbrella flips that model:
 
 | Platform | Package | Notes |
 |----------|---------|-------|
-| **Windows** | [UmbrellaWallet-Setup-2.8.6.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-2.8.6.exe) | Installer — choose install folder |
-| **Windows** | [`UmbrellaWallet-2.8.6-win-x64-portable.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-2.8.6-win-x64-portable.zip) | Portable — unzip and run `Umbrella.exe` |
-| **Linux** | [`UmbrellaWallet-2.8.6-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-2.8.6-linux-x64.tar.gz) | Unpack, run `./Umbrella.Wallet.App` — no install required |
+| **Windows** | [UmbrellaWallet-Setup-2.8.7.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-2.8.7.exe) | Installer — choose install folder |
+| **Windows** | [`UmbrellaWallet-2.8.7-win-x64-portable.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-2.8.7-win-x64-portable.zip) | Portable — unzip and run `Umbrella.exe` |
+| **Linux** | [`UmbrellaWallet-2.8.7-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-2.8.7-linux-x64.tar.gz) | Unpack, run `./Umbrella.Wallet.App` — no install required |
 
 ## 🚀 Get started
 

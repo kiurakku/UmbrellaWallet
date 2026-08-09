@@ -4,6 +4,18 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [2.8.7] — 2026-08-08
+
+### Desktop
+- **Import is far more forgiving, and tells you what's wrong.** A phrase from any BIP39 wallet — Kraken
+  Wallet, MetaMask, Trust, Ledger, Exodus, Coinbase Wallet, etc. — now imports even if it was pasted
+  with numbering ("1. word 2. word"), commas or line breaks (the words are extracted cleanly). If a
+  single word is mistyped, the error names that exact word instead of a blanket "invalid". A short note
+  on the import screen lists which wallets are compatible.
+- **Clearer non-BIP39 message.** A valid-looking phrase that fails the checksum now explains it's likely
+  from a non-BIP39 wallet (Telegram Wallet / Tonkeeper on TON), which can't be imported here — your
+  funds stay safe in that wallet. (Native TON-wallet import is still planned separately.)
+
 ## [2.8.6] — 2026-08-08
 
 ### Desktop
