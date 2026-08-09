@@ -29,6 +29,8 @@
   <Window.Resources>
     <app:StringEqualsConverter x:Key="StringEquals" />
     <app:MarketFilterConverter x:Key="MarketFilter" />
+    <app:ToastBorderConverter x:Key="ToastBorder" />
+    <app:ToastGlyphConverter x:Key="ToastGlyph" />
   </Window.Resources>
 
   <Window.KeyBindings>
@@ -1429,8 +1431,8 @@
                 <!-- Official Telegram channel — the one place for news and contact. -->
                 <Border Classes="card" Background="{DynamicResource UmCardAlt}">
                   <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
-                    <Border Width="42" Height="42" CornerRadius="12" Background="#229ED9" VerticalAlignment="Center">
-                      <TextBlock Text="✈" FontSize="20" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Border Width="42" Height="42" CornerRadius="12" Background="#0F86C0" ClipToBounds="True" VerticalAlignment="Center">
+                      <Image Source="avares://Umbrella.Wallet.App/Assets/tg-channel.png" Stretch="Uniform" Margin="4"/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                       <TextBlock Text="Official Telegram channel" FontWeight="SemiBold" FontSize="14"/>
@@ -2343,6 +2345,26 @@
           </StackPanel>
         </Border>
       </Grid>
+    </Border>
+
+    <!-- ============================ TOAST ============================
+         Centered top notification for errors and key notices, auto-hides. Sits above everything,
+         non-blocking (only the pill itself is hit-testable). -->
+    <Border Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" VerticalAlignment="Top" HorizontalAlignment="Center"
+            IsVisible="{Binding ToastVisible}" Margin="0,52,0,0">
+      <Button Classes="ghost" Padding="0" Command="{Binding DismissToastCommand}" IsHitTestVisible="True">
+        <Border CornerRadius="10" Padding="16,11" MaxWidth="520"
+                Background="{DynamicResource UmCard}" BorderThickness="1"
+                BorderBrush="{Binding ToastIsError, Converter={StaticResource ToastBorder}}"
+                BoxShadow="0 8 28 0 #66000000">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="{Binding ToastIsError, Converter={StaticResource ToastGlyph}}" FontSize="15" VerticalAlignment="Center"
+                       Foreground="{Binding ToastIsError, Converter={StaticResource ToastBorder}}"/>
+            <TextBlock Text="{Binding Toast}" TextWrapping="Wrap" FontSize="12.5" VerticalAlignment="Center"
+                       Foreground="{DynamicResource UmText}"/>
+          </StackPanel>
+        </Border>
+      </Button>
     </Border>
   </Grid>
 </Window>

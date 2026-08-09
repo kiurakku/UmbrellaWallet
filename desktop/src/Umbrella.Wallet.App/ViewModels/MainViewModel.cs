@@ -581,6 +581,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly PublicMarketRatesClient _rates = new();
     private readonly WatchAddressStore _watchStore = new();
     private readonly ActivityStore _activityStore = new();
+    private readonly BalanceStore _balanceStore = new();
     private readonly ExchangeCredentialStore _exchangeStore = new();
     private readonly EthTransactionSender _ethSender = new();
     private readonly BitcoinTransactionSender _btcSender = new();
@@ -768,6 +769,13 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("NEW", "Faster balances, instant totals, cleaner alerts",
+            "Speed and polish:\n\n" +
+            "• Balances load much faster — they're fetched all at once instead of one by one, and the total appears right after the quick native pass.\n" +
+            "• No more $0 flash: your last totals are cached on this device and shown instantly when you unlock or switch wallets, then refreshed in the background.\n" +
+            "• Errors and notices now appear as a toast at the top-center of the window, so you actually see them.\n" +
+            "• The the-fear mark and the Telegram-channel icon now use the real logo artwork (background removed).",
+            "2026-08-09"),
         new("NEW", "Settings fully translated + easier wallet switching",
             "Polish across the app:\n\n" +
             "• Settings are fully translated now — the Wallets tab and the Danger zone were still English whatever language you picked; that's fixed.\n" +
@@ -2476,6 +2484,38 @@ public partial class MainViewModel : ViewModelBase
         RefreshHoldings();
     }
 
+    private string ActiveWalletCacheKey => _registry.Active?.Id ?? "main";
+
+    /// <summary>Apply the last-seen balances/prices for the active wallet so the total is right the
+    /// instant it unlocks — before the live refresh returns — instead of flashing $0. Matched to
+    /// accounts by symbol + address; the refresh overwrites with authoritative data moments later.</summary>
+    private void RestoreCachedBalances()
+    {
+        var cached = _balanceStore.Load(ActiveWalletCacheKey);
+        if (cached.Count == 0) return;
+        var byKey = cached.ToDictionary(e => e.Symbol + "|" + e.Address, e => e);
+        var touched = false;
+        for (var i = 0; i < Accounts.Count; i++)
+        {
+            var a = Accounts[i];
+            if (byKey.TryGetValue(a.Symbol + "|" + a.Address, out var e))
+            {
+                Accounts[i] = a with { Amount = e.Amount, Price = e.Price, Change24h = e.Change };
+                touched = true;
+            }
+        }
+        if (touched) { RefreshHoldings(); RecalcBalance(); }
+    }
+
+    /// <summary>Persist the current balances/prices so the next unlock/switch shows them instantly.</summary>
+    private void SaveBalanceCache()
+    {
+        var entries = Accounts
+            .Where(a => a.Amount > 0 || a.Price > 0)
+            .Select(a => new BalanceStore.Entry(a.Symbol, a.Address, a.Amount, a.Price, a.Change24h));
+        _balanceStore.Save(ActiveWalletCacheKey, entries);
+    }
+
     [RelayCommand]
     private async Task RefreshLiveDataAsync()
     {
@@ -2500,19 +2540,20 @@ public partial class MainViewModel : ViewModelBase
                 .ToList();
             var prices = await _rates.GetUsdPricesAsync(symbols, ct);
 
-            foreach (var account in Accounts.ToList())
+            // Fetch every account's balance CONCURRENTLY, then apply on the UI thread. Sequential
+            // awaits here were the main reason the total took many seconds to appear after unlock /
+            // wallet switch; firing them together cuts that to roughly the slowest single call.
+            // (Receive-only chains TON/ADA have public balance APIs; XMR returns null safely.)
+            var balanceTargets = Accounts.ToList()
+                .Where(a => a.SupportStatus is "Ready" or "Receive only" && ParseChain(a.Symbol) is not null)
+                .ToList();
+            var balanceResults = await Task.WhenAll(
+                balanceTargets.Select(a => _balances.GetBalanceAsync(ParseChain(a.Symbol)!.Value, a.Address, ct)));
+
+            for (var k = 0; k < balanceTargets.Count; k++)
             {
-                // Receive-only chains (TON, ADA) have public balance APIs — fetch them too. XMR is
-                // also receive-only but has no public balance API (handled by the Monero service),
-                // and GetBalanceAsync simply returns null for it, so this is safe.
-                if (account.SupportStatus is not ("Ready" or "Receive only")) continue;
-                var chain = ParseChain(account.Symbol);
-                if (chain is null) continue;
-
-                decimal amount = (decimal)account.Amount;
-                var bal = await _balances.GetBalanceAsync(chain.Value, account.Address, ct);
-                if (bal is not null) amount = bal.NativeAmount;
-
+                var account = balanceTargets[k];
+                var amount = balanceResults[k] is { } bal ? bal.NativeAmount : (decimal)account.Amount;
                 var (usd, change) = prices.GetValueOrDefault(account.Symbol);
                 var idx = Accounts.IndexOf(account);
                 if (idx >= 0)
@@ -2525,6 +2566,9 @@ public partial class MainViewModel : ViewModelBase
                     };
                 }
             }
+            // Show the total from native balances immediately, before the slower token/NFT/watch passes.
+            RefreshHoldings();
+            RecalcBalance();
 
             // Every TRC-20 token on our OWN derived TRON account — not just USDT. Reward tokens,
             // other stablecoins and any TRC-20 asset now appear next to the native coins, which is
@@ -2589,6 +2633,7 @@ public partial class MainViewModel : ViewModelBase
 
             RefreshHoldings();
             RecalcBalance();
+            SaveBalanceCache(); // remember these totals so the next unlock/switch is instant
             PushActivity("Sync", "All", "OK", "Public RPC / explorers", "now");
             StatusMessage = $"Live · {Holdings.Count} assets · updated {DateTime.Now:HH:mm:ss}";
         }
@@ -3603,6 +3648,7 @@ public partial class MainViewModel : ViewModelBase
         // read once the wallet is unlocked.
         _ = LoadExchangesAsync(mnemonic);
         DeriveAccounts(mnemonic);
+        RestoreCachedBalances(); // show last-known totals instantly; the live refresh corrects them
         SelectFirstReceive();
         LoadActivity(); // restore the saved history before logging this unlock on top
         PushActivity("Security", "Vault", "unlocked", "this device", "now");
@@ -4029,7 +4075,37 @@ public partial class MainViewModel : ViewModelBase
     {
         FormError = message;
         StatusMessage = message;
+        ShowToast(message, isError: true);
     }
+
+    // --- Centered top toast: surfaces errors and key notices where the user actually looks ---
+    [ObservableProperty] private string _toast = string.Empty;
+    [ObservableProperty] private bool _toastVisible;
+    [ObservableProperty] private bool _toastIsError;
+    private Avalonia.Threading.DispatcherTimer? _toastTimer;
+
+    public void ShowToast(string message, bool isError)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return;
+        Toast = message;
+        ToastIsError = isError;
+        ToastVisible = true;
+        _toastTimer ??= new Avalonia.Threading.DispatcherTimer();
+        _toastTimer.Stop();
+        _toastTimer.Interval = TimeSpan.FromSeconds(isError ? 5 : 3);
+        _toastTimer.Tick -= HideToastTick;
+        _toastTimer.Tick += HideToastTick;
+        _toastTimer.Start();
+    }
+
+    private void HideToastTick(object? sender, EventArgs e)
+    {
+        _toastTimer?.Stop();
+        ToastVisible = false;
+    }
+
+    [RelayCommand]
+    private void DismissToast() => ToastVisible = false;
 
     private async Task RunBusyAsync(Func<Task> action)
     {

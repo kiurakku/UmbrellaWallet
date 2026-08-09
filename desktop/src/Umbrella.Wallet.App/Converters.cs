@@ -20,6 +20,26 @@ public sealed class StringEqualsConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>Toast accent — red for errors, green for notices. Value is the bool ToastIsError.</summary>
+public sealed class ToastBorderConverter : IValueConverter
+{
+    public static readonly ToastBorderConverter Instance = new();
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        Avalonia.Media.SolidColorBrush.Parse(value is true ? "#E24B4A" : "#3DDC97");
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>Toast glyph — a warning triangle for errors, a check for notices.</summary>
+public sealed class ToastGlyphConverter : IValueConverter
+{
+    public static readonly ToastGlyphConverter Instance = new();
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is true ? "⚠" : "✓";
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>
 /// Row visibility for the Market search box. Values are [Symbol, Name, Query]; the row is visible
 /// when the query is empty or is a case-insensitive substring of either the ticker or the name.

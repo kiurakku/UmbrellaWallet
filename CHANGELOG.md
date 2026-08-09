@@ -4,6 +4,23 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [3.0.3] — 2026-08-09
+
+### Desktop
+- **Much faster balances.** Account balances are now fetched **concurrently** instead of one after
+  another, and the portfolio total shows right after the (fast) native pass — no more long wait before
+  the sum appears on unlock or wallet-switch.
+- **Instant totals (no $0 flash).** Balances are cached per wallet on this device, so switching or
+  unlocking shows your last-known total immediately while the live refresh updates it in the background.
+- **Centered notifications.** Errors and important notices now pop as a **toast at the top-center**
+  (auto-hides), instead of only landing in the status bar.
+- **Real brand logos.** The **the fear** mark and the **Telegram channel** icon now use the supplied
+  artwork with the blue background removed (transparent).
+
+### Verified
+Anonymity/security unchanged (no accounts, no telemetry, keys local + encrypted, Tor optional). 138/138
+tests pass.
+
 ## [3.0.2] — 2026-08-09
 
 ### Desktop
