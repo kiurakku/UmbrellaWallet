@@ -4,6 +4,18 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [3.0.4] — 2026-08-09
+
+### Desktop
+- **Update-safety hardened.** The installer now explicitly excludes any `data` folder, so a new version
+  can never overwrite your wallets, theme, linked addresses or history. (They already lived in a
+  separate data folder — `%APPDATA%\UmbrellaWallet` for installs, `data/` beside the exe for portable —
+  untouched by updates; this is a belt-and-braces guarantee.)
+- **Brand logos finalized** from the supplied artwork in `docs/assets` (the fear mark + Telegram-channel
+  icon), blue background removed.
+- README refreshed: new logo, corrected theme count (27), ambient-motion options, and an explicit
+  "updates keep your data" note.
+
 ## [3.0.3] — 2026-08-09
 
 ### Desktop
