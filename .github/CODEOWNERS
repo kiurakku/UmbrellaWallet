@@ -1,0 +1,12 @@
+# Umbrella Wallet — mandatory review for fund-critical paths.
+# Branch rules require CODEOWNER approval before merge to main.
+
+* @kiurakku
+
+/.github/ @kiurakku
+/contracts/ @kiurakku
+/desktop/ @kiurakku
+/backend/ @kiurakku
+/src/lib/wallet/ @kiurakku
+/desktop/src/Umbrella.Wallet.Infrastructure/ @kiurakku
+/desktop/src/Umbrella.Wallet.Core/ @kiurakku

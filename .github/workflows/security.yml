@@ -19,6 +19,9 @@ jobs:
   gitleaks:
     name: gitleaks
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,6 +34,9 @@ jobs:
   dependency-review:
     name: dependency-review
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4

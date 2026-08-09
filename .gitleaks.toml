@@ -1,0 +1,16 @@
+title = "Umbrella Wallet gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "test vectors, docs, and example env files"
+paths = [
+  '''desktop/tests/''',
+  '''backend/test/''',
+  '''docs/''',
+  '''\.md$''',
+  '''\.env\.example$''',
+  '''\.env\.tor\.example$''',
+  '''backend/\.env\.example$''',
+]
