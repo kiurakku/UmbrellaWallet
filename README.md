@@ -17,9 +17,10 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-![Version](https://img.shields.io/badge/version-3.0.0-4B3F86)
+![Version](https://img.shields.io/badge/version-3.0.1-4B3F86)
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-ready-6E5FB8?logo=linux&logoColor=white)
+![Android](https://img.shields.io/badge/Android-planned-8A8A9C?logo=android&logoColor=white)
 ![Desktop](https://img.shields.io/badge/desktop-Avalonia%20·%20.NET%208-8A5FD6)
 ![Price](https://img.shields.io/badge/price-free-7DCF8F)
 
@@ -30,14 +31,14 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
 ![Coins](https://img.shields.io/badge/send-BTC·ETH·LTC·SOL·TON·TRON·USDT·XMR-7DCF8F)
-![Exchanges](https://img.shields.io/badge/exchanges-9%20read--only-5AC8B4)
-![Themes](https://img.shields.io/badge/themes-11-E7CA83)
+![Import](https://img.shields.io/badge/import-BIP39%20+%20TON%20(Telegram)-5AC8B4)
+![Themes](https://img.shields.io/badge/themes-27-E7CA83)
 ![Languages](https://img.shields.io/badge/languages-6-5AC8B4)
-![Tests](https://img.shields.io/badge/tests-93%20passing-7DCF8F)
+![Tests](https://img.shields.io/badge/tests-138%20passing-7DCF8F)
 
 <br/>
 
-**[⬇️ Installer (v3.0.0)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.0.0.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-3.0.0-win-x64-portable.zip)** · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
+**[⬇️ Installer (v3.0.1)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.0.1.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-3.0.1.zip)** · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
 
 <br/>
 
@@ -119,16 +120,18 @@ Umbrella flips that model:
 
 | Platform | Package | Notes |
 |----------|---------|-------|
-| **Windows** | [UmbrellaWallet-Setup-3.0.0.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.0.0.exe) | Installer — choose install folder |
-| **Windows** | [`UmbrellaWallet-3.0.0-win-x64-portable.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-3.0.0-win-x64-portable.zip) | Portable — unzip and run `Umbrella.exe` |
-| **Linux** | [`UmbrellaWallet-3.0.0-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-3.0.0-linux-x64.tar.gz) | Unpack, run `./Umbrella.Wallet.App` — no install required |
+| **Windows** | [UmbrellaWallet-Setup-3.0.1.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.0.1.exe) | Installer — choose install folder |
+| **Windows** | [`UmbrellaWallet-Portable-3.0.1.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-3.0.1.zip) | Portable — unzip and run `Umbrella.exe` |
+| **Linux** | [`UmbrellaWallet-3.0.1-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-3.0.1-linux-x64.tar.gz) | Unpack, run `./Umbrella.Wallet.App` — no install required |
+| **Android** | _planned_ | A native Android build (Avalonia) is on the roadmap |
 
 ## 🚀 Get started
 
-1. ⬇️ **Windows** — download the portable zip, unzip, run `Umbrella.Wallet.App.exe`.
+1. ⬇️ **Windows** — download the portable zip, unzip, run `Umbrella.exe`.
 2. 🐧 **Linux** — grab the tar.gz build, unpack, run `./Umbrella.Wallet.App`.
-3. 🌐 **Web** — the browser version keeps your phrase in the browser; the server only ever sees *public* data.
-4. 🖊️ Create a wallet → **write the 24 words on paper** → done. You now have a bank in your pocket that answers to no one.
+3. 🖊️ Create a wallet → **write the 24 words on paper** → done. You now have a bank in your pocket that answers to no one.
+
+> 📣 **Web version paused.** The browser version is on hold for an indefinite period — development is focused entirely on the native desktop apps (Windows and Linux now, Android planned). News and contact: **[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)** (the only official channel).
 
 > ✍️ **The 24 words ARE the wallet.** Anyone who has them has your money; if you lose them and your device, nobody in the universe can bring your coins back — including us. That is what "your keys" costs, and what it's worth.
 
@@ -175,20 +178,14 @@ No — it's inside the app. One switch in <i>Settings → Privacy & Tor</i>, and
 ```bash
 cd desktop
 dotnet run --project src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj   # run
-dotnet test                                                               # 77 tests, crypto pinned to published vectors
+dotnet test                                                               # 138 tests, crypto pinned to published vectors
 ```
 
 Windows release: `./scripts/fetch-tor.ps1`, `./scripts/fetch-monero.ps1`, then `dotnet publish -r win-x64`.
 Linux release: `./scripts/publish-linux.sh` (fetches Linux Tor/Monero helpers, packs a tar.gz).
 
-**Web** (React + NestJS):
-
-```bash
-npm install && npm run dev                        # frontend
-cd backend && npm install && npm run start:dev    # backend
-```
-
-Specs: [`UMBRA_BACKEND_SPEC.md`](./UMBRA_BACKEND_SPEC.md) · [`UMBRA_AGGREGATOR_ADDENDUM.md`](./UMBRA_AGGREGATOR_ADDENDUM.md) · [`DEPLOY.md`](./DEPLOY.md)
+> Umbrella is now a **desktop-only** project. The former web/backend was removed; a native **Android**
+> build (Avalonia) is planned. Follow **[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)** for releases.
 
 **Security internals:** 256-bit seed from the OS CSPRNG → BIP39 · vault encrypted with Argon2id (64 MiB) + AES-256-GCM · Monero keys go only to the local audited `monero-wallet-rpc` · Tor Expert Bundle on a private SOCKS port · backups exported still-encrypted.
 
@@ -203,7 +200,7 @@ through code:
 | | |
 |---|---|
 | [Overview](docs/01-overview.md) · [Architecture](docs/02-architecture.md) · [Tech stack](docs/03-tech-stack.md) | what it is, how it fits together, what it's built with |
-| [Desktop](docs/04-desktop.md) · [Web routes](docs/05-web-routes.md) · [Backend](docs/06-backend.md) | each product in depth |
+| [Desktop](docs/04-desktop.md) | the app in depth |
 | [Network fees](docs/07-financial.md) | TRC-20 costs, send review, exchange quotes |
 | [Security](docs/08-security.md) · [Build & deploy](docs/09-build-deploy.md) · [Extending](docs/10-extending.md) · [Glossary](docs/11-glossary.md) | threat model, commands, recipes, terms |
 

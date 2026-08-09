@@ -746,8 +746,17 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Product news, shown in the News section. Curated, offline; no network needed.
     /// Click an item to read the full note. Newest first.</summary>
+    /// <summary>Official Telegram channel — news, releases and contact.</summary>
+    public string ChannelUrl => "https://t.me/UmbrellaWallet";
+
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("NOTICE", "Web version paused — desktop is the focus",
+            "Heads-up on where Umbrella is going:\n\n" +
+            "• The web version is paused and closed for an indefinite period. We're concentrating everything on the desktop apps — Windows and Linux now, Android planned — where your keys stay fully on your own device with no server in the middle.\n" +
+            "• Nothing changes for your wallet: it was always self-custody and local-first. If you used the web preview, your funds live on-chain under your recovery phrase, not on any server.\n" +
+            "• Follow the official Telegram channel for news, releases and contact: t.me/UmbrellaWallet — that's the one official channel; ignore anything else claiming to be us.",
+            "2026-08-09"),
         new("3.0", "Version 3.0 — Telegram/TON import, full translation, more themes",
             "A big one:\n\n" +
             "• Import your Telegram / TON wallet. Umbrella now speaks the TON-native recovery standard (Telegram Wallet, Tonkeeper, TON Space). Paste that 24-word phrase and it imports as a Toncoin wallet showing the very same TON address those wallets do — receive and send included. The derivation is pinned byte-for-byte against the official @ton libraries.\n" +

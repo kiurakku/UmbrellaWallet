@@ -1415,6 +1415,23 @@
                 </StackPanel>
                 <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5"
                            Text="Product updates, security notes and guides."/>
+
+                <!-- Official Telegram channel — the one place for news and contact. -->
+                <Border Classes="card" Background="{DynamicResource UmCardAlt}">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                    <Border Width="42" Height="42" CornerRadius="12" Background="#229ED9" VerticalAlignment="Center">
+                      <TextBlock Text="✈" FontSize="20" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                      <TextBlock Text="Official Telegram channel" FontWeight="SemiBold" FontSize="14"/>
+                      <TextBlock Text="t.me/UmbrellaWallet · news, releases &amp; contact — the only official channel"
+                                 FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="primary" Content="Open ↗" VerticalAlignment="Center"
+                            Command="{Binding OpenUrlCommand}" CommandParameter="{Binding ChannelUrl}"/>
+                  </Grid>
+                </Border>
+
                 <ItemsControl ItemsSource="{Binding News}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:NewsItemViewModel">

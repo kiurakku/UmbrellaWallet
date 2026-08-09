@@ -4,6 +4,17 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [3.0.1] — 2026-08-09
+
+### Project
+- **Desktop-only from here.** The web frontend and NestJS backend were removed from the repository —
+  development is focused entirely on the native desktop apps (Windows & Linux now, **Android planned**).
+  Your wallet was always self-custody and local-first, so nothing about it changes.
+- **Official Telegram channel.** Added an in-app News card and link to **t.me/UmbrellaWallet** — the one
+  official place for news, releases and contact. A News notice explains the web pause.
+- README, docs index and CI updated for the desktop-only layout; added a GitHub Actions release workflow
+  that builds the Windows installer/portable and the Linux tarball on their native runners.
+
 ## [3.0.0] — 2026-08-09
 
 ### Desktop

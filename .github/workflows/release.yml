@@ -1,0 +1,83 @@
+name: Release
+
+# Build the desktop artifacts on their native runners and attach them to the GitHub Release
+# for the pushed tag (e.g. v3.0.1). Windows: installer + portable zip. Linux: self-contained tarball.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Read version
+        id: v
+        shell: bash
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Stage bundled Tor + Monero
+        shell: pwsh
+        run: |
+          ./desktop/scripts/fetch-tor.ps1
+          ./desktop/scripts/fetch-monero.ps1
+
+      - name: Publish (app folder + portable single-file)
+        shell: pwsh
+        run: |
+          $csproj = "desktop/src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj"
+          dotnet publish $csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o dist/app
+          dotnet publish $csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist/portable
+          foreach ($d in "dist/app","dist/portable") { Rename-Item "$d/Umbrella.Wallet.App.exe" "Umbrella.exe" -Force }
+
+      - name: Build installer (Inno Setup) + portable zip
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe"
+          & $iscc "/DSourceDir=$(Resolve-Path dist/app)" "/DDistDir=$(Resolve-Path dist)" desktop/installer/umbrella.iss
+          Compress-Archive -Path dist/portable/* -DestinationPath "dist/UmbrellaWallet-Portable-${{ steps.v.outputs.version }}.zip" -Force
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/UmbrellaWallet-Setup-${{ steps.v.outputs.version }}.exe
+            dist/UmbrellaWallet-Portable-${{ steps.v.outputs.version }}.zip
+
+  linux:
+    name: linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Read version
+        id: v
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Build self-contained Linux tarball
+        run: |
+          chmod +x desktop/scripts/publish-linux.sh
+          ( cd desktop && ./scripts/publish-linux.sh )
+
+      - name: Normalise artifact name
+        run: |
+          V="${{ steps.v.outputs.version }}"
+          cp "desktop/dist/linux/umbrella-wallet-${V}-linux-x64.tar.gz" \
+             "UmbrellaWallet-${V}-linux-x64.tar.gz"
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: UmbrellaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz

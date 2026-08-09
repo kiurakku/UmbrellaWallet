@@ -60,21 +60,3 @@ jobs:
             exit 1
           fi
           echo "No vulnerable NuGet packages."
-
-  # Enforced gate on the web + backend: fail on any high/critical npm advisory.
-  npm-audit:
-    name: npm-audit
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        dir: [".", "backend"]
-    defaults:
-      run:
-        working-directory: ${{ matrix.dir }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-      - run: npm audit --audit-level=high

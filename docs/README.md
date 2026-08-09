@@ -12,8 +12,6 @@
 | **02** | [Architecture](./02-architecture.md) | System diagrams, data flows, component map, golden rule (keys never leave device) |
 | **03** | [Tech Stack](./03-tech-stack.md) | Every library explained: frontend (React, TanStack), backend (NestJS, Prisma), crypto libs, why each |
 | **04** | [Desktop App](./04-desktop.md) | The shipped .NET 8 + Avalonia desktop wallet: project structure, vault, real multi-chain send, bundled Tor & Monero, packaging |
-| **05** | [Web Routes](./05-web-routes.md) | Route map, onboarding flow, IndexedDB structure, demo mode, aggregator model, privacy mode, honest limits |
-| **06** | [Backend](./06-backend.md) | Module overview, DB schema, all API endpoints, auth flow, rate-limiting, WebSocket, Helmet config, hardening checklist |
 | **07** | [Financial Model](./07-financial.md) | Network fees, TRC-20 costs, user disclosure |
 | **08** | [Security](./08-security.md) | Threat model, audit status, legal classification (non-custodial aggregator), GDPR, incident response, bug bounty, compliance roadmap |
 | **09** | [Build & Deploy](./09-build-deploy.md) | Local dev setup, env vars, Docker, Prisma commands, production build, Vercel + Fly.io deploy, Tor hidden service, monitoring |
@@ -24,18 +22,19 @@
 
 ## Read in order (for new developers)
 
+> **Note:** Umbrella is now a **desktop-only** project (Windows & Linux; Android planned). The former
+> web frontend and NestJS backend were removed — some deeper docs below still describe that older
+> multi-product layout and are being consolidated. Start with **[04 — Desktop App](./04-desktop.md)**.
+
 **If you're new to the project:**
-1. [01 — Overview](./01-overview.md) → understand what Umbra is
-2. [02 — Architecture](./02-architecture.md) → see how data flows (no keys to server)
-3. [03 — Tech Stack](./03-tech-stack.md) → familiarize with libraries
-4. [09 — Build & Deploy](./09-build-deploy.md) → get it running locally
-5. [05 — Web Routes](./05-web-routes.md) → explore the UI flows
-6. [06 — Backend](./06-backend.md) → understand API and database
+1. [01 — Overview](./01-overview.md) → understand what Umbrella is
+2. [04 — Desktop App](./04-desktop.md) → the shipped app, in depth
+3. [02 — Architecture](./02-architecture.md) → keys never leave the device
+4. [03 — Tech Stack](./03-tech-stack.md) → familiarize with libraries
 
 **If you're auditing security:**
-1. [08 — Security](./08-security.md) → threat model, legal model, GDPR
-2. [02 — Architecture](./02-architecture.md) → verify keys never reach server
-3. [06 — Backend](./06-backend.md) → check Helmet config, rate-limits, Argon2id usage
+1. [08 — Security](./08-security.md) → threat model, legal model
+2. [02 — Architecture](./02-architecture.md) → verify keys never reach a server
 
 **If you're adding features:**
 1. [10 — Extending](./10-extending.md) → all recipes in one place
