@@ -19,6 +19,9 @@ public sealed class UiSettings
     /// <summary>Individual motion toggles (gated by the master AnimationsEnabled above).</summary>
     public bool RainEnabled { get; set; } = true;
     public bool StickersEnabled { get; set; } = true;
+    /// <summary>Soft drifting "aurora" glow behind the content. Opt-in (off by default) so the default
+    /// look stays clean.</summary>
+    public bool AuroraEnabled { get; set; } = false;
 
     /// <summary>Idle minutes before the vault auto-locks; 0 disables auto-lock entirely.</summary>
     public int AutoLockMinutes { get; set; } = 5;

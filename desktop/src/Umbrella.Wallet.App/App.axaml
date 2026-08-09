@@ -617,6 +617,37 @@
             </Style.Animations>
         </Style>
 
+        <!-- Aurora: two large, very faint radial-glow blobs that drift slowly behind the content.
+             Opt-in (Settings → Appearance). Non-interactive; gated by the motion toggle in markup. -->
+        <Style Selector="Ellipse.auroraA">
+            <Setter Property="Fill">
+                <RadialGradientBrush>
+                    <GradientStop Color="#6E5FE0" Offset="0" />
+                    <GradientStop Color="#006E5FE0" Offset="1" />
+                </RadialGradientBrush>
+            </Setter>
+            <Style.Animations>
+                <Animation Duration="0:0:24" IterationCount="INFINITE" Easing="SineEaseInOut" PlaybackDirection="Alternate">
+                    <KeyFrame Cue="0%"><Setter Property="TranslateTransform.X" Value="-70" /><Setter Property="TranslateTransform.Y" Value="-40" /><Setter Property="Opacity" Value="0.05" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="TranslateTransform.X" Value="90" /><Setter Property="TranslateTransform.Y" Value="50" /><Setter Property="Opacity" Value="0.12" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <Style Selector="Ellipse.auroraB">
+            <Setter Property="Fill">
+                <RadialGradientBrush>
+                    <GradientStop Color="#2FA8C4" Offset="0" />
+                    <GradientStop Color="#002FA8C4" Offset="1" />
+                </RadialGradientBrush>
+            </Setter>
+            <Style.Animations>
+                <Animation Duration="0:0:31" IterationCount="INFINITE" Easing="SineEaseInOut" PlaybackDirection="Alternate">
+                    <KeyFrame Cue="0%"><Setter Property="TranslateTransform.X" Value="60" /><Setter Property="TranslateTransform.Y" Value="30" /><Setter Property="Opacity" Value="0.10" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="TranslateTransform.X" Value="-80" /><Setter Property="TranslateTransform.Y" Value="-20" /><Setter Property="Opacity" Value="0.04" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
         <!-- Thin, unobtrusive overlay scrollbar (Wasabi-like). Track is invisible; only a slim
              thumb shows while scrolling, then auto-hides. -->
         <Style Selector="ScrollBar:vertical">

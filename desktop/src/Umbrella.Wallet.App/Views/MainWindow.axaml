@@ -416,6 +416,16 @@
                 Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}"
                 BorderThickness="0,1,0,1" Padding="14,8">
           <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+            <!-- Wallet switcher — always reachable, so switching works when the nav is top/bottom. -->
+            <Button Classes="chip" Command="{Binding OpenWalletsCommand}" IsVisible="{Binding IsUnlocked}"
+                    ToolTip.Tip="{Binding [settings.tabWallets], Source={x:Static app:Loc.Instance}}"
+                    BorderBrush="{DynamicResource UmAccent}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="⇄" FontSize="13" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding ActiveWalletLabel}" VerticalAlignment="Center" MaxWidth="120" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+            </Button>
+            <Border Width="1" Background="{DynamicResource UmBorder}" Margin="2,4" IsVisible="{Binding IsUnlocked}"/>
             <Button Classes="chip" Content="{Binding [nav.portfolio], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio" Classes.active="{Binding IsPortfolio}"/>
             <Button Classes="chip" Content="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Receive" Classes.active="{Binding IsReceive}"/>
             <Button Classes="chip" Content="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Buy" Classes.active="{Binding IsBuy}"/>
@@ -1605,7 +1615,7 @@
                     <!-- Appearance first: theme and language are what people look for. -->
                     <Button Classes="chip" Content="{Binding [settings.appearance], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Appearance"
                             Classes.active="{Binding IsTabAppearance}"/>
-                    <Button Classes="chip" Content="Wallets" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Wallets"
+                    <Button Classes="chip" Content="{Binding [settings.tabWallets], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Wallets"
                             Classes.active="{Binding IsTabWallets}"/>
                     <Button Classes="chip" Content="{Binding [settings.security], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Security"
                             Classes.active="{Binding IsTabSecurity}"/>
@@ -1623,9 +1633,9 @@
                 <!-- Wallets: Binance-style multiple independent wallets. Each is its own encrypted seed. -->
                 <Border Classes="card" IsVisible="{Binding IsTabWallets}" BorderBrush="{DynamicResource UmAccent}">
                   <StackPanel Spacing="12">
-                    <TextBlock Classes="eyebrow" Text="YOUR WALLETS"/>
+                    <TextBlock Classes="eyebrow" Text="{Binding [settings.walletsTitle], Source={x:Static app:Loc.Instance}}"/>
                     <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap" MaxWidth="640"
-                               Text="Keep several independent wallets on this device and switch between them — each has its own recovery phrase and password. Switching locks the current wallet and asks for the other's password."/>
+                               Text="{Binding [settings.walletsHint], Source={x:Static app:Loc.Instance}}"/>
 
                     <!-- The wallet list. -->
                     <ItemsControl ItemsSource="{Binding Wallets}">
@@ -1642,11 +1652,11 @@
                                 <TextBlock Text="{Binding StatusLabel}" FontSize="10.5"
                                            Foreground="{DynamicResource UmTextMuted}"/>
                               </StackPanel>
-                              <Button Grid.Column="2" Classes="chip" Content="Switch"
+                              <Button Grid.Column="2" Classes="chip" Content="{Binding [settings.walletSwitch], Source={x:Static app:Loc.Instance}}"
                                       IsVisible="{Binding !IsActive}" VerticalAlignment="Center"
                                       Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SwitchWalletCommand}"
                                       CommandParameter="{Binding Id}"/>
-                              <Button Grid.Column="3" Classes="ghost" Content="Remove"
+                              <Button Grid.Column="3" Classes="ghost" Content="{Binding [settings.walletRemove], Source={x:Static app:Loc.Instance}}"
                                       IsVisible="{Binding CanRemove}" VerticalAlignment="Center"
                                       Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).RemoveWalletCommand}"
                                       CommandParameter="{Binding Id}"/>
@@ -1658,18 +1668,18 @@
 
                     <!-- Rename the active wallet. -->
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                      <TextBox Text="{Binding RenameWalletLabel, Mode=TwoWay}" Watermark="Rename the active wallet…" VerticalAlignment="Center"/>
-                      <Button Grid.Column="1" Classes="ghost" Content="Rename" Command="{Binding RenameActiveWalletCommand}"/>
+                      <TextBox Text="{Binding RenameWalletLabel, Mode=TwoWay}" Watermark="{Binding [settings.walletRenameWatermark], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
+                      <Button Grid.Column="1" Classes="ghost" Content="{Binding [settings.walletRename], Source={x:Static app:Loc.Instance}}" Command="{Binding RenameActiveWalletCommand}"/>
                     </Grid>
 
                     <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
                       <StackPanel Spacing="8">
-                        <TextBlock Text="Add another wallet" FontWeight="SemiBold" FontSize="13"/>
+                        <TextBlock Text="{Binding [settings.walletAddTitle], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
                         <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640"
-                                   Text="Creates a brand-new, independent wallet (or import an existing seed). The current wallet is locked first; you'll set up the new one from the welcome screen."/>
+                                   Text="{Binding [settings.walletAddHint], Source={x:Static app:Loc.Instance}}"/>
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                          <TextBox Text="{Binding NewWalletLabel, Mode=TwoWay}" Watermark="Name for the new wallet (e.g. Savings)" VerticalAlignment="Center"/>
-                          <Button Grid.Column="1" Classes="primary" Content="＋ Add wallet" Command="{Binding BeginAddWalletCommand}"/>
+                          <TextBox Text="{Binding NewWalletLabel, Mode=TwoWay}" Watermark="{Binding [settings.walletAddWatermark], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
+                          <Button Grid.Column="1" Classes="primary" Content="{Binding [settings.walletAdd], Source={x:Static app:Loc.Instance}}" Command="{Binding BeginAddWalletCommand}"/>
                         </Grid>
                       </StackPanel>
                     </Border>
@@ -1677,13 +1687,13 @@
                     <!-- Change the app password (re-encrypts every wallet on the common password). -->
                     <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
                       <StackPanel Spacing="8">
-                        <TextBlock Text="Change password" FontWeight="SemiBold" FontSize="13"/>
+                        <TextBlock Text="{Binding [settings.changePwTitle], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
                         <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640"
-                                   Text="Sets a new app password. Every wallet that opens with your current password is re-encrypted, so one password keeps unlocking them all. There is no way to store your seed without a password — if you'd rather not remember one, keep it simple but write it down."/>
-                        <TextBox Text="{Binding ChangePwCurrent, Mode=TwoWay}" PasswordChar="●" Watermark="Current password"/>
-                        <TextBox Text="{Binding ChangePwNew, Mode=TwoWay}" PasswordChar="●" Watermark="New password (at least 12 characters)"/>
-                        <TextBox Text="{Binding ChangePwConfirm, Mode=TwoWay}" PasswordChar="●" Watermark="Confirm new password"/>
-                        <Button Classes="ghost" Content="Update password" HorizontalAlignment="Left"
+                                   Text="{Binding [settings.changePwHint], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBox Text="{Binding ChangePwCurrent, Mode=TwoWay}" PasswordChar="●" Watermark="{Binding [settings.changePwCurrent], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBox Text="{Binding ChangePwNew, Mode=TwoWay}" PasswordChar="●" Watermark="{Binding [settings.changePwNew], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBox Text="{Binding ChangePwConfirm, Mode=TwoWay}" PasswordChar="●" Watermark="{Binding [settings.changePwConfirm], Source={x:Static app:Loc.Instance}}"/>
+                        <Button Classes="ghost" Content="{Binding [settings.changePwBtn], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left"
                                 IsEnabled="{Binding !IsBusy}" Command="{Binding ChangePasswordCommand}"/>
                       </StackPanel>
                     </Border>
@@ -1783,6 +1793,10 @@
                       <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Text="{Binding [settings.stickers], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
                         <ToggleSwitch Grid.Column="1" IsChecked="{Binding StickersEnabled, Mode=TwoWay}" OnContent="" OffContent=""/>
+                      </Grid>
+                      <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding [settings.aurora], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding AuroraEnabled, Mode=TwoWay}" OnContent="" OffContent=""/>
                       </Grid>
                     </StackPanel>
                   </StackPanel>
@@ -2041,23 +2055,23 @@
                 <!-- Reversible-ish maintenance (keeps the vault + funds) before the irreversible wipe. -->
                 <Border Classes="card" BorderBrush="#7A6230" IsVisible="{Binding IsTabDanger}">
                   <StackPanel Spacing="12">
-                    <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="MAINTENANCE"/>
+                    <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [settings.maintenance], Source={x:Static app:Loc.Instance}}"/>
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                       <StackPanel VerticalAlignment="Center" Spacing="2">
-                        <TextBlock Text="Clear history" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding [settings.clearHistory], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold"/>
                         <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"
-                                   Text="Erase the local activity and transaction history from this device. Your coins, keys and on-chain history are untouched."/>
+                                   Text="{Binding [settings.clearHistoryHint], Source={x:Static app:Loc.Instance}}"/>
                       </StackPanel>
-                      <Button Grid.Column="1" Classes="ghost" Content="Clear" VerticalAlignment="Center" Command="{Binding ClearHistoryCommand}"/>
+                      <Button Grid.Column="1" Classes="ghost" Content="{Binding [settings.clear], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" Command="{Binding ClearHistoryCommand}"/>
                     </Grid>
                     <Border Background="#22FFFFFF" Height="1"/>
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                       <StackPanel VerticalAlignment="Center" Spacing="2">
-                        <TextBlock Text="Disconnect all" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding [settings.disconnectAll], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold"/>
                         <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"
-                                   Text="Remove every linked watch-only address and connected exchange. Your own wallet and funds stay; you can re-link any time."/>
+                                   Text="{Binding [settings.disconnectAllHint], Source={x:Static app:Loc.Instance}}"/>
                       </StackPanel>
-                      <Button Grid.Column="1" Classes="ghost" Content="Disconnect" VerticalAlignment="Center" Command="{Binding DisconnectAllCommand}"/>
+                      <Button Grid.Column="1" Classes="ghost" Content="{Binding [settings.disconnect], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" Command="{Binding DisconnectAllCommand}"/>
                     </Grid>
                   </StackPanel>
                 </Border>
@@ -2251,6 +2265,13 @@
          A faint curtain of streaks drifting down over the whole window — atmosphere for the
          fear theme. Non-interactive, and gated by the motion toggle so it vanishes with the
          other animations. Sits above the content but below the modals that follow. -->
+    <!-- Aurora glow (opt-in). Two soft blobs drifting behind everything; never captures input. -->
+    <Panel Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" ClipToBounds="True"
+           IsVisible="{Binding AuroraVisible}">
+      <Ellipse Classes="auroraA" Width="640" Height="640" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-140,-160,0,0"/>
+      <Ellipse Classes="auroraB" Width="720" Height="720" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-160,-180"/>
+    </Panel>
+
     <Canvas Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" ClipToBounds="True"
             IsVisible="{Binding RainVisible}">
       <Rectangle Classes="raindrop rd3" Height="50" Canvas.Left="90"/>

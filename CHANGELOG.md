@@ -4,6 +4,25 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [3.0.2] — 2026-08-09
+
+### Desktop
+- **Settings fully translated.** The **Wallets** tab and the **Maintenance / Danger zone** cards were
+  hardcoded English regardless of the chosen language — now every label, hint and button is localized
+  (Ukrainian + others).
+- **Clearer, more honest wording.** "Delete vault" → **"Erase from this PC"**, and the danger-zone text
+  now spells out that this does **not** delete your on-chain wallet (a wallet lives on its recovery
+  phrase and can't be deleted) — it only wipes this device's local copy, which your phrase restores.
+- **Wallet switching from anywhere.** When the nav sits at the top or bottom, a **wallet switcher chip**
+  (shows the active wallet, one tap to switch) now lives in the bar — no more digging into Settings.
+- **Distinct theme names** — no two themes share a name/colour label anymore (27 themes).
+- **New "Aurora glow" ambient animation** (opt-in) — two soft, slowly drifting glows behind the content,
+  toggled independently of the rain and stickers in Settings → Appearance.
+
+### Verified
+Anonymity/security model unchanged: no accounts, no telemetry, keys encrypted locally (Argon2id +
+AES-256-GCM), Tor optional, app password held only in memory. 138/138 tests pass.
+
 ## [3.0.1] — 2026-08-09
 
 ### Project

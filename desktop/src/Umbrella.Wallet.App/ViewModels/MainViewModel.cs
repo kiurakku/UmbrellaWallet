@@ -209,6 +209,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged();
             OnPropertyChanged(nameof(LottieRepeat));
             OnPropertyChanged(nameof(RainVisible));
+            OnPropertyChanged(nameof(AuroraVisible));
             if (IsUnlocked) PushActivity("Settings", "Animations", value ? "on" : "off", "changed", "now");
         }
     }
@@ -241,8 +242,24 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Soft drifting aurora glow — individual, gated by the master motion toggle. Off by default.</summary>
+    public bool AuroraEnabled
+    {
+        get => _uiSettings.AuroraEnabled;
+        set
+        {
+            if (_uiSettings.AuroraEnabled == value) return;
+            _uiSettings.AuroraEnabled = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(AuroraVisible));
+        }
+    }
+
     /// <summary>The ambient rain shows only when both the master motion toggle and the rain toggle are on.</summary>
     public bool RainVisible => AnimationsEnabled && RainEnabled;
+    /// <summary>The aurora glow shows only when both the master motion toggle and the aurora toggle are on.</summary>
+    public bool AuroraVisible => AnimationsEnabled && AuroraEnabled;
 
     /// <summary>-1 = loop forever (stickers on); 0 = play once and settle. Off if either the master or
     /// the sticker toggle is disabled.</summary>
@@ -751,6 +768,13 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("NEW", "Settings fully translated + easier wallet switching",
+            "Polish across the app:\n\n" +
+            "• Settings are fully translated now — the Wallets tab and the Danger zone were still English whatever language you picked; that's fixed.\n" +
+            "• Clearer wording: \"Delete vault\" is now \"Erase from this PC\", and the danger zone explains that you can't actually delete a wallet — it lives on your recovery phrase. This only wipes this device's copy, which your phrase brings back.\n" +
+            "• Switch wallets from anywhere: when the menu is at the top or bottom, there's now a wallet chip in the bar (shows the active wallet, one tap to switch) — no need to open Settings.\n" +
+            "• Every theme has a distinct name now (27 total), and there's a new opt-in \"Aurora glow\" ambient animation alongside the rain and stickers.",
+            "2026-08-09"),
         new("NOTICE", "Web version paused — desktop is the focus",
             "Heads-up on where Umbrella is going:\n\n" +
             "• The web version is paused and closed for an indefinite period. We're concentrating everything on the desktop apps — Windows and Linux now, Android planned — where your keys stay fully on your own device with no server in the middle.\n" +
@@ -4117,7 +4141,9 @@ public sealed record SettingsShortcut(string Label, string Tab, string Keywords)
 public sealed record WalletListItemViewModel(string Id, string Label, bool IsActive, bool IsLegacy)
 {
     public string Badge => IsLegacy ? "MAIN" : Label.Length > 0 ? Label[..1].ToUpperInvariant() : "W";
-    public string StatusLabel => IsActive ? "Active" : "Locked";
+    public string StatusLabel => IsActive
+        ? Umbrella.Wallet.App.Loc.Instance["settings.walletActive"]
+        : Umbrella.Wallet.App.Loc.Instance["settings.walletLocked"];
     public bool CanRemove => !IsActive; // the active wallet (and the Main seed file) are protected
 }
 
