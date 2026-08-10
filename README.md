@@ -40,7 +40,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-**[⬇️ Installer (v3.2.0)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.2.0.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-3.2.0.zip)** · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
+**[⬇️ Installer (v3.2.0)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.2.0.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-3.2.0.zip)** · [💖 Sponsor](https://github.com/sponsors/kiurakku) · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
 
 <br/>
 
@@ -165,6 +165,14 @@ Most wallets show XMR at best as "receive only". Umbrella ships Monero's own wal
 No — it's inside the app. One switch in <i>Settings → Privacy & Tor</i>, and the wallet's traffic goes through the Tor network on a private port that won't clash with a Tor Browser you already run.
 </details>
 
+<details><summary><b>🔓 The code is public — can I fork or modify it?</b></summary><br/>
+<strong>No.</strong> Umbrella is <em>source-available</em> for transparency and security audit — you can read the code and build it for yourself — but it is <strong>not</strong> open for forks, rebrands, mirrors or derivative wallets. Forking is disabled on this repository; copying, republishing or selling modified builds violates the <a href="LICENSE">license</a>. If you find a bug, open an issue; do not publish your own "Umbrella fork".
+</details>
+
+<details><summary><b>💖 Can I support the project?</b></summary><br/>
+Yes — and thank you. Umbrella is independent, ad-free and funded only by its author. If it helps you, consider <a href="https://github.com/sponsors/kiurakku"><strong>sponsoring on GitHub</strong></a> or saying hi in <a href="https://t.me/UmbrellaWallet">Telegram</a>. Sponsorship keeps development going; it does not buy influence over the roadmap or your wallet.
+</details>
+
 ## 🗺️ Roadmap
 
 - 🐕 Dogecoin sending
@@ -173,6 +181,8 @@ No — it's inside the app. One switch in <i>Settings → Privacy & Tor</i>, and
 - 🌐 More exchange integrations on request
 
 ## 🛠️ For builders
+
+> **Audit, don't fork.** Source is published so you can verify what the binary does — not so you can ship a clone. Building locally for personal review is fine; publishing a fork, mirror or derivative is not. See [Source policy](#-source-policy) and [LICENSE](LICENSE).
 
 <details>
 <summary>Build from source (click to expand)</summary>
@@ -212,7 +222,31 @@ through code:
 
 Umbrella is **non-custodial**. That word means: *we never hold your money, so we can never lose it, freeze it — or recover it.* You are the bank now. 🏦 Guard your phrase, check addresses before sending, start with a small test amount. Crypto transactions are final; there is no undo button anywhere in the world.
 
-Umbrella is **free, independent, experimental self-custody software** authored by **the fear** — think of it like a community client/mod: yours to run, on your own device, at your own risk. It is provided **as-is, without any warranty**, and the author accepts **no liability** whatsoever — see [LICENSE](LICENSE). Nothing here is financial, tax or legal advice.
+Umbrella is **free, independent, experimental self-custody software** authored by **the fear** — yours to run on your own device, at your own risk. It is provided **as-is, without any warranty**, and the author accepts **no liability** whatsoever — see [LICENSE](LICENSE). Nothing here is financial, tax or legal advice.
+
+## 🔒 Source policy
+
+Umbrella is **open for inspection, closed for imitation.**
+
+| ✅ Allowed | ❌ Not allowed |
+|---|---|
+| Download official releases and use them | Fork, mirror or republish this repository |
+| Read the source to audit security | Rebrand, rename or sell a modified build |
+| Build locally to verify behaviour | Remove copyright, logos or attribution |
+| Report bugs via GitHub Issues | Pull requests that add features without prior agreement |
+
+The code is public because a **privacy wallet must be verifiable** — you should never have to trust a black box with your keys. That transparency does not grant permission to copy the project. Forking is **disabled** on GitHub; any redistribution or derivative work requires **written permission** from the copyright holder ([LICENSE](LICENSE), Section 2).
+
+## 💖 Sponsor
+
+Umbrella has no ads, no tracking and no investors. If the wallet saves you time, stress or exchange fees — **sponsorship helps keep it alive.**
+
+| | |
+|---|---|
+| **GitHub Sponsors** | [github.com/sponsors/kiurakku](https://github.com/sponsors/kiurakku) |
+| **Community** | [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet) |
+
+Sponsors fund development and infrastructure; they do **not** get access to user data (there isn't any), priority over the roadmap, or a "premium" wallet. Your keys stay yours.
 
 **Not affiliated with anyone.** Umbrella is not connected to, endorsed by, or partnered with any exchange, network or brand. All third-party names, logos and trademarks — Bitcoin, Ethereum, TRON, TON, Monero, Uniswap, Binance, Bybit, OKX, WhiteBit, Telegram, MetaMask, and every coin/token name — belong to their respective owners; where a name appears (a colour-theme label, a read-only exchange connector) it identifies that style or service only and implies **no affiliation or endorsement**. You are responsible for any laws or taxes that apply to you where you live.
 
@@ -224,8 +258,9 @@ Umbrella is **free, independent, experimental self-custody software** authored b
 |---|---|
 | **Repository** | https://github.com/kiurakku/umbrella-wallet |
 | **Releases** | https://github.com/kiurakku/umbrella-wallet/releases |
+| **Sponsor** | https://github.com/sponsors/kiurakku |
 | **Issues** | https://github.com/kiurakku/umbrella-wallet/issues |
-| **License** | [LICENSE](LICENSE) |
+| **License** | [LICENSE](LICENSE) — free to use, no derivatives, no forks |
 
 **Topics:** `#umbrella-wallet` `#crypto-wallet` `#bitcoin` `#ethereum` `#monero` `#tor` `#privacy` `#self-custody` `#non-custodial` `#avalonia` `#dotnet` `#desktop-wallet`
 ## 💬 Support
@@ -234,7 +269,7 @@ Questions and bug reports are welcome as GitHub issues — best-effort support, 
 
 ## 📄 License
 
-**Free to use. Not free to take.** See [LICENSE](LICENSE) for full terms.
+**Free to use. Not free to take.** Source is published for audit; forks and derivatives are prohibited. See [LICENSE](LICENSE) for full terms.
 
 ---
 
