@@ -6,7 +6,7 @@ Thank you for your interest. Please read this before opening a pull request or f
 
 Umbrella Wallet is an **independent product** by **the fear** (kiurakku). The source code is public so users can **audit** what the app does with their keys — not so anyone can ship a clone, rebrand, or "Umbrella mod".
 
-**Forking is disabled** on the GitHub repository. That matches the [LICENSE](LICENSE): no derivatives, no redistribution, no rebranding without written permission.
+**Forking is prohibited** by the [LICENSE](LICENSE): no derivatives, no redistribution, no rebranding without written permission. On GitHub, the Fork button may still appear for public repos — using it to publish a clone still violates the license.
 
 ## What we welcome
 

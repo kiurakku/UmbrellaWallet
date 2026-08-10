@@ -166,7 +166,7 @@ No — it's inside the app. One switch in <i>Settings → Privacy & Tor</i>, and
 </details>
 
 <details><summary><b>🔓 The code is public — can I fork or modify it?</b></summary><br/>
-<strong>No.</strong> Umbrella is <em>source-available</em> for transparency and security audit — you can read the code and build it for yourself — but it is <strong>not</strong> open for forks, rebrands, mirrors or derivative wallets. Forking is disabled on this repository; copying, republishing or selling modified builds violates the <a href="LICENSE">license</a>. If you find a bug, open an issue; do not publish your own "Umbrella fork".
+<strong>No.</strong> Umbrella is <em>source-available</em> for transparency and security audit — you can read the code and build it for yourself — but it is <strong>not</strong> open for forks, rebrands, mirrors or derivative wallets. Forking or republishing violates the <a href="LICENSE">license</a> (Section 2). If you find a bug, open an issue; do not publish your own "Umbrella fork".
 </details>
 
 <details><summary><b>💖 Can I support the project?</b></summary><br/>
@@ -235,7 +235,7 @@ Umbrella is **open for inspection, closed for imitation.**
 | Build locally to verify behaviour | Remove copyright, logos or attribution |
 | Report bugs via GitHub Issues | Pull requests that add features without prior agreement |
 
-The code is public because a **privacy wallet must be verifiable** — you should never have to trust a black box with your keys. That transparency does not grant permission to copy the project. Forking is **disabled** on GitHub; any redistribution or derivative work requires **written permission** from the copyright holder ([LICENSE](LICENSE), Section 2).
+The code is public because a **privacy wallet must be verifiable** — you should never have to trust a black box with your keys. That transparency does not grant permission to copy the project. Forks, mirrors and derivative works are **prohibited by license** and require **written permission** from the copyright holder ([LICENSE](LICENSE), Section 2).
 
 ## 💖 Sponsor
 
