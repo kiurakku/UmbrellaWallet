@@ -582,6 +582,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly WatchAddressStore _watchStore = new();
     private readonly ActivityStore _activityStore = new();
     private readonly BalanceStore _balanceStore = new();
+    private readonly MarketCache _marketCache = new();
     private readonly ExchangeCredentialStore _exchangeStore = new();
     private readonly EthTransactionSender _ethSender = new();
     private readonly BitcoinTransactionSender _btcSender = new();
@@ -664,6 +665,8 @@ public partial class MainViewModel : ViewModelBase
 
         foreach (var (sym, name, holdable) in ExtraMarketCoins)
             Market.Add(MarketRowViewModel.PendingCoin(sym, name, holdable));
+
+        RestoreMarketCache(); // show last-seen prices instantly; the live refresh corrects them
 
         SelectedSendAsset = SendableAssets[0];
         SelectedWatchNetwork = WatchableNetworks[0];
@@ -769,6 +772,12 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("NEW", "Custom lock screen + instant market",
+            "Version 3.2:\n\n" +
+            "• Lock-screen background is yours: Settings → Appearance → Lock screen — pick your own image, use the default, or turn it off for a flat lock screen.\n" +
+            "• The Market now opens instantly with your last-seen prices instead of filling in dash-by-dash; live data updates in the background.\n\n" +
+            "Still coming (in order of value): developer-fee routing on TRON/ETH/TON, more security options (custom proxy, IPv4/IPv6), a native Android build, Telegram-gift NFTs, deeper Swap/Staking, and full translations.",
+            "2026-08-09"),
         new("NEW", "Your language by default + 13 more currencies",
             "Version 3.1:\n\n" +
             "• Fresh installs now follow your system language automatically — after a reinstall you're no longer dropped into English.\n" +
@@ -1137,6 +1146,8 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsCreateStage));
         OnPropertyChanged(nameof(IsImportStage));
         OnPropertyChanged(nameof(IsUnlockStage));
+        OnPropertyChanged(nameof(ShowDefaultLockBg));
+        OnPropertyChanged(nameof(ShowCustomLockBg));
         OnPropertyChanged(nameof(IsBackupStage));
         OnPropertyChanged(nameof(IsWorkspace));
         OnPropertyChanged(nameof(ShowSidebar));
@@ -2049,6 +2060,31 @@ public partial class MainViewModel : ViewModelBase
     /// Market prices are public data, so this runs with the vault locked too — the user can
     /// see which coins the wallet accepts before committing to creating a vault.
     /// </summary>
+    /// <summary>Fill the Market rows with the last-seen prices so the list reads instantly on open,
+    /// before the live fetch returns (kills the "prices populate one by one" flicker).</summary>
+    private void RestoreMarketCache()
+    {
+        var cached = _marketCache.Load();
+        if (cached.Count == 0) return;
+        var bySym = cached.ToDictionary(e => e.Symbol, e => e, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var chain in ChainCatalog.All)
+        {
+            if (!bySym.TryGetValue(chain.Symbol, out var e)) continue;
+            var idx = Market.ToList().FindIndex(m => m.Symbol == chain.Symbol);
+            if (idx >= 0) Market[idx] = MarketRowViewModel.Live(chain, e.Price, e.Change) with { Spark = Market[idx].Spark };
+        }
+        foreach (var (sym, name, holdable) in ExtraMarketCoins)
+        {
+            if (!bySym.TryGetValue(sym, out var e)) continue;
+            var idx = Market.ToList().FindIndex(m => m.Symbol == sym);
+            if (idx >= 0) Market[idx] = MarketRowViewModel.LiveCoin(sym, name, e.Price, e.Change, holdable) with { Spark = Market[idx].Spark };
+        }
+    }
+
+    private void SaveMarketCache() =>
+        _marketCache.Save(Market.Where(m => m.Price > 0).Select(m => new MarketCache.Entry(m.Symbol, m.Price, m.Change24h)));
+
     [RelayCommand]
     private async Task RefreshMarketAsync()
     {
@@ -2090,6 +2126,7 @@ public partial class MainViewModel : ViewModelBase
             }
 
             MarketStatus = $"Live · {prices.Count} coins · updated {DateTime.Now:HH:mm:ss}";
+            SaveMarketCache();
             _ = LoadSparklinesAsync();
         }
         catch (Exception ex)
@@ -2831,14 +2868,42 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private Bitmap? _avatarImage;
     [ObservableProperty] private Bitmap? _bannerImage;
     [ObservableProperty] private Bitmap? _sidebarBgImage;
+    [ObservableProperty] private Bitmap? _lockBgImage;
 
     public bool HasAvatar => AvatarImage is not null;
     public bool HasBanner => BannerImage is not null;
     public bool HasSidebarBg => SidebarBgImage is not null;
 
+    /// <summary>The user picked a custom lock-screen background.</summary>
+    public bool HasLockBg => LockBgImage is not null;
+    /// <summary>Lock screen shows no background at all (flat) — user chose to remove it.</summary>
+    public bool LockScreenPlain
+    {
+        get => _uiSettings.LockScreenPlain;
+        set
+        {
+            if (_uiSettings.LockScreenPlain == value) return;
+            _uiSettings.LockScreenPlain = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ShowDefaultLockBg));
+            OnPropertyChanged(nameof(ShowCustomLockBg));
+        }
+    }
+    /// <summary>Show the bundled default lock backdrop: locked, not plain, and no custom image set.</summary>
+    public bool ShowDefaultLockBg => IsUnlockStage && !LockScreenPlain && !HasLockBg;
+    /// <summary>Show the user's custom lock backdrop: locked, not plain, custom image present.</summary>
+    public bool ShowCustomLockBg => IsUnlockStage && !LockScreenPlain && HasLockBg;
+
     partial void OnAvatarImageChanged(Bitmap? value) => OnPropertyChanged(nameof(HasAvatar));
     partial void OnBannerImageChanged(Bitmap? value) => OnPropertyChanged(nameof(HasBanner));
     partial void OnSidebarBgImageChanged(Bitmap? value) => OnPropertyChanged(nameof(HasSidebarBg));
+    partial void OnLockBgImageChanged(Bitmap? value)
+    {
+        OnPropertyChanged(nameof(HasLockBg));
+        OnPropertyChanged(nameof(ShowDefaultLockBg));
+        OnPropertyChanged(nameof(ShowCustomLockBg));
+    }
 
     private static string ProfileDir => System.IO.Path.Combine(AppPaths.DataRoot, "profile");
 
@@ -2853,6 +2918,7 @@ public partial class MainViewModel : ViewModelBase
         AvatarImage = LoadBitmap(_uiSettings.AvatarPath);
         BannerImage = LoadBitmap(_uiSettings.BannerPath);
         SidebarBgImage = LoadBitmap(_uiSettings.SidebarBackgroundPath);
+        LockBgImage = LoadBitmap(_uiSettings.LockBackgroundPath);
     }
 
     private async Task PickProfileImageAsync(string name, Action<string> setPath)
@@ -2879,6 +2945,17 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand] private Task PickAvatar() => PickProfileImageAsync("avatar", p => _uiSettings.AvatarPath = p);
     [RelayCommand] private Task PickBanner() => PickProfileImageAsync("banner", p => _uiSettings.BannerPath = p);
     [RelayCommand] private Task PickSidebarBg() => PickProfileImageAsync("sidebar", p => _uiSettings.SidebarBackgroundPath = p);
+    [RelayCommand] private Task PickLockBg() => PickProfileImageAsync("lockbg", p => _uiSettings.LockBackgroundPath = p);
+
+    /// <summary>Revert the lock screen to the bundled default background.</summary>
+    [RelayCommand]
+    private void ClearLockBg()
+    {
+        _uiSettings.LockBackgroundPath = "";
+        _uiSettings.Save();
+        LockBgImage = null;
+        LoadProfileImages();
+    }
 
     [RelayCommand]
     private void ClearProfileImages()

@@ -49,7 +49,9 @@
       <!-- Lock-screen backdrop (the hands), so the unlock screen isn't a flat black. Behind
            everything and only while the vault is locked; a scrim keeps the form readable. -->
       <Image Source="avares://Umbrella.Wallet.App/Assets/lock-bg.jpg" Stretch="UniformToFill"
-             IsVisible="{Binding IsUnlockStage}" Opacity="0.5"/>
+             IsVisible="{Binding ShowDefaultLockBg}" Opacity="0.5"/>
+      <Image Source="{Binding LockBgImage}" Stretch="UniformToFill"
+             IsVisible="{Binding ShowCustomLockBg}" Opacity="0.5"/>
       <Border Background="#BF05050A" IsVisible="{Binding IsUnlockStage}"/>
 
       <!-- News article overlay — floats above everything when a news item is opened. -->
@@ -1826,6 +1828,23 @@
                         <Button Classes="ghost" Content="{Binding [settings.sidebarBg], Source={x:Static app:Loc.Instance}}" Margin="0,0,8,8" Command="{Binding PickSidebarBgCommand}"/>
                         <Button Classes="ghost" Content="{Binding [settings.reset], Source={x:Static app:Loc.Instance}}" Margin="0,0,8,8" Command="{Binding ClearProfileImagesCommand}"/>
                       </WrapPanel>
+                    </Grid>
+                  </StackPanel>
+                </Border>
+
+                <!-- Lock-screen background: pick your own, revert to default, or hide it entirely. -->
+                <Border Classes="card" IsVisible="{Binding IsTabAppearance}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="{Binding [settings.lockScreen], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="{Binding [settings.lockScreenHint], Source={x:Static app:Loc.Instance}}"/>
+                    <WrapPanel>
+                      <Button Classes="ghost" Content="{Binding [settings.lockBgChoose], Source={x:Static app:Loc.Instance}}" Margin="0,0,8,8" Command="{Binding PickLockBgCommand}"/>
+                      <Button Classes="ghost" Content="{Binding [settings.lockBgReset], Source={x:Static app:Loc.Instance}}" Margin="0,0,8,8" Command="{Binding ClearLockBgCommand}"/>
+                    </WrapPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding [settings.lockPlain], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
+                      <ToggleSwitch Grid.Column="1" IsChecked="{Binding LockScreenPlain, Mode=TwoWay}" OnContent="" OffContent=""/>
                     </Grid>
                   </StackPanel>
                 </Border>

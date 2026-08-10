@@ -35,6 +35,11 @@ public sealed class UiSettings
     public string BannerPath { get; set; } = "";
     public string SidebarBackgroundPath { get; set; } = "";
 
+    /// <summary>The user's own lock-screen (unlock) background; blank uses the bundled default.</summary>
+    public string LockBackgroundPath { get; set; } = "";
+    /// <summary>When true, the lock screen shows no background image at all (flat).</summary>
+    public bool LockScreenPlain { get; set; } = false;
+
     private static string Path => System.IO.Path.Combine(AppPaths.DataRoot, "ui-settings.json");
 
     public static UiSettings Load()

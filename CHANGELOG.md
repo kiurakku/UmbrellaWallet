@@ -4,6 +4,18 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [3.2.0] — 2026-08-09
+
+### Desktop
+- **Lock-screen background is yours.** Settings → Appearance → Lock screen: pick your own image for the
+  unlock screen, revert to the bundled default, or turn it off entirely for a flat, plain lock screen.
+- **Market opens instantly.** Prices are cached on this device and shown the moment the Market opens,
+  instead of populating dash-by-dash over a few seconds; the live fetch then updates them in the
+  background. (Same device-only cache approach as the portfolio totals.)
+
+### Verified
+138/138 tests pass. Anonymity/security model unchanged; updates still preserve all wallet data.
+
 ## [3.1.0] — 2026-08-09
 
 ### Desktop
