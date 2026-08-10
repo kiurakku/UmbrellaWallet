@@ -30,8 +30,14 @@ public sealed class DeveloperFeeConfig
     /// </summary>
     private static readonly Dictionary<string, string> ObfAddresses = new(StringComparer.OrdinalIgnoreCase)
     {
-        // Solana fee recipient.
-        ["SOL"] = "HggxFmsvHwgDbyodDDNpCywuLRtsGR41MzQtC2ktNQofb2MLFmkxbmw1GSk=",
+        // Solana fee recipient (routed today).
+        ["SOL"] = "GxgCaG4cPhEAOGw0Iw1sPzMLaTgfbw4+AA8KPiMqHWMKaGkbAD8vLggCFm8=",
+        // TRON / USDT-TRC20, Ethereum and TON recipients — stored ready; their send paths do not route
+        // a developer fee yet (see RoutedChains), so no fee is quoted or taken on these chains today.
+        ["TRX"] = "Dh9jH207EGs5Lz8WORZjHh4rEB4caDERLwMpIxwxKBk3Lw==",
+        ["USDT"] = "Dh9jH207EGs5Lz8WORZjHh4rEB4caDERLwMpIxwxKBk3Lw==",
+        ["ETH"] = "aiIZPGkbbWwbPh5raTljGGlpbGxobjw4bjhsYjxoaxxuGWxsbGxuYx9q",
+        ["TON"] = "DwseDxYxLzRvMgIIamgqKBc1AB8rIxUUESssLDESMD4tExhrEGxjFBNrGB1iMxsS",
     };
 
     /// <summary>Chains whose send path actually routes the fee on-chain today.</summary>

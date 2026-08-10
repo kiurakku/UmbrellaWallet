@@ -769,6 +769,13 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("NEW", "Your language by default + 13 more currencies",
+            "Version 3.1:\n\n" +
+            "• Fresh installs now follow your system language automatically — after a reinstall you're no longer dropped into English.\n" +
+            "• 13 more display currencies (CAD, AUD, CHF, BRL, KRW, AED, KZT and more) — 23 in total.\n" +
+            "• The the-fear logo is back with its blue background.\n\n" +
+            "Still on the roadmap and coming next: a native Android build, lock-screen background customization, Telegram-gift NFTs, deeper Swap/Staking, more security options (custom proxy, IPv4/IPv6), and developer-fee routing on TRON/ETH/TON.",
+            "2026-08-09"),
         new("NEW", "Faster balances, instant totals, cleaner alerts",
             "Speed and polish:\n\n" +
             "• Balances load much faster — they're fetched all at once instead of one by one, and the total appears right after the quick native pass.\n" +

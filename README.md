@@ -19,7 +19,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-![Version](https://img.shields.io/badge/version-3.0.4-4B3F86)
+![Version](https://img.shields.io/badge/version-3.1.0-4B3F86)
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-ready-6E5FB8?logo=linux&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-planned-8A8A9C?logo=android&logoColor=white)
@@ -40,7 +40,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-**[⬇️ Installer (v3.0.4)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.0.4.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-3.0.4.zip)** · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
+**[⬇️ Installer (v3.1.0)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.1.0.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-3.1.0.zip)** · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
 
 <br/>
 
@@ -115,7 +115,8 @@ Umbrella flips that model:
 ## 🎨 Make it yours
 
 - **27 themes** — the fear noir, brand palettes (Uniswap, Binance, TON, TRON, Solana, Ethereum, Monero, Kraken…), OLED black, Nord, Dracula, gradients, and more. Switch live, no restart.
-- **6 languages** — 🇬🇧 English · 🇺🇦 Українська · Русский · 🇨🇳 中文 · 🇪🇸 Español · 🇩🇪 Deutsch.
+- **6 languages** — 🇬🇧 English · 🇺🇦 Українська · Русский · 🇨🇳 中文 · 🇪🇸 Español · 🇩🇪 Deutsch. New installs default to your OS language automatically.
+- **23 display currencies** — USD, EUR, UAH, GBP, PLN, TRY, CAD, AUD, CHF, BRL, KRW, AED, KZT and more.
 - **Movable navigation** — park the menu left, right, top or bottom.
 - **Duck stickers** 🦆 — animated Telegram stickers greet you on Welcome, Receive, Send, Connect, Activity and Settings. Serious cryptography, unserious ducks.
 
@@ -123,9 +124,9 @@ Umbrella flips that model:
 
 | Platform | Package | Notes |
 |----------|---------|-------|
-| **Windows** | [UmbrellaWallet-Setup-3.0.4.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.0.4.exe) | Installer — choose install folder |
-| **Windows** | [`UmbrellaWallet-Portable-3.0.4.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-3.0.4.zip) | Portable — unzip and run `Umbrella.exe` |
-| **Linux** | [`UmbrellaWallet-3.0.4-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-3.0.4-linux-x64.tar.gz) | Unpack, run `./Umbrella.Wallet.App` — no install required |
+| **Windows** | [UmbrellaWallet-Setup-3.1.0.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.1.0.exe) | Installer — choose install folder |
+| **Windows** | [`UmbrellaWallet-Portable-3.1.0.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-3.1.0.zip) | Portable — unzip and run `Umbrella.exe` |
+| **Linux** | [`UmbrellaWallet-3.1.0-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-3.1.0-linux-x64.tar.gz) | Unpack, run `./Umbrella.Wallet.App` — no install required |
 | **Android** | _planned_ | A native Android build (Avalonia) is on the roadmap |
 
 ## 🚀 Get started

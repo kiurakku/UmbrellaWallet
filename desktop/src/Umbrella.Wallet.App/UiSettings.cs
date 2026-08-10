@@ -41,13 +41,29 @@ public sealed class UiSettings
     {
         try
         {
-            if (!File.Exists(Path)) return new UiSettings();
+            // Fresh install (incl. after a delete + re-download): pick the OS language if we translate
+            // it, so a Ukrainian/Russian/… user isn't dropped into English with no setting to restore.
+            if (!File.Exists(Path)) return new UiSettings { Language = DefaultLanguage() };
             return JsonSerializer.Deserialize<UiSettings>(File.ReadAllText(Path)) ?? new UiSettings();
         }
         catch
         {
             // Preferences are never worth failing startup over.
             return new UiSettings();
+        }
+    }
+
+    /// <summary>The OS UI language if Umbrella ships a translation for it, otherwise English.</summary>
+    private static string DefaultLanguage()
+    {
+        try
+        {
+            var os = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant();
+            return Loc.Languages.Any(l => l.Code == os) ? os : "en";
+        }
+        catch
+        {
+            return "en";
         }
     }
 

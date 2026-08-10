@@ -4,6 +4,22 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [3.1.0] — 2026-08-09
+
+### Desktop
+- **Developer fee → your Solana address.** The 0.5% send fee (disclosed in the review, capped at 2%)
+  now routes to `ABX24FdKZb6nyW6eiQ3bE5TdZUPdypG9P23AZeutRXL5` on SOL. Recipient addresses for
+  TRON/USDT, Ethereum and TON are stored, but their send paths don't route a fee **yet** — no fee is
+  taken on those chains until per-chain routing ships (a fund-critical change, coming next).
+- **Fresh installs speak your language.** After a delete + re-download (or first run), the app now
+  defaults to your **OS language** if it's translated (UK/RU/ZH/ES/DE), instead of always English.
+- **the fear logo — with its blue background** again (as requested).
+- **+13 display currencies** — CAD, AUD, CHF, BRL, KRW, MXN, ZAR, SEK, NOK, AED, SGD, HKD, KZT
+  (23 total), all live via open.er-api.com.
+
+### Verified
+138/138 tests pass (incl. the updated developer-fee vector). Anonymity/security unchanged.
+
 ## [3.0.4] — 2026-08-09
 
 ### Desktop
