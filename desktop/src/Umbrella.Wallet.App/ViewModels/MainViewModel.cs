@@ -581,6 +581,8 @@ public partial class MainViewModel : ViewModelBase
     private readonly PublicMarketRatesClient _rates = new();
     private readonly WatchAddressStore _watchStore = new();
     private readonly ActivityStore _activityStore = new();
+    private readonly BalanceStore _balanceStore = new();
+    private readonly MarketCache _marketCache = new();
     private readonly ExchangeCredentialStore _exchangeStore = new();
     private readonly EthTransactionSender _ethSender = new();
     private readonly BitcoinTransactionSender _btcSender = new();
@@ -663,6 +665,8 @@ public partial class MainViewModel : ViewModelBase
 
         foreach (var (sym, name, holdable) in ExtraMarketCoins)
             Market.Add(MarketRowViewModel.PendingCoin(sym, name, holdable));
+
+        RestoreMarketCache(); // show last-seen prices instantly; the live refresh corrects them
 
         SelectedSendAsset = SendableAssets[0];
         SelectedWatchNetwork = WatchableNetworks[0];
@@ -768,6 +772,26 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("NEW", "Custom lock screen + instant market",
+            "Version 3.2:\n\n" +
+            "• Lock-screen background is yours: Settings → Appearance → Lock screen — pick your own image, use the default, or turn it off for a flat lock screen.\n" +
+            "• The Market now opens instantly with your last-seen prices instead of filling in dash-by-dash; live data updates in the background.\n\n" +
+            "Still coming (in order of value): developer-fee routing on TRON/ETH/TON, more security options (custom proxy, IPv4/IPv6), a native Android build, Telegram-gift NFTs, deeper Swap/Staking, and full translations.",
+            "2026-08-09"),
+        new("NEW", "Your language by default + 13 more currencies",
+            "Version 3.1:\n\n" +
+            "• Fresh installs now follow your system language automatically — after a reinstall you're no longer dropped into English.\n" +
+            "• 13 more display currencies (CAD, AUD, CHF, BRL, KRW, AED, KZT and more) — 23 in total.\n" +
+            "• The the-fear logo is back with its blue background.\n\n" +
+            "Still on the roadmap and coming next: a native Android build, lock-screen background customization, Telegram-gift NFTs, deeper Swap/Staking, more security options (custom proxy, IPv4/IPv6), and developer-fee routing on TRON/ETH/TON.",
+            "2026-08-09"),
+        new("NEW", "Faster balances, instant totals, cleaner alerts",
+            "Speed and polish:\n\n" +
+            "• Balances load much faster — they're fetched all at once instead of one by one, and the total appears right after the quick native pass.\n" +
+            "• No more $0 flash: your last totals are cached on this device and shown instantly when you unlock or switch wallets, then refreshed in the background.\n" +
+            "• Errors and notices now appear as a toast at the top-center of the window, so you actually see them.\n" +
+            "• The the-fear mark and the Telegram-channel icon now use the real logo artwork (background removed).",
+            "2026-08-09"),
         new("NEW", "Settings fully translated + easier wallet switching",
             "Polish across the app:\n\n" +
             "• Settings are fully translated now — the Wallets tab and the Danger zone were still English whatever language you picked; that's fixed.\n" +
@@ -1122,6 +1146,8 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsCreateStage));
         OnPropertyChanged(nameof(IsImportStage));
         OnPropertyChanged(nameof(IsUnlockStage));
+        OnPropertyChanged(nameof(ShowDefaultLockBg));
+        OnPropertyChanged(nameof(ShowCustomLockBg));
         OnPropertyChanged(nameof(IsBackupStage));
         OnPropertyChanged(nameof(IsWorkspace));
         OnPropertyChanged(nameof(ShowSidebar));
@@ -2034,6 +2060,31 @@ public partial class MainViewModel : ViewModelBase
     /// Market prices are public data, so this runs with the vault locked too — the user can
     /// see which coins the wallet accepts before committing to creating a vault.
     /// </summary>
+    /// <summary>Fill the Market rows with the last-seen prices so the list reads instantly on open,
+    /// before the live fetch returns (kills the "prices populate one by one" flicker).</summary>
+    private void RestoreMarketCache()
+    {
+        var cached = _marketCache.Load();
+        if (cached.Count == 0) return;
+        var bySym = cached.ToDictionary(e => e.Symbol, e => e, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var chain in ChainCatalog.All)
+        {
+            if (!bySym.TryGetValue(chain.Symbol, out var e)) continue;
+            var idx = Market.ToList().FindIndex(m => m.Symbol == chain.Symbol);
+            if (idx >= 0) Market[idx] = MarketRowViewModel.Live(chain, e.Price, e.Change) with { Spark = Market[idx].Spark };
+        }
+        foreach (var (sym, name, holdable) in ExtraMarketCoins)
+        {
+            if (!bySym.TryGetValue(sym, out var e)) continue;
+            var idx = Market.ToList().FindIndex(m => m.Symbol == sym);
+            if (idx >= 0) Market[idx] = MarketRowViewModel.LiveCoin(sym, name, e.Price, e.Change, holdable) with { Spark = Market[idx].Spark };
+        }
+    }
+
+    private void SaveMarketCache() =>
+        _marketCache.Save(Market.Where(m => m.Price > 0).Select(m => new MarketCache.Entry(m.Symbol, m.Price, m.Change24h)));
+
     [RelayCommand]
     private async Task RefreshMarketAsync()
     {
@@ -2075,6 +2126,7 @@ public partial class MainViewModel : ViewModelBase
             }
 
             MarketStatus = $"Live · {prices.Count} coins · updated {DateTime.Now:HH:mm:ss}";
+            SaveMarketCache();
             _ = LoadSparklinesAsync();
         }
         catch (Exception ex)
@@ -2476,6 +2528,38 @@ public partial class MainViewModel : ViewModelBase
         RefreshHoldings();
     }
 
+    private string ActiveWalletCacheKey => _registry.Active?.Id ?? "main";
+
+    /// <summary>Apply the last-seen balances/prices for the active wallet so the total is right the
+    /// instant it unlocks — before the live refresh returns — instead of flashing $0. Matched to
+    /// accounts by symbol + address; the refresh overwrites with authoritative data moments later.</summary>
+    private void RestoreCachedBalances()
+    {
+        var cached = _balanceStore.Load(ActiveWalletCacheKey);
+        if (cached.Count == 0) return;
+        var byKey = cached.ToDictionary(e => e.Symbol + "|" + e.Address, e => e);
+        var touched = false;
+        for (var i = 0; i < Accounts.Count; i++)
+        {
+            var a = Accounts[i];
+            if (byKey.TryGetValue(a.Symbol + "|" + a.Address, out var e))
+            {
+                Accounts[i] = a with { Amount = e.Amount, Price = e.Price, Change24h = e.Change };
+                touched = true;
+            }
+        }
+        if (touched) { RefreshHoldings(); RecalcBalance(); }
+    }
+
+    /// <summary>Persist the current balances/prices so the next unlock/switch shows them instantly.</summary>
+    private void SaveBalanceCache()
+    {
+        var entries = Accounts
+            .Where(a => a.Amount > 0 || a.Price > 0)
+            .Select(a => new BalanceStore.Entry(a.Symbol, a.Address, a.Amount, a.Price, a.Change24h));
+        _balanceStore.Save(ActiveWalletCacheKey, entries);
+    }
+
     [RelayCommand]
     private async Task RefreshLiveDataAsync()
     {
@@ -2500,19 +2584,20 @@ public partial class MainViewModel : ViewModelBase
                 .ToList();
             var prices = await _rates.GetUsdPricesAsync(symbols, ct);
 
-            foreach (var account in Accounts.ToList())
+            // Fetch every account's balance CONCURRENTLY, then apply on the UI thread. Sequential
+            // awaits here were the main reason the total took many seconds to appear after unlock /
+            // wallet switch; firing them together cuts that to roughly the slowest single call.
+            // (Receive-only chains TON/ADA have public balance APIs; XMR returns null safely.)
+            var balanceTargets = Accounts.ToList()
+                .Where(a => a.SupportStatus is "Ready" or "Receive only" && ParseChain(a.Symbol) is not null)
+                .ToList();
+            var balanceResults = await Task.WhenAll(
+                balanceTargets.Select(a => _balances.GetBalanceAsync(ParseChain(a.Symbol)!.Value, a.Address, ct)));
+
+            for (var k = 0; k < balanceTargets.Count; k++)
             {
-                // Receive-only chains (TON, ADA) have public balance APIs — fetch them too. XMR is
-                // also receive-only but has no public balance API (handled by the Monero service),
-                // and GetBalanceAsync simply returns null for it, so this is safe.
-                if (account.SupportStatus is not ("Ready" or "Receive only")) continue;
-                var chain = ParseChain(account.Symbol);
-                if (chain is null) continue;
-
-                decimal amount = (decimal)account.Amount;
-                var bal = await _balances.GetBalanceAsync(chain.Value, account.Address, ct);
-                if (bal is not null) amount = bal.NativeAmount;
-
+                var account = balanceTargets[k];
+                var amount = balanceResults[k] is { } bal ? bal.NativeAmount : (decimal)account.Amount;
                 var (usd, change) = prices.GetValueOrDefault(account.Symbol);
                 var idx = Accounts.IndexOf(account);
                 if (idx >= 0)
@@ -2525,6 +2610,9 @@ public partial class MainViewModel : ViewModelBase
                     };
                 }
             }
+            // Show the total from native balances immediately, before the slower token/NFT/watch passes.
+            RefreshHoldings();
+            RecalcBalance();
 
             // Every TRC-20 token on our OWN derived TRON account — not just USDT. Reward tokens,
             // other stablecoins and any TRC-20 asset now appear next to the native coins, which is
@@ -2589,6 +2677,7 @@ public partial class MainViewModel : ViewModelBase
 
             RefreshHoldings();
             RecalcBalance();
+            SaveBalanceCache(); // remember these totals so the next unlock/switch is instant
             PushActivity("Sync", "All", "OK", "Public RPC / explorers", "now");
             StatusMessage = $"Live · {Holdings.Count} assets · updated {DateTime.Now:HH:mm:ss}";
         }
@@ -2779,14 +2868,42 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private Bitmap? _avatarImage;
     [ObservableProperty] private Bitmap? _bannerImage;
     [ObservableProperty] private Bitmap? _sidebarBgImage;
+    [ObservableProperty] private Bitmap? _lockBgImage;
 
     public bool HasAvatar => AvatarImage is not null;
     public bool HasBanner => BannerImage is not null;
     public bool HasSidebarBg => SidebarBgImage is not null;
 
+    /// <summary>The user picked a custom lock-screen background.</summary>
+    public bool HasLockBg => LockBgImage is not null;
+    /// <summary>Lock screen shows no background at all (flat) — user chose to remove it.</summary>
+    public bool LockScreenPlain
+    {
+        get => _uiSettings.LockScreenPlain;
+        set
+        {
+            if (_uiSettings.LockScreenPlain == value) return;
+            _uiSettings.LockScreenPlain = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ShowDefaultLockBg));
+            OnPropertyChanged(nameof(ShowCustomLockBg));
+        }
+    }
+    /// <summary>Show the bundled default lock backdrop: locked, not plain, and no custom image set.</summary>
+    public bool ShowDefaultLockBg => IsUnlockStage && !LockScreenPlain && !HasLockBg;
+    /// <summary>Show the user's custom lock backdrop: locked, not plain, custom image present.</summary>
+    public bool ShowCustomLockBg => IsUnlockStage && !LockScreenPlain && HasLockBg;
+
     partial void OnAvatarImageChanged(Bitmap? value) => OnPropertyChanged(nameof(HasAvatar));
     partial void OnBannerImageChanged(Bitmap? value) => OnPropertyChanged(nameof(HasBanner));
     partial void OnSidebarBgImageChanged(Bitmap? value) => OnPropertyChanged(nameof(HasSidebarBg));
+    partial void OnLockBgImageChanged(Bitmap? value)
+    {
+        OnPropertyChanged(nameof(HasLockBg));
+        OnPropertyChanged(nameof(ShowDefaultLockBg));
+        OnPropertyChanged(nameof(ShowCustomLockBg));
+    }
 
     private static string ProfileDir => System.IO.Path.Combine(AppPaths.DataRoot, "profile");
 
@@ -2801,6 +2918,7 @@ public partial class MainViewModel : ViewModelBase
         AvatarImage = LoadBitmap(_uiSettings.AvatarPath);
         BannerImage = LoadBitmap(_uiSettings.BannerPath);
         SidebarBgImage = LoadBitmap(_uiSettings.SidebarBackgroundPath);
+        LockBgImage = LoadBitmap(_uiSettings.LockBackgroundPath);
     }
 
     private async Task PickProfileImageAsync(string name, Action<string> setPath)
@@ -2827,6 +2945,17 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand] private Task PickAvatar() => PickProfileImageAsync("avatar", p => _uiSettings.AvatarPath = p);
     [RelayCommand] private Task PickBanner() => PickProfileImageAsync("banner", p => _uiSettings.BannerPath = p);
     [RelayCommand] private Task PickSidebarBg() => PickProfileImageAsync("sidebar", p => _uiSettings.SidebarBackgroundPath = p);
+    [RelayCommand] private Task PickLockBg() => PickProfileImageAsync("lockbg", p => _uiSettings.LockBackgroundPath = p);
+
+    /// <summary>Revert the lock screen to the bundled default background.</summary>
+    [RelayCommand]
+    private void ClearLockBg()
+    {
+        _uiSettings.LockBackgroundPath = "";
+        _uiSettings.Save();
+        LockBgImage = null;
+        LoadProfileImages();
+    }
 
     [RelayCommand]
     private void ClearProfileImages()
@@ -3603,6 +3732,7 @@ public partial class MainViewModel : ViewModelBase
         // read once the wallet is unlocked.
         _ = LoadExchangesAsync(mnemonic);
         DeriveAccounts(mnemonic);
+        RestoreCachedBalances(); // show last-known totals instantly; the live refresh corrects them
         SelectFirstReceive();
         LoadActivity(); // restore the saved history before logging this unlock on top
         PushActivity("Security", "Vault", "unlocked", "this device", "now");
@@ -4029,7 +4159,37 @@ public partial class MainViewModel : ViewModelBase
     {
         FormError = message;
         StatusMessage = message;
+        ShowToast(message, isError: true);
     }
+
+    // --- Centered top toast: surfaces errors and key notices where the user actually looks ---
+    [ObservableProperty] private string _toast = string.Empty;
+    [ObservableProperty] private bool _toastVisible;
+    [ObservableProperty] private bool _toastIsError;
+    private Avalonia.Threading.DispatcherTimer? _toastTimer;
+
+    public void ShowToast(string message, bool isError)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return;
+        Toast = message;
+        ToastIsError = isError;
+        ToastVisible = true;
+        _toastTimer ??= new Avalonia.Threading.DispatcherTimer();
+        _toastTimer.Stop();
+        _toastTimer.Interval = TimeSpan.FromSeconds(isError ? 5 : 3);
+        _toastTimer.Tick -= HideToastTick;
+        _toastTimer.Tick += HideToastTick;
+        _toastTimer.Start();
+    }
+
+    private void HideToastTick(object? sender, EventArgs e)
+    {
+        _toastTimer?.Stop();
+        ToastVisible = false;
+    }
+
+    [RelayCommand]
+    private void DismissToast() => ToastVisible = false;
 
     private async Task RunBusyAsync(Func<Task> action)
     {

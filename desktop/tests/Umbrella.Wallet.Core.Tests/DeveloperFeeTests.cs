@@ -9,7 +9,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// </summary>
 public sealed class DeveloperFeeTests
 {
-    private const string SolFeeAddress = "DRkL1uERY5pGVi3QvtwA6CDoinwQ3woPE59QL3k46oCs";
+    private const string SolFeeAddress = "ABX24FdKZb6nyW6eiQ3bE5TdZUPdypG9P23AZeutRXL5";
 
     [Fact]
     public void Baked_solana_fee_address_decodes_correctly()

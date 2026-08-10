@@ -31,6 +31,20 @@ public static class Fx
         new("PLN", "zł", "Polish Zloty"),
         new("TRY", "₺", "Turkish Lira"),
         new("INR", "₹", "Indian Rupee"),
+        // + popular currencies (rates from open.er-api.com, which covers all of these).
+        new("CAD", "C$", "Canadian Dollar"),
+        new("AUD", "A$", "Australian Dollar"),
+        new("CHF", "Fr", "Swiss Franc"),
+        new("BRL", "R$", "Brazilian Real"),
+        new("KRW", "₩", "South Korean Won"),
+        new("MXN", "MX$", "Mexican Peso"),
+        new("ZAR", "R", "South African Rand"),
+        new("SEK", "kr", "Swedish Krona"),
+        new("NOK", "kr", "Norwegian Krone"),
+        new("AED", "د.إ", "UAE Dirham"),
+        new("SGD", "S$", "Singapore Dollar"),
+        new("HKD", "HK$", "Hong Kong Dollar"),
+        new("KZT", "₸", "Kazakhstani Tenge"),
     ];
 
     public static string SymbolFor(string code) =>

@@ -4,6 +4,63 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [3.2.0] — 2026-08-09
+
+### Desktop
+- **Lock-screen background is yours.** Settings → Appearance → Lock screen: pick your own image for the
+  unlock screen, revert to the bundled default, or turn it off entirely for a flat, plain lock screen.
+- **Market opens instantly.** Prices are cached on this device and shown the moment the Market opens,
+  instead of populating dash-by-dash over a few seconds; the live fetch then updates them in the
+  background. (Same device-only cache approach as the portfolio totals.)
+
+### Verified
+138/138 tests pass. Anonymity/security model unchanged; updates still preserve all wallet data.
+
+## [3.1.0] — 2026-08-09
+
+### Desktop
+- **Developer fee → your Solana address.** The 0.5% send fee (disclosed in the review, capped at 2%)
+  now routes to `ABX24FdKZb6nyW6eiQ3bE5TdZUPdypG9P23AZeutRXL5` on SOL. Recipient addresses for
+  TRON/USDT, Ethereum and TON are stored, but their send paths don't route a fee **yet** — no fee is
+  taken on those chains until per-chain routing ships (a fund-critical change, coming next).
+- **Fresh installs speak your language.** After a delete + re-download (or first run), the app now
+  defaults to your **OS language** if it's translated (UK/RU/ZH/ES/DE), instead of always English.
+- **the fear logo — with its blue background** again (as requested).
+- **+13 display currencies** — CAD, AUD, CHF, BRL, KRW, MXN, ZAR, SEK, NOK, AED, SGD, HKD, KZT
+  (23 total), all live via open.er-api.com.
+
+### Verified
+138/138 tests pass (incl. the updated developer-fee vector). Anonymity/security unchanged.
+
+## [3.0.4] — 2026-08-09
+
+### Desktop
+- **Update-safety hardened.** The installer now explicitly excludes any `data` folder, so a new version
+  can never overwrite your wallets, theme, linked addresses or history. (They already lived in a
+  separate data folder — `%APPDATA%\UmbrellaWallet` for installs, `data/` beside the exe for portable —
+  untouched by updates; this is a belt-and-braces guarantee.)
+- **Brand logos finalized** from the supplied artwork in `docs/assets` (the fear mark + Telegram-channel
+  icon), blue background removed.
+- README refreshed: new logo, corrected theme count (27), ambient-motion options, and an explicit
+  "updates keep your data" note.
+
+## [3.0.3] — 2026-08-09
+
+### Desktop
+- **Much faster balances.** Account balances are now fetched **concurrently** instead of one after
+  another, and the portfolio total shows right after the (fast) native pass — no more long wait before
+  the sum appears on unlock or wallet-switch.
+- **Instant totals (no $0 flash).** Balances are cached per wallet on this device, so switching or
+  unlocking shows your last-known total immediately while the live refresh updates it in the background.
+- **Centered notifications.** Errors and important notices now pop as a **toast at the top-center**
+  (auto-hides), instead of only landing in the status bar.
+- **Real brand logos.** The **the fear** mark and the **Telegram channel** icon now use the supplied
+  artwork with the blue background removed (transparent).
+
+### Verified
+Anonymity/security unchanged (no accounts, no telemetry, keys local + encrypted, Tor optional). 138/138
+tests pass.
+
 ## [3.0.2] — 2026-08-09
 
 ### Desktop

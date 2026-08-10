@@ -1,2 +1,4 @@
-# Sponsorship button on the repository page.
+# Sponsorship — shown as "Sponsor" on the repository page.
 github: kiurakku
+custom:
+  - https://t.me/UmbrellaWallet

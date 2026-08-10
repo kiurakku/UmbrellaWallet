@@ -1,8 +1,10 @@
 <div align="center">
 
-<img src="docs/assets/readme-header.png" width="100%" alt="Umbrella Wallet — your money, your keys, nobody watching"/>
+<img src="docs/assets/thefear-logo.png" width="132" alt="the fear"/>
 
 # ☂️ Umbrella Wallet
+
+<sub>a **the fear** app · <img src="docs/assets/tgumbrella.png" width="14" align="middle"/> [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)</sub>
 
 ### Your money. Your keys. Nobody watching. 🌧️
 
@@ -17,7 +19,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-![Version](https://img.shields.io/badge/version-3.0.2-4B3F86)
+![Version](https://img.shields.io/badge/version-3.2.0-4B3F86)
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-ready-6E5FB8?logo=linux&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-planned-8A8A9C?logo=android&logoColor=white)
@@ -38,7 +40,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-**[⬇️ Installer (v3.0.2)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.0.2.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-3.0.2.zip)** · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
+**[⬇️ Installer (v3.2.0)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.2.0.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-3.2.0.zip)** · [💖 Sponsor](https://github.com/sponsors/kiurakku) · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
 
 <br/>
 
@@ -62,7 +64,8 @@ Umbrella flips that model:
 - 🥷 **Secrets that can't be screenshotted.** While your recovery phrase is on screen, the window renders black to screen-capture and remote-viewing software.
 - 💸 **Real money movement.** Send and receive Bitcoin, Ethereum, Litecoin, Solana, **TON**, TRON, USDT and Monero — to any wallet or exchange in the world. Transactions are signed on your machine; only the signed result ever goes out. TON transfers are pinned byte-for-byte against the reference `@ton` library, so a wrong byte can never strand funds.
 - 📈 **Live market, real candles.** A built-in market with **real OHLC candlestick charts** (Binance klines) and live prices (CoinGecko) — timeframes from 1H to 1Y. No mock data anywhere.
-- 🎨 **Yours to look at.** Eleven colour themes, six interface languages, movable navigation, and full **profile customization** — your own avatar, banner and sidebar/lock-screen backgrounds, plus premium motion (glassy cards, a floating dock, a parallax hero). A private wallet doesn't have to feel like a tax form.
+- 🎨 **Yours to look at.** 27 colour themes, six interface languages, movable navigation, and full **profile customization** — your own avatar, banner and sidebar backgrounds, plus optional ambient motion (rain, drifting aurora, animated stickers — each toggled on its own). A private wallet doesn't have to feel like a tax form.
+- 💾 **Updates keep your data.** Installing a new version never touches your wallets, theme, linked addresses or history — they live in a separate data folder, not in the app files.
 
 ## ⚔️ Umbrella vs. the usual suspects
 
@@ -111,8 +114,9 @@ Umbrella flips that model:
 
 ## 🎨 Make it yours
 
-- **12+ themes** — editorial red-orange primary, Ember, electric glass palettes, OLED black, gradients, and more. Switch live, no restart.
-- **6 languages** — 🇬🇧 English · 🇺🇦 Українська · Русский · 🇨🇳 中文 · 🇪🇸 Español · 🇩🇪 Deutsch.
+- **27 themes** — the fear noir, brand palettes (Uniswap, Binance, TON, TRON, Solana, Ethereum, Monero, Kraken…), OLED black, Nord, Dracula, gradients, and more. Switch live, no restart.
+- **6 languages** — 🇬🇧 English · 🇺🇦 Українська · Русский · 🇨🇳 中文 · 🇪🇸 Español · 🇩🇪 Deutsch. New installs default to your OS language automatically.
+- **23 display currencies** — USD, EUR, UAH, GBP, PLN, TRY, CAD, AUD, CHF, BRL, KRW, AED, KZT and more.
 - **Movable navigation** — park the menu left, right, top or bottom.
 - **Duck stickers** 🦆 — animated Telegram stickers greet you on Welcome, Receive, Send, Connect, Activity and Settings. Serious cryptography, unserious ducks.
 
@@ -120,9 +124,9 @@ Umbrella flips that model:
 
 | Platform | Package | Notes |
 |----------|---------|-------|
-| **Windows** | [UmbrellaWallet-Setup-3.0.2.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.0.2.exe) | Installer — choose install folder |
-| **Windows** | [`UmbrellaWallet-Portable-3.0.2.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-3.0.2.zip) | Portable — unzip and run `Umbrella.exe` |
-| **Linux** | [`UmbrellaWallet-3.0.2-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-3.0.2-linux-x64.tar.gz) | Unpack, run `./Umbrella.Wallet.App` — no install required |
+| **Windows** | [UmbrellaWallet-Setup-3.2.0.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-3.2.0.exe) | Installer — choose install folder |
+| **Windows** | [`UmbrellaWallet-Portable-3.2.0.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-3.2.0.zip) | Portable — unzip and run `Umbrella.exe` |
+| **Linux** | [`UmbrellaWallet-3.2.0-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-3.2.0-linux-x64.tar.gz) | Unpack, run `./Umbrella.Wallet.App` — no install required |
 | **Android** | _planned_ | A native Android build (Avalonia) is on the roadmap |
 
 ## 🚀 Get started
@@ -161,6 +165,14 @@ Most wallets show XMR at best as "receive only". Umbrella ships Monero's own wal
 No — it's inside the app. One switch in <i>Settings → Privacy & Tor</i>, and the wallet's traffic goes through the Tor network on a private port that won't clash with a Tor Browser you already run.
 </details>
 
+<details><summary><b>🔓 The code is public — can I fork or modify it?</b></summary><br/>
+<strong>No.</strong> Umbrella is <em>source-available</em> for transparency and security audit — you can read the code and build it for yourself — but it is <strong>not</strong> open for forks, rebrands, mirrors or derivative wallets. Forking or republishing violates the <a href="LICENSE">license</a> (Section 2). If you find a bug, open an issue; do not publish your own "Umbrella fork".
+</details>
+
+<details><summary><b>💖 Can I support the project?</b></summary><br/>
+Yes — and thank you. Umbrella is independent, ad-free and funded only by its author. If it helps you, consider <a href="https://github.com/sponsors/kiurakku"><strong>sponsoring on GitHub</strong></a> or saying hi in <a href="https://t.me/UmbrellaWallet">Telegram</a>. Sponsorship keeps development going; it does not buy influence over the roadmap or your wallet.
+</details>
+
 ## 🗺️ Roadmap
 
 - 🐕 Dogecoin sending
@@ -169,6 +181,8 @@ No — it's inside the app. One switch in <i>Settings → Privacy & Tor</i>, and
 - 🌐 More exchange integrations on request
 
 ## 🛠️ For builders
+
+> **Audit, don't fork.** Source is published so you can verify what the binary does — not so you can ship a clone. Building locally for personal review is fine; publishing a fork, mirror or derivative is not. See [Source policy](#-source-policy) and [LICENSE](LICENSE).
 
 <details>
 <summary>Build from source (click to expand)</summary>
@@ -208,7 +222,31 @@ through code:
 
 Umbrella is **non-custodial**. That word means: *we never hold your money, so we can never lose it, freeze it — or recover it.* You are the bank now. 🏦 Guard your phrase, check addresses before sending, start with a small test amount. Crypto transactions are final; there is no undo button anywhere in the world.
 
-Umbrella is **free, independent, experimental self-custody software** authored by **the fear** — think of it like a community client/mod: yours to run, on your own device, at your own risk. It is provided **as-is, without any warranty**, and the author accepts **no liability** whatsoever — see [LICENSE](LICENSE). Nothing here is financial, tax or legal advice.
+Umbrella is **free, independent, experimental self-custody software** authored by **the fear** — yours to run on your own device, at your own risk. It is provided **as-is, without any warranty**, and the author accepts **no liability** whatsoever — see [LICENSE](LICENSE). Nothing here is financial, tax or legal advice.
+
+## 🔒 Source policy
+
+Umbrella is **open for inspection, closed for imitation.**
+
+| ✅ Allowed | ❌ Not allowed |
+|---|---|
+| Download official releases and use them | Fork, mirror or republish this repository |
+| Read the source to audit security | Rebrand, rename or sell a modified build |
+| Build locally to verify behaviour | Remove copyright, logos or attribution |
+| Report bugs via GitHub Issues | Pull requests that add features without prior agreement |
+
+The code is public because a **privacy wallet must be verifiable** — you should never have to trust a black box with your keys. That transparency does not grant permission to copy the project. Forks, mirrors and derivative works are **prohibited by license** and require **written permission** from the copyright holder ([LICENSE](LICENSE), Section 2).
+
+## 💖 Sponsor
+
+Umbrella has no ads, no tracking and no investors. If the wallet saves you time, stress or exchange fees — **sponsorship helps keep it alive.**
+
+| | |
+|---|---|
+| **GitHub Sponsors** | [github.com/sponsors/kiurakku](https://github.com/sponsors/kiurakku) |
+| **Community** | [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet) |
+
+Sponsors fund development and infrastructure; they do **not** get access to user data (there isn't any), priority over the roadmap, or a "premium" wallet. Your keys stay yours.
 
 **Not affiliated with anyone.** Umbrella is not connected to, endorsed by, or partnered with any exchange, network or brand. All third-party names, logos and trademarks — Bitcoin, Ethereum, TRON, TON, Monero, Uniswap, Binance, Bybit, OKX, WhiteBit, Telegram, MetaMask, and every coin/token name — belong to their respective owners; where a name appears (a colour-theme label, a read-only exchange connector) it identifies that style or service only and implies **no affiliation or endorsement**. You are responsible for any laws or taxes that apply to you where you live.
 
@@ -220,8 +258,9 @@ Umbrella is **free, independent, experimental self-custody software** authored b
 |---|---|
 | **Repository** | https://github.com/kiurakku/umbrella-wallet |
 | **Releases** | https://github.com/kiurakku/umbrella-wallet/releases |
+| **Sponsor** | https://github.com/sponsors/kiurakku |
 | **Issues** | https://github.com/kiurakku/umbrella-wallet/issues |
-| **License** | [LICENSE](LICENSE) |
+| **License** | [LICENSE](LICENSE) — free to use, no derivatives, no forks |
 
 **Topics:** `#umbrella-wallet` `#crypto-wallet` `#bitcoin` `#ethereum` `#monero` `#tor` `#privacy` `#self-custody` `#non-custodial` `#avalonia` `#dotnet` `#desktop-wallet`
 ## 💬 Support
@@ -230,7 +269,7 @@ Questions and bug reports are welcome as GitHub issues — best-effort support, 
 
 ## 📄 License
 
-**Free to use. Not free to take.** See [LICENSE](LICENSE) for full terms.
+**Free to use. Not free to take.** Source is published for audit; forks and derivatives are prohibited. See [LICENSE](LICENSE) for full terms.
 
 ---
 

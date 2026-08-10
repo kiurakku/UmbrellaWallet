@@ -14,7 +14,11 @@ gh api --method PATCH "repos/$repo" `
   -f allow_update_branch=true `
   -f allow_squash_merge=true `
   -f allow_merge_commit=false `
-  -f allow_rebase_merge=false | Out-Null
+  -f allow_rebase_merge=false `
+  -f description="Privacy-first non-custodial wallet (Windows & Linux). Source-available for audit — no forks. Sponsor: github.com/sponsors/kiurakku" | Out-Null
+
+# Note: allow_forking=false only works on org-owned private repos via API.
+# Public repos rely on LICENSE + CONTRIBUTING policy instead.
 
 Write-Host "Enabling security analysis features…" -ForegroundColor Cyan
 $sec = @{

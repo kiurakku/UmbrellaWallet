@@ -54,6 +54,7 @@ public static class DataWiper
         DeleteDir(Path.Combine(root, "wallets"));               // every additional wallet's encrypted vault
         DeleteFile(Path.Combine(root, "watch-addresses.json")); // watch-only addresses
         DeleteFile(Path.Combine(root, "activity.json"));        // local activity / transaction log
+        DeleteFile(Path.Combine(root, "balances.json"));        // cached balances (device-only display cache)
         DeleteFile(Path.Combine(root, "exchanges.bin"));        // encrypted exchange API keys
         DeleteFile(Path.Combine(root, "ui-settings.json"));     // theme, language, profile paths
         DeleteDir(Path.Combine(root, "profile"));               // avatar / banner / background images

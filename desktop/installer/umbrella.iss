@@ -3,7 +3,7 @@
 ; create a desktop / Start-menu shortcut, and uninstall cleanly.
 
 #define AppName "Umbrella Wallet"
-#define AppVersion "3.0.2"
+#define AppVersion "3.2.0"
 #define AppPublisher "the fear"
 #define AppExe "Umbrella.exe"
 
@@ -46,7 +46,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional icons:"
 
 [Files]
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+; Excludes: never ship a runtime `data` folder — that would overwrite the user's wallets/settings on
+; update. The user's data lives in {app}\data (portable) or %APPDATA%\UmbrellaWallet and is never touched.
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "data\*,data"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
 Name: "{group}\Umbrella Wallet"; Filename: "{app}\{#AppExe}"
