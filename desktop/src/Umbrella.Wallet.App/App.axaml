@@ -315,6 +315,47 @@
             <Setter Property="Background" Value="{DynamicResource UmAccentBright}" />
         </Style>
 
+        <!-- Mobile bottom tab: an icon over a tiny label, fixed width, active highlight — the
+             phone-style navigation used when Mobile layout is on. -->
+        <Style Selector="Button.tab">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="0,7" />
+            <Setter Property="Width" Value="60" />
+            <Setter Property="Foreground" Value="{DynamicResource UmTextDim}" />
+        </Style>
+        <Style Selector="Button.tab /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.10" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.tab:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
+        </Style>
+        <Style Selector="Button.tab.active">
+            <Setter Property="Foreground" Value="{DynamicResource UmAccentBright}" />
+        </Style>
+        <Style Selector="Button.tab.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
+        </Style>
+        <Style Selector="Path.tabIcon">
+            <Setter Property="Stroke" Value="{DynamicResource UmTextDim}" />
+            <Setter Property="StrokeThickness" Value="1.6" />
+            <Setter Property="StrokeLineCap" Value="Round" />
+            <Setter Property="StrokeJoin" Value="Round" />
+            <Setter Property="Fill" Value="Transparent" />
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.tab.active Path.tabIcon">
+            <Setter Property="Stroke" Value="{DynamicResource UmAccentBright}" />
+        </Style>
+
         <!-- Dropdowns: matched to the glass inputs instead of the default Fluent chrome. -->
         <Style Selector="ComboBox">
             <Setter Property="Background" Value="{DynamicResource UmInput}" />

@@ -431,6 +431,20 @@ public partial class MainViewModel : ViewModelBase
     public System.Collections.Generic.IReadOnlyList<string> ClipboardClearOptions { get; } =
         new[] { "Never", "30 seconds", "45 seconds", "1 minute", "2 minutes" };
 
+    /// <summary>Lock the vault the moment the window is minimized. Persisted; the window reads it.</summary>
+    public bool LockOnMinimize
+    {
+        get => _uiSettings.LockOnMinimize;
+        set
+        {
+            if (_uiSettings.LockOnMinimize == value) return;
+            _uiSettings.LockOnMinimize = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            if (IsUnlocked) PushActivity("Security", "Lock on minimize", value ? "on" : "off", "changed", "now");
+        }
+    }
+
     /// <summary>How long a copied address stays on the clipboard before it's auto-wiped. Persisted.</summary>
     public string ClipboardClearChoice
     {
@@ -486,6 +500,13 @@ public partial class MainViewModel : ViewModelBase
 
     public bool IsSidebarHorizontal => !IsSidebarVertical;
 
+    /// <summary>The dedicated phone tab bar (icons) shows only in mobile mode.</summary>
+    public bool IsMobileNav => MobileMode;
+
+    /// <summary>The desktop text-chip bar shows for Top/Bottom desktop layouts, but never in mobile —
+    /// there the icon tab bar takes over.</summary>
+    public bool IsDesktopHorizontalNav => IsSidebarHorizontal && !MobileMode;
+
     /// <summary>Phone-style compact layout on the desktop: a narrow centred column and a bottom tab
     /// bar in a phone-sized window (the window itself is resized by the view). Persisted.</summary>
     public bool MobileMode
@@ -500,6 +521,8 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(SidebarDock));
             OnPropertyChanged(nameof(IsSidebarVertical));
             OnPropertyChanged(nameof(IsSidebarHorizontal));
+            OnPropertyChanged(nameof(IsMobileNav));
+            OnPropertyChanged(nameof(IsDesktopHorizontalNav));
             OnPropertyChanged(nameof(ContentMaxWidth));
             OnPropertyChanged(nameof(QuickActionColumns));
             if (IsUnlocked) PushActivity("Settings", "Layout", value ? "mobile" : "desktop", "changed", "now");
@@ -945,6 +968,16 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("NEW", "A real phone layout, clearer backup, lock-on-minimize",
+            "Version 3.4.2 — polish from your feedback:\n\n" +
+            "• Mobile layout now feels like a phone. It has a proper bottom icon tab bar (scroll it for every section) instead of a squished desktop menu, and the dashboard actions wrap to 2×2. There's also a soft glow behind the the-fear logo on the welcome screen.\n" +
+            "• Backup made clear. The recovery phrase and the optional Monero keys are now one card that explains, in plain words, that your 24 words are the real backup and the Monero keys are an advanced extra most people never touch.\n" +
+            "• Activity feed cleaned up. It no longer logs a 'Sync · OK' line every minute — that was just noise.\n" +
+            "• Lock on minimize. Settings → Privacy: lock the wallet the instant the window is minimized.\n" +
+            "• More P2P/DEX venues, all non-custodial: CoW Swap, Matcha, Curve, Osmosis, plus Haveno (Monero), Vexl and LocalCoinSwap.\n" +
+            "• More of the app follows your language (welcome screen and section headers).\n\n" +
+            "139/139 tests pass.",
+            "2026-08-15"),
         new("NEW", "Use Umbrella like a phone app on your PC",
             "Version 3.4:\n\n" +
             "• Mobile layout. Settings → Appearance → Mobile layout turns the whole wallet into a phone-style app on your desktop — a narrow centred column, a bottom tab bar, and a phone-sized window. Flip it off and you're back to the full wide desktop layout instantly.\n" +
@@ -2214,6 +2247,18 @@ public partial class MainViewModel : ViewModelBase
         new("PancakeSwap", "DEX", "Non-custodial",
             "The main BNB Chain DEX (also on Ethereum and more) — swap, provide liquidity, all on-chain.",
             "https://pancakeswap.finance", "CAKE", "#D1884F"),
+        new("CoW Swap", "DEX · MEV-protected", "Non-custodial",
+            "Settles Ethereum & L2 swaps through batch auctions that shield you from front-running/MEV, and only fills at your limit price. Privacy- and price-friendly.",
+            "https://swap.cow.fi", "COW", "#0F4DC4"),
+        new("Matcha", "DEX aggregator", "Non-custodial",
+            "0x-powered aggregator that routes across dozens of DEXes on Ethereum, Base, Arbitrum and more for the best on-chain fill.",
+            "https://matcha.xyz", "MAT", "#2E7DF7"),
+        new("Curve", "DEX · stablecoins", "Non-custodial",
+            "The deepest liquidity for stablecoin and pegged-asset swaps, with minimal slippage. All on-chain.",
+            "https://curve.finance", "CRV", "#F5C542"),
+        new("Osmosis", "DEX · Cosmos", "Non-custodial",
+            "The main Cosmos-ecosystem DEX — cross-chain swaps over IBC, fast and low-fee, custody stays with you.",
+            "https://app.osmosis.zone", "OSMO", "#7A5CFF"),
         new("Bisq", "P2P exchange", "Non-custodial · P2P",
             "Desktop, account-free Bitcoin ↔ fiat over a secured peer network with security deposits. Nothing is held by a company.",
             "https://bisq.network", "BSQ", "#25B135"),
@@ -2226,6 +2271,15 @@ public partial class MainViewModel : ViewModelBase
         new("Peach", "P2P", "Non-custodial · escrow",
             "Bitcoin ↔ fiat peer-to-peer with escrow, mobile-first, many local payment methods.",
             "https://peachbitcoin.com", "PCH", "#F97362"),
+        new("Haveno", "P2P · Monero", "Non-custodial · P2P",
+            "Decentralised Monero ↔ fiat/crypto exchange with multisig escrow and no accounts — the private-coin counterpart to Bisq.",
+            "https://haveno.exchange", "HAV", "#F26822"),
+        new("Vexl", "P2P · no-KYC", "Non-custodial · P2P",
+            "Buy/sell Bitcoin peer-to-peer through your own social circle, phone-based, no accounts and no data harvesting — privacy first.",
+            "https://vexl.it", "VEXL", "#EAB308"),
+        new("LocalCoinSwap", "P2P escrow", "Non-custodial · escrow",
+            "Global multi-coin P2P with non-custodial escrow and hundreds of payment methods; you hold the keys throughout.",
+            "https://localcoinswap.com", "LCS", "#16A34A"),
     ];
 
     /// <summary>Card/bank fiat on-ramps for the Buy page. Every one delivers the crypto straight to a
@@ -2878,7 +2932,9 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();
             RecalcBalance();
             SaveBalanceCache(); // remember these totals so the next unlock/switch is instant
-            PushActivity("Sync", "All", "OK", "Public RPC / explorers", "now");
+            // NOTE: deliberately no "Sync" activity entry here. This runs every 60s on a timer, and
+            // logging it flooded the Activity feed with identical "Sync · OK" rows. The live status
+            // line below already shows the last-updated time; the Activity feed is for real events.
             StatusMessage = $"Live · {Holdings.Count} assets · updated {DateTime.Now:HH:mm:ss}";
         }
         catch (OperationCanceledException)

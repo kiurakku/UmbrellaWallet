@@ -4,6 +4,34 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [3.4.2] — 2026-08-15
+
+### Desktop
+- **Real phone-style mobile layout.** Mobile mode now shows a proper bottom **icon tab bar**
+  (icons + labels, horizontally scrollable so every section stays reachable) instead of a narrowed
+  desktop menu, and the quick actions wrap to 2×2. A soft themed **glow** now sits behind the
+  the-fear logo on the welcome screen.
+- **Clearer backup.** The recovery phrase and the (optional) Monero keys are now one card with a
+  plain-language intro explaining that the 24-word phrase is the real backup and the Monero keys are
+  an advanced extra most people never need.
+- **Fixed the Activity spam.** The feed no longer records a "Sync · Public RPC · OK" row every 60
+  seconds; the live status line already shows the last-updated time.
+
+### Security & privacy
+- **Lock on minimize** (Settings → Privacy): the vault locks the instant the window is minimized.
+- Builds on 3.3's custom SOCKS5 proxy, IPv4/IPv6 control and clipboard auto-clear.
+
+### P2P & DEX
+- **More vetted non-custodial venues:** CoW Swap (MEV-protected), Matcha, Curve, Osmosis, plus
+  Haveno (Monero P2P), Vexl (no-KYC BTC P2P) and LocalCoinSwap.
+
+### Localization
+- The welcome screen (buttons, trust cards, blurb) and several section headers now follow your
+  language in all six locales. (Translation coverage continues to expand each release.)
+
+### Verified
+139/139 tests pass; app smoke-launches clean in both desktop and mobile layouts.
+
 ## [3.4.0] — 2026-08-14
 
 ### Desktop

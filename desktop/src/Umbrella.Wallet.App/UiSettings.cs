@@ -37,6 +37,9 @@ public sealed class UiSettings
     public string IpMode { get; set; } = "auto";
     /// <summary>Seconds after which a copied address is auto-wiped from the clipboard; 0 = never.</summary>
     public int ClipboardAutoClearSeconds { get; set; } = 45;
+    /// <summary>Lock the vault immediately whenever the window is minimized, so a shoulder-surfer or
+    /// screen-share never catches an unlocked wallet left in the background.</summary>
+    public bool LockOnMinimize { get; set; } = false;
 
     /// <summary>A user-chosen label for this wallet, shown in the top bar; blank uses the brand only.</summary>
     public string WalletName { get; set; } = "";

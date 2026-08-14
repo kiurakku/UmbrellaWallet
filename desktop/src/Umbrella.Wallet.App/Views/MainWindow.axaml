@@ -90,8 +90,18 @@
             <!-- Brand mark stays the logo; the Telegram sticker sits beside it as a greeting
                  rather than replacing the identity. -->
             <StackPanel Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center" Margin="0,8,0,0">
-              <Image Source="{Binding LogoImage}"
-                     Width="132" Stretch="Uniform" VerticalAlignment="Center"/>
+              <!-- Soft accent glow behind the brand mark: a blurred, theme-coloured blob that melts
+                   into the background so the logo reads as lit rather than pasted on. -->
+              <Panel VerticalAlignment="Center">
+                <Border Width="188" Height="188" CornerRadius="94" Opacity="0.30"
+                        Background="{DynamicResource UmAccentBright}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <Border.Effect>
+                    <BlurEffect Radius="64"/>
+                  </Border.Effect>
+                </Border>
+                <Image Source="{Binding LogoImage}" Width="132" Stretch="Uniform"/>
+              </Panel>
               <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/wau.json"
                              Width="96" Height="96" VerticalAlignment="Center" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
             </StackPanel>
@@ -104,24 +114,24 @@
               <Border Classes="hairline" Padding="16,18">
                 <StackPanel Spacing="8" HorizontalAlignment="Center">
                   <TextBlock Text="🛡" FontSize="20" HorizontalAlignment="Center"/>
-                  <TextBlock Text="ANONYMOUS" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
-                  <TextBlock Text="No account, email, or phone" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
+                  <TextBlock Text="{Binding [welcome.anon], Source={x:Static app:Loc.Instance}}" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding [welcome.anonSub], Source={x:Static app:Loc.Instance}}" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
                              TextWrapping="Wrap" TextAlignment="Center"/>
                 </StackPanel>
               </Border>
               <Border Grid.Column="1" Classes="hairline" Padding="16,18">
                 <StackPanel Spacing="8" HorizontalAlignment="Center">
                   <TextBlock Text="🔑" FontSize="20" HorizontalAlignment="Center"/>
-                  <TextBlock Text="YOUR KEYS" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
-                  <TextBlock Text="Seed encrypted on device only" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
+                  <TextBlock Text="{Binding [welcome.keys], Source={x:Static app:Loc.Instance}}" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding [welcome.keysSub], Source={x:Static app:Loc.Instance}}" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
                              TextWrapping="Wrap" TextAlignment="Center"/>
                 </StackPanel>
               </Border>
               <Border Grid.Column="2" Classes="hairline" Padding="16,18">
                 <StackPanel Spacing="8" HorizontalAlignment="Center">
                   <TextBlock Text="⚡" FontSize="20" HorizontalAlignment="Center"/>
-                  <TextBlock Text="LOCAL-FIRST" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
-                  <TextBlock Text="No server holds your funds" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
+                  <TextBlock Text="{Binding [welcome.local], Source={x:Static app:Loc.Instance}}" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding [welcome.localSub], Source={x:Static app:Loc.Instance}}" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
                              TextWrapping="Wrap" TextAlignment="Center"/>
                 </StackPanel>
               </Border>
@@ -129,16 +139,16 @@
 
             <Border Classes="card" Margin="0,20,0,0">
               <TextBlock Foreground="{DynamicResource UmTextSoft}" FontSize="13" LineHeight="21" TextWrapping="Wrap"
-                         Text="Unlike a standard exchange wallet, Umbrella never asks who you are and never takes custody. Your 24-word seed is generated on this computer, encrypted with Argon2id + AES-256-GCM, and stored only here. Balances are read straight from public block explorers — no API keys, no analytics, no third party in between."/>
+                         Text="{Binding [welcome.blurb], Source={x:Static app:Loc.Instance}}"/>
             </Border>
 
             <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center" Margin="0,24,0,0">
-              <Button Classes="primary" Content="Create new wallet" Command="{Binding GoToCreateCommand}"/>
-              <Button Classes="ghost" Content="Import existing wallet" Command="{Binding GoToImportCommand}"/>
+              <Button Classes="primary" Content="{Binding [onboard.createBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding GoToCreateCommand}"/>
+              <Button Classes="ghost" Content="{Binding [onboard.importBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding GoToImportCommand}"/>
             </StackPanel>
 
             <!-- Only while adding an additional wallet: a way back to the wallet you already had. -->
-            <Button Classes="ghost" Content="← Cancel · back to my wallet" HorizontalAlignment="Center" Margin="0,14,0,0"
+            <Button Classes="ghost" Content="{Binding [onboard.cancelBack], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center" Margin="0,14,0,0"
                     IsVisible="{Binding IsAddingWallet}" Command="{Binding CancelAddWalletCommand}"/>
 
             <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center" Margin="0,28,0,0">
@@ -416,7 +426,7 @@
 
         <!-- Content -->
         <!-- Compact horizontal navigation for the top/bottom placements. -->
-        <Border DockPanel.Dock="{Binding SidebarDock}" IsVisible="{Binding IsSidebarHorizontal}"
+        <Border DockPanel.Dock="{Binding SidebarDock}" IsVisible="{Binding IsDesktopHorizontalNav}"
                 Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}"
                 BorderThickness="0,1,0,1" Padding="14,8">
           <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
@@ -444,6 +454,114 @@
             <Button Classes="chip" Content="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Settings" Classes.active="{Binding IsSettings}"/>
             <Button Classes="chip" Content="{Binding [nav.lock], Source={x:Static app:Loc.Instance}}" Command="{Binding LockCommand}"/>
           </StackPanel>
+        </Border>
+
+        <!-- ===== Mobile phone-style bottom tab bar (icons + labels), only in Mobile layout.
+             Horizontally scrollable so every section stays reachable on a phone-width window. ===== -->
+        <Border DockPanel.Dock="Bottom" IsVisible="{Binding IsMobileNav}"
+                Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}"
+                BorderThickness="0,1,0,0" Padding="4,4,4,6">
+          <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
+              <Button Classes="tab" Command="{Binding OpenWalletsCommand}" IsVisible="{Binding IsUnlocked}"
+                      ToolTip.Tip="{Binding [settings.tabWallets], Source={x:Static app:Loc.Instance}}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M3 7 H21 V17 H3 Z M16 12 A1.5 1.5 0 1 0 16 11.99 M3 10 H21"/>
+                  <TextBlock Text="{Binding ActiveWalletLabel}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio" Classes.active="{Binding IsPortfolio}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M4 11 L12 4 L20 11 M6 10 V20 H18 V10"/>
+                  <TextBlock Text="{Binding [nav.portfolio], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Receive" Classes.active="{Binding IsReceive}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M12 3 V17 M12 17 L6 11 M12 17 L18 11 M4 21 H20"/>
+                  <TextBlock Text="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Send" Classes.active="{Binding IsSend}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M12 21 V7 M12 7 L6 13 M12 7 L18 13 M4 3 H20"/>
+                  <TextBlock Text="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Buy" Classes.active="{Binding IsBuy}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M3 7 H21 V17 H3 Z M3 10 H21 M6 14 H10"/>
+                  <TextBlock Text="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Swap" Classes.active="{Binding IsSwap}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M6 8 H17 L14 5 M18 16 H7 L10 19"/>
+                  <TextBlock Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="P2p" Classes.active="{Binding IsP2p}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M9 10 A2.5 2.5 0 1 0 9 5 A2.5 2.5 0 0 0 9 10 M3 20 C3 16 6 14 9 14 C12 14 15 16 15 20 M16 5.5 A2 2 0 1 1 16 9.5 M15.5 14 C18 14 21 16 21 20"/>
+                  <TextBlock Text="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Market" Classes.active="{Binding IsMarket}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
+                  <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Connect" Classes.active="{Binding IsConnect}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M9.5 14.5 L14.5 9.5 M8 12 L5.5 14.5 A3.5 3.5 0 0 0 10.5 19.5 L13 17 M16 12 L18.5 9.5 A3.5 3.5 0 0 0 13.5 4.5 L11 7"/>
+                  <TextBlock Text="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Nfts" Classes.active="{Binding IsNfts}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M4 5 H20 V19 H4 Z M4 16 L9 11 L13 15 L16 12 L20 16 M9 9.5 A1 1 0 1 1 9 9.4"/>
+                  <TextBlock Text="{Binding [nav.nfts], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Staking" Classes.active="{Binding IsStaking}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"/>
+                  <TextBlock Text="{Binding [nav.staking], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Transactions" Classes.active="{Binding IsTransactions}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M8 7 H20 M8 12 H20 M8 17 H20 M4 7 H4.01 M4 12 H4.01 M4 17 H4.01"/>
+                  <TextBlock Text="{Binding [nav.transactions], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="News" Classes.active="{Binding IsNews}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M6 3 H16 L19 6 V21 H6 Z M9 8 H15 M9 12 H15 M9 16 H13"/>
+                  <TextBlock Text="{Binding [nav.news], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Activity" Classes.active="{Binding IsActivity}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M3 12 H7 L10 5 L14 19 L17 12 H21"/>
+                  <TextBlock Text="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Settings" Classes.active="{Binding IsSettings}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M12 9 A3 3 0 1 0 12 15 A3 3 0 0 0 12 9 M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22 M5.2 5.2 L7.3 7.3 M16.7 16.7 L18.8 18.8 M18.8 5.2 L16.7 7.3 M7.3 16.7 L5.2 18.8"/>
+                  <TextBlock Text="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding LockCommand}">
+                <StackPanel Spacing="3">
+                  <Path Classes="tabIcon" Data="M7 10 V7 A5 5 0 0 1 17 7 V10 M5 10 H19 V21 H5 Z M12 14 V17"/>
+                  <TextBlock Text="{Binding [nav.lock], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </ScrollViewer>
         </Border>
 
         <Grid RowDefinitions="*,Auto">
@@ -969,7 +1087,7 @@
 
                 <Border Classes="card" Background="{DynamicResource UmCardAlt}" Padding="16,12">
                   <StackPanel Spacing="4">
-                    <TextBlock Text="Where these come from" FontWeight="SemiBold" FontSize="12.5"/>
+                    <TextBlock Text="{Binding [sec.nftOrigin], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
                     <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640"
                                Text="Read straight from the Ethereum chain via a public explorer (Blockscout) against the same 0x address you receive to — nothing is uploaded and there is no marketplace account. The list refreshes when balances sync. Scanning NFTs on more chains (Polygon, BNB, Solana) is on the roadmap; for now only Ethereum is shown."/>
                   </StackPanel>
@@ -1284,7 +1402,7 @@
                 <!-- How it works: three steps, then a shortcut to the address you'll paste. -->
                 <Border Classes="card">
                   <StackPanel Spacing="12">
-                    <TextBlock Text="How it works" FontWeight="SemiBold" FontSize="14"/>
+                    <TextBlock Text="{Binding [sec.howItWorks], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="14"/>
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="14">
                       <StackPanel Spacing="4">
                         <TextBlock Text="1 · Copy your address" FontWeight="SemiBold" FontSize="12.5"/>
@@ -1346,7 +1464,7 @@
 
                 <Border Classes="card" Background="{DynamicResource UmCardAlt}">
                   <StackPanel Spacing="6">
-                    <TextBlock Text="Before you buy" FontWeight="SemiBold" FontSize="13"/>
+                    <TextBlock Text="{Binding [sec.beforeBuy], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
                     <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="720"
                                Text="These are independent third-party providers, listed for convenience — not endorsements, and Umbrella takes no fee. They are regulated on-ramps and will ask for ID (KYC); availability, limits and fees depend on your country. Always double-check the receiving address you paste matches the coin/network, confirm the amount on the provider's own page, and never share your recovery phrase — no on-ramp ever needs it."/>
                   </StackPanel>
@@ -1369,7 +1487,7 @@
                         <Border Background="{DynamicResource UmAccent}" CornerRadius="6" Padding="6,2">
                           <TextBlock Text="IN-WALLET" FontSize="9.5" FontWeight="Bold" Foreground="#FFFFFF"/>
                         </Border>
-                        <TextBlock Text="Swap right here" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding [sec.swapHere], Source={x:Static app:Loc.Instance}}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                       </StackPanel>
                       <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" TextWrapping="Wrap" MaxWidth="560"
                                  Text="Cross-chain swaps (e.g. BTC ↔ ETH) route through THORChain vaults — non-custodial, no account, no wrapped IOUs. Coins move on-chain and land back in your own addresses."/>
@@ -1415,7 +1533,7 @@
 
                 <Border Classes="card" Background="{DynamicResource UmCardAlt}">
                   <StackPanel Spacing="6">
-                    <TextBlock Text="A word on safety" FontWeight="SemiBold" FontSize="13"/>
+                    <TextBlock Text="{Binding [sec.safety], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
                     <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="720"
                                Text="These are independent third-party venues, listed for convenience — not endorsements, and Umbrella takes no fee and holds nothing. Every one keeps custody with you (an on-chain DEX or P2P escrow you co-sign). Always confirm the address bar yourself, and remember: no legitimate trade ever needs your recovery phrase. Fiat on-ramps generally require a regulated exchange and are intentionally not listed here."/>
                   </StackPanel>
@@ -1439,7 +1557,7 @@
                       <Image Source="avares://Umbrella.Wallet.App/Assets/tg-channel.png" Stretch="Uniform" Margin="4"/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                      <TextBlock Text="Official Telegram channel" FontWeight="SemiBold" FontSize="14"/>
+                      <TextBlock Text="{Binding [sec.tgChannel], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="14"/>
                       <TextBlock Text="t.me/UmbrellaWallet · news, releases &amp; contact — the only official channel"
                                  FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
                     </StackPanel>
@@ -2029,6 +2147,15 @@
                                Text="{Binding [settings.clipboardHint], Source={x:Static app:Loc.Instance}}"/>
                     <ComboBox ItemsSource="{Binding ClipboardClearOptions}" SelectedItem="{Binding ClipboardClearChoice}"
                               HorizontalAlignment="Stretch"/>
+
+                    <Border Background="#22FFFFFF" Height="1" Margin="0,10,0,4"/>
+
+                    <TextBlock Classes="eyebrow" Text="{Binding [settings.lockMin], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="{Binding [settings.lockMinHint], Source={x:Static app:Loc.Instance}}"/>
+                    <ToggleSwitch IsChecked="{Binding LockOnMinimize, Mode=TwoWay}"
+                                  OnContent="{Binding [settings.lockMinOn], Source={x:Static app:Loc.Instance}}"
+                                  OffContent="{Binding [settings.lockMinOff], Source={x:Static app:Loc.Instance}}"/>
                   </StackPanel>
                 </Border>
 
@@ -2075,9 +2202,17 @@
                   </StackPanel>
                 </Border>
 
+                <!-- Recovery phrase + (optional) Monero keys in ONE card, so it's clear the 24-word
+                     phrase is the real backup and the Monero keys are an advanced extra most people
+                     never need. -->
                 <Border Classes="card" IsVisible="{Binding IsTabBackup}">
                   <StackPanel Spacing="10">
                     <TextBlock Classes="eyebrow" Text="{Binding [settings.recovery], Source={x:Static app:Loc.Instance}}"/>
+                    <!-- Plain-language explanation of the two things below. -->
+                    <Border Background="{DynamicResource UmCardAlt}" CornerRadius="8" Padding="12,10">
+                      <TextBlock Foreground="{DynamicResource UmTextSoft}" FontSize="12" LineHeight="18" TextWrapping="Wrap"
+                                 Text="{Binding [settings.keysIntro], Source={x:Static app:Loc.Instance}}"/>
+                    </Border>
                     <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
                                Text="{Binding [settings.recoveryHint], Source={x:Static app:Loc.Instance}}"/>
                     <TextBox Text="{Binding SettingsPassword}" PasswordChar="●" Watermark="{Binding [settings.vaultPassword], Source={x:Static app:Loc.Instance}}" MaxWidth="320" HorizontalAlignment="Left"/>
@@ -2093,13 +2228,11 @@
                                 Command="{Binding HideSettingsPhraseCommand}"/>
                       </StackPanel>
                     </Border>
-                  </StackPanel>
-                </Border>
 
-                <!-- Monero keys export -->
-                <Border Classes="card" IsVisible="{Binding IsTabBackup}">
-                  <StackPanel Spacing="10">
-                    <TextBlock Classes="eyebrow" Text="{Binding [settings.moneroExport], Source={x:Static app:Loc.Instance}}"/>
+                    <!-- Secondary, clearly-optional: Monero keys, folded into the same card. -->
+                    <Border Background="#22FFFFFF" Height="1" Margin="0,12,0,4"/>
+                    <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextDim}"
+                               Text="{Binding [settings.moneroAdvanced], Source={x:Static app:Loc.Instance}}"/>
                     <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
                                Text="{Binding [settings.moneroExportHint], Source={x:Static app:Loc.Instance}}"/>
                     <Button Classes="ghost" Content="{Binding [settings.revealMoneroKeys], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left"

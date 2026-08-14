@@ -35,6 +35,16 @@ public partial class MainWindow : Window
         PointerPressed += OnUserActivity;
         KeyDown += OnUserActivity;
         Opened += (_, _) => ResetAutoLock();
+        // Privacy: lock the vault the instant the window is minimized, if the user opted in.
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property == WindowStateProperty
+                && (WindowState)e.NewValue! == WindowState.Minimized
+                && DataContext is MainViewModel { IsUnlocked: true, LockOnMinimize: true } vm)
+            {
+                vm.LockVault();
+            }
+        };
         // NOTE: the file dialogs are wired in OnDataContextChanged, NOT here — the window is created
         // with `new MainWindow { DataContext = vm }`, so DataContext is still null in the constructor.
 
