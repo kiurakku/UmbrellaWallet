@@ -467,7 +467,9 @@ public partial class MainViewModel : ViewModelBase
 
     public bool HasWalletName => !string.IsNullOrWhiteSpace(_uiSettings.WalletName);
 
-    public Dock SidebarDock => SidebarPosition switch
+    // Mobile mode forces a bottom tab bar regardless of the saved SidebarPosition, so the phone
+    // layout is consistent; the user's real preference is untouched and returns when it's turned off.
+    public Dock SidebarDock => MobileMode ? Dock.Bottom : SidebarPosition switch
     {
         "Right" => Dock.Right,
         "Top" => Dock.Top,
@@ -477,11 +479,40 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// Left and right keep the tall panel; top and bottom switch to a compact horizontal bar,
-    /// because a 248px-wide column laid on its side would eat most of the window height.
+    /// because a 248px-wide column laid on its side would eat most of the window height. Mobile mode
+    /// is always horizontal (a bottom bar).
     /// </summary>
-    public bool IsSidebarVertical => SidebarPosition is "Left" or "Right";
+    public bool IsSidebarVertical => !MobileMode && SidebarPosition is "Left" or "Right";
 
     public bool IsSidebarHorizontal => !IsSidebarVertical;
+
+    /// <summary>Phone-style compact layout on the desktop: a narrow centred column and a bottom tab
+    /// bar in a phone-sized window (the window itself is resized by the view). Persisted.</summary>
+    public bool MobileMode
+    {
+        get => _uiSettings.MobileMode;
+        set
+        {
+            if (_uiSettings.MobileMode == value) return;
+            _uiSettings.MobileMode = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SidebarDock));
+            OnPropertyChanged(nameof(IsSidebarVertical));
+            OnPropertyChanged(nameof(IsSidebarHorizontal));
+            OnPropertyChanged(nameof(ContentMaxWidth));
+            OnPropertyChanged(nameof(QuickActionColumns));
+            if (IsUnlocked) PushActivity("Settings", "Layout", value ? "mobile" : "desktop", "changed", "now");
+        }
+    }
+
+    /// <summary>Width cap for the main dashboard column — a phone-like column in mobile mode, the
+    /// roomy desktop width otherwise.</summary>
+    public double ContentMaxWidth => MobileMode ? 460 : 1120;
+
+    /// <summary>The quick-action tiles wrap to two columns on the narrow phone layout so their
+    /// labels don't clip; four across on the desktop.</summary>
+    public int QuickActionColumns => MobileMode ? 2 : 4;
 
     /// <summary>
     /// The wordmark, swapped for the dark version on light themes — the solid-white logo is
@@ -914,6 +945,13 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("NEW", "Use Umbrella like a phone app on your PC",
+            "Version 3.4:\n\n" +
+            "• Mobile layout. Settings → Appearance → Mobile layout turns the whole wallet into a phone-style app on your desktop — a narrow centred column, a bottom tab bar, and a phone-sized window. Flip it off and you're back to the full wide desktop layout instantly.\n" +
+            "• It remembers your setup. Mobile mode docks the menu to the bottom for that phone feel, but your saved menu position comes back untouched when you switch off.\n" +
+            "• Tidier on a narrow screen. The dashboard's quick actions now wrap to a 2×2 grid instead of squashing four across, and 'Prices & charts' is translated in every language.\n\n" +
+            "This is the first step toward a real phone build — the same layout that a future native Android app will use. 139/139 tests pass.",
+            "2026-08-14"),
         new("SECURITY", "Security review, a custom proxy, and IP controls",
             "Version 3.3 — a hardening + privacy release:\n\n" +
             "• Security review. A full pass over the wallet's crypto and storage. The vault now rejects out-of-range key-derivation parameters, so a tampered or foreign vault file can no longer stall or exhaust the app when you try to unlock it. The screenshot/screen-share blackout, the on-device Argon2id + AES-256-GCM vault and the sign-then-wipe key handling were all re-verified.\n" +

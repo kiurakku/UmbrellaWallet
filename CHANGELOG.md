@@ -4,6 +4,20 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [3.4.0] — 2026-08-14
+
+### Desktop
+- **Mobile layout on your PC.** Settings → Appearance → *Mobile layout*: the wallet renders as a
+  phone-style app — a narrow centred column, a bottom tab bar, and a phone-sized window (430×900) —
+  and switches straight back to the wide desktop layout when you turn it off. Your saved menu
+  position is preserved across the switch (mobile mode force-docks the nav to the bottom without
+  overwriting your preference).
+- **Responsive quick actions.** The dashboard's action tiles now wrap to a 2×2 grid in the mobile
+  layout instead of clipping four across, and "Prices & charts" is now localized in all six languages.
+
+### Verified
+139/139 tests pass; app smoke-launches clean. Anonymity/security model unchanged; updates preserve data.
+
 ## [3.3.0] — 2026-08-14
 
 ### Security & privacy

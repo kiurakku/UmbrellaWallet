@@ -457,7 +457,7 @@
             <!-- Cap the content column and CENTRE it, so a full-screen or large window doesn't
                  stretch the tiles and tables edge-to-edge and doesn't sit lopsided against the left
                  either — it reads as one tidy, balanced column at any size. -->
-            <StackPanel Spacing="24" Margin="34,32,34,88" MaxWidth="1120" HorizontalAlignment="Center">
+            <StackPanel Spacing="24" Margin="34,32,34,88" MaxWidth="{Binding ContentMaxWidth}" HorizontalAlignment="Center">
 
               <!-- Portfolio -->
               <StackPanel Classes="page" IsVisible="{Binding IsPortfolio}" Spacing="18">
@@ -507,9 +507,11 @@
                   </Panel>
                 </Border>
 
-                <!-- Quick actions as wide cards (icon · title · subtitle), like the reference. -->
-                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="14">
-                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Left" Padding="16,0"
+                <!-- Quick actions as wide cards (icon · title · subtitle), like the reference.
+                     UniformGrid so the row wraps to 2×2 on the narrow mobile layout instead of
+                     clipping four tiles across. -->
+                <UniformGrid Columns="{Binding QuickActionColumns}">
+                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Left" Padding="16,0" Margin="0,0,14,14"
                           Command="{Binding SelectSectionCommand}" CommandParameter="Receive">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                       <Path Classes="tileIcon" Data="M12 3 V17 M12 17 L6 11 M12 17 L18 11 M4 21 H20"/>
@@ -519,7 +521,7 @@
                       </StackPanel>
                     </StackPanel>
                   </Button>
-                  <Button Grid.Column="1" Classes="tile" Height="66" HorizontalContentAlignment="Left" Padding="16,0"
+                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Left" Padding="16,0" Margin="0,0,14,14"
                           Command="{Binding SelectSectionCommand}" CommandParameter="Send">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                       <Path Classes="tileIcon" Data="M12 21 V7 M12 7 L6 13 M12 7 L18 13 M4 3 H20"/>
@@ -529,7 +531,7 @@
                       </StackPanel>
                     </StackPanel>
                   </Button>
-                  <Button Grid.Column="2" Classes="tile" Height="66" HorizontalContentAlignment="Left" Padding="16,0"
+                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Left" Padding="16,0" Margin="0,0,14,14"
                           Command="{Binding SelectSectionCommand}" CommandParameter="Connect">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                       <Path Classes="tileIcon" Data="M9.5 14.5 L14.5 9.5 M8 12 L5.5 14.5 A3.5 3.5 0 0 0 10.5 19.5 L13 17 M16 12 L18.5 9.5 A3.5 3.5 0 0 0 13.5 4.5 L11 7"/>
@@ -539,17 +541,17 @@
                       </StackPanel>
                     </StackPanel>
                   </Button>
-                  <Button Grid.Column="3" Classes="tile" Height="66" HorizontalContentAlignment="Left" Padding="16,0"
+                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Left" Padding="16,0" Margin="0,0,14,14"
                           Command="{Binding SelectSectionCommand}" CommandParameter="Market">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                       <Path Classes="tileIcon" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
                       <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5"/>
-                        <TextBlock Text="Prices &amp; charts" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
+                        <TextBlock Text="{Binding [action.pricesCharts], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
                       </StackPanel>
                     </StackPanel>
                   </Button>
-                </Grid>
+                </UniformGrid>
 
                 <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
                   <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
@@ -1776,6 +1778,15 @@
                     <ComboBox ItemsSource="{Binding SidebarPositions}"
                               SelectedValue="{Binding SidebarPosition, Mode=TwoWay}"
                               Width="260" HorizontalAlignment="Left"/>
+
+                    <Border Background="#22FFFFFF" Height="1" Margin="0,10,0,4"/>
+
+                    <TextBlock Classes="eyebrow" Text="{Binding [settings.mobileMode], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="{Binding [settings.mobileModeHint], Source={x:Static app:Loc.Instance}}"/>
+                    <ToggleSwitch IsChecked="{Binding MobileMode, Mode=TwoWay}"
+                                  OnContent="{Binding [settings.mobileOn], Source={x:Static app:Loc.Instance}}"
+                                  OffContent="{Binding [settings.mobileOff], Source={x:Static app:Loc.Instance}}"/>
                   </StackPanel>
                 </Border>
 

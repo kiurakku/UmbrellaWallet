@@ -84,7 +84,51 @@ public partial class MainWindow : Window
         {
             _observed.PropertyChanged += OnViewModelPropertyChanged;
             UpdateCaptureProtection();
+            ApplyMobileMode();
             WirePickers(_observed);
+        }
+    }
+
+    /// <summary>Resizes the window to a phone shape (and back) when the mobile-layout setting flips.
+    /// The layout itself — bottom tab bar and narrow column — is driven by the view-model.</summary>
+    private void ApplyMobileMode()
+    {
+        if (_observed is null) return;
+        if (_observed.MobileMode)
+        {
+            WindowState = WindowState.Normal;
+            MinWidth = 360;
+            MinHeight = 640;
+            Width = 430;
+            Height = 900;
+        }
+        else
+        {
+            MinWidth = 1000;
+            MinHeight = 700;
+            Width = 1240;
+            Height = 820;
+        }
+        CenterOnScreen();
+    }
+
+    private void CenterOnScreen()
+    {
+        try
+        {
+            var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+            if (screen is null) return;
+            var area = screen.WorkingArea;
+            var scale = screen.Scaling <= 0 ? 1 : screen.Scaling;
+            var w = Width * scale;
+            var h = Height * scale;
+            Position = new Avalonia.PixelPoint(
+                area.X + (int)Math.Max(0, (area.Width - w) / 2),
+                area.Y + (int)Math.Max(0, (area.Height - h) / 2));
+        }
+        catch
+        {
+            // Positioning is cosmetic — never let it throw.
         }
     }
 
@@ -148,6 +192,12 @@ public partial class MainWindow : Window
         if (e.PropertyName is nameof(MainViewModel.AutoLockMinutes))
         {
             ResetAutoLock();
+        }
+
+        // Reshape the window when the mobile-layout setting is toggled.
+        if (e.PropertyName is nameof(MainViewModel.MobileMode))
+        {
+            ApplyMobileMode();
         }
     }
 

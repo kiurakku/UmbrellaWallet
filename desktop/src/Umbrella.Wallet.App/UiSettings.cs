@@ -15,6 +15,9 @@ public sealed class UiSettings
     public string Language { get; set; } = "en";
     public string Currency { get; set; } = "USD";
     public string SidebarPosition { get; set; } = "Left";
+    /// <summary>Phone-style compact layout on the desktop: a narrow centred column and a bottom
+    /// tab bar, in a phone-sized window. Off = the normal wide desktop layout.</summary>
+    public bool MobileMode { get; set; } = false;
     public bool AnimationsEnabled { get; set; } = true;
     /// <summary>Individual motion toggles (gated by the master AnimationsEnabled above).</summary>
     public bool RainEnabled { get; set; } = true;
