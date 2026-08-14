@@ -40,6 +40,9 @@ public sealed class UiSettings
     /// <summary>Lock the vault immediately whenever the window is minimized, so a shoulder-surfer or
     /// screen-share never catches an unlocked wallet left in the background.</summary>
     public bool LockOnMinimize { get; set; } = false;
+    /// <summary>Start every unlock with balances hidden (••••), so amounts aren't shown until you
+    /// choose to reveal them — good for use in public.</summary>
+    public bool HideBalancesDefault { get; set; } = false;
 
     /// <summary>A user-chosen label for this wallet, shown in the top bar; blank uses the brand only.</summary>
     public string WalletName { get; set; } = "";

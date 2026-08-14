@@ -4,6 +4,35 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [3.5.0] — 2026-08-15
+
+### Mobile layout (toward a Uniswap-style phone UI)
+- **Floating pill bottom nav** with five fixed slots (Portfolio · Receive · Send · Market · More) —
+  no more horizontal scrolling. Overflow sections open in a **"More" bottom sheet**.
+- The 330px side rail is **hidden on the phone layout**, so the content is a clean single column
+  instead of a cramped, crooked split.
+
+### UI fixes (from screenshots)
+- **the fear logo** now sits beside the umbrella on the welcome screen (replacing the sticker).
+- **Quick-action tiles no longer clip** long labels — icon + a bounded, ellipsised text column.
+- **Activity events are separate rounded cards** with gaps, not rows crammed into one field.
+- **Toasts are shorter** (≈2.2s notices / 3.5s errors), still top-centre.
+
+### Security
+- **Hide balances by default** (Settings → Security): every unlock starts with amounts hidden.
+
+### P2P & DEX
+- Added **SushiSwap** and **Raydium** (Solana) — both non-custodial. (We deliberately don't list
+  sites we can't verify as safe/non-custodial.)
+
+### Coin support (audit)
+- Sending is wired for BTC, ETH (+BNB/Polygon/Avalanche/Fantom/Cronos & L2s), LTC, SOL, XMR, TRON,
+  USDT-TRC20 and ADA, plus ERC-20/TRC-20 tokens; TON sending for imported TON wallets. DOGE and a
+  few others are receive/balance-only for now.
+
+### Verified
+139/139 tests pass; smoke-launches clean in desktop and mobile layouts.
+
 ## [3.4.2] — 2026-08-15
 
 ### Desktop

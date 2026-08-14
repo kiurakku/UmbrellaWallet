@@ -102,8 +102,8 @@
                 </Border>
                 <Image Source="{Binding LogoImage}" Width="132" Stretch="Uniform"/>
               </Panel>
-              <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/wau.json"
-                             Width="96" Height="96" VerticalAlignment="Center" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
+              <!-- The developer's own mark (the fear), beside the product logo — the brand behind it. -->
+              <Image Source="{Binding FearMark}" Width="92" Height="92" Stretch="Uniform" VerticalAlignment="Center"/>
             </StackPanel>
             <TextBlock Text="UMBRELLA WALLET" FontSize="30" FontWeight="SemiBold" LetterSpacing="4"
                        HorizontalAlignment="Center" Margin="0,16,0,0"/>
@@ -456,112 +456,45 @@
           </StackPanel>
         </Border>
 
-        <!-- ===== Mobile phone-style bottom tab bar (icons + labels), only in Mobile layout.
-             Horizontally scrollable so every section stays reachable on a phone-width window. ===== -->
-        <Border DockPanel.Dock="Bottom" IsVisible="{Binding IsMobileNav}"
-                Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}"
-                BorderThickness="0,1,0,0" Padding="4,4,4,6">
-          <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-            <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
-              <Button Classes="tab" Command="{Binding OpenWalletsCommand}" IsVisible="{Binding IsUnlocked}"
-                      ToolTip.Tip="{Binding [settings.tabWallets], Source={x:Static app:Loc.Instance}}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M3 7 H21 V17 H3 Z M16 12 A1.5 1.5 0 1 0 16 11.99 M3 10 H21"/>
-                  <TextBlock Text="{Binding ActiveWalletLabel}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio" Classes.active="{Binding IsPortfolio}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M4 11 L12 4 L20 11 M6 10 V20 H18 V10"/>
-                  <TextBlock Text="{Binding [nav.portfolio], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Receive" Classes.active="{Binding IsReceive}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M12 3 V17 M12 17 L6 11 M12 17 L18 11 M4 21 H20"/>
-                  <TextBlock Text="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Send" Classes.active="{Binding IsSend}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M12 21 V7 M12 7 L6 13 M12 7 L18 13 M4 3 H20"/>
-                  <TextBlock Text="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Buy" Classes.active="{Binding IsBuy}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M3 7 H21 V17 H3 Z M3 10 H21 M6 14 H10"/>
-                  <TextBlock Text="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Swap" Classes.active="{Binding IsSwap}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M6 8 H17 L14 5 M18 16 H7 L10 19"/>
-                  <TextBlock Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="P2p" Classes.active="{Binding IsP2p}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M9 10 A2.5 2.5 0 1 0 9 5 A2.5 2.5 0 0 0 9 10 M3 20 C3 16 6 14 9 14 C12 14 15 16 15 20 M16 5.5 A2 2 0 1 1 16 9.5 M15.5 14 C18 14 21 16 21 20"/>
-                  <TextBlock Text="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Market" Classes.active="{Binding IsMarket}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
-                  <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Connect" Classes.active="{Binding IsConnect}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M9.5 14.5 L14.5 9.5 M8 12 L5.5 14.5 A3.5 3.5 0 0 0 10.5 19.5 L13 17 M16 12 L18.5 9.5 A3.5 3.5 0 0 0 13.5 4.5 L11 7"/>
-                  <TextBlock Text="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Nfts" Classes.active="{Binding IsNfts}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M4 5 H20 V19 H4 Z M4 16 L9 11 L13 15 L16 12 L20 16 M9 9.5 A1 1 0 1 1 9 9.4"/>
-                  <TextBlock Text="{Binding [nav.nfts], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Staking" Classes.active="{Binding IsStaking}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"/>
-                  <TextBlock Text="{Binding [nav.staking], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Transactions" Classes.active="{Binding IsTransactions}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M8 7 H20 M8 12 H20 M8 17 H20 M4 7 H4.01 M4 12 H4.01 M4 17 H4.01"/>
-                  <TextBlock Text="{Binding [nav.transactions], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="News" Classes.active="{Binding IsNews}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M6 3 H16 L19 6 V21 H6 Z M9 8 H15 M9 12 H15 M9 16 H13"/>
-                  <TextBlock Text="{Binding [nav.news], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Activity" Classes.active="{Binding IsActivity}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M3 12 H7 L10 5 L14 19 L17 12 H21"/>
-                  <TextBlock Text="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Settings" Classes.active="{Binding IsSettings}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M12 9 A3 3 0 1 0 12 15 A3 3 0 0 0 12 9 M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22 M5.2 5.2 L7.3 7.3 M16.7 16.7 L18.8 18.8 M18.8 5.2 L16.7 7.3 M7.3 16.7 L5.2 18.8"/>
-                  <TextBlock Text="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding LockCommand}">
-                <StackPanel Spacing="3">
-                  <Path Classes="tabIcon" Data="M7 10 V7 A5 5 0 0 1 17 7 V10 M5 10 H19 V21 H5 Z M12 14 V17"/>
-                  <TextBlock Text="{Binding [nav.lock], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="56" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-            </StackPanel>
-          </ScrollViewer>
+        <!-- ===== Mobile phone-style bottom tab bar: a floating rounded pill (Uniswap-style) with
+             five fixed slots (no scrolling); overflow sections live in the "More" sheet. ===== -->
+        <Border DockPanel.Dock="Bottom" IsVisible="{Binding IsMobileNav}" Background="Transparent">
+          <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}" BorderThickness="1"
+                  CornerRadius="24" Margin="12,6,12,12" Padding="8,4" HorizontalAlignment="Stretch"
+                  BoxShadow="0 10 30 -10 #90000000">
+          <UniformGrid Columns="5">
+            <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio" Classes.active="{Binding IsPortfolio}">
+              <StackPanel Spacing="3">
+                <Path Classes="tabIcon" Data="M4 11 L12 4 L20 11 M6 10 V20 H18 V10"/>
+                <TextBlock Text="{Binding [nav.portfolio], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="66" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+            </Button>
+            <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Receive" Classes.active="{Binding IsReceive}">
+              <StackPanel Spacing="3">
+                <Path Classes="tabIcon" Data="M12 3 V17 M12 17 L6 11 M12 17 L18 11 M4 21 H20"/>
+                <TextBlock Text="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="66" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+            </Button>
+            <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Send" Classes.active="{Binding IsSend}">
+              <StackPanel Spacing="3">
+                <Path Classes="tabIcon" Data="M12 21 V7 M12 7 L6 13 M12 7 L18 13 M4 3 H20"/>
+                <TextBlock Text="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="66" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+            </Button>
+            <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Market" Classes.active="{Binding IsMarket}">
+              <StackPanel Spacing="3">
+                <Path Classes="tabIcon" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
+                <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="66" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+            </Button>
+            <Button Classes="tab" Command="{Binding ToggleMoreSheetCommand}" Classes.active="{Binding IsMoreSheetOpen}">
+              <StackPanel Spacing="3">
+                <Path Classes="tabIcon" Data="M5 12 H5.01 M12 12 H12.01 M19 12 H19.01"/>
+                <TextBlock Text="{Binding [nav.more], Source={x:Static app:Loc.Instance}}" FontSize="9" HorizontalAlignment="Center" MaxWidth="66" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+            </Button>
+          </UniformGrid>
+          </Border>
         </Border>
 
         <Grid RowDefinitions="*,Auto">
@@ -629,45 +562,45 @@
                      UniformGrid so the row wraps to 2×2 on the narrow mobile layout instead of
                      clipping four tiles across. -->
                 <UniformGrid Columns="{Binding QuickActionColumns}">
-                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Left" Padding="16,0" Margin="0,0,14,14"
+                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
                           Command="{Binding SelectSectionCommand}" CommandParameter="Receive">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                      <Path Classes="tileIcon" Data="M12 3 V17 M12 17 L6 11 M12 17 L18 11 M4 21 H20"/>
-                      <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5"/>
-                        <TextBlock Text="{Binding [action.getCrypto], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
+                    <Grid ColumnDefinitions="Auto,*">
+                      <Path Classes="tileIcon" VerticalAlignment="Center" Data="M12 3 V17 M12 17 L6 11 M12 17 L18 11 M4 21 H20"/>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <TextBlock Text="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding [action.getCrypto], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
                       </StackPanel>
-                    </StackPanel>
+                    </Grid>
                   </Button>
-                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Left" Padding="16,0" Margin="0,0,14,14"
+                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
                           Command="{Binding SelectSectionCommand}" CommandParameter="Send">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                      <Path Classes="tileIcon" Data="M12 21 V7 M12 7 L6 13 M12 7 L18 13 M4 3 H20"/>
-                      <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5"/>
-                        <TextBlock Text="{Binding [action.sendCrypto], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
+                    <Grid ColumnDefinitions="Auto,*">
+                      <Path Classes="tileIcon" VerticalAlignment="Center" Data="M12 21 V7 M12 7 L6 13 M12 7 L18 13 M4 3 H20"/>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <TextBlock Text="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding [action.sendCrypto], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
                       </StackPanel>
-                    </StackPanel>
+                    </Grid>
                   </Button>
-                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Left" Padding="16,0" Margin="0,0,14,14"
+                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
                           Command="{Binding SelectSectionCommand}" CommandParameter="Connect">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                      <Path Classes="tileIcon" Data="M9.5 14.5 L14.5 9.5 M8 12 L5.5 14.5 A3.5 3.5 0 0 0 10.5 19.5 L13 17 M16 12 L18.5 9.5 A3.5 3.5 0 0 0 13.5 4.5 L11 7"/>
-                      <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5"/>
-                        <TextBlock Text="{Binding [action.linkWallets], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
+                    <Grid ColumnDefinitions="Auto,*">
+                      <Path Classes="tileIcon" VerticalAlignment="Center" Data="M9.5 14.5 L14.5 9.5 M8 12 L5.5 14.5 A3.5 3.5 0 0 0 10.5 19.5 L13 17 M16 12 L18.5 9.5 A3.5 3.5 0 0 0 13.5 4.5 L11 7"/>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <TextBlock Text="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding [action.linkWallets], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
                       </StackPanel>
-                    </StackPanel>
+                    </Grid>
                   </Button>
-                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Left" Padding="16,0" Margin="0,0,14,14"
+                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
                           Command="{Binding SelectSectionCommand}" CommandParameter="Market">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                      <Path Classes="tileIcon" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
-                      <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5"/>
-                        <TextBlock Text="{Binding [action.pricesCharts], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
+                    <Grid ColumnDefinitions="Auto,*">
+                      <Path Classes="tileIcon" VerticalAlignment="Center" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding [action.pricesCharts], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
                       </StackPanel>
-                    </StackPanel>
+                    </Grid>
                   </Button>
                 </UniformGrid>
 
@@ -1663,30 +1596,31 @@
                   </StackPanel>
                 </Border>
 
-                <Border Classes="hairline" IsVisible="{Binding HasFilteredActivity}">
-                  <ItemsControl ItemsSource="{Binding FilteredActivity}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:ActivityRowViewModel">
-                        <Button Classes="ghost" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                                Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).CopyActivityLinkCommand}"
-                                CommandParameter="{Binding}" IsEnabled="{Binding HasLink}">
-                          <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,0,0,1" Height="52" Padding="14,0" Background="Transparent">
-                            <Grid ColumnDefinitions="120,*,Auto,64">
-                              <TextBlock Text="{Binding Kind}" Foreground="{Binding KindColor}" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                              <TextBlock Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
-                                         Text="{Binding Counterparty}" VerticalAlignment="Center"/>
-                              <TextBlock Grid.Column="2" Classes="mono" Text="{Binding Amount}" VerticalAlignment="Center"/>
-                              <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11" Text="{Binding When}"/>
-                                <TextBlock Foreground="{DynamicResource UmAccent}" FontSize="11" Text="↗" IsVisible="{Binding HasLink}"/>
-                              </StackPanel>
-                            </Grid>
-                          </Border>
-                        </Button>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </Border>
+                <ItemsControl ItemsSource="{Binding FilteredActivity}" IsVisible="{Binding HasFilteredActivity}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ActivityRowViewModel">
+                      <!-- Each event is its own rounded card with a gap, instead of rows crammed into
+                           one bordered field. -->
+                      <Button Classes="ghost" Padding="0" Margin="0,0,0,8" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                              Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).CopyActivityLinkCommand}"
+                              CommandParameter="{Binding}" IsEnabled="{Binding HasLink}">
+                        <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
+                                BorderThickness="1" CornerRadius="12" Height="54" Padding="16,0">
+                          <Grid ColumnDefinitions="120,*,Auto,64">
+                            <TextBlock Text="{Binding Kind}" Foreground="{Binding KindColor}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
+                                       Text="{Binding Counterparty}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Grid.Column="2" Classes="mono" Text="{Binding Amount}" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center">
+                              <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11" Text="{Binding When}"/>
+                              <TextBlock Foreground="{DynamicResource UmAccent}" FontSize="11" Text="↗" IsVisible="{Binding HasLink}"/>
+                            </StackPanel>
+                          </Grid>
+                        </Border>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
               </StackPanel>
 
               <!-- Settings. Split into panes: one long scroll buried the danger zone under the
@@ -2021,6 +1955,15 @@
                     <ComboBox ItemsSource="{Binding AutoLockOptions}" SelectedValue="{Binding AutoLockChoice, Mode=TwoWay}"
                               MinWidth="220" HorizontalAlignment="Left"/>
                     <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextMuted}" Text="{Binding AutoLockLabel}"/>
+
+                    <Border Background="#22FFFFFF" Height="1" Margin="0,10,0,4"/>
+
+                    <TextBlock Classes="eyebrow" Text="{Binding [settings.hideBal], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="{Binding [settings.hideBalHint], Source={x:Static app:Loc.Instance}}"/>
+                    <ToggleSwitch IsChecked="{Binding HideBalancesDefault, Mode=TwoWay}"
+                                  OnContent="{Binding [settings.hideBalOn], Source={x:Static app:Loc.Instance}}"
+                                  OffContent="{Binding [settings.hideBalOff], Source={x:Static app:Loc.Instance}}"/>
                   </StackPanel>
                 </Border>
 
@@ -2320,7 +2263,7 @@
 
           <!-- Right rail (Portfolio only): overview ring · recent activity · market overview.
                Collapses to zero width on other sections (Auto column + a hidden Border). -->
-          <Border Grid.Column="1" IsVisible="{Binding IsPortfolio}" Width="330"
+          <Border Grid.Column="1" IsVisible="{Binding ShowSideRail}" Width="330"
                   Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}" BorderThickness="1,0,0,0">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
               <StackPanel Margin="18,22" Spacing="16">
@@ -2461,6 +2404,93 @@
           </Border>
         </Grid>
       </DockPanel>
+
+      <!-- ===== Mobile "More" sheet: overflow sections that don't fit the 5-slot bottom bar. ===== -->
+      <Grid ZIndex="220" IsVisible="{Binding IsMoreSheetOpen}">
+        <Border Background="#99000000"/>
+        <Button Classes="backdrop" Command="{Binding CloseMoreSheetCommand}"/>
+        <Border VerticalAlignment="Bottom" Background="{DynamicResource UmBgAlt}"
+                BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0"
+                CornerRadius="18,18,0,0" Padding="16,12,16,18">
+          <StackPanel Spacing="12">
+            <Border Width="42" Height="4" CornerRadius="2" Background="{DynamicResource UmBorder3}" HorizontalAlignment="Center"/>
+            <UniformGrid Columns="4">
+              <Button Classes="tab" Command="{Binding OpenWalletsCommand}" IsVisible="{Binding IsUnlocked}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M3 7 H21 V17 H3 Z M16 12 A1.5 1.5 0 1 0 16 11.99 M3 10 H21"/>
+                  <TextBlock Text="{Binding ActiveWalletLabel}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Buy" Classes.active="{Binding IsBuy}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M3 7 H21 V17 H3 Z M3 10 H21 M6 14 H10"/>
+                  <TextBlock Text="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Swap" Classes.active="{Binding IsSwap}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M6 8 H17 L14 5 M18 16 H7 L10 19"/>
+                  <TextBlock Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="P2p" Classes.active="{Binding IsP2p}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M9 10 A2.5 2.5 0 1 0 9 5 A2.5 2.5 0 0 0 9 10 M3 20 C3 16 6 14 9 14 C12 14 15 16 15 20 M16 5.5 A2 2 0 1 1 16 9.5 M15.5 14 C18 14 21 16 21 20"/>
+                  <TextBlock Text="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Connect" Classes.active="{Binding IsConnect}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M9.5 14.5 L14.5 9.5 M8 12 L5.5 14.5 A3.5 3.5 0 0 0 10.5 19.5 L13 17 M16 12 L18.5 9.5 A3.5 3.5 0 0 0 13.5 4.5 L11 7"/>
+                  <TextBlock Text="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Nfts" Classes.active="{Binding IsNfts}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M4 5 H20 V19 H4 Z M4 16 L9 11 L13 15 L16 12 L20 16 M9 9.5 A1 1 0 1 1 9 9.4"/>
+                  <TextBlock Text="{Binding [nav.nfts], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Staking" Classes.active="{Binding IsStaking}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"/>
+                  <TextBlock Text="{Binding [nav.staking], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Transactions" Classes.active="{Binding IsTransactions}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M8 7 H20 M8 12 H20 M8 17 H20 M4 7 H4.01 M4 12 H4.01 M4 17 H4.01"/>
+                  <TextBlock Text="{Binding [nav.transactions], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="News" Classes.active="{Binding IsNews}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M6 3 H16 L19 6 V21 H6 Z M9 8 H15 M9 12 H15 M9 16 H13"/>
+                  <TextBlock Text="{Binding [nav.news], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Activity" Classes.active="{Binding IsActivity}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M3 12 H7 L10 5 L14 19 L17 12 H21"/>
+                  <TextBlock Text="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Settings" Classes.active="{Binding IsSettings}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M12 9 A3 3 0 1 0 12 15 A3 3 0 0 0 12 9 M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22 M5.2 5.2 L7.3 7.3 M16.7 16.7 L18.8 18.8 M18.8 5.2 L16.7 7.3 M7.3 16.7 L5.2 18.8"/>
+                  <TextBlock Text="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Command="{Binding LockCommand}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M7 10 V7 A5 5 0 0 1 17 7 V10 M5 10 H19 V21 H5 Z M12 14 V17"/>
+                  <TextBlock Text="{Binding [nav.lock], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+            </UniformGrid>
+          </StackPanel>
+        </Border>
+      </Grid>
     </Grid>
 
     <!-- ============================ AMBIENT RAIN ============================

@@ -431,6 +431,20 @@ public partial class MainViewModel : ViewModelBase
     public System.Collections.Generic.IReadOnlyList<string> ClipboardClearOptions { get; } =
         new[] { "Never", "30 seconds", "45 seconds", "1 minute", "2 minutes" };
 
+    /// <summary>Start each unlock with balances hidden. Persisted.</summary>
+    public bool HideBalancesDefault
+    {
+        get => _uiSettings.HideBalancesDefault;
+        set
+        {
+            if (_uiSettings.HideBalancesDefault == value) return;
+            _uiSettings.HideBalancesDefault = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            if (value) IsBalanceHidden = true;
+        }
+    }
+
     /// <summary>Lock the vault the moment the window is minimized. Persisted; the window reads it.</summary>
     public bool LockOnMinimize
     {
@@ -525,6 +539,8 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(IsDesktopHorizontalNav));
             OnPropertyChanged(nameof(ContentMaxWidth));
             OnPropertyChanged(nameof(QuickActionColumns));
+            OnPropertyChanged(nameof(ShowSideRail));
+            if (!value) IsMoreSheetOpen = false;
             if (IsUnlocked) PushActivity("Settings", "Layout", value ? "mobile" : "desktop", "changed", "now");
         }
     }
@@ -968,6 +984,17 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("NEW", "A Uniswap-style mobile UI + a batch of interface fixes",
+            "Version 3.5.0 — mobile polish and fixes from your screenshots:\n\n" +
+            "• Uniswap-style phone nav. The mobile layout now has a floating pill bottom bar with five fixed tabs (Portfolio · Receive · Send · Market · More) — no more sideways scrolling. The rest of the sections open in a tidy 'More' sheet.\n" +
+            "• Cleaner phone screen. The wide side panel is hidden on mobile, so it's one clean column instead of a cramped split.\n" +
+            "• the fear logo now sits beside the umbrella on the welcome screen.\n" +
+            "• Quick-action tiles no longer cut off their labels, and the Activity list now shows each event as its own rounded card with spacing.\n" +
+            "• Toasts are quicker and stay top-centre.\n" +
+            "• New: Hide balances by default (Settings → Security) — every unlock starts with amounts hidden.\n" +
+            "• More non-custodial P2P/DEX venues: SushiSwap and Raydium.\n\n" +
+            "Still ahead: real on-chain transaction history (including before you connected), Telegram-gift NFTs, one-coin wallets, and wider swap coverage. 139/139 tests pass.",
+            "2026-08-15"),
         new("NEW", "A real phone layout, clearer backup, lock-on-minimize",
             "Version 3.4.2 — polish from your feedback:\n\n" +
             "• Mobile layout now feels like a phone. It has a proper bottom icon tab bar (scroll it for every section) instead of a squished desktop menu, and the dashboard actions wrap to 2×2. There's also a soft glow behind the the-fear logo on the welcome screen.\n" +
@@ -1225,6 +1252,19 @@ public partial class MainViewModel : ViewModelBase
 
     public string VaultLocation => _vault.VaultPath;
     public bool IsPortfolio => ActiveSection == "Portfolio";
+
+    /// <summary>The 330px right rail only makes sense on the wide desktop layout — on the narrow phone
+    /// layout it would crowd the content, so it's hidden there and the column stays clean.</summary>
+    public bool ShowSideRail => IsPortfolio && !MobileMode;
+
+    /// <summary>The mobile "More" sheet: overflow sections that don't fit the 5-slot bottom bar.</summary>
+    [ObservableProperty] private bool _isMoreSheetOpen;
+
+    [RelayCommand]
+    private void ToggleMoreSheet() => IsMoreSheetOpen = !IsMoreSheetOpen;
+
+    [RelayCommand]
+    private void CloseMoreSheet() => IsMoreSheetOpen = false;
     public bool IsReceive => ActiveSection == "Receive";
     public bool IsSend => ActiveSection == "Send";
     public bool IsSwap => ActiveSection == "Swap";
@@ -1279,7 +1319,12 @@ public partial class MainViewModel : ViewModelBase
     }
 
     partial void OnHasVaultChanged(bool value) => NotifySectionFlags();
-    partial void OnIsUnlockedChanged(bool value) => NotifySectionFlags();
+    partial void OnIsUnlockedChanged(bool value)
+    {
+        NotifySectionFlags();
+        // If the user asked for it, every unlock starts with balances hidden.
+        if (value && _uiSettings.HideBalancesDefault) IsBalanceHidden = true;
+    }
     partial void OnSetupStageChanged(string value) => NotifySectionFlags();
     partial void OnPendingPhraseBackupChanged(bool value) => NotifySectionFlags();
 
@@ -1373,6 +1418,7 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsBackupStage));
         OnPropertyChanged(nameof(IsWorkspace));
         OnPropertyChanged(nameof(ShowSidebar));
+        OnPropertyChanged(nameof(ShowSideRail));
     }
 
     // --- Onboarding navigation (full-screen pages) ----------------------------
@@ -2190,6 +2236,8 @@ public partial class MainViewModel : ViewModelBase
 
         // Never leave the QR popup floating over a different section.
         IsQrPopupOpen = false;
+        // Choosing a section from the mobile "More" sheet closes it.
+        IsMoreSheetOpen = false;
 
         ActiveSection = section;
         StatusMessage = section switch
@@ -2259,6 +2307,12 @@ public partial class MainViewModel : ViewModelBase
         new("Osmosis", "DEX · Cosmos", "Non-custodial",
             "The main Cosmos-ecosystem DEX — cross-chain swaps over IBC, fast and low-fee, custody stays with you.",
             "https://app.osmosis.zone", "OSMO", "#7A5CFF"),
+        new("SushiSwap", "DEX", "Non-custodial",
+            "Long-running multi-chain DEX (Ethereum, Arbitrum, Base, Polygon and more) — swap and pool on-chain, no account.",
+            "https://www.sushi.com/swap", "SUSHI", "#E5568F"),
+        new("Raydium", "DEX · Solana", "Non-custodial",
+            "A leading Solana AMM/DEX — fast, cheap on-chain swaps across the Solana ecosystem.",
+            "https://raydium.io/swap", "RAY", "#3AB7E0"),
         new("Bisq", "P2P exchange", "Non-custodial · P2P",
             "Desktop, account-free Bitcoin ↔ fiat over a secured peer network with security deposits. Nothing is held by a company.",
             "https://bisq.network", "BSQ", "#25B135"),
@@ -4457,7 +4511,8 @@ public partial class MainViewModel : ViewModelBase
         ToastVisible = true;
         _toastTimer ??= new Avalonia.Threading.DispatcherTimer();
         _toastTimer.Stop();
-        _toastTimer.Interval = TimeSpan.FromSeconds(isError ? 5 : 3);
+        // Kept short so a toast is a quick "спливашка", not something that lingers.
+        _toastTimer.Interval = TimeSpan.FromSeconds(isError ? 3.5 : 2.2);
         _toastTimer.Tick -= HideToastTick;
         _toastTimer.Tick += HideToastTick;
         _toastTimer.Start();

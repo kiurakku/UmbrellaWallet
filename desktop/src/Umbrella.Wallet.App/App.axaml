@@ -322,7 +322,9 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Padding" Value="0,7" />
-            <Setter Property="Width" Value="60" />
+            <Setter Property="MinWidth" Value="52" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource UmTextDim}" />
         </Style>
         <Style Selector="Button.tab /template/ ContentPresenter">
