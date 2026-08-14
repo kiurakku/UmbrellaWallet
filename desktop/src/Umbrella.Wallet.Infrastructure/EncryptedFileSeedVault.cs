@@ -101,6 +101,17 @@ public sealed class EncryptedFileSeedVault
             throw new NotSupportedException($"Unsupported vault version: {envelope.Version}.");
         }
 
+        // Defence-in-depth: the KDF parameters are read from the file, so a tampered or foreign
+        // vault could ask for gigabytes of memory or millions of passes and hang/OOM the app the
+        // moment someone tries to unlock it. Legitimate vaults only ever use 64 MiB / t=4 / p=2, so
+        // reject anything outside a sane envelope instead of feeding it to Argon2.
+        if (envelope.MemorySizeKb is < 8 * 1024 or > 1024 * 1024 ||
+            envelope.Iterations is < 1 or > 64 ||
+            envelope.Parallelism is < 1 or > 16)
+        {
+            throw new InvalidDataException("Vault KDF parameters are out of the supported range.");
+        }
+
         var salt = Convert.FromBase64String(envelope.Salt);
         var nonce = Convert.FromBase64String(envelope.Nonce);
         var ciphertext = Convert.FromBase64String(envelope.Ciphertext);

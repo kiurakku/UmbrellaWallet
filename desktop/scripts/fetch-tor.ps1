@@ -16,6 +16,16 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Idempotent: if the bundle is already staged, skip the download entirely. This keeps repeat
+# builds offline-friendly and — importantly — means a build never breaks just because the pinned
+# upstream version has been rotated off the Tor mirror (they prune old releases).
+$haveAll = @('tor.exe', 'geoip', 'geoip6') |
+    ForEach-Object { Test-Path (Join-Path $Destination $_) }
+if ($haveAll -notcontains $false) {
+    Write-Host "Tor already staged in $Destination — skipping download."
+    return
+}
+
 $archive = "tor-expert-bundle-windows-x86_64-$Version.tar.gz"
 $url = "https://dist.torproject.org/torbrowser/$Version/$archive"
 $work = Join-Path ([System.IO.Path]::GetTempPath()) "umbrella-tor-$Version"

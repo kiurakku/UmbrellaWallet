@@ -313,6 +313,139 @@ public partial class MainViewModel : ViewModelBase
         ? "Auto-lock · off"
         : $"Auto-lock · {AutoLockChoice} idle";
 
+    // ---- Privacy: custom SOCKS proxy, IP family, clipboard auto-clear ----
+
+    [ObservableProperty] private string _proxyStatus = string.Empty;
+    [ObservableProperty] private string _proxyStatusColor = "#8B909A";
+
+    /// <summary>Route traffic through a user-supplied SOCKS5 proxy instead of the bundled Tor.</summary>
+    public bool CustomProxyEnabled
+    {
+        get => _uiSettings.CustomProxyEnabled;
+        set
+        {
+            if (_uiSettings.CustomProxyEnabled == value) return;
+            _uiSettings.CustomProxyEnabled = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            ApplyCustomProxy();
+        }
+    }
+
+    /// <summary>The user's SOCKS5 proxy string; "host:port" or a full socks5:// URI.</summary>
+    public string CustomProxyUri
+    {
+        get => _uiSettings.CustomProxyUri;
+        set
+        {
+            if (_uiSettings.CustomProxyUri == value) return;
+            _uiSettings.CustomProxyUri = value ?? string.Empty;
+            _uiSettings.Save();
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Normalises "host:port" or a socks URI into a canonical socks URI, or null if invalid.</summary>
+    private static string? NormalizeProxyUri(string? raw)
+    {
+        var s = (raw ?? string.Empty).Trim();
+        if (s.Length == 0) return null;
+        if (!s.Contains("://", StringComparison.Ordinal)) s = "socks5://" + s;
+        if (!Uri.TryCreate(s, UriKind.Absolute, out var uri)) return null;
+        var scheme = uri.Scheme.ToLowerInvariant();
+        if (scheme is not ("socks5" or "socks5h" or "socks4" or "socks4a")) return null;
+        if (uri.Port <= 0 || string.IsNullOrEmpty(uri.Host)) return null;
+        return $"{scheme}://{uri.Host}:{uri.Port}";
+    }
+
+    /// <summary>The custom proxy URI if it's enabled and valid, otherwise null.</summary>
+    private string? EffectiveCustomProxy() =>
+        CustomProxyEnabled ? NormalizeProxyUri(CustomProxyUri) : null;
+
+    [RelayCommand]
+    private void ApplyCustomProxy()
+    {
+        if (!CustomProxyEnabled)
+        {
+            // Hand routing back to Tor (its proxy if on, else direct).
+            PublicHttp.SetProxy(TorEnabled ? _tor.ProxyUri : null);
+            ProxyStatus = string.Empty;
+            _ = RefreshMarketAsync();
+            return;
+        }
+
+        var normalized = EffectiveCustomProxy();
+        if (normalized is null)
+        {
+            ProxyStatus = "Enter a valid SOCKS proxy, e.g. socks5://127.0.0.1:9050";
+            ProxyStatusColor = "#E09A9A";
+            return;
+        }
+
+        // A custom proxy and the bundled Tor are mutually exclusive routes.
+        if (TorEnabled)
+        {
+            TorEnabled = false;
+            _tor.Stop();
+            TorStatus = "Off · using your custom proxy instead";
+            TorStatusColor = "#E7CA83";
+        }
+
+        PublicHttp.SetProxy(normalized);
+        ProxyStatus = $"Routing through {normalized}";
+        ProxyStatusColor = "#8FCB9B";
+        if (IsUnlocked) PushActivity("Security", "Proxy", "on", normalized, "now");
+        _ = RefreshMarketAsync();
+    }
+
+    public System.Collections.Generic.IReadOnlyList<string> IpModeOptions { get; } =
+        new[] { "Automatic", "IPv4 only", "IPv6 only" };
+
+    /// <summary>Which IP family direct connections may use. Persisted; applied immediately.</summary>
+    public string IpModeChoice
+    {
+        get => _uiSettings.IpMode switch
+        {
+            "ipv4" => "IPv4 only",
+            "ipv6" => "IPv6 only",
+            _ => "Automatic",
+        };
+        set
+        {
+            var code = value switch { "IPv4 only" => "ipv4", "IPv6 only" => "ipv6", _ => "auto" };
+            if (_uiSettings.IpMode == code) return;
+            _uiSettings.IpMode = code;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            PublicHttp.SetIpPreference(PublicHttp.ParseIpMode(code));
+            if (IsUnlocked) PushActivity("Security", "IP version", value, "changed", "now");
+            _ = RefreshMarketAsync();
+        }
+    }
+
+    private static readonly Dictionary<string, int> ClipboardClearMap = new()
+    {
+        ["Never"] = 0, ["30 seconds"] = 30, ["45 seconds"] = 45, ["1 minute"] = 60, ["2 minutes"] = 120,
+    };
+
+    public System.Collections.Generic.IReadOnlyList<string> ClipboardClearOptions { get; } =
+        new[] { "Never", "30 seconds", "45 seconds", "1 minute", "2 minutes" };
+
+    /// <summary>How long a copied address stays on the clipboard before it's auto-wiped. Persisted.</summary>
+    public string ClipboardClearChoice
+    {
+        get => ClipboardClearMap.FirstOrDefault(kv => kv.Value == _uiSettings.ClipboardAutoClearSeconds).Key
+               ?? "45 seconds";
+        set
+        {
+            if (!ClipboardClearMap.TryGetValue(value, out var secs) ||
+                secs == _uiSettings.ClipboardAutoClearSeconds) return;
+            _uiSettings.ClipboardAutoClearSeconds = secs;
+            _uiSettings.Save();
+            OnPropertyChanged();
+        }
+    }
+
     /// <summary>A user-chosen name for this wallet, shown in the top bar. Persisted.</summary>
     public string WalletName
     {
@@ -673,6 +806,15 @@ public partial class MainViewModel : ViewModelBase
         BuildGuide();
         LoadProfileImages();
 
+        // Apply saved privacy routing before any network call goes out.
+        PublicHttp.SetIpPreference(PublicHttp.ParseIpMode(_uiSettings.IpMode));
+        if (EffectiveCustomProxy() is { } startupProxy)
+        {
+            PublicHttp.SetProxy(startupProxy);
+            ProxyStatus = $"Routing through {startupProxy}";
+            ProxyStatusColor = "#8FCB9B";
+        }
+
         Fx.Symbol = Fx.SymbolFor(_uiSettings.Currency); // right symbol immediately; rate loads next
         _ = LoadWatchAddressesAsync();
         _ = ApplyCurrencyAsync(); // fetches the USD→currency rate, then refreshes market/holdings
@@ -772,6 +914,15 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("SECURITY", "Security review, a custom proxy, and IP controls",
+            "Version 3.3 — a hardening + privacy release:\n\n" +
+            "• Security review. A full pass over the wallet's crypto and storage. The vault now rejects out-of-range key-derivation parameters, so a tampered or foreign vault file can no longer stall or exhaust the app when you try to unlock it. The screenshot/screen-share blackout, the on-device Argon2id + AES-256-GCM vault and the sign-then-wipe key handling were all re-verified.\n" +
+            "• Custom proxy. Settings → Privacy now lets you route every request through your own SOCKS5 proxy — a VPN, an SSH tunnel or another Tor instance — instead of the bundled Tor. Enter host:port and apply; Tor and your proxy are mutually exclusive.\n" +
+            "• IP version control. Force outgoing connections onto IPv4 or IPv6, or leave it automatic — handy on networks where one family is broken or leaks.\n" +
+            "• Clipboard auto-clear. A copied address is now wiped from the clipboard after a delay you choose (off / 30s / 45s / 1m / 2m), so it doesn't linger for other apps to read.\n" +
+            "• More of the app is translated. The onboarding screens (create / import / unlock / restore / back-up), the section titles and the holdings columns now follow your language in all six locales instead of showing English.\n" +
+            "• Trustworthier installer. The Windows setup now shows the licence, carries proper publisher details, and on uninstall tells you exactly where your encrypted wallet data is kept and how to erase it yourself.",
+            "2026-08-14"),
         new("NEW", "Custom lock screen + instant market",
             "Version 3.2:\n\n" +
             "• Lock-screen background is yours: Settings → Appearance → Lock screen — pick your own image, use the default, or turn it off for a flat lock screen.\n" +
@@ -1460,12 +1611,23 @@ public partial class MainViewModel : ViewModelBase
         if (!TorEnabled)
         {
             _tor.Stop();
-            PublicHttp.SetProxy(null);
-            TorStatus = "Direct connection · traffic is NOT anonymised";
+            // Fall back to the custom proxy if the user has one, otherwise go direct.
+            var fallback = EffectiveCustomProxy();
+            PublicHttp.SetProxy(fallback);
+            TorStatus = fallback is null
+                ? "Direct connection · traffic is NOT anonymised"
+                : $"Off · using your custom proxy ({fallback})";
             TorStatusColor = "#E7CA83";
             if (IsUnlocked) PushActivity("Security", "Tor", "off", "direct connection", "now");
             _ = RefreshMarketAsync();
             return;
+        }
+
+        // Tor and a custom proxy are mutually exclusive — turning Tor on takes over the route.
+        if (CustomProxyEnabled)
+        {
+            CustomProxyEnabled = false;
+            ProxyStatus = "Off · Tor is handling the route";
         }
 
         if (!EmbeddedTorService.IsBundlePresent)
@@ -4024,7 +4186,7 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private static async Task CopyTextAsync(string text)
+    private async Task CopyTextAsync(string text)
     {
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime
             {
@@ -4032,7 +4194,32 @@ public partial class MainViewModel : ViewModelBase
             })
         {
             await clipboard.SetTextAsync(text);
+            var seconds = _uiSettings.ClipboardAutoClearSeconds;
+            if (seconds > 0) ScheduleClipboardClear(clipboard, text, seconds);
         }
+    }
+
+    /// <summary>Wipes the clipboard after a delay, but only if it still holds exactly what we put
+    /// there — so a later copy the user makes is never clobbered. Best-effort; never throws.</summary>
+    private static void ScheduleClipboardClear(
+        Avalonia.Input.Platform.IClipboard clipboard, string original, int seconds)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(seconds));
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    var current = await Avalonia.Input.Platform.ClipboardExtensions.TryGetTextAsync(clipboard);
+                    if (current == original) await clipboard.ClearAsync();
+                });
+            }
+            catch
+            {
+                // Clipboard may be unavailable or held by another app — clearing is best-effort.
+            }
+        });
     }
 
     private static bool IsRealAddress(string address) =>

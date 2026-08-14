@@ -26,6 +26,15 @@ public sealed class UiSettings
     /// <summary>Idle minutes before the vault auto-locks; 0 disables auto-lock entirely.</summary>
     public int AutoLockMinutes { get; set; } = 5;
 
+    /// <summary>Route all traffic through a user-supplied SOCKS5 proxy instead of the bundled Tor.</summary>
+    public bool CustomProxyEnabled { get; set; } = false;
+    /// <summary>The user's SOCKS5 proxy, e.g. "socks5://127.0.0.1:9050" (host:port also accepted).</summary>
+    public string CustomProxyUri { get; set; } = "";
+    /// <summary>IP family for direct connections: "auto", "ipv4" or "ipv6".</summary>
+    public string IpMode { get; set; } = "auto";
+    /// <summary>Seconds after which a copied address is auto-wiped from the clipboard; 0 = never.</summary>
+    public int ClipboardAutoClearSeconds { get; set; } = 45;
+
     /// <summary>A user-chosen label for this wallet, shown in the top bar; blank uses the brand only.</summary>
     public string WalletName { get; set; } = "";
 

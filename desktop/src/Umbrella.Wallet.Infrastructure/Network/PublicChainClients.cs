@@ -21,12 +21,19 @@ public static class PublicHttp
     /// </summary>
     public const string UserAgent = "UmbrellaWallet/1.0 (desktop; non-custodial)";
 
+    /// <summary>Which IP family outbound connections may use when going direct (no proxy).</summary>
+    public enum IpMode { Auto, V4Only, V6Only }
+
+    private static IpMode _ipMode = IpMode.Auto;
     private static HttpClient _shared = Build(null);
 
     public static HttpClient Shared => _shared;
 
-    /// <summary>The active SOCKS5 proxy URI (Tor), or null when going direct.</summary>
+    /// <summary>The active SOCKS5 proxy URI (Tor or a user proxy), or null when going direct.</summary>
     public static string? ActiveProxy { get; private set; }
+
+    /// <summary>The active IP-family preference for direct connections.</summary>
+    public static IpMode IpPreference => _ipMode;
 
     /// <summary>
     /// Route all public requests through a SOCKS5 proxy (e.g. Tor at socks5://127.0.0.1:9050),
@@ -40,6 +47,26 @@ public static class PublicHttp
         ActiveProxy = normalized;
         try { old.Dispose(); } catch { /* ignore */ }
     }
+
+    /// <summary>
+    /// Force outbound connections onto IPv4 or IPv6 only (or Auto). Only takes effect on direct
+    /// connections — when a proxy is active the proxy decides addressing. Rebuilds the client.
+    /// </summary>
+    public static void SetIpPreference(IpMode mode)
+    {
+        _ipMode = mode;
+        var old = _shared;
+        _shared = Build(ActiveProxy);
+        try { old.Dispose(); } catch { /* ignore */ }
+    }
+
+    /// <summary>Parses "auto" / "ipv4" / "ipv6" (case-insensitive) into an <see cref="IpMode"/>.</summary>
+    public static IpMode ParseIpMode(string? value) => (value ?? "").Trim().ToLowerInvariant() switch
+    {
+        "ipv4" or "v4" or "4" => IpMode.V4Only,
+        "ipv6" or "v6" or "6" => IpMode.V6Only,
+        _ => IpMode.Auto,
+    };
 
     /// <summary>Quick TCP reachability check for a proxy host:port (does not prove it is Tor).</summary>
     public static async Task<bool> IsProxyReachableAsync(string host, int port, CancellationToken ct = default)
@@ -71,6 +98,39 @@ public static class PublicHttp
             // .NET 6+ SocketsHttpHandler understands socks5:// proxies via WebProxy.
             handler.Proxy = new System.Net.WebProxy(socks5Uri);
             handler.UseProxy = true;
+        }
+        else if (_ipMode != IpMode.Auto)
+        {
+            // Pin the IP family for direct connections only. With a proxy in play the proxy owns
+            // addressing, so we leave the default resolver alone there.
+            var family = _ipMode == IpMode.V6Only
+                ? System.Net.Sockets.AddressFamily.InterNetworkV6
+                : System.Net.Sockets.AddressFamily.InterNetwork;
+            handler.ConnectCallback = async (context, ct) =>
+            {
+                var entries = await System.Net.Dns.GetHostAddressesAsync(
+                    context.DnsEndPoint.Host, family, ct);
+                if (entries.Length == 0)
+                {
+                    throw new System.Net.Sockets.SocketException(
+                        (int)System.Net.Sockets.SocketError.HostNotFound);
+                }
+                var socket = new System.Net.Sockets.Socket(
+                    family, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp)
+                {
+                    NoDelay = true,
+                };
+                try
+                {
+                    await socket.ConnectAsync(entries, context.DnsEndPoint.Port, ct);
+                    return new System.Net.Sockets.NetworkStream(socket, ownsSocket: true);
+                }
+                catch
+                {
+                    socket.Dispose();
+                    throw;
+                }
+            };
         }
 
         var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(20) };

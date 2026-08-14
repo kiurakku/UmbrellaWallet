@@ -4,6 +4,34 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [3.3.0] — 2026-08-14
+
+### Security & privacy
+- **Security review + vault hardening.** A full pass over the crypto/storage layer. `UnlockAsync`
+  now rejects out-of-range Argon2 parameters (memory 8 MiB–1 GiB, t 1–64, p 1–16) up front, so a
+  tampered or foreign vault file can no longer stall/OOM the app on unlock. Re-verified: on-device
+  Argon2id + AES-256-GCM vault, sign-then-`ZeroMemory` key handling, `SetWindowDisplayAffinity`
+  screenshot/screen-share blackout while a seed or Monero key is on screen, and the `https://`-only
+  external-link guard.
+- **Custom SOCKS5 proxy.** Settings → Privacy routes every request through your own proxy (VPN,
+  SSH tunnel, another Tor) instead of the bundled Tor. `host:port` or `socks5://host:port`; Tor and
+  the custom proxy are mutually exclusive.
+- **IPv4 / IPv6 control.** Force outbound (direct) connections onto one family, or leave it automatic.
+- **Clipboard auto-clear.** Copied addresses are wiped from the clipboard after a chosen delay
+  (off / 30s / 45s / 1m / 2m), and only if the clipboard still holds what the app put there.
+
+### Localization
+- Onboarding (create / import / unlock / restore / back-up), section titles and the holdings/market
+  column headers are now localized across all six languages instead of hardcoded English.
+
+### Installer
+- Setup shows the licence, carries publisher/version metadata and support/update URLs, and on
+  uninstall tells the user where their encrypted data is kept (and that it's deliberately preserved).
+
+### Verified
+139/139 tests pass (added a KDF-parameter-rejection test). Anonymity/security model unchanged;
+updates still preserve all wallet data.
+
 ## [3.2.0] — 2026-08-09
 
 ### Desktop

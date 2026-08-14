@@ -35,6 +35,11 @@ Write-Host "Releasing Umbrella Wallet $version (win-x64)…" -ForegroundColor Cy
 
 $appDir      = Join-Path $OutRoot "app"
 $portableDir = Join-Path $OutRoot "portable"
+# Clean stale output from a previous version, otherwise the apphost rename below trips over an
+# Umbrella.exe left behind by the last build (Rename-Item won't overwrite an existing file).
+foreach ($d in @($appDir, $portableDir)) {
+  if (Test-Path $d) { Remove-Item $d -Recurse -Force }
+}
 New-Item -ItemType Directory -Force -Path $appDir, $portableDir | Out-Null
 
 # 2) Folder publish (what the installer packages).

@@ -15,6 +15,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Idempotent: skip the ~85 MB download when the daemon is already staged, so repeat builds are
+# fast and offline-friendly and don't break if the upstream URL changes.
+if (Test-Path (Join-Path $Destination 'monero-wallet-rpc.exe')) {
+    Write-Host "monero-wallet-rpc already staged in $Destination — skipping download."
+    return
+}
+
 $url = 'https://downloads.getmonero.org/cli/win64'
 $work = Join-Path ([System.IO.Path]::GetTempPath()) "umbrella-monero-$(Get-Random)"
 New-Item -ItemType Directory -Force -Path $work | Out-Null
