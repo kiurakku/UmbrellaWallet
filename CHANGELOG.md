@@ -4,6 +4,16 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.1.0] — 2026-08-15 (test build) — honest self-custody cut
+
+- **Removed Staking (#4)** and **NFT (#3)** from navigation — an APR list with no real staking action,
+  and a preview-less NFT list, were misleading placeholders. Gone until they are genuinely useful.
+- **Removed the desktop "Mobile mode" toggle (#2)** — it was a phone-shaped desktop, not a real mobile
+  platform; a real mobile-first build comes before any Android claim. Previously-saved state is forced off.
+- **Simplified the assets table (#1)** — dropped the Price column (it lives on the coins Market page)
+  and made name/value more legible: Name · Amount · Value · 24h.
+- 33/33 VM/registry/flow tests pass; full crypto suite green in chunks.
+
 ## [4.0.4] — 2026-08-15 (test build)
 
 - **Selected-coin / single-coin wallets (#7)** — Settings → Wallets: choose which coins a wallet
