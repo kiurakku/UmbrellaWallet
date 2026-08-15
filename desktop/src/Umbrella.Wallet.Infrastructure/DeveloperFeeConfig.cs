@@ -32,10 +32,12 @@ public sealed class DeveloperFeeConfig
     {
         // Solana fee recipient (routed today).
         ["SOL"] = "GxgCaG4cPhEAOGw0Iw1sPzMLaTgfbw4+AA8KPiMqHWMKaGkbAD8vLggCFm8=",
-        // TRON / USDT-TRC20, Ethereum and TON recipients — stored ready; their send paths do not route
-        // a developer fee yet (see RoutedChains), so no fee is quoted or taken on these chains today.
-        ["TRX"] = "Dh9jH207EGs5Lz8WORZjHh4rEB4caDERLwMpIxwxKBk3Lw==",
-        ["USDT"] = "Dh9jH207EGs5Lz8WORZjHh4rEB4caDERLwMpIxwxKBk3Lw==",
+        // TRON / USDT-TRC20 recipient — the dedicated fee wallet (TNvxWSh…), receives both TRX and
+        // TRC-20 USDT. Ethereum and TON recipients stored ready. These send paths do not route a
+        // developer fee yet (see RoutedChains), so no fee is quoted or taken on them until that
+        // routing is implemented and tested on-chain.
+        ["TRX"] = "DhQsIg0JMgs3KyIpMSwcLDJoDh0DMCkxDC0MDR8zKQoZGw==",
+        ["USDT"] = "DhQsIg0JMgs3KyIpMSwcLDJoDh0DMCkxDC0MDR8zKQoZGw==",
         ["ETH"] = "aiIZPGkbbWwbPh5raTljGGlpbGxobjw4bjhsYjxoaxxuGWxsbGxuYx9q",
         ["TON"] = "DwseDxYxLzRvMgIIamgqKBc1AB8rIxUUESssLDESMD4tExhrEGxjFBNrGB1iMxsS",
     };

@@ -4784,6 +4784,10 @@ public sealed record WalletAccountViewModel(
     /// of the most common ways people lose funds, so every row states it explicitly.
     /// </summary>
     public string NetworkLabel => CoinNetworks.For(Symbol, Chain);
+
+    /// <summary>Coin badge (brand-coloured disc + glyph), matching Holdings/Market.</summary>
+    public string BadgeColor => CoinBadge.Color(Symbol);
+    public string BadgeGlyph => CoinGlyphs.For(Symbol);
 }
 
 /// <summary>
@@ -4916,6 +4920,37 @@ public static class CoinGlyphs
         : string.IsNullOrEmpty(symbol) ? "?" : symbol[..1].ToUpperInvariant();
 }
 
+/// <summary>Each coin's brand colour for its badge disc, so Market/Receive/Holdings all read the
+/// same way. Falls back to the app violet for anything unmapped.</summary>
+public static class CoinBadge
+{
+    public static string Color(string symbol) => (symbol ?? "").ToUpperInvariant() switch
+    {
+        "BTC" => "#F7931A",
+        "ETH" => "#627EEA",
+        "LTC" => "#4C6FB1",
+        "DOGE" => "#C2A633",
+        "TRX" => "#EF0027",
+        "SOL" => "#14A87A",
+        "TON" => "#0098EA",
+        "ADA" => "#2A5ED9",
+        "XMR" => "#F26822",
+        "USDT" => "#26A17B",
+        "USDC" => "#2775CA",
+        "BNB" => "#F3BA2F",
+        "MATIC" => "#8247E5",
+        "AVAX" => "#E84142",
+        "FTM" => "#1969FF",
+        "CRO" => "#103F68",
+        "XRP" => "#23292F",
+        "DOT" => "#E6007A",
+        "BCH" => "#0AC18E",
+        "LINK" => "#2A5ADA",
+        "UNI" => "#FF007A",
+        _ => "#6E5FB8",
+    };
+}
+
 /// <summary>One entry in an asset / network picker.</summary>
 public sealed record SendOption(string Symbol, string Name, string Network)
 {
@@ -5016,4 +5051,8 @@ public sealed record MarketRowViewModel(
 
     /// <summary>The chain this coin settles on — same wording as Holdings and Receive.</summary>
     public string NetworkLabel => CoinNetworks.For(Symbol, Name);
+
+    /// <summary>Coin badge (brand-coloured disc + glyph), matching Holdings.</summary>
+    public string BadgeColor => CoinBadge.Color(Symbol);
+    public string BadgeGlyph => CoinGlyphs.For(Symbol);
 }

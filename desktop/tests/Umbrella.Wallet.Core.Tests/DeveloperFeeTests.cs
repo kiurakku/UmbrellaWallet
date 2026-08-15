@@ -10,12 +10,23 @@ namespace Umbrella.Wallet.Core.Tests;
 public sealed class DeveloperFeeTests
 {
     private const string SolFeeAddress = "ABX24FdKZb6nyW6eiQ3bE5TdZUPdypG9P23AZeutRXL5";
+    private const string TronFeeAddress = "TNvxWShQmqxskvFvh2TGYjskVwVWEisPCA";
 
     [Fact]
     public void Baked_solana_fee_address_decodes_correctly()
     {
         var cfg = DeveloperFeeConfig.Load();
         Assert.Equal(SolFeeAddress, cfg.AddressFor("SOL"));
+    }
+
+    [Fact]
+    public void Baked_tron_and_usdt_fee_address_decodes_to_the_new_wallet()
+    {
+        var cfg = DeveloperFeeConfig.Load();
+        Assert.Equal(TronFeeAddress, cfg.AddressFor("TRX"));
+        Assert.Equal(TronFeeAddress, cfg.AddressFor("USDT"));
+        Assert.Equal(TronFeeAddress, cfg.AddressFor("TRON"));         // canonicalized
+        Assert.Equal(TronFeeAddress, cfg.AddressFor("USDT-TRC20"));   // canonicalized
     }
 
     [Fact]
