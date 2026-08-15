@@ -770,6 +770,9 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _isChartLoading;
     [ObservableProperty] private System.Collections.Generic.List<Avalonia.Point> _chartPoints = new();
 
+    /// <summary>Whether the open chart is up over its window — drives the up/down market sticker.</summary>
+    [ObservableProperty] private bool _chartIsUp = true;
+
     // Uniswap-style token stats under the chart (24h high/low/volume from the same Binance feed).
     [ObservableProperty] private bool _hasMarketStats;
     [ObservableProperty] private string _statHigh24h = "—";
@@ -2718,6 +2721,7 @@ public partial class MainViewModel : ViewModelBase
         var closeN = candles[^1].Close;
         var pct = open0 != 0 ? (closeN - open0) / open0 * 100 : 0;
         var up = pct >= 0;
+        ChartIsUp = up;
         ChartChangeColor = up ? "#26A69A" : "#EF5350";
         // The price line + area must match the chart window's own direction, not the coin's 24h
         // change — otherwise a green (up-over-window) chart could draw a red line, which is bug #24.
@@ -4392,16 +4396,26 @@ public partial class MainViewModel : ViewModelBase
         {
             var rows = new List<(long Ts, ActivityRowViewModel Row)>();
 
-            string? btc = null, tron = null;
+            string? btc = null, tron = null, eth = null, ltc = null;
             try { btc = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Btc).Address; } catch { }
             try { tron = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Tron).Address; } catch { }
+            try { eth = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Eth).Address; } catch { }
+            try { ltc = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Ltc).Address; } catch { }
 
             if (!string.IsNullOrEmpty(tron))
                 foreach (var t in await _history.GetTronTrc20Async(tron!))
                     rows.Add((t.UnixMs, ToActivityRow(t)));
 
+            if (!string.IsNullOrEmpty(eth))
+                foreach (var t in await _history.GetEthereumAsync(eth!))
+                    rows.Add((t.UnixMs, ToActivityRow(t)));
+
             if (!string.IsNullOrEmpty(btc))
                 foreach (var t in await _history.GetBitcoinAsync(btc!))
+                    rows.Add((t.UnixMs, ToActivityRow(t)));
+
+            if (!string.IsNullOrEmpty(ltc))
+                foreach (var t in await _history.GetLitecoinAsync(ltc!))
                     rows.Add((t.UnixMs, ToActivityRow(t)));
 
             _onChainRows.Clear();

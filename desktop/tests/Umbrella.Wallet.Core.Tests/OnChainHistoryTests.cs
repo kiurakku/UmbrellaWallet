@@ -43,6 +43,27 @@ public sealed class OnChainHistoryTests
     }
 
     [Fact]
+    public void ParseEvmTxlist_classifiesEthTransfers()
+    {
+        const string me = "0xabc0000000000000000000000000000000000001";
+        var json = """
+        {"status":"1","message":"OK","result":[
+          {"hash":"0xin","from":"0xsender0000000000000000000000000000000009","to":"0xabc0000000000000000000000000000000000001",
+           "value":"1500000000000000000","timeStamp":"1723600000","isError":"0"},
+          {"hash":"0xout","from":"0xabc0000000000000000000000000000000000001","to":"0xmerchant000000000000000000000000000000",
+           "value":"250000000000000000","timeStamp":"1723700000","isError":"0"},
+          {"hash":"0xfail","from":"0xabc0000000000000000000000000000000000001","to":"0xz","value":"0","timeStamp":"1723710000","isError":"1"}
+        ]}
+        """;
+        var rows = OnChainHistoryClient.ParseEvmTxlist(json, me, "ETH", "https://etherscan.io/tx/", 18);
+        Assert.Equal(2, rows.Count); // the failed / zero-value one is skipped
+        Assert.Equal("Received", rows[0].Kind);
+        Assert.Equal("1.5", rows[0].Amount);
+        Assert.Equal("Sent", rows[1].Kind);
+        Assert.Equal("0.25", rows[1].Amount);
+    }
+
+    [Fact]
     public void ParseBitcoin_classifiesReceiveAndSpend()
     {
         const string me = "bc1qexampleaddr";

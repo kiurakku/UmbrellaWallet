@@ -43,17 +43,43 @@ public sealed class OnChainHistoryClient
         }
     }
 
-    /// <summary>Confirmed Bitcoin transactions for an address, via Blockstream's keyless API.</summary>
-    public async Task<IReadOnlyList<ChainTx>> GetBitcoinAsync(
-        string address, CancellationToken ct = default)
+    /// <summary>Any Esplora-style explorer (Blockstream for BTC, litecoinspace for LTC…).</summary>
+    public async Task<IReadOnlyList<ChainTx>> GetEsploraAsync(
+        string apiBase, string address, string symbol, string explorerTxBase, CancellationToken ct = default)
     {
         try
         {
-            var url = $"https://blockstream.info/api/address/{Uri.EscapeDataString(address)}/txs";
+            var url = $"{apiBase}/address/{Uri.EscapeDataString(address)}/txs";
             using var res = await Http.GetAsync(url, ct);
             if (!res.IsSuccessStatusCode) return [];
             var json = await res.Content.ReadAsStringAsync(ct);
-            return ParseBitcoin(json, address);
+            return ParseEsplora(json, address, symbol, explorerTxBase);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Confirmed Bitcoin transactions, via Blockstream's keyless API.</summary>
+    public Task<IReadOnlyList<ChainTx>> GetBitcoinAsync(string address, CancellationToken ct = default) =>
+        GetEsploraAsync("https://blockstream.info/api", address, "BTC", "https://blockstream.info/tx/", ct);
+
+    /// <summary>Confirmed Litecoin transactions, via litecoinspace (same Esplora API).</summary>
+    public Task<IReadOnlyList<ChainTx>> GetLitecoinAsync(string address, CancellationToken ct = default) =>
+        GetEsploraAsync("https://litecoinspace.org/api", address, "LTC", "https://litecoinspace.org/tx/", ct);
+
+    /// <summary>Native ETH transfers, via Blockscout's keyless API (Etherscan-compatible shape).</summary>
+    public async Task<IReadOnlyList<ChainTx>> GetEthereumAsync(string address, CancellationToken ct = default)
+    {
+        try
+        {
+            var url = "https://eth.blockscout.com/api?module=account&action=txlist" +
+                      $"&address={Uri.EscapeDataString(address)}&sort=desc&page=1&offset=25";
+            using var res = await Http.GetAsync(url, ct);
+            if (!res.IsSuccessStatusCode) return [];
+            var json = await res.Content.ReadAsStringAsync(ct);
+            return ParseEvmTxlist(json, address, "ETH", "https://etherscan.io/tx/", 18);
         }
         catch
         {
@@ -97,7 +123,11 @@ public sealed class OnChainHistoryClient
         return outList;
     }
 
-    public static List<ChainTx> ParseBitcoin(string json, string me)
+    public static List<ChainTx> ParseBitcoin(string json, string me) =>
+        ParseEsplora(json, me, "BTC", "https://blockstream.info/tx/");
+
+    /// <summary>Parses any Esplora /address/{a}/txs payload (BTC, LTC…) into normalized rows.</summary>
+    public static List<ChainTx> ParseEsplora(string json, string me, string symbol, string explorerTxBase)
     {
         var outList = new List<ChainTx>();
         using var doc = JsonDocument.Parse(json);
@@ -137,8 +167,37 @@ public sealed class OnChainHistoryClient
             var amount = ScaleDown(shownSats.ToString(CultureInfo.InvariantCulture), 8);
             var counter = incoming ? "" : firstOtherOut;
             outList.Add(new ChainTx(
-                incoming ? "Received" : "Sent", "BTC", amount, counter, ts,
-                $"https://blockstream.info/tx/{hash}", hash));
+                incoming ? "Received" : "Sent", symbol, amount, counter, ts,
+                explorerTxBase + hash, hash));
+        }
+        return outList;
+    }
+
+    /// <summary>Parses an Etherscan/Blockscout <c>txlist</c> payload (native EVM transfers).</summary>
+    public static List<ChainTx> ParseEvmTxlist(
+        string json, string me, string symbol, string explorerTxBase, int decimals)
+    {
+        var outList = new List<ChainTx>();
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("result", out var result) || result.ValueKind != JsonValueKind.Array)
+            return outList;
+
+        foreach (var tx in result.EnumerateArray())
+        {
+            if (Str(tx, "isError") == "1") continue;              // failed tx
+            var from = Str(tx, "from");
+            var to = Str(tx, "to");
+            if (from.Length == 0 && to.Length == 0) continue;
+
+            var amount = ScaleDown(Str(tx, "value"), decimals);
+            if (amount == "0") continue;                          // contract call, no value moved
+
+            var incoming = string.Equals(to, me, StringComparison.OrdinalIgnoreCase);
+            var ts = Long(tx, "timeStamp") * 1000;                // seconds → ms
+            var hash = Str(tx, "hash");
+            var counter = incoming ? from : to;
+            outList.Add(new ChainTx(
+                incoming ? "Received" : "Sent", symbol, amount, counter, ts, explorerTxBase + hash, hash));
         }
         return outList;
     }

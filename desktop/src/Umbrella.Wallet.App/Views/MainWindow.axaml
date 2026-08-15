@@ -92,18 +92,7 @@
             <!-- Brand mark stays the logo; the Telegram sticker sits beside it as a greeting
                  rather than replacing the identity. -->
             <StackPanel Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center" Margin="0,8,0,0">
-              <!-- Soft accent glow behind the brand mark: a blurred, theme-coloured blob that melts
-                   into the background so the logo reads as lit rather than pasted on. -->
-              <Panel VerticalAlignment="Center">
-                <Border Width="188" Height="188" CornerRadius="94" Opacity="0.30"
-                        Background="{DynamicResource UmAccentBright}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center">
-                  <Border.Effect>
-                    <BlurEffect Radius="64"/>
-                  </Border.Effect>
-                </Border>
-                <Image Source="{Binding LogoImage}" Width="132" Stretch="Uniform"/>
-              </Panel>
+              <Image Source="{Binding LogoImage}" Width="132" Stretch="Uniform" VerticalAlignment="Center"/>
               <!-- Animated greeting sticker beside the logo (opt-in with the sticker toggle). -->
               <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/wau.json"
                              Width="96" Height="96" VerticalAlignment="Center"
@@ -1139,6 +1128,15 @@
                       <TextBlock Text="{Binding SelectedMarketName}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
                       <TextBlock Grid.Column="1" Text="{Binding SelectedMarketSymbol}" Classes="mono" FontSize="11"
                                  Foreground="{DynamicResource UmTextMuted}" Margin="8,4,0,0" VerticalAlignment="Center"/>
+                      <!-- Up/down market stickers, chosen by the chart window's direction. -->
+                      <lottie:Lottie Grid.Column="2" Path="avares://Umbrella.Wallet.App/Assets/stickers/up.json"
+                                     Width="38" Height="38" HorizontalAlignment="Left" Margin="10,0,0,0"
+                                     IsVisible="{Binding ChartIsUp}"
+                                     RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
+                      <lottie:Lottie Grid.Column="2" Path="avares://Umbrella.Wallet.App/Assets/stickers/down.json"
+                                     Width="38" Height="38" HorizontalAlignment="Left" Margin="10,0,0,0"
+                                     IsVisible="{Binding !ChartIsUp}"
+                                     RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
                       <TextBlock Grid.Column="3" Text="{Binding SelectedMarketPriceLabel}" Classes="mono" FontSize="15"
                                  VerticalAlignment="Center" Margin="0,0,12,0"/>
                       <Button Grid.Column="4" Classes="chip" Content="✕ close" Command="{Binding CloseChartCommand}"/>
