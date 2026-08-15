@@ -4456,8 +4456,12 @@ public partial class MainViewModel : ViewModelBase
             try { ltc = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Ltc).Address; } catch { }
 
             if (!string.IsNullOrEmpty(tron))
+            {
                 foreach (var t in await _history.GetTronTrc20Async(tron!))
                     rows.Add((t.UnixMs, ToActivityRow(t)));
+                foreach (var t in await _history.GetTronNativeAsync(tron!))
+                    rows.Add((t.UnixMs, ToActivityRow(t)));
+            }
 
             if (!string.IsNullOrEmpty(eth))
                 foreach (var t in await _history.GetEthereumAsync(eth!))

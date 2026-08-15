@@ -59,6 +59,38 @@ public sealed class OnChainHistoryTests
     }
 
     [Fact]
+    public void TronBase58ToHex_roundTrips()
+    {
+        const string addr = "TNvxWShQmqxskvFvh2TGYjskVwVWEisPCA";
+        var hex = OnChainHistoryClient.TronBase58ToHex(addr);
+        Assert.StartsWith("41", hex);          // TRON mainnet prefix
+        Assert.Equal(42, hex.Length);          // 21 bytes → 42 hex chars
+    }
+
+    [Fact]
+    public void ParseTronNative_classifiesTrxTransfers()
+    {
+        const string addr = "TNvxWShQmqxskvFvh2TGYjskVwVWEisPCA";
+        var meHex = OnChainHistoryClient.TronBase58ToHex(addr);
+        const string otherHex = "410000000000000000000000000000000000000001"; // any distinct 41-hex
+        var json = """
+        {"data":[
+          {"txID":"n1","block_timestamp":1723600000000,"raw_data":{"contract":[
+            {"type":"TransferContract","parameter":{"value":{"owner_address":"OTHER","to_address":"ME","amount":5000000}}}]}},
+          {"txID":"n2","block_timestamp":1723700000000,"raw_data":{"contract":[
+            {"type":"TransferContract","parameter":{"value":{"owner_address":"ME","to_address":"OTHER","amount":1200000}}}]}}
+        ]}
+        """.Replace("OTHER", otherHex).Replace("ME", meHex);
+        var rows = OnChainHistoryClient.ParseTronNative(json, meHex);
+        Assert.Equal(2, rows.Count);
+        Assert.Equal("Received", rows[0].Kind);
+        Assert.Equal("TRX", rows[0].Asset);
+        Assert.Equal("5", rows[0].Amount);
+        Assert.Equal("Sent", rows[1].Kind);
+        Assert.Equal("1.2", rows[1].Amount);
+    }
+
+    [Fact]
     public void ParseEvmTxlist_classifiesEthTransfers()
     {
         const string me = "0xabc0000000000000000000000000000000000001";

@@ -61,6 +61,27 @@ public sealed class OnChainHistoryClient
         }
     }
 
+    /// <summary>Native TRX transfers for a TRON base58 (T…) address, via Trongrid.</summary>
+    public async Task<IReadOnlyList<ChainTx>> GetTronNativeAsync(
+        string address, int limit = 30, CancellationToken ct = default)
+    {
+        string meHex;
+        try { meHex = TronBase58ToHex(address); } catch { return []; }
+        try
+        {
+            var url = $"https://api.trongrid.io/v1/accounts/{Uri.EscapeDataString(address)}" +
+                      $"/transactions?limit={limit}&only_confirmed=true";
+            using var res = await Http.GetAsync(url, ct);
+            if (!res.IsSuccessStatusCode) return [];
+            var json = await res.Content.ReadAsStringAsync(ct);
+            return ParseTronNative(json, meHex);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
     /// <summary>Confirmed Bitcoin transactions, via Blockstream's keyless API.</summary>
     public Task<IReadOnlyList<ChainTx>> GetBitcoinAsync(string address, CancellationToken ct = default) =>
         GetEsploraAsync("https://blockstream.info/api", address, "BTC", "https://blockstream.info/tx/", ct);
@@ -171,6 +192,66 @@ public sealed class OnChainHistoryClient
                 explorerTxBase + hash, hash));
         }
         return outList;
+    }
+
+    /// <summary>Decodes a TRON base58check (T…) address to its 21-byte hex form (41 + 20 bytes),
+    /// as used inside raw transaction data. Throws on an invalid address.</summary>
+    public static string TronBase58ToHex(string base58) =>
+        Convert.ToHexString(NBitcoin.DataEncoders.Encoders.Base58Check.DecodeData(base58));
+
+    /// <summary>Parses a Trongrid native /transactions payload into TRX transfer rows. <paramref name="meHex"/>
+    /// is the user's own address in hex (41…), used to tell sends from receives.</summary>
+    public static List<ChainTx> ParseTronNative(string json, string meHex)
+    {
+        var outList = new List<ChainTx>();
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+            return outList;
+
+        foreach (var row in data.EnumerateArray())
+        {
+            if (!row.TryGetProperty("raw_data", out var raw) ||
+                !raw.TryGetProperty("contract", out var contracts) ||
+                contracts.ValueKind != JsonValueKind.Array) continue;
+
+            foreach (var c in contracts.EnumerateArray())
+            {
+                if (Str(c, "type") != "TransferContract") continue;             // native TRX only
+                if (!c.TryGetProperty("parameter", out var param) ||
+                    !param.TryGetProperty("value", out var val)) continue;
+
+                var owner = Str(val, "owner_address");
+                var to = Str(val, "to_address");
+                if (owner.Length == 0 && to.Length == 0) continue;
+
+                var incoming = string.Equals(to, meHex, StringComparison.OrdinalIgnoreCase);
+                var amount = ScaleDown(Long(val, "amount").ToString(CultureInfo.InvariantCulture), 6); // SUN→TRX
+                if (amount == "0") continue;
+                var ts = Long(row, "block_timestamp");
+                var hash = Str(row, "txID");
+                var counterHex = incoming ? owner : to;
+                var counter = TryHexToTronBase58(counterHex);
+                outList.Add(new ChainTx(
+                    incoming ? "Received" : "Sent", "TRX", amount, counter, ts,
+                    $"https://tronscan.org/#/transaction/{hash}", hash));
+            }
+        }
+        return outList;
+    }
+
+    /// <summary>Best-effort hex(41…) → base58 (T…) for display; returns the hex unchanged on failure.</summary>
+    private static string TryHexToTronBase58(string hex)
+    {
+        try
+        {
+            if (hex.Length == 0) return "";
+            var bytes = Convert.FromHexString(hex);
+            return NBitcoin.DataEncoders.Encoders.Base58Check.EncodeData(bytes);
+        }
+        catch
+        {
+            return hex;
+        }
     }
 
     /// <summary>Parses an Etherscan/Blockscout <c>txlist</c> payload (native EVM transfers).</summary>
