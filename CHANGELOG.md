@@ -4,6 +4,51 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.3.0] — 2026-08-15 — full HD wallet, verifiable releases, honest support
+
+The big one: Bitcoin & Litecoin are now a **real HD wallet**, releases are
+**verifiable end-to-end**, and the app stops claiming what it can't do.
+
+### Wallet core (BTC/LTC)
+
+- **Multi-address HD wallet.** Balance and history are aggregated across *every*
+  derived address (external + internal change), discovered by a gap-limit scan
+  (20) — not just receive #0. A transient explorer error now shows "not fully
+  synced" instead of a wrong, lower balance.
+- **Spends across all addresses.** A transfer selects UTXOs from any owned
+  address and signs each input with its own key; change returns to a **fresh
+  internal address**, never a reused public one. The old key-#0-only signing
+  path is gone.
+- **"Generate new address" is back — safely.** Receiving on a rotated address is
+  now sound because the wallet finds and spends it. Indices are persisted before
+  an address is shown (fail-closed) so a crash can never lose a published one.
+- Proven by an offline receive → sum → spend → change → restore integration
+  test, plus a live smoke against the real explorer API.
+
+### Trust & verification
+
+- **Verify a backup (§6.5).** Settings → Backup → "Verify backup" decrypts a
+  backup with your password and confirms it holds a valid recovery phrase — so
+  you know it's restorable *before* you need it — without ever revealing the seed.
+- **Verifiable releases.** CI asserts the release has exactly the expected
+  artifacts and self-checks `SHA256SUMS.txt`; a version-consistency gate keeps
+  VERSION, the installer, README and this changelog in lockstep.
+- **Pinned, hash-verified Tor & Monero.** The bundled binaries are pinned to a
+  version and verified against the projects' official signed hashes, failing the
+  build on any mismatch. Recorded in `THIRD_PARTY_NOTICES.md`.
+
+### Honesty
+
+- **No coin is shown "Ready" unless it can actually send.** Dogecoin derives an
+  address and syncs a balance but has no send path, so it is now shown as
+  "Receive only" rather than as spendable.
+- **Docs tell the truth.** The stale web-product docs (React/NestJS/Prisma) are
+  archived; the desktop README no longer claims "version 1.7.0", a backend, or
+  macOS.
+
+> A small real-amount BTC/LTC send is still recommended as a smoke test before
+> relying on rotated addresses. Authenticode code-signing awaits a certificate.
+
 ## [4.2.1] — 2026-08-15 (test build) — honesty fixes
 
 - **Pulled the "Generate new address" button (#1).** It derived the next HD receive index, but the send

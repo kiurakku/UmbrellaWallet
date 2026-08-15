@@ -19,7 +19,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-![Version](https://img.shields.io/badge/version-4.2.1-4B3F86)
+![Version](https://img.shields.io/badge/version-4.3.0-4B3F86)
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-ready-6E5FB8?logo=linux&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-planned-8A8A9C?logo=android&logoColor=white)
@@ -40,7 +40,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-**[⬇️ Installer (v4.2.1)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-4.2.1.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-4.2.1.zip)** · [💖 Sponsor](https://github.com/sponsors/kiurakku) · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
+**[⬇️ Installer (v4.3.0)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-4.3.0.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-4.3.0.zip)** · [💖 Sponsor](https://github.com/sponsors/kiurakku) · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
 
 <br/>
 
@@ -63,6 +63,8 @@ Umbrella flips that model:
 - 🧅 **Tor built in.** Flip one switch and the wallet's traffic goes through the Tor network — no separate install, no configuration. Your IP stays out of your finances.
 - 🥷 **Secrets that can't be screenshotted.** While your recovery phrase is on screen, the window renders black to screen-capture and remote-viewing software.
 - 💸 **Real money movement.** Send and receive Bitcoin, Ethereum, Litecoin, Solana, **TON**, TRON, USDT and Monero — to any wallet or exchange in the world. Transactions are signed on your machine; only the signed result ever goes out. TON transfers are pinned byte-for-byte against the reference `@ton` library, so a wrong byte can never strand funds.
+- ₿ **A real Bitcoin/Litecoin HD wallet.** Balance, history and spending work across *every* address you've ever used — plus fresh receive addresses on request, with change returned privately to an internal address. What the wallet shows you is exactly what it can find and spend.
+- ✅ **Backups you can trust.** Verify a backup actually decrypts and holds a valid phrase *before* you rely on it — without exposing the seed. Every release ships a checksum file the build itself verifies.
 - 📈 **Live market, real candles.** A built-in market with **real OHLC candlestick charts** (Binance klines) and live prices (CoinGecko) — timeframes from 1H to 1Y. No mock data anywhere.
 - 🎨 **Yours to look at.** 27 colour themes, six interface languages, movable navigation, and full **profile customization** — your own avatar, banner and sidebar backgrounds, plus optional ambient motion (rain, drifting aurora, animated stickers — each toggled on its own). A private wallet doesn't have to feel like a tax form.
 - 💾 **Updates keep your data.** Installing a new version never touches your wallets, theme, linked addresses or history — they live in a separate data folder, not in the app files.
@@ -124,9 +126,9 @@ Umbrella flips that model:
 
 | Platform | Package | Notes |
 |----------|---------|-------|
-| **Windows** | [UmbrellaWallet-Setup-4.2.1.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-4.2.1.exe) | Installer — choose install folder |
-| **Windows** | [`UmbrellaWallet-Portable-4.2.1.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-4.2.1.zip) | Portable — unzip and run `Umbrella.exe` |
-| **Linux** | [`UmbrellaWallet-4.2.1-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-4.2.1-linux-x64.tar.gz) | Unpack, run `./Umbrella.Wallet.App` — no install required |
+| **Windows** | [UmbrellaWallet-Setup-4.3.0.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-4.3.0.exe) | Installer — choose install folder |
+| **Windows** | [`UmbrellaWallet-Portable-4.3.0.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-4.3.0.zip) | Portable — unzip and run `Umbrella.exe` |
+| **Linux** | [`UmbrellaWallet-4.3.0-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-4.3.0-linux-x64.tar.gz) | Unpack, run `./Umbrella.Wallet.App` — no install required |
 | **Android** | _planned_ | A native Android build (Avalonia) is on the roadmap |
 
 ### 🔎 Verify your download
@@ -141,7 +143,7 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 ```powershell
 # Windows PowerShell — compare against the matching line in SHA256SUMS.txt
-Get-FileHash .\UmbrellaWallet-Setup-4.2.1.exe -Algorithm SHA256
+Get-FileHash .\UmbrellaWallet-Setup-4.3.0.exe -Algorithm SHA256
 ```
 
 A matching hash proves the file wasn't corrupted or tampered with in transit. (Authenticode signing of
