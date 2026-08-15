@@ -4,6 +4,12 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.0.4] — 2026-08-15 (test build)
+
+- **Selected-coin / single-coin wallets (#7)** — Settings → Wallets: choose which coins a wallet
+  shows (tap coin chips; none = all). A wallet limited to one coin derives/shows only that coin.
+- 141/141 tests pass across chunks (0 failures).
+
 ## [4.0.3] — 2026-08-15 (test build)
 
 - **Staking is now dynamic (#3)** — personalised to what you hold: coins you own show first with an
