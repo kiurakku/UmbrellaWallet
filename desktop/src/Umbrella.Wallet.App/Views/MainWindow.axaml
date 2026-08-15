@@ -1067,18 +1067,20 @@
                 <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" MaxWidth="600" TextWrapping="Wrap"
                            Text="{Binding [sec.stakingDesc], Source={x:Static app:Loc.Instance}}"/>
 
-                <ItemsControl ItemsSource="{Binding StakingOptions}" x:CompileBindings="False">
+                <ItemsControl ItemsSource="{Binding StakingRows}">
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate>
+                    <DataTemplate x:DataType="vm:StakingRowViewModel">
                       <Border Classes="card" Margin="0,0,0,10" Padding="16,14">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
-                          <Border Grid.Column="0" Width="42" Height="42" CornerRadius="21" Background="{DynamicResource UmAccentWash}" VerticalAlignment="Top">
-                            <TextBlock Text="{Binding Symbol}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource UmAccentBright}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          <Border Grid.Column="0" Width="42" Height="42" CornerRadius="21" Background="{Binding BadgeColor}" VerticalAlignment="Top">
+                            <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" Text="{Binding BadgeGlyph}" FontSize="19" FontWeight="Bold"
+                                       Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                           </Border>
                           <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3" MinWidth="0">
                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
                             <TextBlock Text="{Binding Method}" FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding HoldLabel}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource UmAccentBright}"
+                                       IsVisible="{Binding HasHolding}" TextWrapping="Wrap"/>
                           </StackPanel>
                           <StackPanel Grid.Column="2" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Apr}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UmPos}" HorizontalAlignment="Right"/>

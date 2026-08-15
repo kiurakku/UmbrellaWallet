@@ -982,7 +982,7 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Stakeable coins the wallet holds keys for, with the network's typical (approximate)
     /// reward and how staking is done. Informational — not live positions.</summary>
-    public IReadOnlyList<StakingOption> StakingOptions { get; } =
+    private static readonly IReadOnlyList<StakingOption> StakingCatalog =
     [
         new("ETH", "Ethereum", "~3–4%", "Beacon-chain staking (32 ETH solo) or a liquid-staking pool"),
         new("SOL", "Solana", "~6–7%", "Delegate to a validator — native, unbonds in a few days"),
@@ -991,6 +991,47 @@ public partial class MainViewModel : ViewModelBase
         new("TRX", "TRON", "~4–5%", "Freeze TRX for resources and vote for a Super Representative"),
         new("MATIC", "Polygon", "~4%", "Delegate to a validator on the Polygon staking contract"),
     ];
+
+    /// <summary>Staking, personalised to what you actually hold: coins you own are shown first with an
+    /// estimated yearly reward from their live value; the rest are listed as available. Rebuilt on every
+    /// holdings refresh, so it's driven by your wallet, not a fixed table.</summary>
+    public ObservableCollection<StakingRowViewModel> StakingRows { get; } = [];
+
+    private void RebuildStaking()
+    {
+        var held = Holdings
+            .GroupBy(h => h.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => (Amount: g.Sum(x => x.Amount), Value: g.Sum(x => x.Value)),
+                StringComparer.OrdinalIgnoreCase);
+
+        var rows = StakingCatalog.Select(o =>
+        {
+            held.TryGetValue(o.Symbol, out var h);
+            var has = h.Amount > 0;
+            string hold;
+            if (has)
+            {
+                var mid = AprMidpoint(o.Apr);
+                var estYear = h.Value * mid / 100.0;
+                hold = $"{Loc.Instance["staking.youHold"]} {h.Amount:0.####} {o.Symbol} · ~{FormatCompactMoney(estYear)}/yr";
+            }
+            else hold = "";
+            return new StakingRowViewModel(o.Symbol, o.Name, o.Apr, o.Method, hold, has);
+        })
+        .OrderByDescending(r => r.HasHolding)
+        .ToList();
+
+        StakingRows.Clear();
+        foreach (var r in rows) StakingRows.Add(r);
+    }
+
+    /// <summary>Rough midpoint of an APR string like "~3–4%" or "~6%" → 3.5 / 6.</summary>
+    private static double AprMidpoint(string apr)
+    {
+        var nums = System.Text.RegularExpressions.Regex.Matches(apr ?? "", @"\d+(\.\d+)?")
+            .Select(m => double.Parse(m.Value, CultureInfo.InvariantCulture)).ToList();
+        return nums.Count == 0 ? 0 : nums.Average();
+    }
 
     /// <summary>Drives the Activity empty-state; raised whenever the log changes.</summary>
     public bool HasActivity => Activity.Count > 0;
@@ -4277,6 +4318,8 @@ public partial class MainViewModel : ViewModelBase
                 a.Symbol, a.Name, a.Chain, a.Price, a.Amount,
                 a.Price * a.Amount, a.Change24h, a.Address, a.SupportStatus));
         }
+
+        RebuildStaking(); // keep the staking list driven by what the user actually holds
     }
 
     private void RecalcBalance()
@@ -4756,6 +4799,14 @@ public sealed record PortfolioSlice(string Symbol, double Percent, double Value,
 
 /// <summary>A stakeable coin: symbol, name, typical (approximate) reward and how staking is done.</summary>
 public sealed record StakingOption(string Symbol, string Name, string Apr, string Method);
+
+/// <summary>A staking row personalised to the user's holdings.</summary>
+public sealed record StakingRowViewModel(
+    string Symbol, string Name, string Apr, string Method, string HoldLabel, bool HasHolding)
+{
+    public string BadgeColor => CoinBadge.Color(Symbol);
+    public string BadgeGlyph => CoinGlyphs.For(Symbol);
+}
 
 public sealed record WalletAccountViewModel(
     string Symbol,
