@@ -886,6 +886,10 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel(WalletRegistry registry)
     {
+        // Mobile layout is retired on desktop (it was a phone-shaped desktop, not a real mobile
+        // platform). Force it off so any previously-saved state can't strand a desktop user.
+        if (_uiSettings.MobileMode) { _uiSettings.MobileMode = false; _uiSettings.Save(); }
+
         _registry = registry;
         _vault = BuildActiveVault();
         SelfHealWallets();
