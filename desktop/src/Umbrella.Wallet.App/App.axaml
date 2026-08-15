@@ -30,8 +30,8 @@
         </Style>
 
         <Style Selector="TextBlock.eyebrow">
-            <Setter Property="FontSize" Value="10" />
-            <Setter Property="LetterSpacing" Value="2" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="LetterSpacing" Value="1.5" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource UmTextMuted}" />
         </Style>
@@ -111,9 +111,10 @@
         <Style Selector="Button.primary">
             <Setter Property="Background" Value="{DynamicResource UmAccentBright}" />
             <Setter Property="Foreground" Value="{DynamicResource UmAccentText}" />
-            <Setter Property="Padding" Value="22,13" />
+            <Setter Property="Padding" Value="24,15" />
+            <Setter Property="MinHeight" Value="52" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="FontSize" Value="14.5" />
+            <Setter Property="FontSize" Value="15.5" />
             <Setter Property="CornerRadius" Value="14" />
         </Style>
         <Style Selector="Button.primary /template/ ContentPresenter">
@@ -486,31 +487,27 @@
             </Style.Animations>
         </Style>
 
-        <!-- Nav items glide rather than jump between states. -->
+        <!-- Nav items change quietly on hover (background only) — no horizontal slide. -->
         <Style Selector="Button.nav">
             <Setter Property="Transitions">
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Button.nav:pointerover">
-            <Setter Property="RenderTransform" Value="translateX(3px)"/>
-        </Style>
 
-        <!-- ===== Premium motion & glass ===== -->
-        <!-- Cards lift and their edge brightens on hover; the whole surface eases (250ms). -->
+        <!-- ===== Motion & glass ===== -->
+        <!-- Quieter identity: cards no longer lift on hover (a finance surface should sit still). The
+             edge still warms slightly so the card the pointer is over is legible, but nothing moves. -->
         <Style Selector="Border.card">
             <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut"/>
                     <BrushTransition Property="BorderBrush" Duration="0:0:0.22"/>
                 </Transitions>
             </Setter>
         </Style>
         <Style Selector="Border.card:pointerover">
-            <Setter Property="RenderTransform" Value="translateY(-3px)"/>
             <Setter Property="BorderBrush" Value="{DynamicResource UmAccentDim}"/>
         </Style>
         <!-- Panels (tables, rail cards) glow their edge on hover without moving. -->
