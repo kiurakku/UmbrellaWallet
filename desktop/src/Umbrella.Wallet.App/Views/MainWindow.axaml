@@ -1272,6 +1272,22 @@
                         </StackPanel>
                       </Border>
                     </Grid>
+
+                    <!-- Richer stats from the optional CoinGecko connector. -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12" IsVisible="{Binding HasRichStats}" Margin="0,2,0,0">
+                      <Border Classes="hairline" Padding="14,12">
+                        <StackPanel Spacing="4">
+                          <TextBlock Classes="eyebrow" Text="{Binding [market.mcap], Source={x:Static app:Loc.Instance}}"/>
+                          <TextBlock Classes="mono" FontSize="15" Text="{Binding StatMarketCap}" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                      </Border>
+                      <Border Grid.Column="1" Classes="hairline" Padding="14,12">
+                        <StackPanel Spacing="4">
+                          <TextBlock Classes="eyebrow" Text="{Binding [market.fdv], Source={x:Static app:Loc.Instance}}"/>
+                          <TextBlock Classes="mono" FontSize="15" Text="{Binding StatFdv}" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                      </Border>
+                    </Grid>
                   </StackPanel>
                 </Border>
 
@@ -2128,6 +2144,15 @@
                     <ToggleSwitch IsChecked="{Binding LockOnMinimize, Mode=TwoWay}"
                                   OnContent="{Binding [settings.lockMinOn], Source={x:Static app:Loc.Instance}}"
                                   OffContent="{Binding [settings.lockMinOff], Source={x:Static app:Loc.Instance}}"/>
+
+                    <Border Background="#22FFFFFF" Height="1" Margin="0,10,0,4"/>
+
+                    <TextBlock Classes="eyebrow" Text="{Binding [settings.richData], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="{Binding [settings.richDataHint], Source={x:Static app:Loc.Instance}}"/>
+                    <ToggleSwitch IsChecked="{Binding RichMarketData, Mode=TwoWay}"
+                                  OnContent="{Binding [settings.richOn], Source={x:Static app:Loc.Instance}}"
+                                  OffContent="{Binding [settings.richOff], Source={x:Static app:Loc.Instance}}"/>
                   </StackPanel>
                 </Border>
 

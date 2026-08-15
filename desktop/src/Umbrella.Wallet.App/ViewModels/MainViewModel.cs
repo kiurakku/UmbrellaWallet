@@ -779,6 +779,27 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _statLow24h = "—";
     [ObservableProperty] private string _statVolume24h = "—";
 
+    // Richer stats from the optional CoinGecko connector (market cap / FDV), only when enabled.
+    [ObservableProperty] private bool _hasRichStats;
+    [ObservableProperty] private string _statMarketCap = "—";
+    [ObservableProperty] private string _statFdv = "—";
+
+    /// <summary>Opt-in market-data connector (CoinGecko) for richer token stats. Persisted; off by
+    /// default so the wallet contacts no third party unless the user turns it on.</summary>
+    public bool RichMarketData
+    {
+        get => _uiSettings.RichMarketData;
+        set
+        {
+            if (_uiSettings.RichMarketData == value) return;
+            _uiSettings.RichMarketData = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            if (!value) HasRichStats = false;
+            if (IsUnlocked) PushActivity("Settings", "Market data", value ? "on" : "off", "CoinGecko", "now");
+        }
+    }
+
     private string? _unlockedMnemonic;
     // One common login password for the whole app: captured on unlock/create so additional wallets
     // reuse it and switching between wallets doesn't re-prompt. Wiped on lock alongside the seed.
@@ -2521,6 +2542,24 @@ public partial class MainViewModel : ViewModelBase
             }
         }
         catch { /* stats are a nicety; never break the detail view over them */ }
+
+        // Optional richer stats (market cap / FDV) — only if the user enabled the connector.
+        HasRichStats = false;
+        if (RichMarketData)
+        {
+            try
+            {
+                var md = await _rates.GetTokenMarketDataAsync(row.Symbol, CancellationToken.None);
+                if (md is not null && md.MarketCap > 0)
+                {
+                    StatMarketCap = FormatCompactMoney((double)md.MarketCap);
+                    StatFdv = md.Fdv > 0 ? FormatCompactMoney((double)md.Fdv) : StatMarketCap;
+                    if (md.Volume24h > 0) StatVolume24h = FormatCompactMoney((double)md.Volume24h);
+                    HasRichStats = true;
+                }
+            }
+            catch { /* connector is best-effort */ }
+        }
     }
 
     /// <summary>Compact money in the display currency: 4.6B, 1.5T, 32.4K…</summary>

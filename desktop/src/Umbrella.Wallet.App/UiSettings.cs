@@ -43,6 +43,9 @@ public sealed class UiSettings
     /// <summary>Start every unlock with balances hidden (••••), so amounts aren't shown until you
     /// choose to reveal them — good for use in public.</summary>
     public bool HideBalancesDefault { get; set; } = false;
+    /// <summary>Opt-in market-data connector (CoinGecko): adds market cap / FDV / volume to token
+    /// pages. Off by default so the privacy-first wallet never contacts a third party you didn't enable.</summary>
+    public bool RichMarketData { get; set; } = false;
 
     /// <summary>A user-chosen label for this wallet, shown in the top bar; blank uses the brand only.</summary>
     public string WalletName { get; set; } = "";

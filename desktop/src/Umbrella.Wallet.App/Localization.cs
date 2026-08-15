@@ -234,6 +234,10 @@ public sealed class Loc : INotifyPropertyChanged
             ["settings.lockMinHint"] = "Lock the vault the instant the window is minimized, so a wallet left open in the background can't be seen by a shoulder-surfer or a screen-share. Unlocking again needs your password.",
             ["settings.lockMinOn"] = "Lock on minimize",
             ["settings.lockMinOff"] = "Stay unlocked",
+            ["settings.richData"] = "RICH MARKET DATA (COINGECKO)",
+            ["settings.richDataHint"] = "Off by default: the wallet contacts no third party unless you turn this on. Enable it to add market cap, FDV and volume to a coin's page, fetched from CoinGecko through your Tor/proxy route.",
+            ["settings.richOn"] = "Connector on",
+            ["settings.richOff"] = "Off (private default)",
             ["settings.documentation"] = "DOCUMENTATION",
             ["settings.openGuide"] = "Open guide",
             ["settings.backupFile"] = "BACKUP FILE",
@@ -295,6 +299,8 @@ public sealed class Loc : INotifyPropertyChanged
             ["market.high24h"] = "24H HIGH",
             ["market.low24h"] = "24H LOW",
             ["market.vol24h"] = "24H VOLUME",
+            ["market.mcap"] = "MARKET CAP",
+            ["market.fdv"] = "FDV",
         },
         ["uk"] = new()
         {
@@ -466,6 +472,10 @@ public sealed class Loc : INotifyPropertyChanged
             ["settings.lockMinHint"] = "Блокувати сховище щойно вікно згорнуто, щоб залишений у фоні гаманець не побачив хтось поруч чи під час демонстрації екрана. Щоб розблокувати знову, потрібен пароль.",
             ["settings.lockMinOn"] = "Блокувати при згортанні",
             ["settings.lockMinOff"] = "Лишати розблокованим",
+            ["settings.richData"] = "РОЗШИРЕНІ РИНКОВІ ДАНІ (COINGECKO)",
+            ["settings.richDataHint"] = "Вимкнено за замовчуванням: гаманець не звертається до жодної третьої сторони, доки ви це не ввімкнете. Увімкніть, щоб додати капіталізацію, FDV та обсяг на сторінку монети — дані з CoinGecko через ваш маршрут Tor/проксі.",
+            ["settings.richOn"] = "Конектор увімкнено",
+            ["settings.richOff"] = "Вимк. (приватно)",
             ["settings.documentation"] = "ДОКУМЕНТАЦІЯ",
             ["settings.openGuide"] = "Відкрити довідку",
             ["settings.backupFile"] = "ФАЙЛ РЕЗЕРВНОЇ КОПІЇ",
@@ -527,6 +537,8 @@ public sealed class Loc : INotifyPropertyChanged
             ["market.high24h"] = "МАКСИМУМ 24Г",
             ["market.low24h"] = "МІНІМУМ 24Г",
             ["market.vol24h"] = "ОБСЯГ 24Г",
+            ["market.mcap"] = "КАПІТАЛІЗАЦІЯ",
+            ["market.fdv"] = "FDV",
         },
         ["ru"] = new()
         {
@@ -688,6 +700,10 @@ public sealed class Loc : INotifyPropertyChanged
             ["settings.lockMinHint"] = "Блокировать хранилище как только окно свёрнуто, чтобы оставленный в фоне кошелёк не увидел кто-то рядом или при демонстрации экрана. Чтобы разблокировать снова, нужен пароль.",
             ["settings.lockMinOn"] = "Блокировать при свёртывании",
             ["settings.lockMinOff"] = "Оставлять разблокированным",
+            ["settings.richData"] = "РАСШИРЕННЫЕ РЫНОЧНЫЕ ДАННЫЕ (COINGECKO)",
+            ["settings.richDataHint"] = "Выключено по умолчанию: кошелёк не обращается ни к какой третьей стороне, пока вы это не включите. Включите, чтобы добавить капитализацию, FDV и объём на страницу монеты — данные с CoinGecko через ваш маршрут Tor/прокси.",
+            ["settings.richOn"] = "Коннектор включён",
+            ["settings.richOff"] = "Выкл. (приватно)",
             ["settings.documentation"] = "ДОКУМЕНТАЦИЯ",
             ["settings.openGuide"] = "Открыть справку",
             ["settings.backupFile"] = "ФАЙЛ РЕЗЕРВНОЙ КОПИИ",
@@ -721,6 +737,8 @@ public sealed class Loc : INotifyPropertyChanged
             ["market.high24h"] = "МАКСИМУМ 24Ч",
             ["market.low24h"] = "МИНИМУМ 24Ч",
             ["market.vol24h"] = "ОБЪЁМ 24Ч",
+            ["market.mcap"] = "КАПИТАЛИЗАЦИЯ",
+            ["market.fdv"] = "FDV",
         },
         ["zh"] = new()
         {
@@ -882,6 +900,10 @@ public sealed class Loc : INotifyPropertyChanged
             ["settings.lockMinHint"] = "窗口一旦最小化就锁定保险库，这样留在后台的钱包不会被旁人或屏幕共享看到。再次解锁需要密码。",
             ["settings.lockMinOn"] = "最小化时锁定",
             ["settings.lockMinOff"] = "保持解锁",
+            ["settings.richData"] = "丰富市场数据 (COINGECKO)",
+            ["settings.richDataHint"] = "默认关闭：除非你开启，钱包不会联系任何第三方。开启后可在币种页面显示市值、FDV 和成交量，数据来自 CoinGecko，并通过你的 Tor/代理路由获取。",
+            ["settings.richOn"] = "已开启连接器",
+            ["settings.richOff"] = "关闭（隐私默认）",
             ["settings.documentation"] = "文档",
             ["settings.openGuide"] = "打开指南",
             ["settings.backupFile"] = "备份文件",
@@ -915,6 +937,8 @@ public sealed class Loc : INotifyPropertyChanged
             ["market.high24h"] = "24小时最高",
             ["market.low24h"] = "24小时最低",
             ["market.vol24h"] = "24小时成交量",
+            ["market.mcap"] = "市值",
+            ["market.fdv"] = "完全稀释估值",
         },
         ["es"] = new()
         {
@@ -1070,6 +1094,10 @@ public sealed class Loc : INotifyPropertyChanged
             ["settings.lockMinHint"] = "Bloquea la bóveda en cuanto se minimiza la ventana, para que una cartera dejada en segundo plano no la vea alguien cercano o al compartir pantalla. Volver a desbloquear requiere tu contraseña.",
             ["settings.lockMinOn"] = "Bloquear al minimizar",
             ["settings.lockMinOff"] = "Mantener desbloqueada",
+            ["settings.richData"] = "DATOS DE MERCADO AMPLIADOS (COINGECKO)",
+            ["settings.richDataHint"] = "Desactivado por defecto: la cartera no contacta con terceros hasta que lo actives. Actívalo para añadir capitalización, FDV y volumen a la página de una moneda, desde CoinGecko por tu ruta Tor/proxy.",
+            ["settings.richOn"] = "Conector activado",
+            ["settings.richOff"] = "Apagado (privado)",
             ["settings.documentation"] = "DOCUMENTACIÓN",
             ["settings.openGuide"] = "Abrir guía",
             ["settings.backupFile"] = "ARCHIVO DE COPIA",
@@ -1103,6 +1131,8 @@ public sealed class Loc : INotifyPropertyChanged
             ["market.high24h"] = "MÁX. 24H",
             ["market.low24h"] = "MÍN. 24H",
             ["market.vol24h"] = "VOLUMEN 24H",
+            ["market.mcap"] = "CAPITALIZACIÓN",
+            ["market.fdv"] = "FDV",
         },
         ["de"] = new()
         {
@@ -1258,6 +1288,10 @@ public sealed class Loc : INotifyPropertyChanged
             ["settings.lockMinHint"] = "Sperrt den Tresor, sobald das Fenster minimiert wird, damit eine im Hintergrund offene Wallet niemand daneben oder beim Bildschirmteilen sieht. Zum Entsperren ist dein Passwort nötig.",
             ["settings.lockMinOn"] = "Beim Minimieren sperren",
             ["settings.lockMinOff"] = "Entsperrt lassen",
+            ["settings.richData"] = "ERWEITERTE MARKTDATEN (COINGECKO)",
+            ["settings.richDataHint"] = "Standardmäßig aus: die Wallet kontaktiert keine Dritten, bis du dies einschaltest. Aktiviere es, um Marktkapitalisierung, FDV und Volumen auf der Münzseite anzuzeigen — von CoinGecko über deine Tor/Proxy-Route.",
+            ["settings.richOn"] = "Connector an",
+            ["settings.richOff"] = "Aus (privat)",
             ["settings.documentation"] = "DOKUMENTATION",
             ["settings.openGuide"] = "Anleitung öffnen",
             ["settings.backupFile"] = "BACKUP-DATEI",
@@ -1291,6 +1325,8 @@ public sealed class Loc : INotifyPropertyChanged
             ["market.high24h"] = "24H HOCH",
             ["market.low24h"] = "24H TIEF",
             ["market.vol24h"] = "24H VOLUMEN",
+            ["market.mcap"] = "MARKTKAP.",
+            ["market.fdv"] = "FDV",
         },
     };
 }

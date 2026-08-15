@@ -8,6 +8,12 @@ namespace Umbrella.Wallet.Infrastructure.Network;
 
 public sealed record ChainBalance(ChainId Chain, string Address, decimal NativeAmount, string Symbol);
 
+/// <summary>24-hour market stats for a coin, in USD (Binance quote).</summary>
+public sealed record MarketStats(decimal High, decimal Low, decimal QuoteVolume);
+
+/// <summary>Richer token market data (USD) from the optional CoinGecko connector.</summary>
+public sealed record TokenMarketData(decimal MarketCap, decimal Fdv, decimal Volume24h);
+
 /// <summary>
 /// Shared, reconfigurable HTTP client for every public endpoint. All balance/price traffic goes
 /// through <see cref="Shared"/>, so enabling Tor swaps one client and routes everything at once.
@@ -648,6 +654,76 @@ public sealed class PublicMarketRatesClient
 
     /// <summary>Chart windows offered in the Market view.</summary>
     public static IReadOnlyList<string> ChartRanges { get; } = ["1H", "24H", "7D", "30D", "1Y"];
+
+    /// <summary>24-hour high, low and quote (USD) volume for a coin, or null when there's no Binance
+    /// USDT pair for it. Uses the same public Binance endpoint as the price feed — no new data source
+    /// and no extra tracking, and it rides the same Tor/proxy route.</summary>
+    public async Task<MarketStats?> GetMarketStatsAsync(string symbol, CancellationToken ct = default)
+    {
+        if (!BinancePairs.TryGetValue(symbol, out var pair)) return null;
+        try
+        {
+            var url = $"https://api.binance.com/api/v3/ticker/24hr?symbol={pair}";
+            using var res = await Http.GetAsync(url, ct);
+            if (!res.IsSuccessStatusCode) return null;
+            using var doc = await JsonDocument.ParseAsync(
+                await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            var root = doc.RootElement;
+            decimal High = Dec(root, "highPrice"), Low = Dec(root, "lowPrice"), Vol = Dec(root, "quoteVolume");
+            return new MarketStats(High, Low, Vol);
+        }
+        catch
+        {
+            return null;
+        }
+
+        static decimal Dec(JsonElement e, string name) =>
+            e.TryGetProperty(name, out var p) && p.GetString() is { } s &&
+            decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ? v : 0m;
+    }
+
+    /// <summary>
+    /// Richer token stats (market cap, fully-diluted valuation, 24h volume) from CoinGecko. This is
+    /// the OPTIONAL market-data connector — only called when the user turns it on, since it's a
+    /// third-party the privacy-first default deliberately never contacts. Rides the shared Tor/proxy
+    /// client like everything else. Returns null when the coin isn't mapped or the call fails.
+    /// </summary>
+    public async Task<TokenMarketData?> GetTokenMarketDataAsync(string symbol, CancellationToken ct = default)
+    {
+        if (!CoinIds.TryGetValue(symbol, out var id)) return null;
+        try
+        {
+            var url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd" +
+                      $"&ids={Uri.EscapeDataString(id)}&per_page=1&page=1&sparkline=false";
+            using var res = await Http.GetAsync(url, ct);
+            if (!res.IsSuccessStatusCode) return null;
+            var json = await res.Content.ReadAsStringAsync(ct);
+            return ParseTokenMarketData(json);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Parses a CoinGecko /coins/markets array (static + testable).</summary>
+    public static TokenMarketData? ParseTokenMarketData(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.ValueKind != JsonValueKind.Array) return null;
+        foreach (var row in doc.RootElement.EnumerateArray())
+        {
+            return new TokenMarketData(
+                Num(row, "market_cap"),
+                Num(row, "fully_diluted_valuation"),
+                Num(row, "total_volume"));
+        }
+        return null;
+
+        static decimal Num(JsonElement e, string name) =>
+            e.TryGetProperty(name, out var p) && p.ValueKind == JsonValueKind.Number &&
+            p.TryGetDecimal(out var v) ? v : 0m;
+    }
 
     /// <summary>
     /// Real price history at a resolution that matches the window.

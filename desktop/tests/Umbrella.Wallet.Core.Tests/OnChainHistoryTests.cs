@@ -5,6 +5,22 @@ namespace Umbrella.Wallet.Core.Tests;
 public sealed class OnChainHistoryTests
 {
     [Fact]
+    public void ParseTokenMarketData_readsCoinGeckoMarketsRow()
+    {
+        var json = """
+        [{"id":"ethereum","symbol":"eth","market_cap":226000000000,
+          "fully_diluted_valuation":230000000000,"total_volume":15000000000}]
+        """;
+        var md = PublicMarketRatesClient.ParseTokenMarketData(json);
+        Assert.NotNull(md);
+        Assert.Equal(226000000000m, md!.MarketCap);
+        Assert.Equal(230000000000m, md.Fdv);
+        Assert.Equal(15000000000m, md.Volume24h);
+
+        Assert.Null(PublicMarketRatesClient.ParseTokenMarketData("[]"));
+    }
+
+    [Fact]
     public void ScaleDown_dividesByDecimals_andTrimsZeros()
     {
         Assert.Equal("1.5", OnChainHistoryClient.ScaleDown("1500000", 6));   // 1.5 USDT
