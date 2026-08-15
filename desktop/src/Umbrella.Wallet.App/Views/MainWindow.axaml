@@ -244,16 +244,17 @@
             <StackPanel IsVisible="{Binding !IsResettingPassword}" Spacing="0">
               <TextBlock Classes="serif" FontSize="28" Text="{Binding [onboard.unlock], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center" Margin="0,22,0,0"/>
               <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0"
-                         Text="Your seed is encrypted on this PC. Enter the vault password to load live balances."/>
-              <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="Vault password" Margin="0,22,0,0"/>
+                         Text="{Binding [unlock.subtitle], Source={x:Static app:Loc.Instance}}"/>
+              <TextBox Text="{Binding Password}" PasswordChar="●" Margin="0,22,0,0"
+                       Watermark="{Binding [unlock.pw], Source={x:Static app:Loc.Instance}}"/>
               <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
                       BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
                 <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
               </Border>
-              <Button Classes="primary" Content="Unlock" HorizontalAlignment="Stretch"
+              <Button Classes="primary" Content="{Binding [unlock.btn], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Stretch"
                       HorizontalContentAlignment="Center" Margin="0,16,0,0"
                       IsEnabled="{Binding !IsBusy}" Command="{Binding UnlockCommand}"/>
-              <Button Classes="ghost" Content="Forgot your password?" HorizontalAlignment="Center" Margin="0,12,0,0"
+              <Button Classes="ghost" Content="{Binding [unlock.forgot], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center" Margin="0,12,0,0"
                       FontSize="12" Command="{Binding BeginPasswordResetCommand}"/>
             </StackPanel>
 
@@ -376,20 +377,16 @@
                  below (which is what made Settings collide with "Keys encrypted" on a short window). -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="10,4,10,10" Spacing="3">
-              <Button Classes="nav" Content="{Binding [nav.portfolio], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsPortfolio}"
+              <!-- Primary nav: exactly five (roadmap §6.1). Receive/Send are actions inside the Wallet
+                   home (the quick-action tiles there); Activity absorbs the transaction history. -->
+              <Button Classes="nav" Content="{Binding [nav.wallet], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsWalletGroup}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio"/>
-              <Button Classes="nav" Content="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsReceive}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Receive"/>
-              <Button Classes="nav" Content="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsSend}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Send"/>
+              <Button Classes="nav" Content="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsActivityGroup}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="Activity"/>
               <Button Classes="nav" Content="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsSwap}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Swap"/>
               <Button Classes="nav" Content="{Binding [nav.discover], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsDiscoverGroup}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Discover"/>
-              <Button Classes="nav" Content="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsActivity}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Activity"/>
-              <Button Classes="nav" Content="{Binding [nav.transactions], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsTransactions}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Transactions"/>
               <Button Classes="nav" Content="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsSettings}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Settings"/>
             </StackPanel>
@@ -425,13 +422,10 @@
               </StackPanel>
             </Button>
             <Border Width="1" Background="{DynamicResource UmBorder}" Margin="2,4" IsVisible="{Binding IsUnlocked}"/>
-            <Button Classes="chip" Content="{Binding [nav.portfolio], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio" Classes.active="{Binding IsPortfolio}"/>
-            <Button Classes="chip" Content="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Receive" Classes.active="{Binding IsReceive}"/>
-            <Button Classes="chip" Content="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Send" Classes.active="{Binding IsSend}"/>
+            <Button Classes="chip" Content="{Binding [nav.wallet], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio" Classes.active="{Binding IsWalletGroup}"/>
+            <Button Classes="chip" Content="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Activity" Classes.active="{Binding IsActivityGroup}"/>
             <Button Classes="chip" Content="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Swap" Classes.active="{Binding IsSwap}"/>
             <Button Classes="chip" Content="{Binding [nav.discover], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Discover" Classes.active="{Binding IsDiscoverGroup}"/>
-            <Button Classes="chip" Content="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Activity" Classes.active="{Binding IsActivity}"/>
-            <Button Classes="chip" Content="{Binding [nav.transactions], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Transactions" Classes.active="{Binding IsTransactions}"/>
             <Button Classes="chip" Content="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Settings" Classes.active="{Binding IsSettings}"/>
             <Button Classes="chip" Content="{Binding [nav.lock], Source={x:Static app:Loc.Instance}}" Command="{Binding LockCommand}"/>
           </StackPanel>
@@ -715,7 +709,7 @@
                 <!-- Step 1 · what & where -->
                 <Border Classes="card">
                   <StackPanel Spacing="12">
-                    <TextBlock Classes="eyebrow" Text="STEP 1 · WHAT AND WHERE"/>
+                    <TextBlock Classes="eyebrow" Text="{Binding [send.step1], Source={x:Static app:Loc.Instance}}"/>
                     <TextBlock Classes="eyebrow" Text="{Binding [col.asset], Source={x:Static app:Loc.Instance}}"/>
                     <ComboBox ItemsSource="{Binding SendableAssets}"
                               SelectedItem="{Binding SelectedSendAsset}"
@@ -729,15 +723,15 @@
                         </DataTemplate>
                       </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <TextBlock Classes="eyebrow" Text="DESTINATION ADDRESS (wallet or exchange deposit)"/>
-                    <TextBox Text="{Binding SendTo}" Watermark="Paste the destination — check every character"/>
-                    <TextBlock Classes="eyebrow" Text="AMOUNT"/>
+                    <TextBlock Classes="eyebrow" Text="{Binding [send.destLabel], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBox Text="{Binding SendTo}" Watermark="{Binding [send.destPlaceholder], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Classes="eyebrow" Text="{Binding [send.amount], Source={x:Static app:Loc.Instance}}"/>
                     <TextBox Text="{Binding SendAmount}" Watermark="0.0"/>
                     <Border IsVisible="{Binding SendError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                             Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="6" Padding="12,9">
                       <TextBlock Text="{Binding SendError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
                     </Border>
-                    <Button Classes="primary" Content="Review transfer" HorizontalAlignment="Left"
+                    <Button Classes="primary" Content="{Binding [send.review], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left"
                             IsEnabled="{Binding !IsBusy}" Command="{Binding PrepareSendCommand}"/>
                   </StackPanel>
                 </Border>
