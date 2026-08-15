@@ -4,15 +4,24 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [4.2.0] — 2026-08-15 (test build) — address privacy + release checksums
+## [4.2.1] — 2026-08-15 (test build) — honesty fixes
 
-- **HD address rotation (#1)** — Receive on BTC/LTC/DOGE has a **"Generate new address"** button that
-  derives the next HD index, so deposits are no longer linked by reusing address 0. The index is saved
-  (re-derivable after restart) and the derivation path is shown. (Change addresses, gap-limit restore
-  scan and a full past-address list are the next steps.)
-- **Release checksums (#2)** — every release now ships a `SHA256SUMS.txt`; verify your download before
-  running. (Authenticode code-signing needs a certificate you provide; hooks are ready for it.)
-- Tests: address rotation + index store, all green.
+- **Pulled the "Generate new address" button (#1).** It derived the next HD receive index, but the send
+  path still signs only with key #0 — so any coins received on a rotated address would have been
+  **unspendable**. Rather than ship a privacy feature that can strand funds, the button is removed until
+  the wallet can scan and spend across every issued index (balance scan, per-address UTXO signing,
+  internal change addresses, gap-limit restore). The derivation building blocks (`HdAddressDeriver`
+  index support, `AddressIndexStore`) stay in the tree, tested, for that work.
+- **Release checksums are now produced by the pipeline (#2).** `.github/workflows/release.yml` gained a
+  `checksums` job that runs after the Windows + Linux builds, pulls every attached artifact and writes
+  one `SHA256SUMS.txt` back onto the release — so verification isn't a manual afterthought. README now
+  documents how to check it. (Authenticode code-signing still needs a certificate you provide.)
+
+## [4.2.0] — 2026-08-15 (test build, superseded by 4.2.1)
+
+- Address-privacy and release-checksum work that 4.2.1 corrects — see above. This build's
+  "Generate new address" button could strand funds and its checksum file was attached by hand, not by
+  the pipeline; do not use it.
 
 ## [4.1.0] — 2026-08-15 (test build) — honest self-custody cut
 

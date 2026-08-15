@@ -815,7 +815,6 @@ public partial class MainViewModel : ViewModelBase
     private readonly PublicMarketRatesClient _rates = new();
     private readonly WatchAddressStore _watchStore = new();
     private readonly ActivityStore _activityStore = new();
-    private readonly AddressIndexStore _addrIndex = new();
     private readonly OnChainHistoryClient _history = new();
     // On-chain transactions fetched from explorers for the user's own addresses (incl. ones made
     // before the wallet was ever opened). Merged into the Transactions list, deduped by explorer URL.
@@ -3534,63 +3533,18 @@ public partial class MainViewModel : ViewModelBase
         BackupStatus = message;
     }
 
-    /// <summary>Which chain the current Receive target is on — drives fresh-address rotation.</summary>
-    private ChainId? _receiveChain;
-
-    /// <summary>Fresh receive addresses matter on UTXO chains (reusing one links every deposit).
-    /// Account-model chains (ETH/TRON/SOL/TON) conventionally reuse a single address.</summary>
-    [ObservableProperty] private bool _canRotateReceive;
-
-    /// <summary>The derivation path of the shown receive address, so power users can verify it.</summary>
-    [ObservableProperty] private string _receivePathLabel = string.Empty;
-
-    /// <summary>Points the QR/address at an account, honouring the wallet's current fresh-address index
-    /// on UTXO chains so it isn't always index 0.</summary>
+    /// <summary>Points the QR/address at an account without showing the popup. Always uses the
+    /// wallet's index-0 address: the send path currently signs with key #0, so handing out a #1+
+    /// receive address would create UTXOs the app can't spend. Multi-address HD (scan + per-UTXO
+    /// signing + change + gap scan) is the milestone that re-enables address rotation safely.</summary>
     private bool SetReceiveTarget(WalletAccountViewModel? account)
     {
         if (account is null || !IsRealAddress(account.Address)) return false;
-
-        _receiveChain = ParseChain(account.Symbol);
-        CanRotateReceive = _receiveChain is ChainId.Btc or ChainId.Ltc or ChainId.Doge;
-
-        var address = account.Address;
-        var path = account.Derivation;
-        // On UTXO chains, show the current fresh-address index (0 unless the user has rotated).
-        if (CanRotateReceive && _receiveChain is { } ch
-            && !string.IsNullOrEmpty(_unlockedMnemonic) && _registry.Active is { } w)
-        {
-            var idx = _addrIndex.Get(w.Id, ch.ToString());
-            if (idx > 0)
-            {
-                var derived = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ch, (uint)idx);
-                address = derived.Address;
-                path = derived.DerivationPath;
-            }
-        }
-
-        SelectedReceiveAddress = address;
+        SelectedReceiveAddress = account.Address;
         SelectedReceiveSymbol = account.Symbol;
         SelectedReceiveNetwork = $"{account.Symbol} · {account.NetworkLabel}";
-        ReceivePathLabel = path;
-        ReceiveQr = BuildQr(address);
+        ReceiveQr = BuildQr(account.Address);
         return true;
-    }
-
-    /// <summary>Generates a brand-new receive address (next HD index) for the selected UTXO coin, so
-    /// deposits aren't linked by address reuse. Persisted, so it's re-derivable after a restart.</summary>
-    [RelayCommand]
-    private void NewReceiveAddress()
-    {
-        if (!CanRotateReceive || _receiveChain is not { } ch
-            || string.IsNullOrEmpty(_unlockedMnemonic) || _registry.Active is not { } w) return;
-
-        var idx = _addrIndex.Increment(w.Id, ch.ToString());
-        var derived = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ch, (uint)idx);
-        SelectedReceiveAddress = derived.Address;
-        ReceivePathLabel = derived.DerivationPath;
-        ReceiveQr = BuildQr(derived.Address);
-        ShowToast(Loc.Instance["receive.newAddr"], isError: false);
-        if (IsUnlocked) PushActivity("Receive", SelectedReceiveSymbol, $"#{idx}", "new address", "now");
     }
 
     /// <summary>

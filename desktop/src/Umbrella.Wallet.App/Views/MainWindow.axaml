@@ -2624,24 +2624,14 @@
 
             <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1"
                     CornerRadius="10" Padding="12">
-              <StackPanel Spacing="4">
-                <TextBlock Classes="mono" FontSize="11.5" TextWrapping="Wrap" TextAlignment="Center"
-                           Foreground="{DynamicResource UmTextSoft}" Text="{Binding SelectedReceiveAddress}"/>
-                <TextBlock Classes="mono" FontSize="9.5" TextAlignment="Center" Foreground="{DynamicResource UmTextMuted}"
-                           Text="{Binding ReceivePathLabel}" IsVisible="{Binding ReceivePathLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-              </StackPanel>
+              <TextBlock Classes="mono" FontSize="11.5" TextWrapping="Wrap" TextAlignment="Center"
+                         Foreground="{DynamicResource UmTextSoft}" Text="{Binding SelectedReceiveAddress}"/>
             </Border>
 
             <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                     Content="{Binding [common.copyAddress], Source={x:Static app:Loc.Instance}}"
                     Command="{Binding CopyAddressCommand}"
                     CommandParameter="{Binding SelectedReceiveAddress}"/>
-
-            <!-- Address rotation: a fresh receive address on UTXO chains, so deposits aren't linked. -->
-            <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                    IsVisible="{Binding CanRotateReceive}"
-                    Content="{Binding [receive.newAddrBtn], Source={x:Static app:Loc.Instance}}"
-                    Command="{Binding NewReceiveAddressCommand}"/>
           </StackPanel>
         </Border>
       </Grid>
