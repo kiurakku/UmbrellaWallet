@@ -388,8 +388,6 @@
                       Command="{Binding SelectSectionCommand}" CommandParameter="Swap"/>
               <Button Classes="nav" Content="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsP2p}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="P2p"/>
-              <Button Classes="nav" Content="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsConnect}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Connect"/>
               <Button Classes="nav" Content="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsMarket}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Market"/>
               <Button Classes="nav" Content="{Binding [nav.nfts], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsNfts}"
@@ -443,7 +441,6 @@
             <Button Classes="chip" Content="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Send" Classes.active="{Binding IsSend}"/>
             <Button Classes="chip" Content="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Swap" Classes.active="{Binding IsSwap}"/>
             <Button Classes="chip" Content="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="P2p" Classes.active="{Binding IsP2p}"/>
-            <Button Classes="chip" Content="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Connect" Classes.active="{Binding IsConnect}"/>
             <Button Classes="chip" Content="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Market" Classes.active="{Binding IsMarket}"/>
             <Button Classes="chip" Content="{Binding [nav.news], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="News" Classes.active="{Binding IsNews}"/>
             <Button Classes="chip" Content="{Binding [nav.transactions], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Transactions" Classes.active="{Binding IsTransactions}"/>
@@ -580,12 +577,12 @@
                     </Grid>
                   </Button>
                   <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
-                          Command="{Binding SelectSectionCommand}" CommandParameter="Connect">
+                          Command="{Binding SelectSectionCommand}" CommandParameter="Swap">
                     <Grid ColumnDefinitions="Auto,*">
-                      <Path Classes="tileIcon" VerticalAlignment="Center" Data="M9.5 14.5 L14.5 9.5 M8 12 L5.5 14.5 A3.5 3.5 0 0 0 10.5 19.5 L13 17 M16 12 L18.5 9.5 A3.5 3.5 0 0 0 13.5 4.5 L11 7"/>
+                      <Path Classes="tileIcon" VerticalAlignment="Center" Data="M6 8 H17 L14 5 M18 16 H7 L10 19"/>
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
-                        <TextBlock Text="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding [action.linkWallets], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding [sec.swapHere], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
                       </StackPanel>
                     </Grid>
                   </Button>
@@ -690,7 +687,7 @@
                     <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/Recieve.json" Width="46" Height="46" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
                   </StackPanel>
                   <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5"
-                             Text="Pick a coin, then share its address or QR. Green = live and safe to receive. Always check the network line — sending on the wrong network loses the coins."/>
+                             Text="{Binding [sec.receiveDesc], Source={x:Static app:Loc.Instance}}"/>
                   <ItemsControl ItemsSource="{Binding Accounts}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:WalletAccountViewModel">
@@ -730,7 +727,7 @@
                   <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-08.json" Width="42" Height="42" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
                 </StackPanel>
                 <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5"
-                           Text="Transfers to any wallet or exchange. The transaction is built and signed on this PC — only the signed bytes go out. Live for ETH, BTC, LTC, SOL, TON, TRON and USDT. Monero is receive-only here: export its keys in Settings and spend from Feather."/>
+                           Text="{Binding [sec.sendDesc], Source={x:Static app:Loc.Instance}}"/>
 
                 <!-- Step 1 · what & where -->
                 <Border Classes="card">
@@ -1022,7 +1019,7 @@
                   <StackPanel Spacing="4">
                     <TextBlock Text="{Binding [sec.nftOrigin], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
                     <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640"
-                               Text="Read straight from the Ethereum chain via a public explorer (Blockscout) against the same 0x address you receive to — nothing is uploaded and there is no marketplace account. The list refreshes when balances sync. Scanning NFTs on more chains (Polygon, BNB, Solana) is on the roadmap; for now only Ethereum is shown."/>
+                               Text="{Binding [sec.nftDesc], Source={x:Static app:Loc.Instance}}"/>
                   </StackPanel>
                 </Border>
 
@@ -1068,7 +1065,7 @@
                   <TextBlock Classes="serif" FontSize="26" Text="{Binding [nav.staking], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
                 </StackPanel>
                 <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" MaxWidth="600" TextWrapping="Wrap"
-                           Text="Coins you can stake with the keys already in this wallet. The rates are typical network rewards (approximate, not live positions) — staking is non-custodial and happens on each coin's own network; you always keep your keys."/>
+                           Text="{Binding [sec.stakingDesc], Source={x:Static app:Loc.Instance}}"/>
 
                 <ItemsControl ItemsSource="{Binding StakingOptions}" x:CompileBindings="False">
                   <ItemsControl.ItemTemplate>
@@ -1376,7 +1373,7 @@
                 <StackPanel Spacing="4">
                   <TextBlock Classes="serif" FontSize="26" Text="{Binding [section.buyCrypto], Source={x:Static app:Loc.Instance}}"/>
                   <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12"
-                             Text="Top up with a card or bank transfer. The coins are delivered straight to your own wallet address — Umbrella never holds your funds or takes a cut."/>
+                             Text="{Binding [sec.buyDesc], Source={x:Static app:Loc.Instance}}"/>
                 </StackPanel>
 
                 <!-- How it works: three steps, then a shortcut to the address you'll paste. -->
@@ -2507,12 +2504,6 @@
                 <StackPanel Spacing="4">
                   <Path Classes="tabIcon" Data="M9 10 A2.5 2.5 0 1 0 9 5 A2.5 2.5 0 0 0 9 10 M3 20 C3 16 6 14 9 14 C12 14 15 16 15 20 M16 5.5 A2 2 0 1 1 16 9.5 M15.5 14 C18 14 21 16 21 20"/>
                   <TextBlock Text="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Connect" Classes.active="{Binding IsConnect}">
-                <StackPanel Spacing="4">
-                  <Path Classes="tabIcon" Data="M9.5 14.5 L14.5 9.5 M8 12 L5.5 14.5 A3.5 3.5 0 0 0 10.5 19.5 L13 17 M16 12 L18.5 9.5 A3.5 3.5 0 0 0 13.5 4.5 L11 7"/>
-                  <TextBlock Text="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
               </Button>
               <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Nfts" Classes.active="{Binding IsNfts}">

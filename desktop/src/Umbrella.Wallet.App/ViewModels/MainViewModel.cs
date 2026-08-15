@@ -2333,6 +2333,7 @@ public partial class MainViewModel : ViewModelBase
                 UseShellExecute = true,
             });
             StatusMessage = $"Opened {url} in your browser";
+            ShowToast(Loc.Instance["toast.opened"], isError: false);
         }
         catch (Exception ex)
         {
