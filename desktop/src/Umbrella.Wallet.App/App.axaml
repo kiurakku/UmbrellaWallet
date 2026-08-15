@@ -108,13 +108,15 @@
         <!-- Primary: solid, bold — the single strongest call to action on a screen. -->
         <!-- Primary now carries the theme's accent (auto-contrast label), so each theme restyles the
              main call-to-action, not just the neutrals — orange on The fear, cyan on Blue, and so on. -->
+        <!-- Primary and ghost share one fixed height (46) and vertical padding, so a primary+ghost
+             row lines up exactly — the primary is just wider, coloured and bold, never taller. -->
         <Style Selector="Button.primary">
             <Setter Property="Background" Value="{DynamicResource UmAccentBright}" />
             <Setter Property="Foreground" Value="{DynamicResource UmAccentText}" />
-            <Setter Property="Padding" Value="24,15" />
-            <Setter Property="MinHeight" Value="52" />
+            <Setter Property="Padding" Value="24,12" />
+            <Setter Property="MinHeight" Value="46" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="FontSize" Value="15.5" />
+            <Setter Property="FontSize" Value="15" />
             <Setter Property="CornerRadius" Value="14" />
         </Style>
         <Style Selector="Button.primary /template/ ContentPresenter">
@@ -137,6 +139,8 @@
             <Setter Property="Foreground" Value="{DynamicResource UmText}" />
             <Setter Property="BorderBrush" Value="{DynamicResource UmBorder3}" />
             <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="20,12" />
+            <Setter Property="MinHeight" Value="46" />
             <!-- Frosted glass: brighter at the top edge for a sheen. -->
             <Setter Property="Background">
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
@@ -544,9 +548,11 @@
         <!-- Ambient "rain" for the fear theme: faint translucent streaks drifting down over the UI.
              The base class carries the look; a speed class carries the fall animation, so each drop
              runs exactly one animation. The whole layer is gated by the motion toggle in markup. -->
+        <!-- Kept very faint so it reads as texture behind the content, never as lines crossing text.
+             Fully removable in Settings → Appearance → Animation. -->
         <Style Selector="Rectangle.raindrop">
-            <Setter Property="Width" Value="1.4" />
-            <Setter Property="Fill" Value="#14FFFFFF" />
+            <Setter Property="Width" Value="1.2" />
+            <Setter Property="Fill" Value="#0AFFFFFF" />
             <Setter Property="IsHitTestVisible" Value="False" />
             <Setter Property="RadiusX" Value="1" />
             <Setter Property="RadiusY" Value="1" />

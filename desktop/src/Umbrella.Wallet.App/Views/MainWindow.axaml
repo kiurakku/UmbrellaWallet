@@ -380,22 +380,16 @@
                       Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio"/>
               <Button Classes="nav" Content="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsReceive}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Receive"/>
-              <Button Classes="nav" Content="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsBuy}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Buy"/>
               <Button Classes="nav" Content="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsSend}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Send"/>
               <Button Classes="nav" Content="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsSwap}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Swap"/>
-              <Button Classes="nav" Content="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsP2p}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="P2p"/>
-              <Button Classes="nav" Content="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsMarket}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Market"/>
-              <Button Classes="nav" Content="{Binding [nav.news], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsNews}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="News"/>
-              <Button Classes="nav" Content="{Binding [nav.transactions], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsTransactions}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Transactions"/>
+              <Button Classes="nav" Content="{Binding [nav.discover], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsDiscoverGroup}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="Discover"/>
               <Button Classes="nav" Content="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsActivity}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Activity"/>
+              <Button Classes="nav" Content="{Binding [nav.transactions], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsTransactions}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="Transactions"/>
               <Button Classes="nav" Content="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsSettings}"
                       Command="{Binding SelectSectionCommand}" CommandParameter="Settings"/>
             </StackPanel>
@@ -433,14 +427,11 @@
             <Border Width="1" Background="{DynamicResource UmBorder}" Margin="2,4" IsVisible="{Binding IsUnlocked}"/>
             <Button Classes="chip" Content="{Binding [nav.portfolio], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio" Classes.active="{Binding IsPortfolio}"/>
             <Button Classes="chip" Content="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Receive" Classes.active="{Binding IsReceive}"/>
-            <Button Classes="chip" Content="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Buy" Classes.active="{Binding IsBuy}"/>
             <Button Classes="chip" Content="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Send" Classes.active="{Binding IsSend}"/>
             <Button Classes="chip" Content="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Swap" Classes.active="{Binding IsSwap}"/>
-            <Button Classes="chip" Content="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="P2p" Classes.active="{Binding IsP2p}"/>
-            <Button Classes="chip" Content="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Market" Classes.active="{Binding IsMarket}"/>
-            <Button Classes="chip" Content="{Binding [nav.news], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="News" Classes.active="{Binding IsNews}"/>
-            <Button Classes="chip" Content="{Binding [nav.transactions], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Transactions" Classes.active="{Binding IsTransactions}"/>
+            <Button Classes="chip" Content="{Binding [nav.discover], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Discover" Classes.active="{Binding IsDiscoverGroup}"/>
             <Button Classes="chip" Content="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Activity" Classes.active="{Binding IsActivity}"/>
+            <Button Classes="chip" Content="{Binding [nav.transactions], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Transactions" Classes.active="{Binding IsTransactions}"/>
             <Button Classes="chip" Content="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Settings" Classes.active="{Binding IsSettings}"/>
             <Button Classes="chip" Content="{Binding [nav.lock], Source={x:Static app:Loc.Instance}}" Command="{Binding LockCommand}"/>
           </StackPanel>
@@ -1086,6 +1077,58 @@
 
                 <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap" MaxWidth="600"
                            Text="One-tap staking directly from the wallet is next; for now these are the networks, methods and rates to expect."/>
+              </StackPanel>
+
+              <!-- Discover: Market + external Buy / P2P·DEX + News, grouped out of the primary nav (§6.1). -->
+              <StackPanel Classes="page" IsVisible="{Binding IsDiscover}" Spacing="12" MaxWidth="760" HorizontalAlignment="Left">
+                <TextBlock Classes="serif" FontSize="26"
+                           Text="{Binding [nav.discover], Source={x:Static app:Loc.Instance}}"/>
+                <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,4"
+                           Text="{Binding [discover.sub], Source={x:Static app:Loc.Instance}}"/>
+
+                <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
+                        Command="{Binding SelectSectionCommand}" CommandParameter="Market">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
+                      <TextBlock Text="{Binding [discover.market], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="›" FontSize="22" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+                  </Grid>
+                </Button>
+
+                <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
+                        Command="{Binding SelectSectionCommand}" CommandParameter="Buy">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
+                      <TextBlock Text="{Binding [discover.buy], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="↗" FontSize="18" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+                  </Grid>
+                </Button>
+
+                <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
+                        Command="{Binding SelectSectionCommand}" CommandParameter="P2p">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
+                      <TextBlock Text="{Binding [discover.p2p], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="↗" FontSize="18" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+                  </Grid>
+                </Button>
+
+                <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
+                        Command="{Binding SelectSectionCommand}" CommandParameter="News">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding [nav.news], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
+                      <TextBlock Text="{Binding [discover.news], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="›" FontSize="22" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+                  </Grid>
+                </Button>
               </StackPanel>
 
               <!-- Market -->

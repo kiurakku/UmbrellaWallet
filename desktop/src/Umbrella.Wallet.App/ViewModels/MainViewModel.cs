@@ -1391,6 +1391,11 @@ public partial class MainViewModel : ViewModelBase
     public bool IsStaking => ActiveSection == "Staking";
     public bool IsP2p => ActiveSection == "P2p";
     public bool IsBuy => ActiveSection == "Buy";
+    // Discover is a hub over Market + the external Buy / P2P·DEX catalogues + News, so the primary nav
+    // stays focused on wallet actions (roadmap §6.1).
+    public bool IsDiscover => ActiveSection == "Discover";
+    // The Discover nav item stays highlighted while the user is inside any of its sub-pages.
+    public bool IsDiscoverGroup => IsDiscover || IsMarket || IsBuy || IsP2p || IsNews;
 
     // --- Onboarding state machine: each is a full-screen page, sidebar only in the workspace ---
     public bool IsWelcomeStage => !HasVault && SetupStage == "Welcome";
@@ -1522,6 +1527,8 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsStaking));
         OnPropertyChanged(nameof(IsP2p));
         OnPropertyChanged(nameof(IsBuy));
+        OnPropertyChanged(nameof(IsDiscover));
+        OnPropertyChanged(nameof(IsDiscoverGroup));
         OnPropertyChanged(nameof(IsWelcomeStage));
         OnPropertyChanged(nameof(IsCreateStage));
         OnPropertyChanged(nameof(IsImportStage));
