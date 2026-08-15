@@ -24,3 +24,11 @@ jobs:
       - run: dotnet restore desktop/Umbrella.Wallet.sln
       - run: dotnet test desktop/Umbrella.Wallet.sln --no-restore --verbosity minimal
       - run: dotnet build desktop/Umbrella.Wallet.sln --no-restore -c Release
+
+  version:
+    name: version-consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Release gate (roadmap §2): VERSION must match the csproj, installer, README and CHANGELOG.
+      - run: bash scripts/check-version-consistency.sh
