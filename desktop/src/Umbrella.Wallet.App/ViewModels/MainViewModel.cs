@@ -3208,6 +3208,7 @@ public partial class MainViewModel : ViewModelBase
 
         await CopyTextAsync(ready.Address);
         StatusMessage = $"Copied {ready.Symbol} address";
+        ShowToast($"{ready.Symbol} · {Loc.Instance["toast.copied"]}", isError: false);
     }
 
     [RelayCommand]
@@ -3216,6 +3217,7 @@ public partial class MainViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(address) || !IsRealAddress(address)) return;
         await CopyTextAsync(address);
         StatusMessage = "Address copied";
+        ShowToast(Loc.Instance["toast.copied"], isError: false);
     }
 
     [RelayCommand]
@@ -4448,6 +4450,7 @@ public partial class MainViewModel : ViewModelBase
         if (row?.Explorer is not { Length: > 0 } url) return;
         await CopyTextAsync(url);
         StatusMessage = "Explorer link copied — paste it into your browser to view the transaction";
+        ShowToast(Loc.Instance["toast.linkCopied"], isError: false);
     }
 
     private static Bitmap? BuildQr(string payload)
