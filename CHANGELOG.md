@@ -4,6 +4,12 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.0.3] — 2026-08-15 (test build)
+
+- **Staking is now dynamic (#3)** — personalised to what you hold: coins you own show first with an
+  estimated yearly reward from their live value; coin badges added. Rebuilt on every balance refresh.
+- 147/147 tests.
+
 ## [4.0.2] — 2026-08-15 (test build)
 
 - **Connect removed from the menu (#5)** — the quick-action tile is now Swap; watch-address markup
