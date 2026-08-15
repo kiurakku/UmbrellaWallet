@@ -4,6 +4,16 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.2.0] — 2026-08-15 (test build) — address privacy + release checksums
+
+- **HD address rotation (#1)** — Receive on BTC/LTC/DOGE has a **"Generate new address"** button that
+  derives the next HD index, so deposits are no longer linked by reusing address 0. The index is saved
+  (re-derivable after restart) and the derivation path is shown. (Change addresses, gap-limit restore
+  scan and a full past-address list are the next steps.)
+- **Release checksums (#2)** — every release now ships a `SHA256SUMS.txt`; verify your download before
+  running. (Authenticode code-signing needs a certificate you provide; hooks are ready for it.)
+- Tests: address rotation + index store, all green.
+
 ## [4.1.0] — 2026-08-15 (test build) — honest self-custody cut
 
 - **Removed Staking (#4)** and **NFT (#3)** from navigation — an APR list with no real staking action,
