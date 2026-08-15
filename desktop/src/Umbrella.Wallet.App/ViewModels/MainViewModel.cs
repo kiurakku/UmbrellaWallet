@@ -60,6 +60,12 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _selectedReceiveAddress = string.Empty;
     [ObservableProperty] private string _selectedReceiveSymbol = "ETH";
     [ObservableProperty] private string _selectedReceiveNetwork = string.Empty;
+    // HD receive rotation: only offered on chains the wallet can fully discover AND spend across every
+    // issued address (BTC/LTC). A fresh address per request reduces on-chain linking.
+    [ObservableProperty] private bool _canRotateReceive;
+    [ObservableProperty] private string _receivePathLabel = string.Empty;
+    public System.Collections.ObjectModel.ObservableCollection<string> ReceiveHistory { get; } = new();
+    private ChainId? _receiveChain;
     [ObservableProperty] private string _marketStatus = "Loading market…";
     [ObservableProperty] private string _settingsPassword = string.Empty;
     [ObservableProperty] private string _deleteConfirmation = string.Empty;
@@ -3585,10 +3591,9 @@ public partial class MainViewModel : ViewModelBase
         BackupStatus = message;
     }
 
-    /// <summary>Points the QR/address at an account without showing the popup. Always uses the
-    /// wallet's index-0 address: the send path currently signs with key #0, so handing out a #1+
-    /// receive address would create UTXOs the app can't spend. Multi-address HD (scan + per-UTXO
-    /// signing + change + gap scan) is the milestone that re-enables address rotation safely.</summary>
+    /// <summary>Points the QR/address at an account. Opens on the base receive address (#0); on the
+    /// full-HD chains (BTC/LTC) the user can then rotate to a fresh address — safe now that the wallet
+    /// discovers and spends across every issued index, so funds on #1+ are found and spendable.</summary>
     private bool SetReceiveTarget(WalletAccountViewModel? account)
     {
         if (account is null || !IsRealAddress(account.Address)) return false;
@@ -3596,7 +3601,57 @@ public partial class MainViewModel : ViewModelBase
         SelectedReceiveSymbol = account.Symbol;
         SelectedReceiveNetwork = $"{account.Symbol} · {account.NetworkLabel}";
         ReceiveQr = BuildQr(account.Address);
+
+        // Rotation is only safe where the wallet fully spends across addresses (BTC/LTC).
+        _receiveChain = ParseChain(account.Symbol);
+        CanRotateReceive = account.Symbol is "BTC" or "LTC"
+                           && _receiveChain is not null && _unlockedMnemonic is not null;
+        ReceivePathLabel = CanRotateReceive ? $"{account.Symbol} receive address #0" : string.Empty;
+        RebuildReceiveHistory(account.Symbol);
         return true;
+    }
+
+    /// <summary>Lists the receive addresses already handed out (index 0..last issued), so the user can
+    /// see and re-copy a past address. Re-derived from the seed; the indices come from durable state.</summary>
+    private void RebuildReceiveHistory(string symbol)
+    {
+        ReceiveHistory.Clear();
+        if (!CanRotateReceive || _receiveChain is null || _unlockedMnemonic is null) return;
+
+        var walletId = _registry.Active?.Id ?? "default";
+        var lastIssued = _addrIndex.GetState(walletId, symbol).LastIssuedExternalIndex ?? 0;
+        for (uint i = 0; i <= lastIssued; i++)
+            ReceiveHistory.Add(_deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, _receiveChain.Value, 0, i).Address);
+    }
+
+    /// <summary>
+    /// Hands out a fresh receive address by reserving the next external HD index. The index is
+    /// persisted BEFORE the address is shown and reserving throws on write failure, so a crash can
+    /// never lose an address the user has already published. Bumping the issued index also raises the
+    /// discovery scan floor, so funds received here are found and spendable.
+    /// </summary>
+    [RelayCommand]
+    private void NewReceiveAddress()
+    {
+        if (!CanRotateReceive || _receiveChain is null || _unlockedMnemonic is null) return;
+
+        var symbol = SelectedReceiveSymbol;
+        var walletId = _registry.Active?.Id ?? "default";
+        try
+        {
+            var index = _addrIndex.ReserveNextExternalIndex(walletId, symbol);
+            var addr = _deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, _receiveChain.Value, 0, index).Address;
+            SelectedReceiveAddress = addr;
+            ReceiveQr = BuildQr(addr);
+            ReceivePathLabel = $"{symbol} receive address #{index}";
+            if (!ReceiveHistory.Contains(addr)) ReceiveHistory.Add(addr);
+            ShowToast(Loc.Instance["receive.newAddr"], isError: false);
+        }
+        catch
+        {
+            // Fail-closed: if the new index could not be persisted, do NOT show an address we might forget.
+            ShowToast(Loc.Instance["receive.newAddrFail"], isError: true);
+        }
     }
 
     /// <summary>

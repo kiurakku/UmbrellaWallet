@@ -2640,10 +2640,25 @@
                          Foreground="{DynamicResource UmTextSoft}" Text="{Binding SelectedReceiveAddress}"/>
             </Border>
 
+            <!-- Which HD address this is; shown only where rotation is offered (BTC/LTC). -->
+            <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" HorizontalAlignment="Center"
+                       IsVisible="{Binding CanRotateReceive}" Text="{Binding ReceivePathLabel}"/>
+
             <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                     Content="{Binding [common.copyAddress], Source={x:Static app:Loc.Instance}}"
                     Command="{Binding CopyAddressCommand}"
                     CommandParameter="{Binding SelectedReceiveAddress}"/>
+
+            <!-- HD receive rotation: a fresh address per request reduces on-chain linking. Safe now
+                 that the wallet discovers and spends across every issued index. -->
+            <StackPanel Spacing="6" IsVisible="{Binding CanRotateReceive}">
+              <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                      Content="{Binding [receive.newAddrBtn], Source={x:Static app:Loc.Instance}}"
+                      Command="{Binding NewReceiveAddressCommand}"/>
+              <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextMuted}" HorizontalAlignment="Center"
+                         TextWrapping="Wrap" TextAlignment="Center"
+                         Text="{Binding [receive.newAddrHint], Source={x:Static app:Loc.Instance}}"/>
+            </StackPanel>
           </StackPanel>
         </Border>
       </Grid>
