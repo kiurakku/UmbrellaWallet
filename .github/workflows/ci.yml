@@ -22,7 +22,9 @@ jobs:
         with:
           dotnet-version: "8.0.x"
       - run: dotnet restore desktop/Umbrella.Wallet.sln
-      - run: dotnet test desktop/Umbrella.Wallet.sln --no-restore --verbosity minimal
+      # Exclude the "Live" category — those smoke tests hit real public explorers and would be flaky
+      # (and rate-limited) in CI. Run them on demand with: dotnet test --filter Category=Live
+      - run: dotnet test desktop/Umbrella.Wallet.sln --no-restore --verbosity minimal --filter "Category!=Live"
       - run: dotnet build desktop/Umbrella.Wallet.sln --no-restore -c Release
 
   version:
