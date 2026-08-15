@@ -10,8 +10,13 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = '14.5.7',
-    [string]$Destination = (Join-Path $PSScriptRoot '..\src\Umbrella.Wallet.App\tor')
+    # Pinned version + SHA-256 of the expert bundle, from
+    # https://dist.torproject.org/torbrowser/<Version>/sha256sums-unsigned-build.txt (see THIRD_PARTY_NOTICES.md).
+    [string]$Version = '15.0.19',
+    [string]$ExpectedSha256 = '6ac067402c7b4a3dc37887ed3754b3914b67fdc220c966190683e9ccf91abf0f',
+    [string]$Destination = (Join-Path $PSScriptRoot '..\src\Umbrella.Wallet.App\tor'),
+    # Escape hatch for staging an unpinned version locally; never use it for a release build.
+    [switch]$AllowUnverified
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,6 +39,24 @@ Write-Host "Downloading $url"
 New-Item -ItemType Directory -Force -Path $work | Out-Null
 $archivePath = Join-Path $work $archive
 Invoke-WebRequest -Uri $url -OutFile $archivePath -UseBasicParsing
+
+# Verify the archive against the pinned SHA-256 BEFORE extracting anything from it.
+$expected = $ExpectedSha256.Trim().ToLowerInvariant()
+$actual = (Get-FileHash -Algorithm SHA256 -Path $archivePath).Hash.ToLowerInvariant()
+if ($expected) {
+    if ($actual -ne $expected) {
+        Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
+        throw "Tor expert bundle SHA-256 mismatch — refusing to use it.`n  expected $expected`n  actual   $actual`nSee THIRD_PARTY_NOTICES.md; the pinned version may have moved or the download was tampered with."
+    }
+    Write-Host "  sha256 verified: $actual"
+}
+elseif ($AllowUnverified) {
+    Write-Warning "Staging Tor $Version WITHOUT hash verification (-AllowUnverified). Do NOT ship this build."
+}
+else {
+    Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
+    throw "No pinned SHA-256 for Tor $Version. Pin it in THIRD_PARTY_NOTICES.md (from the official sha256sums) or pass -AllowUnverified for a throwaway local build."
+}
 
 Write-Host 'Extracting…'
 # tar ships with Windows 10+ and handles .tar.gz natively.
