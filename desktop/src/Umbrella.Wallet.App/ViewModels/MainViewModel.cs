@@ -1019,15 +1019,15 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
-        new("NEW", "New stickers, nav & chart fixes, centred unlock",
-            "Version 4.0.0:\n\n" +
-            "• Your new animated stickers are in — the greeting sticker is back beside the logo, GhostPepe on the Anonymous card, encryption on Your keys, plus stickers in NFT, Receive and the send animation. They toggle with the other animations.\n" +
-            "• Fixed: the nav bar vanished when you set the menu to Top or Bottom — it's back.\n" +
-            "• Fixed: a green chart no longer draws a red line.\n" +
-            "• The unlock screen is centred now, not stuck near the top.\n" +
-            "• Token pages show 24h High / Low / Volume under the chart.\n" +
-            "• New Telegram logo in the News section.\n\n" +
-            "Big pieces still ahead, done properly one at a time: the full Uniswap-style token & swap pages, swap between all coins, on-chain transaction history, Telegram NFTs, per-coin logos, single-coin wallets, and an optional market-data connector.",
+        new("4.0", "Version 4.0 — on-chain history, richer token pages, more",
+            "A big update:\n\n" +
+            "• On-chain transaction history. The Transactions tab now pulls your real history straight from the chain for your own addresses — including transactions from before you first opened the wallet. Covers TRX (native + USDT/TRC-20), Bitcoin, Ethereum and Litecoin, keyless and through Tor/your proxy.\n" +
+            "• Richer token pages. Open any coin for 24h High / Low / Volume. Turn on the optional CoinGecko connector (Settings → Privacy — off by default) to also see Market Cap, FDV and Volume.\n" +
+            "• Colour-tag your wallets (Settings → Wallets) — a coloured ring so you can tell them apart at a glance.\n" +
+            "• Your new stickers everywhere — greeting by the logo, GhostPepe, encryption, NFT, Receive, the send animation, and up/down on the market chart. All toggle with the other animations.\n" +
+            "• More privacy: lock on minimize, hide balances by default, custom SOCKS5 proxy, IPv4/IPv6, clipboard auto-clear.\n" +
+            "• Lots of fixes: Top/Bottom nav, green-chart line colour, centred unlock, tidier tiles and Activity cards, toasts across the app, new Telegram news logo.\n\n" +
+            "Still coming, done deliberately with your testing: in-page swap + swap between all pairs, Telegram NFTs, SOL/DOGE history, single-coin wallets, and per-coin logos. 146/146 tests pass.",
             "2026-08-15"),
         new("NEW", "Token pages now show 24h high, low and volume",
             "Version 3.5.1:\n\n" +

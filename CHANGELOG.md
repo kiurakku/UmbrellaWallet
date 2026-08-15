@@ -6,28 +6,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [4.0.0] — 2026-08-15
 
-### New animated stickers (yours), all toggle-able with the other animations
-- Welcome screen: the greeting sticker is back beside the umbrella; **GhostPepe** on the
-  "Anonymous" card and **encryption** on the "Your keys" card.
-- **67** in the NFT section, **Recieve** on the Receive screen, **Sending** on the send-broadcast
-  animation. (up/down market stickers are next.)
+### On-chain transaction history (new)
+- The Transactions section now shows **real on-chain history for your own addresses** — including
+  transactions made **before** you ever opened the wallet. Covers **TRX (native + USDT/TRC-20),
+  Bitcoin, Ethereum and Litecoin**, via keyless public explorers, routed through Tor / your proxy
+  like everything else. Merged with local activity and de-duplicated.
 
-### Fixes (from your screenshots)
-- **Nav bar reappears on Top/Bottom layouts** — a missing change-notification hid it (regression fix).
-- **Chart line matches the chart** — a green (up-over-window) chart no longer draws a red line (#24).
-- **Unlock screen is vertically centred** now, not stuck near the top.
-- **Token pages show 24h High / Low / Volume** under the chart (from the same Binance feed).
-- News section uses the new Telegram logo.
+### Richer token pages
+- Opening a coin shows a **24h High / Low / Volume** row (from the same Binance feed).
+- **Optional market-data connector (CoinGecko)** — **off by default** so the privacy-first wallet
+  contacts no third party unless you enable it (Settings → Privacy). When on, token pages also show
+  **Market Cap, FDV and Volume**.
 
-### Still ahead (honestly scoped — each is its own piece of work)
-Full Uniswap-style token page (market-cap/FDV/TVL/52w) & in-page swap widget, swap between **all**
-coins, per-wallet single-coin support, on-chain transaction history, Telegram-gift NFTs, an optional
-market-data (Uniswap/CoinGecko) connector, real per-coin logos, a wallet-switcher page, and the
-developer-fee routing question (see release notes). These need dedicated, verifiable work — not a
-blind mass rewrite.
+### Wallets
+- **Colour-tag your wallets** — a colour ring on each wallet's badge + a swatch picker
+  (Settings → Wallets), persisted.
+
+### Stickers (yours) — all toggle with the other animations
+- Welcome: greeting sticker beside the umbrella, **GhostPepe** (Anonymous), **encryption** (Your keys).
+- **67** in NFT, **Recieve** on Receive, **Sending** on the send animation, **up/down** on the market chart.
+
+### Security & privacy
+- **Lock on minimize**, **hide balances by default**, custom SOCKS5 proxy, IPv4/IPv6 control,
+  clipboard auto-clear (Settings → Security / Privacy). Re-verified vault (Argon2id + AES-256-GCM),
+  screenshot blackout, KDF-parameter guard.
+
+### Fixes
+- Nav bar reappears on Top/Bottom layouts (regression) · green chart no longer draws a red line ·
+  unlock screen vertically centred · quick-action tiles no longer clip · Activity events are separate
+  cards · shorter top-centre toasts, now shown across all sections · new Telegram news logo ·
+  removed the umbrella-logo glow.
+
+### Still ahead (honest — each its own piece of work)
+Full in-page swap widget + swap between **all** pairs (needs an aggregator), per-wallet single-coin
+support, Telegram-gift NFTs (TON NFT API), SOL/DOGE history, real per-coin logos, and the
+developer-fee routing decision. Being done deliberately, with your testing, not a blind mass rewrite.
 
 ### Verified
-139/139 tests pass; smoke-launches clean (desktop + mobile). Updates never touch your data.
+146/146 tests pass; smoke-launches clean (desktop + mobile). Updates never touch your data.
 
 ## [3.5.1] — 2026-08-15
 
