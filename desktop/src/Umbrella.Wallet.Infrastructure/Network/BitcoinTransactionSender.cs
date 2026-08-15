@@ -1,11 +1,11 @@
 using System.Text;
 using System.Text.Json;
 using NBitcoin;
-using NBitcoin.Altcoins;
+using Umbrella.Wallet.Core.Chains;
+using Umbrella.Wallet.Core.Derivation;
+using Umbrella.Wallet.Core.Utxo;
 
 namespace Umbrella.Wallet.Infrastructure.Network;
-
-public sealed record UtxoRef(string TxId, int Vout, long ValueSat);
 
 public sealed record BtcSendQuote(
     string Symbol,
@@ -24,15 +24,30 @@ public sealed record BtcSendQuote(
     string? Memo = null);
 
 /// <summary>
-/// Real BTC / LTC sending over Esplora-style public explorers. UTXOs and fee rates are read
-/// from the explorer, the transaction is built and signed LOCALLY with NBitcoin, and only the
-/// signed hex is broadcast. Change returns to the same address the wallet displays.
+/// Real BTC / LTC sending over Esplora-style public explorers. UTXOs are discovered across EVERY
+/// address the wallet controls (external + internal) by the caller's scan, the transaction is built
+/// and signed LOCALLY with NBitcoin — each input with its own HD key — and only the signed hex is
+/// broadcast. Change returns to a fresh internal (change) address, not a reused public one.
 /// </summary>
 public sealed class BitcoinTransactionSender
 {
     private static HttpClient Http => PublicHttp.Shared;
 
-    private const long DustSat = 546;
+    private readonly HdAddressDeriver _deriver;
+    private readonly HdUtxoSpender _spender;
+
+    public BitcoinTransactionSender(HdAddressDeriver? deriver = null)
+    {
+        _deriver = deriver ?? new HdAddressDeriver();
+        _spender = new HdUtxoSpender(_deriver);
+    }
+
+    private static ChainId ChainOf(string symbol) => symbol.ToUpperInvariant() switch
+    {
+        "BTC" => ChainId.Btc,
+        "LTC" => ChainId.Ltc,
+        _ => throw new NotSupportedException($"{symbol} is not a UTXO chain handled here."),
+    };
 
     public static string ExplorerFor(string symbol) => symbol.ToUpperInvariant() switch
     {
@@ -41,188 +56,86 @@ public sealed class BitcoinTransactionSender
         _ => throw new NotSupportedException($"No explorer for {symbol}."),
     };
 
-    // NBitcoin.Network must be fully qualified: this file's own namespace is also "Network".
-    private static NBitcoin.Network NetworkFor(string symbol) => symbol.ToUpperInvariant() switch
+    /// <summary>
+    /// HD-aware quote: plans a spend over UTXOs already discovered across EVERY address the wallet
+    /// controls (supplied by the caller's scan), fetching only the live fee rate. Change is planned
+    /// for a fresh internal address, reserved later at broadcast time. Nothing is signed here.
+    /// </summary>
+    public async Task<(BtcSendQuote? Quote, UtxoSpendPlan? Plan, UtxoSpendRequest? Request, string? Error)>
+        PrepareHdAsync(
+            string symbol,
+            IReadOnlyList<OwnedUtxo> utxos,
+            string primaryFromAddress,
+            string toAddress,
+            decimal amount,
+            string? devFeeAddress = null,
+            decimal devFeeAmount = 0m,
+            string? memo = null,
+            CancellationToken ct = default)
     {
-        "BTC" => NBitcoin.Network.Main,
-        "LTC" => Litecoin.Instance.Mainnet,
-        _ => throw new NotSupportedException($"No network for {symbol}."),
-    };
-
-    /// <summary>Validates, gathers UTXOs and the fee rate, and returns a quote. Nothing is signed.</summary>
-    /// <param name="devFeeAddress">Optional developer-fee recipient (same chain). Sent as an extra
-    /// output in the SAME transaction, so there is only ever one network fee.</param>
-    /// <param name="devFeeAmount">The developer fee, added on top of <paramref name="amount"/>.</param>
-    public async Task<(BtcSendQuote? Quote, string? Error)> PrepareAsync(
-        string symbol,
-        string fromAddress,
-        string toAddress,
-        decimal amount,
-        string? devFeeAddress = null,
-        decimal devFeeAmount = 0m,
-        string? memo = null,
-        CancellationToken ct = default)
-    {
-        // OP_RETURN carries at most 80 bytes on the relay network; refuse rather than build a
-        // transaction that nodes will drop (which would look "sent" but never confirm).
-        if (!string.IsNullOrEmpty(memo) && System.Text.Encoding.ASCII.GetByteCount(memo) > 80)
-            return (null, "Swap memo is too long for an OP_RETURN (max 80 bytes).");
-
-        NBitcoin.Network network;
+        ChainId chain;
         string explorer;
         try
         {
-            network = NetworkFor(symbol);
+            chain = ChainOf(symbol);
             explorer = ExplorerFor(symbol);
         }
         catch (NotSupportedException ex)
         {
-            return (null, ex.Message);
+            return (null, null, null, ex.Message);
         }
 
-        try
-        {
-            BitcoinAddress.Create(toAddress, network);
-        }
-        catch
-        {
-            return (null, $"That is not a valid {symbol.ToUpperInvariant()} address for mainnet.");
-        }
-
-        if (amount <= 0) return (null, "Amount must be positive.");
-        var amountSat = (long)(amount * 100_000_000m);
-        if (amountSat < DustSat) return (null, $"Amount is below the dust limit ({DustSat} sat).");
-
-        // Developer fee output. If the address is unusable or the fee dust, the send simply
-        // proceeds without it — a fee misconfiguration must never block the user's transfer, and
-        // the quote it returns is the single source of truth the review screen discloses.
-        long devFeeSat = 0;
-        string? devFee = null;
-        if (!string.IsNullOrWhiteSpace(devFeeAddress) && devFeeAmount > 0)
-        {
-            var candidate = (long)(devFeeAmount * 100_000_000m);
-            var valid = false;
-            try { BitcoinAddress.Create(devFeeAddress.Trim(), network); valid = true; }
-            catch { /* leave the fee off */ }
-            if (valid && candidate >= DustSat)
-            {
-                devFeeSat = candidate;
-                devFee = devFeeAddress.Trim();
-            }
-        }
-
-        var utxos = await FetchUtxosAsync(explorer, fromAddress, ct);
-        if (utxos.Count == 0) return (null, "No spendable outputs on this address.");
+        if (amount <= 0) return (null, null, null, "Amount must be positive.");
 
         var feeRate = await FetchFeeRateAsync(explorer, ct);
-        var outputs = devFeeSat > 0 ? 3 : 2; // recipient, (dev fee), change
-        // An OP_RETURN adds one more (zero-value) output: ~11 vB overhead plus the memo bytes.
-        var opReturnVsize = string.IsNullOrEmpty(memo) ? 0 : System.Text.Encoding.ASCII.GetByteCount(memo) + 11;
+        var amountSat = (long)(amount * 100_000_000m);
+        var devFeeSat = devFeeAmount > 0 ? (long)(devFeeAmount * 100_000_000m) : 0;
 
-        // Select inputs largest-first until the amount plus dev fee plus the (input-count
-        // dependent) network fee is met.
-        var ordered = utxos.OrderByDescending(u => u.ValueSat).ToList();
-        var selected = new List<UtxoRef>();
-        long total = 0;
-        long fee = 0;
-        foreach (var utxo in ordered)
-        {
-            selected.Add(utxo);
-            total += utxo.ValueSat;
-            // P2WPKH: ~68 vB per input, 31 vB per output, ~11 vB overhead.
-            var vsize = selected.Count * 68 + outputs * 31 + 11 + opReturnVsize;
-            fee = (long)Math.Ceiling(vsize * feeRate);
-            if (total >= amountSat + devFeeSat + fee) break;
-        }
+        var request = new UtxoSpendRequest(chain, toAddress, amountSat, feeRate, devFeeSat, devFeeAddress, memo);
+        var (plan, error) = _spender.PlanSpend(chain, utxos, request);
+        if (plan is null) return (null, null, null, error);
 
-        if (total < amountSat + devFeeSat + fee)
-        {
-            return (null,
-                $"Insufficient funds: have {total / 100_000_000m:0.########} {symbol.ToUpperInvariant()}, " +
-                $"need {(amountSat + devFeeSat + fee) / 100_000_000m:0.########} including fee.");
-        }
+        var quote = new BtcSendQuote(
+            symbol.ToUpperInvariant(), primaryFromAddress, toAddress, amount, plan.AmountSat,
+            plan.FeeSat, plan.FeeSat / 100_000_000m, plan.Inputs.Count, explorer,
+            plan.DevFeeSat > 0 ? devFeeAddress : null, plan.DevFeeSat,
+            string.IsNullOrEmpty(memo) ? null : memo);
 
-        return (new BtcSendQuote(
-            symbol.ToUpperInvariant(), fromAddress, toAddress, amount, amountSat,
-            fee, fee / 100_000_000m, selected.Count, explorer, devFee, devFeeSat,
-            string.IsNullOrEmpty(memo) ? null : memo), null);
+        return (quote, plan, request, null);
     }
 
-    /// <summary>Builds, signs and broadcasts. The key is supplied by the caller and zeroed there.</summary>
-    public async Task<(bool Ok, string? TxId, string? Error)> SignAndBroadcastAsync(
-        BtcSendQuote quote,
-        Key privateKey,
+    /// <summary>
+    /// Signs the planned spend across all its input addresses and broadcasts it. If the plan has
+    /// change, the next internal index is durably reserved BEFORE broadcast (throws on write failure)
+    /// and the change is sent there — a fresh address, never a reused public one.
+    /// </summary>
+    public async Task<(bool Ok, string? TxId, string? Error)> SignAndBroadcastHdAsync(
+        string mnemonic,
+        string walletId,
+        AddressIndexStore store,
+        string symbol,
+        UtxoSpendPlan plan,
+        UtxoSpendRequest request,
         CancellationToken ct = default)
     {
         try
         {
-            var network = NetworkFor(quote.Symbol);
-            var from = privateKey.PubKey.GetAddress(ScriptPubKeyType.Segwit, network);
-            if (!string.Equals(from.ToString(), quote.From, StringComparison.OrdinalIgnoreCase))
+            string? changeAddress = null;
+            if (plan.NeedsChange)
             {
-                return (false, null, "Key does not match the sending address — refusing to sign.");
+                var index = store.ReserveNextChangeIndex(walletId, symbol);
+                changeAddress = _deriver.DeriveBitcoinLikeAt(mnemonic, plan.Chain, change: 1, index: index).Address;
             }
 
-            var needed = quote.AmountSat + quote.DevFeeSat + quote.FeeSat;
-            var utxos = await FetchUtxosAsync(quote.Explorer, quote.From, ct);
-            var ordered = utxos.OrderByDescending(u => u.ValueSat).ToList();
-            var selected = new List<UtxoRef>();
-            long total = 0;
-            foreach (var utxo in ordered)
-            {
-                selected.Add(utxo);
-                total += utxo.ValueSat;
-                if (total >= needed) break;
-            }
-
-            if (total < needed)
-            {
-                return (false, null, "Balance changed since the quote — re-check the transfer.");
-            }
-
-            var builder = network.CreateTransactionBuilder();
-            foreach (var utxo in selected)
-            {
-                var coin = new Coin(
-                    uint256.Parse(utxo.TxId), (uint)utxo.Vout,
-                    Money.Satoshis(utxo.ValueSat), from.ScriptPubKey);
-                builder.AddCoins(coin);
-            }
-
-            builder.AddKeys(privateKey);
-            builder.Send(BitcoinAddress.Create(quote.To, network), Money.Satoshis(quote.AmountSat));
-            // Developer fee: an extra output in the same transaction (disclosed before confirm).
-            if (quote.DevFeeSat > 0 && !string.IsNullOrWhiteSpace(quote.DevFeeAddress))
-            {
-                builder.Send(BitcoinAddress.Create(quote.DevFeeAddress, network), Money.Satoshis(quote.DevFeeSat));
-            }
-
-            // OP_RETURN swap memo: a zero-value output that tells THORChain what to do with the deposit.
-            // Guarded to <=80 bytes at quote time; re-checked here so a hand-built quote can't overflow it.
-            if (!string.IsNullOrWhiteSpace(quote.Memo))
-            {
-                var memoBytes = Encoding.ASCII.GetBytes(quote.Memo);
-                if (memoBytes.Length > 80) return (false, null, "Swap memo exceeds the 80-byte OP_RETURN limit.");
-                builder.Send(TxNullDataTemplate.Instance.GenerateScriptPubKey(memoBytes), Money.Zero);
-            }
-
-            builder.SendFees(Money.Satoshis(quote.FeeSat));
-            builder.SetChange(from);
-
-            var tx = builder.BuildTransaction(sign: true);
-            if (!builder.Verify(tx, out var errors))
-            {
-                return (false, null, "Signature verification failed: " + string.Join("; ", errors.Select(e => e.ToString())));
-            }
+            var (tx, error) = _spender.BuildSigned(mnemonic, plan, request, changeAddress);
+            if (tx is null) return (false, null, error);
 
             var hex = tx.ToHex();
             using var content = new StringContent(hex, Encoding.UTF8, "text/plain");
-            using var res = await Http.PostAsync($"{quote.Explorer}/tx", content, ct);
+            using var res = await Http.PostAsync($"{ExplorerFor(symbol)}/tx", content, ct);
             var body = (await res.Content.ReadAsStringAsync(ct)).Trim();
             if (!res.IsSuccessStatusCode)
-            {
                 return (false, null, $"Explorer rejected the transaction: {body}");
-            }
 
             return (true, body, null);
         }
@@ -230,33 +143,6 @@ public sealed class BitcoinTransactionSender
         {
             return (false, null, $"Send failed: {ex.Message}");
         }
-    }
-
-    private static async Task<List<UtxoRef>> FetchUtxosAsync(string explorer, string address, CancellationToken ct)
-    {
-        var result = new List<UtxoRef>();
-        try
-        {
-            using var res = await Http.GetAsync($"{explorer}/address/{Uri.EscapeDataString(address)}/utxo", ct);
-            if (!res.IsSuccessStatusCode) return result;
-            using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-            foreach (var item in doc.RootElement.EnumerateArray())
-            {
-                var txid = item.GetProperty("txid").GetString();
-                var vout = item.GetProperty("vout").GetInt32();
-                var value = item.GetProperty("value").GetInt64();
-                // Only spend confirmed outputs — unconfirmed change can vanish on a reorg.
-                var confirmed = !item.TryGetProperty("status", out var status) ||
-                                !status.TryGetProperty("confirmed", out var c) || c.GetBoolean();
-                if (txid is not null && confirmed) result.Add(new UtxoRef(txid, vout, value));
-            }
-        }
-        catch
-        {
-            // treated as "no UTXOs"
-        }
-
-        return result;
     }
 
     /// <summary>

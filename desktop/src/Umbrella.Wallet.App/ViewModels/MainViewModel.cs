@@ -15,6 +15,7 @@ using QRCoder;
 using Umbrella.Wallet.Core.Chains;
 using Umbrella.Wallet.Core.Derivation;
 using Umbrella.Wallet.Core.Seed;
+using Umbrella.Wallet.Core.Utxo;
 using Umbrella.Wallet.Infrastructure;
 using Umbrella.Wallet.Infrastructure.Network;
 
@@ -729,6 +730,11 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _sendSuccess = string.Empty;
     private EthSendQuote? _sendQuote;
     private BtcSendQuote? _btcQuote;
+    // The HD spend plan behind the pending BTC/LTC quote: the exact inputs (drawn from every owned
+    // address) and request that Confirm signs — so nothing is re-selected between review and broadcast.
+    private UtxoSpendPlan? _btcPlan;
+    private UtxoSpendRequest? _btcRequest;
+    private string? _btcPlanSymbol;
     private SolSendQuote? _solQuote;
     private TronSendQuote? _tronQuote;
     private TonSendQuote? _tonQuote;
@@ -824,6 +830,12 @@ public partial class MainViewModel : ViewModelBase
     private readonly ExchangeCredentialStore _exchangeStore = new();
     private readonly EthTransactionSender _ethSender = new();
     private readonly BitcoinTransactionSender _btcSender = new();
+    private readonly UtxoAccountScanner _utxoScanner = new();
+    private readonly AddressIndexStore _addrIndex = new();
+    // Last full UTXO scan per BTC/LTC symbol (all external + internal addresses). Populated by the
+    // balance refresh and reused by the send path, so a transfer spends the same discovered set —
+    // including internal change — that the shown balance is computed from.
+    private readonly Dictionary<string, UtxoScanResult> _utxoScans = new(StringComparer.OrdinalIgnoreCase);
     private readonly SolanaTransactionSender _solSender = new();
     private readonly TronTransactionSender _tronSender = new();
     private readonly TonTransactionSender _tonSender = new();
@@ -3121,8 +3133,12 @@ public partial class MainViewModel : ViewModelBase
             // awaits here were the main reason the total took many seconds to appear after unlock /
             // wallet switch; firing them together cuts that to roughly the slowest single call.
             // (Receive-only chains TON/ADA have public balance APIs; XMR returns null safely.)
+            // BTC/LTC are handled by the HD scan below (aggregated across every address), not by the
+            // single-address balance call — otherwise change sent to an internal address would vanish
+            // from the shown balance.
             var balanceTargets = Accounts.ToList()
-                .Where(a => a.SupportStatus is "Ready" or "Receive only" && ParseChain(a.Symbol) is not null)
+                .Where(a => a.SupportStatus is "Ready" or "Receive only" && ParseChain(a.Symbol) is not null
+                            && a.Symbol is not ("BTC" or "LTC"))
                 .ToList();
             var balanceResults = await Task.WhenAll(
                 balanceTargets.Select(a => _balances.GetBalanceAsync(ParseChain(a.Symbol)!.Value, a.Address, ct)));
@@ -3146,6 +3162,10 @@ public partial class MainViewModel : ViewModelBase
             // Show the total from native balances immediately, before the slower token/NFT/watch passes.
             RefreshHoldings();
             RecalcBalance();
+
+            // BTC/LTC: scan every derived address (external + internal) and aggregate — the balance
+            // the wallet shows is exactly the set it can find and spend.
+            await RefreshUtxoWalletsAsync(prices, ct);
 
             // Every TRC-20 token on our OWN derived TRON account — not just USDT. Reward tokens,
             // other stablecoins and any TRC-20 asset now appear next to the native coins, which is
@@ -3844,17 +3864,47 @@ public partial class MainViewModel : ViewModelBase
                 case "BTC":
                 case "LTC":
                 {
+                    if (_unlockedMnemonic is null) { SendError = "Unlock the wallet first."; return; }
+                    var walletId = _registry.Active?.Id ?? "default";
+
+                    // Reuse the balance-refresh scan (all external + internal addresses). If a send is
+                    // started before the first refresh finished, scan on demand.
+                    if (!_utxoScans.TryGetValue(chain, out var scan) || scan is null)
+                    {
+                        var chainId0 = ParseChain(chain)!.Value;
+                        var state0 = _addrIndex.GetState(walletId, chain);
+                        var floors0 = new UtxoScanFloors(
+                            state0.LastIssuedExternalIndex, state0.LastSeenUsedExternalIndex,
+                            state0.LastIssuedInternalIndex, state0.LastSeenUsedInternalIndex);
+                        scan = await _utxoScanner.ScanAsync(
+                            _unlockedMnemonic!, chainId0, EsploraUtxoExplorer.For(chain), floors0);
+                        if (!scan.Partial) _utxoScans[chain] = scan;
+                    }
+
+                    if (scan.Partial)
+                    {
+                        SendError = "Balance isn’t fully synced yet — refresh and try again before sending.";
+                        return;
+                    }
+
                     var devFee = _devFee.QuoteFee(chain, amount);
-                    var (quote, error) = await _btcSender.PrepareAsync(
-                        chain, from.Address, SendTo.Trim(), amount, devFee?.Address, devFee?.Amount ?? 0m);
-                    if (quote is null) { SendError = error ?? "Could not prepare the transaction."; return; }
+                    var (quote, plan, request, error) = await _btcSender.PrepareHdAsync(
+                        chain, scan.Utxos, from.Address, SendTo.Trim(), amount, devFee?.Address, devFee?.Amount ?? 0m);
+                    if (quote is null || plan is null || request is null)
+                    {
+                        SendError = error ?? "Could not prepare the transaction."; return;
+                    }
+
                     _btcQuote = quote;
+                    _btcPlan = plan;
+                    _btcRequest = request;
+                    _btcPlanSymbol = chain;
                     SendQuoteSummary = $"Send {Fmt(quote.Amount)} {chain}  →  {quote.To}";
-                    // Disclosure is driven off the quote (the source of truth for what is actually sent).
+                    // Disclosure is driven off the plan (the source of truth for what is actually sent).
                     SendQuoteFee = quote.DevFeeSat > 0
                         ? $"Network fee ≈ {Fmt(quote.FeeAmount)} {chain} · service fee {_devFee.FeePercent:0.##}% ≈ " +
-                          $"{Fmt(quote.DevFeeSat / 100_000_000m)} {chain} to the developer · change returns to you"
-                        : $"Network fee ≈ {Fmt(quote.FeeAmount)} {chain} · {quote.InputCount} input(s) · change returns to you";
+                          $"{Fmt(quote.DevFeeSat / 100_000_000m)} {chain} to the developer · {quote.InputCount} input(s) · change to a fresh internal address"
+                        : $"Network fee ≈ {Fmt(quote.FeeAmount)} {chain} · {quote.InputCount} input(s) · change returns to a fresh internal address";
                     break;
                 }
 
@@ -3899,6 +3949,67 @@ public partial class MainViewModel : ViewModelBase
             HasSendQuote = true;
             StatusMessage = "Review the transfer, then confirm to broadcast";
         });
+    }
+
+    /// <summary>
+    /// Refreshes BTC/LTC balances by scanning every derived address (external + internal) and
+    /// aggregating their UTXOs, caching the scan for the send path. A transient explorer error keeps
+    /// the last good balance rather than showing a lower, wrong number (roadmap §1.10, §3.2).
+    /// </summary>
+    private async Task RefreshUtxoWalletsAsync(
+        IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct)
+    {
+        if (_unlockedMnemonic is null) return;
+        var walletId = _registry.Active?.Id ?? "default";
+
+        foreach (var symbol in new[] { "BTC", "LTC" })
+        {
+            var account = Accounts.FirstOrDefault(a =>
+                a.Symbol == symbol && a.SupportStatus == "Ready" && IsRealAddress(a.Address));
+            if (account is null) continue;
+
+            var chain = ParseChain(symbol);
+            if (chain is null) continue;
+
+            try
+            {
+                var state = _addrIndex.GetState(walletId, symbol);
+                var floors = new UtxoScanFloors(
+                    state.LastIssuedExternalIndex, state.LastSeenUsedExternalIndex,
+                    state.LastIssuedInternalIndex, state.LastSeenUsedInternalIndex);
+
+                var scan = await _utxoScanner.ScanAsync(
+                    _unlockedMnemonic!, chain.Value, EsploraUtxoExplorer.For(symbol), floors, ct: ct);
+
+                // A partial (network-degraded) scan must not lower a balance we already trust.
+                if (scan.Partial && _utxoScans.ContainsKey(symbol)) continue;
+
+                _utxoScans[symbol] = scan;
+                if (scan.HighestUsedExternalIndex is { } he) _addrIndex.RecordSeenUsed(walletId, symbol, 0, he);
+                if (scan.HighestUsedInternalIndex is { } hi) _addrIndex.RecordSeenUsed(walletId, symbol, 1, hi);
+
+                var amount = scan.TotalSat / 100_000_000m;
+                var (usd, change) = prices.GetValueOrDefault(symbol);
+                var idx = Accounts.IndexOf(account);
+                if (idx >= 0)
+                {
+                    Accounts[idx] = account with
+                    {
+                        Amount = (double)amount,
+                        Price = (double)usd,
+                        Change24h = (double)change,
+                    };
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch
+            {
+                // Leave the prior amount in place; the next refresh retries.
+            }
+        }
+
+        RefreshHoldings();
+        RecalcBalance();
     }
 
     private static string Fmt(decimal value) =>
@@ -3946,12 +4057,16 @@ public partial class MainViewModel : ViewModelBase
                     break;
                 }
 
-                case "BTC" or "LTC" when _btcQuote is not null:
+                case "BTC" or "LTC" when _btcQuote is not null && _btcPlan is not null && _btcRequest is not null:
                 {
                     var quote = _btcQuote;
-                    var chainId = _sendSymbol == "BTC" ? ChainId.Btc : ChainId.Ltc;
-                    var key = _deriver.DeriveBitcoinLikeKey(_unlockedMnemonic!, chainId);
-                    var (ok, txid, error) = await _btcSender.SignAndBroadcastAsync(quote, key);
+                    var walletId = _registry.Active?.Id ?? "default";
+                    // Signs across every input address in the plan and reserves the internal change
+                    // index (persisted before broadcast) — no key #0 assumption.
+                    var (ok, txid, error) = await _btcSender.SignAndBroadcastHdAsync(
+                        _unlockedMnemonic!, walletId, _addrIndex, _btcPlanSymbol ?? quote.Symbol, _btcPlan, _btcRequest);
+                    // Force a fresh scan next time so the spent inputs and new change are reflected.
+                    _utxoScans.Remove(_btcPlanSymbol ?? quote.Symbol);
                     var explorer = _sendSymbol == "BTC"
                         ? $"blockstream.info/tx/{txid}"
                         : $"litecoinspace.org/tx/{txid}";
@@ -4226,11 +4341,31 @@ public partial class MainViewModel : ViewModelBase
 
             StatusMessage = "Signing locally and broadcasting the swap deposit…";
             var fromAddr = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, fromChain.Value).Address;
-            var (quote, prepErr) = await _btcSender.PrepareAsync(from, fromAddr, fresh.InboundAddress, shown.AmountIn, memo: fresh.Memo);
-            if (quote is null) { SwapError = prepErr ?? "Could not build the swap deposit."; return; }
+            var walletId = _registry.Active?.Id ?? "default";
 
-            var key = _deriver.DeriveBitcoinLikeKey(_unlockedMnemonic!, fromChain.Value);
-            var (ok, txid, sendErr) = await _btcSender.SignAndBroadcastAsync(quote, key);
+            // Same multisource HD path as a normal send: gather UTXOs from every owned address, then
+            // sign each with its own key. The THORChain memo rides as an OP_RETURN in the same tx.
+            if (!_utxoScans.TryGetValue(from, out var scan) || scan is null)
+            {
+                var st = _addrIndex.GetState(walletId, from);
+                var fl = new UtxoScanFloors(
+                    st.LastIssuedExternalIndex, st.LastSeenUsedExternalIndex,
+                    st.LastIssuedInternalIndex, st.LastSeenUsedInternalIndex);
+                scan = await _utxoScanner.ScanAsync(_unlockedMnemonic!, fromChain.Value, EsploraUtxoExplorer.For(from), fl);
+                if (!scan.Partial) _utxoScans[from] = scan;
+            }
+            if (scan.Partial) { SwapError = "Balance isn’t fully synced yet — try again in a moment."; return; }
+
+            var (quote, plan, request, prepErr) = await _btcSender.PrepareHdAsync(
+                from, scan.Utxos, fromAddr, fresh.InboundAddress, shown.AmountIn, memo: fresh.Memo);
+            if (quote is null || plan is null || request is null)
+            {
+                SwapError = prepErr ?? "Could not build the swap deposit."; return;
+            }
+
+            var (ok, txid, sendErr) = await _btcSender.SignAndBroadcastHdAsync(
+                _unlockedMnemonic!, walletId, _addrIndex, from, plan, request);
+            _utxoScans.Remove(from);
             if (ok && txid is not null)
             {
                 var track = ThorchainSwapClient.TrackUrl(txid);

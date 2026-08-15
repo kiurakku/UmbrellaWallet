@@ -1,5 +1,8 @@
 using System.Text;
 using NBitcoin;
+using Umbrella.Wallet.Core.Chains;
+using Umbrella.Wallet.Core.Derivation;
+using Umbrella.Wallet.Core.Utxo;
 using Umbrella.Wallet.Infrastructure.Network;
 
 namespace Umbrella.Wallet.Core.Tests;
@@ -94,13 +97,20 @@ public sealed class ThorchainSwapTests
     }
 
     [Fact]
-    public async Task Sender_refuses_a_memo_that_would_overflow_the_op_return()
+    public void Spender_refuses_a_memo_that_would_overflow_the_op_return()
     {
-        var sender = new BitcoinTransactionSender();
-        var (quote, err) = await sender.PrepareAsync(
-            "BTC", "bc1qexamplefrom", "bc1qexampleto", 0.01m, memo: new string('x', 81));
+        // The multisource spend planner is where the OP_RETURN guard now lives (pure, no network).
+        const string phrase =
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+        var deriver = new HdAddressDeriver();
+        var acct = deriver.DeriveBitcoinLikeAt(phrase, ChainId.Btc, 0, 0);
+        var utxos = new[] { new OwnedUtxo(acct.Path, acct.Address, new string('0', 64), 0, 1_000_000, true) };
+        var request = new UtxoSpendRequest(
+            ChainId.Btc, "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4", 100_000, 1, Memo: new string('x', 81));
 
-        Assert.Null(quote);
+        var (plan, err) = new HdUtxoSpender(deriver).PlanSpend(ChainId.Btc, utxos, request);
+
+        Assert.Null(plan);
         Assert.Contains("80", err);
     }
 
