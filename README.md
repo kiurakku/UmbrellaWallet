@@ -226,16 +226,15 @@ Linux release: `./scripts/publish-linux.sh` (fetches Linux Tor/Monero helpers, p
 
 ## 📖 Documentation
 
-The complete, self-contained project documentation lives in **[`docs/`](docs/README.md)** — written
-so a newcomer, a new engineer, or an AI assistant can understand the whole thing without hunting
-through code:
+Project documentation lives in **[`docs/`](docs/README.md)**. Umbrella is desktop-only; the earlier
+web product's docs have been archived and are no longer authoritative.
 
 | | |
 |---|---|
-| [Overview](docs/01-overview.md) · [Architecture](docs/02-architecture.md) · [Tech stack](docs/03-tech-stack.md) | what it is, how it fits together, what it's built with |
-| [Desktop](docs/04-desktop.md) | the app in depth |
-| [Network fees](docs/07-financial.md) | TRC-20 costs, send review, exchange quotes |
-| [Security](docs/08-security.md) · [Build & deploy](docs/09-build-deploy.md) · [Extending](docs/10-extending.md) · [Glossary](docs/11-glossary.md) | threat model, commands, recipes, terms |
+| [Desktop app](desktop/README.md) · [Desktop architecture](docs/04-desktop.md) | what it does, network support, security model, structure |
+| [Network fees](docs/07-financial.md) · [Tor](docs/TOR.md) | TRC-20 costs, send review; how Tor is bundled |
+| [Roadmap](docs/CLAUDE_IMPLEMENTATION_ROADMAP_UK.md) · [Third-party binaries](THIRD_PARTY_NOTICES.md) | product direction; pinned + hash-verified Tor/Monero |
+| [Archived web docs](docs/archive/legacy-web-2026-07/README.md) | historical only — the discontinued React/NestJS web product |
 
 ## ⚠️ The honest part
 
