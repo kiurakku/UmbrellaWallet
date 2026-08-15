@@ -4,6 +4,15 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.0.1] — 2026-08-15 (test build)
+
+- **Coin logos** — brand-coloured coin badges now show on **Market** and **Receive** rows too (matching
+  Holdings), so every coin is recognisable at a glance. No external icon assets bundled.
+- **Developer fee → your dedicated TRON/USDT wallet** (`TNvxWSh…`). Note: TRON send-path fee routing
+  isn't enabled yet, so nothing is deducted on TRON until that's implemented and tested on-chain —
+  the address is in place for when it is.
+- 147/147 tests.
+
 ## [4.0.0] — 2026-08-15
 
 ### On-chain transaction history (new)
