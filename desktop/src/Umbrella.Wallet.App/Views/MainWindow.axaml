@@ -349,13 +349,13 @@
                   </Panel>
                 </Border>
                 <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="eyebrow" Text="WALLET" VerticalAlignment="Center"/>
+                  <TextBlock Classes="eyebrow" Text="{Binding [nav.wallet], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
                   <!-- Wallet switcher: jumps to Settings → Wallets to switch or add a wallet. -->
                   <Button Grid.Column="1" Classes="chip" Padding="8,2" Command="{Binding OpenWalletsCommand}"
                           ToolTip.Tip="Switch or add wallet" IsVisible="{Binding IsUnlocked}">
                     <StackPanel Orientation="Horizontal" Spacing="5">
                       <TextBlock Text="⇄" FontSize="12" VerticalAlignment="Center"/>
-                      <TextBlock Text="Wallets" FontSize="10.5" VerticalAlignment="Center"/>
+                      <TextBlock Text="{Binding [nav.walletsSwitch], Source={x:Static app:Loc.Instance}}" FontSize="10.5" VerticalAlignment="Center"/>
                     </StackPanel>
                   </Button>
                 </Grid>
@@ -396,10 +396,10 @@
               <StackPanel Spacing="10">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                   <Ellipse Width="7" Height="7" Fill="{DynamicResource UmPos}"/>
-                  <TextBlock FontSize="11" Foreground="{DynamicResource UmTextDim}" Text="Keys encrypted on this PC"/>
+                  <TextBlock FontSize="11" Foreground="{DynamicResource UmTextDim}" Text="{Binding [footer.keysEncrypted], Source={x:Static app:Loc.Instance}}"/>
                 </StackPanel>
                 <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" Text="{Binding AutoLockLabel}" TextWrapping="Wrap"/>
-                <Button Classes="ghost" Content="Lock vault  ·  Ctrl+L" HorizontalAlignment="Stretch"
+                <Button Classes="ghost" Content="{Binding [footer.lock], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" Command="{Binding LockCommand}"/>
               </StackPanel>
             </Border>
@@ -639,7 +639,7 @@
                                            IsVisible="{Binding #RootWindow.((vm:MainViewModel)DataContext).IsBalanceHidden}"/>
                               </Grid>
                               <TextBlock Grid.Column="3" Classes="mono" FontSize="12.5" Text="{Binding ChangeLabel}" Foreground="{Binding ChangeColor}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                              <Button Grid.Column="4" Classes="ghost" Content="Copy" Height="28" Padding="10,0" Margin="8,0,0,0"
+                              <Button Grid.Column="4" Classes="ghost" Content="{Binding [common.copy], Source={x:Static app:Loc.Instance}}" Height="28" Padding="10,0" Margin="8,0,0,0"
                                       Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).CopyAddressCommand}"
                                       CommandParameter="{Binding Address}"/>
                             </Grid>
@@ -739,15 +739,15 @@
                 <!-- Step 2 · review & confirm -->
                 <Border Classes="card" BorderBrush="#7A6230" IsVisible="{Binding HasSendQuote}">
                   <StackPanel Spacing="12">
-                    <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="STEP 2 · REVIEW — THIS CANNOT BE UNDONE"/>
+                    <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [send.step2], Source={x:Static app:Loc.Instance}}"/>
                     <TextBlock Classes="mono" FontSize="13" TextWrapping="Wrap" Text="{Binding SendQuoteSummary}"/>
                     <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Text="{Binding SendQuoteFee}"/>
                     <TextBlock Foreground="#BBAF91" FontSize="12" TextWrapping="Wrap"
-                               Text="Check the address and amount once more. A blockchain transfer is final — a wrong address means the funds are gone."/>
+                               Text="{Binding [send.step2warn], Source={x:Static app:Loc.Instance}}"/>
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                      <Button Classes="danger" Content="Confirm &amp; broadcast" IsEnabled="{Binding !IsBusy}"
+                      <Button Classes="danger" Content="{Binding [send.confirm], Source={x:Static app:Loc.Instance}}" IsEnabled="{Binding !IsBusy}"
                               Command="{Binding ConfirmSendCommand}"/>
-                      <Button Classes="ghost" Content="Cancel" Command="{Binding CancelSendQuoteCommand}"/>
+                      <Button Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}" Command="{Binding CancelSendQuoteCommand}"/>
                     </StackPanel>
                   </StackPanel>
                 </Border>
