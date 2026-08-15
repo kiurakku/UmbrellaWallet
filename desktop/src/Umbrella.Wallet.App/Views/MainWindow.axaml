@@ -1746,7 +1746,8 @@
                         <DataTemplate x:DataType="vm:WalletListItemViewModel">
                           <Border Background="{DynamicResource UmCardAlt}" CornerRadius="10" Padding="12,10" Margin="0,0,0,8">
                             <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
-                              <Border Width="38" Height="38" CornerRadius="10" Background="{DynamicResource UmAccentWash}" VerticalAlignment="Center">
+                              <Border Width="38" Height="38" CornerRadius="10" Background="{DynamicResource UmAccentWash}" VerticalAlignment="Center"
+                                      BorderThickness="2" BorderBrush="{Binding ColorBrush}">
                                 <TextBlock Text="{Binding Badge}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UmAccentBright}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                               </Border>
@@ -1774,6 +1775,19 @@
                       <TextBox Text="{Binding RenameWalletLabel, Mode=TwoWay}" Watermark="{Binding [settings.walletRenameWatermark], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
                       <Button Grid.Column="1" Classes="ghost" Content="{Binding [settings.walletRename], Source={x:Static app:Loc.Instance}}" Command="{Binding RenameActiveWalletCommand}"/>
                     </Grid>
+
+                    <!-- Colour-tag the active wallet. -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding [settings.walletColor], Source={x:Static app:Loc.Instance}}"
+                                 VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource UmTextDim}"/>
+                      <Button Width="24" Height="24" Padding="0" Background="#E08A8A" Command="{Binding SetWalletColorCommand}" CommandParameter="#E08A8A"/>
+                      <Button Width="24" Height="24" Padding="0" Background="#E7CA83" Command="{Binding SetWalletColorCommand}" CommandParameter="#E7CA83"/>
+                      <Button Width="24" Height="24" Padding="0" Background="#8FCB9B" Command="{Binding SetWalletColorCommand}" CommandParameter="#8FCB9B"/>
+                      <Button Width="24" Height="24" Padding="0" Background="#6EA8FE" Command="{Binding SetWalletColorCommand}" CommandParameter="#6EA8FE"/>
+                      <Button Width="24" Height="24" Padding="0" Background="#B99CF0" Command="{Binding SetWalletColorCommand}" CommandParameter="#B99CF0"/>
+                      <Button Width="24" Height="24" Padding="0" Background="#5AC8B4" Command="{Binding SetWalletColorCommand}" CommandParameter="#5AC8B4"/>
+                      <Button Classes="chip" Content="✕" Command="{Binding SetWalletColorCommand}" CommandParameter="clear"/>
+                    </StackPanel>
 
                     <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
                       <StackPanel Spacing="8">

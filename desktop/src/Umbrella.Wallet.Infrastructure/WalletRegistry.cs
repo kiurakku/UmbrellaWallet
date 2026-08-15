@@ -5,7 +5,7 @@ namespace Umbrella.Wallet.Infrastructure;
 
 /// <summary>One wallet in the registry. <see cref="IsLegacy"/> marks the original single vault, which
 /// keeps its historic path (<c>data/vault.json</c>); every other wallet lives under <c>data/wallets/</c>.</summary>
-public sealed record WalletEntry(string Id, string Label, bool IsLegacy);
+public sealed record WalletEntry(string Id, string Label, bool IsLegacy, string? Color = null);
 
 /// <summary>
 /// Binance-style multi-wallet registry. Tracks several independent wallets — each its own
@@ -157,7 +157,7 @@ public sealed class WalletRegistry
                     {
                         if (!string.IsNullOrWhiteSpace(row.Id))
                         {
-                            _wallets.Add(new WalletEntry(row.Id, row.Label ?? "Wallet", row.Legacy));
+                            _wallets.Add(new WalletEntry(row.Id, row.Label ?? "Wallet", row.Legacy, row.Color));
                         }
                     }
                     _activeId = index.Active;
@@ -192,7 +192,7 @@ public sealed class WalletRegistry
         {
             var index = new IndexFile(
                 _activeId,
-                _wallets.Select(w => new Row(w.Id, w.Label, w.IsLegacy)).ToList());
+                _wallets.Select(w => new Row(w.Id, w.Label, w.IsLegacy, w.Color)).ToList());
 
             var dir = Path.GetDirectoryName(_indexPath);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
@@ -209,6 +209,15 @@ public sealed class WalletRegistry
 
     private static string NewId() => Guid.NewGuid().ToString("N")[..12];
 
+    /// <summary>Sets (or clears, with null) a wallet's colour tag. Persisted.</summary>
+    public void SetColor(string id, string? color)
+    {
+        var i = _wallets.FindIndex(w => w.Id == id);
+        if (i < 0) return;
+        _wallets[i] = _wallets[i] with { Color = string.IsNullOrWhiteSpace(color) ? null : color };
+        Save();
+    }
+
     private sealed record IndexFile(string? Active, List<Row> Wallets);
-    private sealed record Row(string Id, string? Label, bool Legacy);
+    private sealed record Row(string Id, string? Label, bool Legacy, string? Color = null);
 }

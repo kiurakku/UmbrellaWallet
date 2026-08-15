@@ -2018,10 +2018,22 @@ public partial class MainViewModel : ViewModelBase
         var activeId = _registry.Active?.Id;
         foreach (var w in _registry.Wallets)
         {
-            Wallets.Add(new WalletListItemViewModel(w.Id, w.Label, w.Id == activeId, w.IsLegacy));
+            Wallets.Add(new WalletListItemViewModel(w.Id, w.Label, w.Id == activeId, w.IsLegacy, w.Color));
         }
         OnPropertyChanged(nameof(ActiveWalletLabel));
         OnPropertyChanged(nameof(HasMultipleWallets));
+    }
+
+    /// <summary>Colour-tag the active wallet (pass "clear" to remove the tag). Persisted.</summary>
+    [RelayCommand]
+    private void SetWalletColor(string? color)
+    {
+        var active = _registry.Active;
+        if (active is null) return;
+        var value = string.Equals(color, "clear", StringComparison.OrdinalIgnoreCase) ? null : color;
+        _registry.SetColor(active.Id, value);
+        RefreshWalletList();
+        if (IsUnlocked) PushActivity("Settings", "Wallet colour", active.Label, value ?? "cleared", "now");
     }
 
     /// <summary>Switch to another wallet. With one common password, the target is unlocked seamlessly;
@@ -4809,13 +4821,19 @@ public sealed record SettingsShortcut(string Label, string Tab, string Keywords)
 }
 
 /// <summary>One wallet in the multi-wallet switcher.</summary>
-public sealed record WalletListItemViewModel(string Id, string Label, bool IsActive, bool IsLegacy)
+public sealed record WalletListItemViewModel(
+    string Id, string Label, bool IsActive, bool IsLegacy, string? Color = null)
 {
     public string Badge => IsLegacy ? "MAIN" : Label.Length > 0 ? Label[..1].ToUpperInvariant() : "W";
     public string StatusLabel => IsActive
         ? Umbrella.Wallet.App.Loc.Instance["settings.walletActive"]
         : Umbrella.Wallet.App.Loc.Instance["settings.walletLocked"];
     public bool CanRemove => !IsActive; // the active wallet (and the Main seed file) are protected
+
+    /// <summary>Optional colour tag as a brush (null when untagged), for a dot in the list.</summary>
+    public bool HasColor => !string.IsNullOrWhiteSpace(Color);
+    public Avalonia.Media.IBrush? ColorBrush =>
+        HasColor ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(Color!)) : null;
 }
 
 public sealed record HoldingRowViewModel(
