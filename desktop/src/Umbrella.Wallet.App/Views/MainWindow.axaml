@@ -1790,6 +1790,31 @@
                       <Button Classes="chip" Content="✕" Command="{Binding SetWalletColorCommand}" CommandParameter="clear"/>
                     </StackPanel>
 
+                    <!-- Single-coin / selected-coin wallets: pick which coins this wallet shows. -->
+                    <TextBlock Text="{Binding [settings.walletCoins], Source={x:Static app:Loc.Instance}}"
+                               FontSize="12" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
+                    <ItemsControl ItemsSource="{Binding WalletCoinToggles}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CoinToggle">
+                          <Button Classes="chip" Margin="0,0,6,6"
+                                  Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).ToggleWalletCoinCommand}"
+                                  CommandParameter="{Binding Symbol}" Classes.active="{Binding Enabled}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                              <Border Width="16" Height="16" CornerRadius="8" Background="{Binding BadgeColor}">
+                                <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" Text="{Binding BadgeGlyph}"
+                                           FontSize="9" FontWeight="Bold" Foreground="#FFFFFF"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                              </Border>
+                              <TextBlock Text="{Binding Symbol}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                          </Button>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
                     <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
                       <StackPanel Spacing="8">
                         <TextBlock Text="{Binding [settings.walletAddTitle], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>

@@ -2063,6 +2063,68 @@ public partial class MainViewModel : ViewModelBase
         }
         OnPropertyChanged(nameof(ActiveWalletLabel));
         OnPropertyChanged(nameof(HasMultipleWallets));
+        RebuildWalletCoinToggles();
+    }
+
+    /// <summary>Coins the active wallet is set to accept — a checkbox row in Settings → Wallets.
+    /// Empty selection means "all coins".</summary>
+    public ObservableCollection<CoinToggle> WalletCoinToggles { get; } = [];
+
+    /// <summary>Whether a coin is shown for the active wallet (all coins when no restriction is set).</summary>
+    private bool IsWalletCoinEnabled(string symbol)
+    {
+        var coins = _registry.Active?.Coins;
+        return coins is null || coins.Count == 0
+            || coins.Contains(symbol, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private void RebuildWalletCoinToggles()
+    {
+        WalletCoinToggles.Clear();
+        var coins = _registry.Active?.Coins;
+        var restricted = coins is { Count: > 0 };
+        foreach (var chain in ChainCatalog.All)
+        {
+            var on = !restricted || coins!.Contains(chain.Symbol, StringComparer.OrdinalIgnoreCase);
+            WalletCoinToggles.Add(new CoinToggle(chain.Symbol, chain.Name, on));
+        }
+        OnPropertyChanged(nameof(WalletCoinsAllLabel));
+    }
+
+    /// <summary>Summary line: "All coins" or "N coins".</summary>
+    public string WalletCoinsAllLabel
+    {
+        get
+        {
+            var coins = _registry.Active?.Coins;
+            return coins is { Count: > 0 }
+                ? $"{coins.Count}"
+                : Loc.Instance["settings.walletCoinsAll"];
+        }
+    }
+
+    /// <summary>Toggle a coin for the active wallet, persist, and re-derive so the change is immediate.</summary>
+    [RelayCommand]
+    private void ToggleWalletCoin(string? symbol)
+    {
+        if (string.IsNullOrWhiteSpace(symbol)) return;
+        var active = _registry.Active;
+        if (active is null || string.IsNullOrEmpty(_unlockedMnemonic)) return;
+
+        // Start from the current effective set (all coins if unrestricted), then flip this one.
+        var set = new HashSet<string>(
+            (active.Coins is { Count: > 0 } c ? c : ChainCatalog.All.Select(x => x.Symbol)),
+            StringComparer.OrdinalIgnoreCase);
+        if (!set.Remove(symbol)) set.Add(symbol);
+
+        // Never allow an empty wallet: an empty selection means "all coins".
+        var full = ChainCatalog.All.Select(x => x.Symbol).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        IReadOnlyList<string>? value = set.Count == 0 || set.SetEquals(full) ? null : set.ToList();
+
+        _registry.SetCoins(active.Id, value);
+        DeriveAccounts(_unlockedMnemonic!);   // re-derive so hidden coins disappear immediately
+        RebuildWalletCoinToggles();
+        if (IsUnlocked) PushActivity("Settings", "Wallet coins", active.Label, symbol, "now");
     }
 
     /// <summary>Colour-tag the active wallet (pass "clear" to remove the tag). Persisted.</summary>
@@ -4237,6 +4299,9 @@ public partial class MainViewModel : ViewModelBase
 
         foreach (var chain in ChainCatalog.All)
         {
+            // Single-coin / selected-coin wallets: only derive the coins this wallet is set to accept.
+            if (!IsWalletCoinEnabled(chain.Symbol)) continue;
+
             if (!ChainCatalog.HasRealAddress(chain.Id))
             {
                 Accounts.Add(new WalletAccountViewModel(
@@ -4799,6 +4864,13 @@ public sealed record PortfolioSlice(string Symbol, double Percent, double Value,
 
 /// <summary>A stakeable coin: symbol, name, typical (approximate) reward and how staking is done.</summary>
 public sealed record StakingOption(string Symbol, string Name, string Apr, string Method);
+
+/// <summary>A coin on/off toggle for restricting which coins a wallet shows.</summary>
+public sealed record CoinToggle(string Symbol, string Name, bool Enabled)
+{
+    public string BadgeColor => CoinBadge.Color(Symbol);
+    public string BadgeGlyph => CoinGlyphs.For(Symbol);
+}
 
 /// <summary>A staking row personalised to the user's holdings.</summary>
 public sealed record StakingRowViewModel(
