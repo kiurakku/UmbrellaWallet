@@ -80,9 +80,11 @@
       </Border>
 
       <!-- ============================ ONBOARDING (no sidebar) ============================ -->
-      <ScrollViewer IsVisible="{Binding !ShowSidebar}" AllowAutoHide="True"
+      <ScrollViewer x:Name="OnbScroll" IsVisible="{Binding !ShowSidebar}" AllowAutoHide="True"
                     HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <Panel Margin="0,0,0,40">
+        <!-- MinHeight = viewport, so short stages (unlock/restore) can centre vertically instead of
+             clinging to the top; taller stages just grow past it and scroll. -->
+        <Panel Margin="0,0,0,40" MinHeight="{Binding #OnbScroll.Bounds.Height}">
 
           <!-- Welcome / cover -->
           <StackPanel IsVisible="{Binding IsWelcomeStage}" MaxWidth="720" Margin="24,48,24,24"
@@ -102,8 +104,10 @@
                 </Border>
                 <Image Source="{Binding LogoImage}" Width="132" Stretch="Uniform"/>
               </Panel>
-              <!-- The developer's own mark (the fear), beside the product logo — the brand behind it. -->
-              <Image Source="{Binding FearMark}" Width="92" Height="92" Stretch="Uniform" VerticalAlignment="Center"/>
+              <!-- Animated greeting sticker beside the logo (opt-in with the sticker toggle). -->
+              <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/wau.json"
+                             Width="96" Height="96" VerticalAlignment="Center"
+                             RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
             </StackPanel>
             <TextBlock Text="UMBRELLA WALLET" FontSize="30" FontWeight="SemiBold" LetterSpacing="4"
                        HorizontalAlignment="Center" Margin="0,16,0,0"/>
@@ -113,7 +117,9 @@
             <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" Margin="0,32,0,0">
               <Border Classes="hairline" Padding="16,18">
                 <StackPanel Spacing="8" HorizontalAlignment="Center">
-                  <TextBlock Text="🛡" FontSize="20" HorizontalAlignment="Center"/>
+                  <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/GhostPepe.json"
+                                 Width="48" Height="48" HorizontalAlignment="Center"
+                                 RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
                   <TextBlock Text="{Binding [welcome.anon], Source={x:Static app:Loc.Instance}}" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
                   <TextBlock Text="{Binding [welcome.anonSub], Source={x:Static app:Loc.Instance}}" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
                              TextWrapping="Wrap" TextAlignment="Center"/>
@@ -121,7 +127,9 @@
               </Border>
               <Border Grid.Column="1" Classes="hairline" Padding="16,18">
                 <StackPanel Spacing="8" HorizontalAlignment="Center">
-                  <TextBlock Text="🔑" FontSize="20" HorizontalAlignment="Center"/>
+                  <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/encryption.json"
+                                 Width="48" Height="48" HorizontalAlignment="Center"
+                                 RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
                   <TextBlock Text="{Binding [welcome.keys], Source={x:Static app:Loc.Instance}}" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
                   <TextBlock Text="{Binding [welcome.keysSub], Source={x:Static app:Loc.Instance}}" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
                              TextWrapping="Wrap" TextAlignment="Center"/>
@@ -238,8 +246,8 @@
           </StackPanel>
 
           <!-- Unlock -->
-          <StackPanel IsVisible="{Binding IsUnlockStage}" MaxWidth="460" Margin="24,52,24,24"
-                      HorizontalAlignment="Center" Spacing="0">
+          <StackPanel IsVisible="{Binding IsUnlockStage}" MaxWidth="460" Margin="24"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
             <Image Source="{Binding LogoImage}"
                    Width="110" Stretch="Uniform" HorizontalAlignment="Center"/>
 
@@ -690,7 +698,7 @@
                   <StackPanel Orientation="Horizontal" Spacing="10">
                     <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center"
                                Text="{Binding [receive.title], Source={x:Static app:Loc.Instance}}"/>
-                    <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-04.json" Width="42" Height="42" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
+                    <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/Recieve.json" Width="46" Height="46" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
                   </StackPanel>
                   <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5"
                              Text="Pick a coin, then share its address or QR. Green = live and safe to receive. Always check the network line — sending on the wrong network loses the coins."/>
@@ -782,8 +790,8 @@
                 <!-- Broadcasting animation -->
                 <Border Classes="card" IsVisible="{Binding IsBusy}">
                   <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center">
-                    <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/sending.json"
-                                   Width="64" Height="64" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
+                    <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/Sending.json"
+                                   Width="72" Height="72" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
                     <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource UmTextDim}" FontSize="12.5"
                                VerticalAlignment="Center" TextWrapping="Wrap"/>
                   </StackPanel>
@@ -1014,6 +1022,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
                   <Border Width="4" Height="24" CornerRadius="2" Background="{DynamicResource UmAccentBright}"/>
                   <TextBlock Classes="serif" FontSize="26" Text="{Binding [nav.nfts], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
+                  <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/67.json" Width="46" Height="46" VerticalAlignment="Center" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
                 </StackPanel>
                 <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" MaxWidth="560" TextWrapping="Wrap"
                            Text="NFT collections (ERC-721 / ERC-1155) held at your Ethereum address. Only names and counts are read — no images are fetched, so viewing your NFTs never reveals your IP."/>
@@ -1243,6 +1252,28 @@
                         </StackPanel>
                       </Panel>
                     </Border>
+
+                    <!-- Uniswap-style stats row (24h), from the same Binance feed. -->
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" IsVisible="{Binding HasMarketStats}" Margin="0,4,0,0">
+                      <Border Classes="hairline" Padding="14,12">
+                        <StackPanel Spacing="4">
+                          <TextBlock Classes="eyebrow" Text="{Binding [market.high24h], Source={x:Static app:Loc.Instance}}"/>
+                          <TextBlock Classes="mono" FontSize="15" Text="{Binding StatHigh24h}" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                      </Border>
+                      <Border Grid.Column="1" Classes="hairline" Padding="14,12">
+                        <StackPanel Spacing="4">
+                          <TextBlock Classes="eyebrow" Text="{Binding [market.low24h], Source={x:Static app:Loc.Instance}}"/>
+                          <TextBlock Classes="mono" FontSize="15" Text="{Binding StatLow24h}" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                      </Border>
+                      <Border Grid.Column="2" Classes="hairline" Padding="14,12">
+                        <StackPanel Spacing="4">
+                          <TextBlock Classes="eyebrow" Text="{Binding [market.vol24h], Source={x:Static app:Loc.Instance}}"/>
+                          <TextBlock Classes="mono" FontSize="15" Text="{Binding StatVolume24h}" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                      </Border>
+                    </Grid>
                   </StackPanel>
                 </Border>
 
@@ -1486,8 +1517,8 @@
                 <!-- Official Telegram channel — the one place for news and contact. -->
                 <Border Classes="card" Background="{DynamicResource UmCardAlt}">
                   <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
-                    <Border Width="42" Height="42" CornerRadius="12" Background="#0F86C0" ClipToBounds="True" VerticalAlignment="Center">
-                      <Image Source="avares://Umbrella.Wallet.App/Assets/tg-channel.png" Stretch="Uniform" Margin="4"/>
+                    <Border Width="42" Height="42" CornerRadius="12" ClipToBounds="True" VerticalAlignment="Center">
+                      <Image Source="avares://Umbrella.Wallet.App/Assets/tg-news.jpg" Stretch="UniformToFill"/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                       <TextBlock Text="{Binding [sec.tgChannel], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="14"/>

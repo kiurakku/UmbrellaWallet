@@ -4,6 +4,45 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.0.0] — 2026-08-15
+
+### New animated stickers (yours), all toggle-able with the other animations
+- Welcome screen: the greeting sticker is back beside the umbrella; **GhostPepe** on the
+  "Anonymous" card and **encryption** on the "Your keys" card.
+- **67** in the NFT section, **Recieve** on the Receive screen, **Sending** on the send-broadcast
+  animation. (up/down market stickers are next.)
+
+### Fixes (from your screenshots)
+- **Nav bar reappears on Top/Bottom layouts** — a missing change-notification hid it (regression fix).
+- **Chart line matches the chart** — a green (up-over-window) chart no longer draws a red line (#24).
+- **Unlock screen is vertically centred** now, not stuck near the top.
+- **Token pages show 24h High / Low / Volume** under the chart (from the same Binance feed).
+- News section uses the new Telegram logo.
+
+### Still ahead (honestly scoped — each is its own piece of work)
+Full Uniswap-style token page (market-cap/FDV/TVL/52w) & in-page swap widget, swap between **all**
+coins, per-wallet single-coin support, on-chain transaction history, Telegram-gift NFTs, an optional
+market-data (Uniswap/CoinGecko) connector, real per-coin logos, a wallet-switcher page, and the
+developer-fee routing question (see release notes). These need dedicated, verifiable work — not a
+blind mass rewrite.
+
+### Verified
+139/139 tests pass; smoke-launches clean (desktop + mobile). Updates never touch your data.
+
+## [3.5.1] — 2026-08-15
+
+### Market / token detail (toward the Uniswap token page)
+- Opening a coin now shows a **24h stats row — High · Low · Volume** — beneath the chart, pulled
+  from the same Binance feed the prices use (no new data source, no extra tracking, same Tor/proxy
+  route). Converted to your display currency; volume shown compact (e.g. 4.6B).
+
+> Market cap / FDV / TVL / 52-week range and an in-page swap widget need an external market-data
+> service (e.g. CoinGecko/DeFiLlama) — that will land as an **optional, off-by-default** connector so
+> the privacy-first default never calls a third party you didn't enable.
+
+### Verified
+139/139 tests pass; smoke-launch clean.
+
 ## [3.5.0] — 2026-08-15
 
 ### Mobile layout (toward a Uniswap-style phone UI)

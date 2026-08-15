@@ -290,6 +290,9 @@ public sealed class Loc : INotifyPropertyChanged
             ["settings.disconnectAllHint"] = "Remove every linked watch-only address and connected exchange. Your own wallet and funds stay; you can re-link any time.",
             ["settings.disconnect"] = "Disconnect",
             ["market.title"] = "Market",
+            ["market.high24h"] = "24H HIGH",
+            ["market.low24h"] = "24H LOW",
+            ["market.vol24h"] = "24H VOLUME",
         },
         ["uk"] = new()
         {
@@ -517,6 +520,9 @@ public sealed class Loc : INotifyPropertyChanged
             ["settings.disconnectAllHint"] = "Прибрати всі прив'язані адреси-спостереження та підключені біржі. Ваш гаманець і кошти лишаються; можна прив'язати знову будь-коли.",
             ["settings.disconnect"] = "Відключити",
             ["market.title"] = "Ринок",
+            ["market.high24h"] = "МАКСИМУМ 24Г",
+            ["market.low24h"] = "МІНІМУМ 24Г",
+            ["market.vol24h"] = "ОБСЯГ 24Г",
         },
         ["ru"] = new()
         {
@@ -706,6 +712,9 @@ public sealed class Loc : INotifyPropertyChanged
             ["settings.deleteVault"] = "Удалить кошелёк",
             ["settings.lockNow"] = "Заблокировать сейчас",
             ["market.title"] = "Рынок",
+            ["market.high24h"] = "МАКСИМУМ 24Ч",
+            ["market.low24h"] = "МИНИМУМ 24Ч",
+            ["market.vol24h"] = "ОБЪЁМ 24Ч",
         },
         ["zh"] = new()
         {
@@ -895,6 +904,9 @@ public sealed class Loc : INotifyPropertyChanged
             ["settings.deleteVault"] = "删除钱包",
             ["settings.lockNow"] = "立即锁定",
             ["market.title"] = "行情",
+            ["market.high24h"] = "24小时最高",
+            ["market.low24h"] = "24小时最低",
+            ["market.vol24h"] = "24小时成交量",
         },
         ["es"] = new()
         {
@@ -1078,6 +1090,9 @@ public sealed class Loc : INotifyPropertyChanged
             ["settings.deleteVault"] = "Eliminar cartera",
             ["settings.lockNow"] = "Bloquear ahora",
             ["market.title"] = "Mercado",
+            ["market.high24h"] = "MÁX. 24H",
+            ["market.low24h"] = "MÍN. 24H",
+            ["market.vol24h"] = "VOLUMEN 24H",
         },
         ["de"] = new()
         {
@@ -1261,6 +1276,9 @@ public sealed class Loc : INotifyPropertyChanged
             ["settings.deleteVault"] = "Wallet löschen",
             ["settings.lockNow"] = "Jetzt sperren",
             ["market.title"] = "Markt",
+            ["market.high24h"] = "24H HOCH",
+            ["market.low24h"] = "24H TIEF",
+            ["market.vol24h"] = "24H VOLUMEN",
         },
     };
 }

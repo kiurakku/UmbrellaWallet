@@ -278,6 +278,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(SidebarDock));
             OnPropertyChanged(nameof(IsSidebarVertical));
             OnPropertyChanged(nameof(IsSidebarHorizontal));
+            OnPropertyChanged(nameof(IsDesktopHorizontalNav));
             if (IsUnlocked) PushActivity("Settings", "Nav panel", value, "changed", "now");
         }
     }
@@ -769,6 +770,12 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _isChartLoading;
     [ObservableProperty] private System.Collections.Generic.List<Avalonia.Point> _chartPoints = new();
 
+    // Uniswap-style token stats under the chart (24h high/low/volume from the same Binance feed).
+    [ObservableProperty] private bool _hasMarketStats;
+    [ObservableProperty] private string _statHigh24h = "—";
+    [ObservableProperty] private string _statLow24h = "—";
+    [ObservableProperty] private string _statVolume24h = "—";
+
     private string? _unlockedMnemonic;
     // One common login password for the whole app: captured on unlock/create so additional wallets
     // reuse it and switching between wallets doesn't re-prompt. Wiped on lock alongside the seed.
@@ -784,6 +791,10 @@ public partial class MainViewModel : ViewModelBase
     private readonly PublicMarketRatesClient _rates = new();
     private readonly WatchAddressStore _watchStore = new();
     private readonly ActivityStore _activityStore = new();
+    private readonly OnChainHistoryClient _history = new();
+    // On-chain transactions fetched from explorers for the user's own addresses (incl. ones made
+    // before the wallet was ever opened). Merged into the Transactions list, deduped by explorer URL.
+    private readonly List<ActivityRowViewModel> _onChainRows = new();
     private readonly BalanceStore _balanceStore = new();
     private readonly MarketCache _marketCache = new();
     private readonly ExchangeCredentialStore _exchangeStore = new();
@@ -984,6 +995,21 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("NEW", "New stickers, nav & chart fixes, centred unlock",
+            "Version 4.0.0:\n\n" +
+            "• Your new animated stickers are in — the greeting sticker is back beside the logo, GhostPepe on the Anonymous card, encryption on Your keys, plus stickers in NFT, Receive and the send animation. They toggle with the other animations.\n" +
+            "• Fixed: the nav bar vanished when you set the menu to Top or Bottom — it's back.\n" +
+            "• Fixed: a green chart no longer draws a red line.\n" +
+            "• The unlock screen is centred now, not stuck near the top.\n" +
+            "• Token pages show 24h High / Low / Volume under the chart.\n" +
+            "• New Telegram logo in the News section.\n\n" +
+            "Big pieces still ahead, done properly one at a time: the full Uniswap-style token & swap pages, swap between all coins, on-chain transaction history, Telegram NFTs, per-coin logos, single-coin wallets, and an optional market-data connector.",
+            "2026-08-15"),
+        new("NEW", "Token pages now show 24h high, low and volume",
+            "Version 3.5.1:\n\n" +
+            "• Open any coin in Market and you'll see a stats row under the chart — 24h High, 24h Low and 24h Volume — in your chosen currency. It comes from the same price feed, so there's no new tracking and it still goes through Tor/your proxy.\n\n" +
+            "Coming next as an optional, off-by-default connector (so nothing calls a third party unless you switch it on): richer token data (market cap, FDV, TVL, 52-week range) and an in-page swap widget, plus real on-chain transaction history.",
+            "2026-08-15"),
         new("NEW", "A Uniswap-style mobile UI + a batch of interface fixes",
             "Version 3.5.0 — mobile polish and fixes from your screenshots:\n\n" +
             "• Uniswap-style phone nav. The mobile layout now has a floating pill bottom bar with five fixed tabs (Portfolio · Receive · Send · Market · More) — no more sideways scrolling. The rest of the sections open in a tidy 'More' sheet.\n" +
@@ -2251,6 +2277,9 @@ public partial class MainViewModel : ViewModelBase
             "Buy" => "Buy · card/bank on-ramps deliver straight to your own address — nothing is held here",
             _ => StatusMessage,
         };
+
+        // Refresh real on-chain history when the user opens Transactions.
+        if (section == "Transactions" && IsUnlocked && !_isTonWallet) _ = LoadOnChainHistoryAsync();
     }
 
     /// <summary>Opens an external URL in the user's default browser. Used by the P2P/DEX directory and
@@ -2474,6 +2503,36 @@ public partial class MainViewModel : ViewModelBase
         {
             IsChartLoading = false;
         }
+
+        // Uniswap-style 24h stats under the chart, from the same Binance feed (best-effort).
+        HasMarketStats = false;
+        try
+        {
+            var stats = await _rates.GetMarketStatsAsync(row.Symbol, CancellationToken.None);
+            if (stats is not null)
+            {
+                StatHigh24h = Fx.Price((double)stats.High);
+                StatLow24h = Fx.Price((double)stats.Low);
+                StatVolume24h = FormatCompactMoney((double)stats.QuoteVolume);
+                HasMarketStats = true;
+            }
+        }
+        catch { /* stats are a nicety; never break the detail view over them */ }
+    }
+
+    /// <summary>Compact money in the display currency: 4.6B, 1.5T, 32.4K…</summary>
+    private static string FormatCompactMoney(double usd)
+    {
+        var v = usd * (double)Fx.Rate;
+        var (num, suffix) = v switch
+        {
+            >= 1e12 => (v / 1e12, "T"),
+            >= 1e9 => (v / 1e9, "B"),
+            >= 1e6 => (v / 1e6, "M"),
+            >= 1e3 => (v / 1e3, "K"),
+            _ => (v, ""),
+        };
+        return $"{Fx.Symbol}{num:0.##}{suffix}";
     }
 
     /// <summary>
@@ -2660,6 +2719,9 @@ public partial class MainViewModel : ViewModelBase
         var pct = open0 != 0 ? (closeN - open0) / open0 * 100 : 0;
         var up = pct >= 0;
         ChartChangeColor = up ? "#26A69A" : "#EF5350";
+        // The price line + area must match the chart window's own direction, not the coin's 24h
+        // change — otherwise a green (up-over-window) chart could draw a red line, which is bug #24.
+        SelectedMarketChangeColor = ChartChangeColor;
         ChartChangeLabel = $"{(up ? "▲" : "▼")} {Math.Abs(pct):0.00}% · {ChartRange}";
 
         // Gradient fill under the line: change-colour → transparent, top to bottom.
@@ -4046,6 +4108,8 @@ public partial class MainViewModel : ViewModelBase
         SelectFirstReceive();
         LoadActivity(); // restore the saved history before logging this unlock on top
         PushActivity("Security", "Vault", "unlocked", "this device", "now");
+        _onChainRows.Clear();
+        if (!_isTonWallet) _ = LoadOnChainHistoryAsync(); // real on-chain history for BTC + TRON
     }
 
     private void SelectFirstReceive()
@@ -4303,8 +4367,63 @@ public partial class MainViewModel : ViewModelBase
     private void RebuildTransactions()
     {
         Transactions.Clear();
-        foreach (var row in Activity.Where(a => a.IsTransaction)) Transactions.Add(row);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in Activity.Where(a => a.IsTransaction))
+        {
+            Transactions.Add(row);
+            if (row.Explorer is { Length: > 0 } ex) seen.Add(ex);
+        }
+        // Real on-chain history for the user's own addresses — skip any already logged locally.
+        foreach (var row in _onChainRows)
+        {
+            if (row.Explorer is { Length: > 0 } ex && !seen.Add(ex)) continue;
+            Transactions.Add(row);
+        }
         OnPropertyChanged(nameof(HasTransactions));
+    }
+
+    /// <summary>Fetches real on-chain transaction history for the user's own BTC and TRON addresses
+    /// (TRC-20 incl. USDT), so transactions made before the wallet was opened still appear. Best-effort
+    /// and keyless; runs through the same Tor/proxy route as everything else.</summary>
+    private async Task LoadOnChainHistoryAsync()
+    {
+        if (string.IsNullOrEmpty(_unlockedMnemonic)) return;
+        try
+        {
+            var rows = new List<(long Ts, ActivityRowViewModel Row)>();
+
+            string? btc = null, tron = null;
+            try { btc = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Btc).Address; } catch { }
+            try { tron = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Tron).Address; } catch { }
+
+            if (!string.IsNullOrEmpty(tron))
+                foreach (var t in await _history.GetTronTrc20Async(tron!))
+                    rows.Add((t.UnixMs, ToActivityRow(t)));
+
+            if (!string.IsNullOrEmpty(btc))
+                foreach (var t in await _history.GetBitcoinAsync(btc!))
+                    rows.Add((t.UnixMs, ToActivityRow(t)));
+
+            _onChainRows.Clear();
+            foreach (var r in rows.OrderByDescending(r => r.Ts)) _onChainRows.Add(r.Row);
+            RebuildTransactions();
+        }
+        catch
+        {
+            // History is a read-only nicety — never let it disrupt the wallet.
+        }
+    }
+
+    private static ActivityRowViewModel ToActivityRow(ChainTx t)
+    {
+        var when = t.UnixMs > 0
+            ? DateTimeOffset.FromUnixTimeMilliseconds(t.UnixMs).LocalDateTime.ToString("MMM d, HH:mm")
+            : "";
+        var counter = t.Counterparty.Length > 16
+            ? $"{t.Counterparty[..8]}…{t.Counterparty[^6..]}"
+            : t.Counterparty;
+        var amount = t.Kind == "Sent" ? $"-{t.Amount} {t.Asset}" : $"+{t.Amount} {t.Asset}";
+        return new ActivityRowViewModel(t.Kind, t.Asset, amount, counter, when, t.Explorer);
     }
 
     /// <summary>Copy a transaction's explorer link to the clipboard — deliberately not opened in
