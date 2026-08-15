@@ -4,6 +4,15 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.0.2] — 2026-08-15 (test build)
+
+- **Connect removed from the menu (#5)** — the quick-action tile is now Swap; watch-address markup
+  stays in code but is no longer in navigation.
+- **More Ukrainian/RU/ZH/ES/DE coverage (#15/#2)** — Receive / Send / Buy / NFT / Staking descriptions
+  now follow your language instead of staying English.
+- **Toasts in more places (#8)** — opening an external venue/link now shows a top-centre toast.
+- 147/147 tests.
+
 ## [4.0.1] — 2026-08-15 (test build)
 
 - **Coin logos** — brand-coloured coin badges now show on **Market** and **Receive** rows too (matching
