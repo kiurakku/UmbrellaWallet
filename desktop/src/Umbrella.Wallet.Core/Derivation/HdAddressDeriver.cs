@@ -151,26 +151,52 @@ public sealed class HdAddressDeriver
     /// The NBitcoin <see cref="Key"/> behind the displayed BTC/LTC receive address, for local
     /// signing only. Path matches <see cref="DeriveReceiveAddress"/> exactly (BIP84).
     /// </summary>
-    public Key DeriveBitcoinLikeKey(string mnemonic, ChainId chain, uint addressIndex = 0)
-    {
-        var (purpose, coinType) = chain switch
-        {
-            ChainId.Btc => (84, 0),
-            ChainId.Ltc => (84, 2),
-            ChainId.Doge => (44, 3),
-            _ => throw new UnsupportedChainException(chain),
-        };
+    public Key DeriveBitcoinLikeKey(string mnemonic, ChainId chain, uint addressIndex = 0) =>
+        DeriveBitcoinLikeAt(mnemonic, chain, change: 0, index: addressIndex).PrivateKey;
 
+    /// <summary>
+    /// BIP84/44 parameters for the UTXO chains the wallet can build transactions for. Kept in one
+    /// place so the address, the signing key and the change address can never drift apart.
+    /// </summary>
+    public static (int Purpose, int CoinType, NBitcoin.Network Network, ScriptPubKeyType ScriptType)
+        BitcoinLikeParams(ChainId chain) => chain switch
+    {
+        ChainId.Btc => (84, 0, Network.Main, ScriptPubKeyType.Segwit),
+        ChainId.Ltc => (84, 2, Litecoin.Instance.Mainnet, ScriptPubKeyType.Segwit),
+        ChainId.Doge => (44, 3, Dogecoin.Instance.Mainnet, ScriptPubKeyType.Legacy),
+        _ => throw new UnsupportedChainException(chain),
+    };
+
+    /// <summary>
+    /// The full signing account (path + address + key + scriptPubKey) for a UTXO chain at an
+    /// explicit (change, index) leaf. <paramref name="change"/> is the BIP44 change level:
+    /// 0 = external (receive) chain, 1 = internal (change) chain. This is what the HD wallet uses to
+    /// SEE and SPEND every address it has ever handed out — not just receive #0 — and to send change
+    /// to a fresh internal address instead of re-using a public one. Address, key and scriptPubKey
+    /// all come from this one method so they can never drift apart.
+    /// </summary>
+    public DerivedUtxoAccount DeriveBitcoinLikeAt(string mnemonic, ChainId chain, uint change, uint index) =>
+        DeriveUtxoAccount(mnemonic, new UtxoDerivationPath(chain, change, index));
+
+    /// <summary>Derives the signing account for an explicit <see cref="UtxoDerivationPath"/>.</summary>
+    public DerivedUtxoAccount DeriveUtxoAccount(string mnemonic, UtxoDerivationPath path)
+    {
+        var (purpose, coinType, network, scriptType) = BitcoinLikeParams(path.Chain);
+        var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
+        var keyPath = new KeyPath($"{purpose}'/{coinType}'/0'/{path.Change}/{path.Index}");
+        var key = parsed.DeriveExtKey().Derive(keyPath).PrivateKey;
+        var address = key.PubKey.GetAddress(scriptType, network).ToString();
+        var scriptPubKey = key.PubKey.GetAddress(scriptType, network).ScriptPubKey;
+        return new DerivedUtxoAccount(path, address, key, scriptPubKey);
+    }
+
+    /// <summary>Validates a mnemonic and returns its normalized form, or throws with the reason.</summary>
+    private string RequireNormalized(string mnemonic)
+    {
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
-        {
             throw new ArgumentException(validation.Error ?? "Invalid mnemonic.", nameof(mnemonic));
-        }
-
-        var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
-        return parsed.DeriveExtKey()
-            .Derive(new KeyPath($"{purpose}'/{coinType}'/0'/0/{addressIndex}"))
-            .PrivateKey;
+        return validation.NormalizedMnemonic;
     }
 
     /// <summary>
