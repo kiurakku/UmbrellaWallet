@@ -41,7 +41,10 @@ public static class ChainCatalog
                 "Dogecoin",
                 ChainSupportLevel.Supported,
                 "BIP44",
-                "m/44'/3'/0'/0/{index}"),
+                "m/44'/3'/0'/0/{index}",
+                // Address derivation + balance sync work, but there is no Dogecoin send path yet
+                // (BitcoinTransactionSender only builds BTC/LTC), so it must not look spendable.
+                CanSend: false),
             new ChainInfo(
                 ChainId.Tron,
                 "TRX",

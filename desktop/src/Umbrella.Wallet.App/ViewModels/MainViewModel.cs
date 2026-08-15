@@ -4455,9 +4455,12 @@ public partial class MainViewModel : ViewModelBase
             }
 
             var account = _deriver.DeriveReceiveAddress(mnemonic, chain.Id);
-            // Monero has a real address but no public balance sync — say so rather than
-            // showing a confident 0.00 next to coins we genuinely track.
-            var status = chain.Support == ChainSupportLevel.ReceiveOnly ? "Receive only" : "Ready";
+            // "Ready" means the wallet can both receive AND send. A chain with a real address but no
+            // send path (Dogecoin) or no public balance sync (Monero) is shown as "Receive only" so it
+            // never looks spendable — the send picker only offers "Ready" accounts (roadmap §5.1).
+            var status = (chain.Support == ChainSupportLevel.ReceiveOnly || !chain.CanSend)
+                ? "Receive only"
+                : "Ready";
             Accounts.Add(new WalletAccountViewModel(
                 chain.Symbol, chain.Name, status,
                 account.Address, account.DerivationPath,
