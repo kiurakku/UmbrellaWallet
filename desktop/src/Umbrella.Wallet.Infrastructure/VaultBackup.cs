@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Umbrella.Wallet.Core.Seed;
 
 namespace Umbrella.Wallet.Infrastructure;
 
@@ -9,6 +10,17 @@ public sealed record VaultBackupContents(
     string Vault,
     string? WatchAddresses,
     string? Exchanges);
+
+/// <summary>
+/// The outcome of verifying a backup — proof that it is actually restorable, without ever exposing
+/// the seed. Carries only non-secret metadata.
+/// </summary>
+public sealed record VaultBackupVerification(
+    bool Ok,
+    string Message,
+    DateTime? ExportedUtc = null,
+    bool HasWatchAddresses = false,
+    bool HasExchanges = false);
 
 /// <summary>
 /// Export and restore of the encrypted vault.
@@ -53,6 +65,86 @@ public static class VaultBackup
         catch (Exception ex)
         {
             return (false, $"Backup failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Verifies that a backup is genuinely restorable: it parses, its embedded vault decrypts with
+    /// the given password, and the result is a valid BIP39 recovery phrase. Proves the backup is
+    /// usable BEFORE the user relies on it — a backup that cannot be decrypted is worthless. Touches
+    /// nothing in the live data directory and never returns or logs the seed.
+    /// </summary>
+    public static async Task<VaultBackupVerification> VerifyAsync(
+        string sourcePath, string password, CancellationToken ct = default)
+    {
+        if (!File.Exists(sourcePath))
+            return new VaultBackupVerification(false, "That backup file does not exist.");
+
+        Dictionary<string, string?>? bundle;
+        try
+        {
+            bundle = JsonSerializer.Deserialize<Dictionary<string, string?>>(
+                await File.ReadAllTextAsync(sourcePath, ct));
+        }
+        catch
+        {
+            return new VaultBackupVerification(false, "That file is not an Umbrella backup.");
+        }
+
+        if (bundle is null || !bundle.TryGetValue("magic", out var magic) || magic != Magic)
+            return new VaultBackupVerification(false, "That file is not an Umbrella backup.");
+
+        if (!bundle.TryGetValue("vault", out var vault) || string.IsNullOrWhiteSpace(vault))
+            return new VaultBackupVerification(false, "The backup does not contain a vault.");
+
+        DateTime? exportedUtc = null;
+        if (bundle.TryGetValue("exportedUtc", out var exported) &&
+            DateTime.TryParse(exported, null, System.Globalization.DateTimeStyles.RoundtripKind, out var parsed))
+            exportedUtc = parsed;
+
+        var hasWatch = bundle.TryGetValue("watchAddresses", out var w) && !string.IsNullOrWhiteSpace(w);
+        var hasExchanges = bundle.TryGetValue("exchanges", out var e) && !string.IsNullOrWhiteSpace(e);
+
+        // Decrypt the embedded vault via the real unlock path, against a throwaway temp copy so the
+        // live vault is never touched. The mnemonic is validated and then dropped, never surfaced.
+        var tempPath = Path.Combine(Path.GetTempPath(), $"umbrella-verify-{Guid.NewGuid():N}.json");
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, vault, ct);
+            var mnemonic = await new EncryptedFileSeedVault(tempPath).UnlockAsync(password, ct);
+
+            var check = new Bip39MnemonicService().Validate(mnemonic);
+            if (!check.IsValid)
+                return new VaultBackupVerification(false,
+                    "The backup decrypted, but its recovery phrase is not valid — the backup is damaged.",
+                    exportedUtc, hasWatch, hasExchanges);
+
+            return new VaultBackupVerification(true,
+                "Backup verified — it decrypts with this password and holds a valid recovery phrase.",
+                exportedUtc, hasWatch, hasExchanges);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return new VaultBackupVerification(false,
+                "Could not decrypt the backup — wrong password, or the backup is damaged.",
+                exportedUtc, hasWatch, hasExchanges);
+        }
+        catch (ArgumentException)
+        {
+            // The vault password must be ≥12 chars; a shorter one can never be correct.
+            return new VaultBackupVerification(false,
+                "Could not decrypt the backup — wrong password, or the backup is damaged.",
+                exportedUtc, hasWatch, hasExchanges);
+        }
+        catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or FormatException)
+        {
+            return new VaultBackupVerification(false,
+                "The backup's vault is corrupt or from an unsupported version.",
+                exportedUtc, hasWatch, hasExchanges);
+        }
+        finally
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best effort */ }
         }
     }
 

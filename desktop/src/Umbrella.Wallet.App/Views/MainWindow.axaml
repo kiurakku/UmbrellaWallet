@@ -2212,6 +2212,18 @@
                       <Button Classes="primary" Content="{Binding [settings.saveBackup], Source={x:Static app:Loc.Instance}}" Command="{Binding ExportBackupCommand}"/>
                       <Button Classes="ghost" Content="{Binding [settings.restoreBackup], Source={x:Static app:Loc.Instance}}" Command="{Binding RestoreBackupCommand}"/>
                     </StackPanel>
+
+                    <!-- Verify a backup actually decrypts with its password — without revealing the seed. -->
+                    <TextBlock Classes="eyebrow" Margin="0,6,0,0"
+                               Text="{Binding [settings.verifyBackup], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBox Text="{Binding BackupVerifyPassword}" PasswordChar="●"
+                             Watermark="{Binding [settings.verifyBackupPw], Source={x:Static app:Loc.Instance}}"/>
+                    <Button Classes="ghost" HorizontalAlignment="Left" IsEnabled="{Binding !IsBusy}"
+                            Content="{Binding [settings.verifyBackupBtn], Source={x:Static app:Loc.Instance}}"
+                            Command="{Binding VerifyBackupCommand}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap"
+                               Text="{Binding [settings.pwVsPhrase], Source={x:Static app:Loc.Instance}}"/>
+
                     <TextBlock IsVisible="{Binding BackupStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                Text="{Binding BackupStatus}" Foreground="{DynamicResource UmPos}" FontSize="12" TextWrapping="Wrap"/>
                     <Border IsVisible="{Binding BackupError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

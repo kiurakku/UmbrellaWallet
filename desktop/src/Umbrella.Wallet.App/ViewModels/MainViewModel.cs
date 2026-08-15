@@ -3522,6 +3522,38 @@ public partial class MainViewModel : ViewModelBase
         LoadProfileImages();
     }
 
+    // Password typed to verify a backup can actually be decrypted. Held only for the check, then cleared.
+    [ObservableProperty] private string _backupVerifyPassword = string.Empty;
+
+    /// <summary>
+    /// Proves a chosen backup file is genuinely restorable — it decrypts with the given password and
+    /// holds a valid recovery phrase — without ever revealing the seed. A backup you cannot restore is
+    /// worthless, so this lets the user confirm it BEFORE they rely on it.
+    /// </summary>
+    [RelayCommand]
+    private async Task VerifyBackupAsync()
+    {
+        BackupStatus = BackupError = string.Empty;
+        if (PickFileAsync is null) return;
+
+        var pw = BackupVerifyPassword ?? string.Empty;
+        if (pw.Length == 0) { BackupError = "Enter the vault password to verify the backup."; return; }
+
+        var path = await PickFileAsync(string.Empty, false);
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        var result = await VaultBackup.VerifyAsync(path, pw);
+        BackupVerifyPassword = string.Empty; // don't keep the password around after the check
+
+        if (!result.Ok) { BackupError = result.Message; return; }
+
+        var extras = new List<string>();
+        if (result.ExportedUtc is { } dt) extras.Add($"made {dt.ToLocalTime():yyyy-MM-dd HH:mm}");
+        if (result.HasWatchAddresses) extras.Add("watch addresses");
+        if (result.HasExchanges) extras.Add("exchange keys");
+        BackupStatus = extras.Count > 0 ? $"{result.Message} · {string.Join(" · ", extras)}" : result.Message;
+    }
+
     [RelayCommand]
     private async Task ExportBackupAsync()
     {
