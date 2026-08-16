@@ -40,7 +40,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-**[⬇️ Installer (v4.3.0)](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-4.3.0.exe)** · **[Portable zip](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-4.3.0.zip)** · [💖 Sponsor](https://github.com/sponsors/kiurakku) · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
+**[⬇️ Download latest (v4.3.0)](https://github.com/kiurakku/umbrella-wallet/releases/latest)** · [💖 Sponsor](https://github.com/sponsors/kiurakku) · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
 
 <br/>
 
@@ -124,11 +124,14 @@ Umbrella flips that model:
 
 ## 📦 Download
 
+Grab the newest build from the **[latest release](https://github.com/kiurakku/umbrella-wallet/releases/latest)** —
+the files below are attached there for the current version:
+
 | Platform | Package | Notes |
 |----------|---------|-------|
-| **Windows** | [UmbrellaWallet-Setup-4.3.0.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Setup-4.3.0.exe) | Installer — choose install folder |
-| **Windows** | [`UmbrellaWallet-Portable-4.3.0.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-Portable-4.3.0.zip) | Portable — unzip and run `Umbrella.exe` |
-| **Linux** | [`UmbrellaWallet-4.3.0-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest/download/UmbrellaWallet-4.3.0-linux-x64.tar.gz) | Unpack, run `./Umbrella.Wallet.App` — no install required |
+| **Windows** | [UmbrellaWallet-Setup-4.3.0.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest) | Installer — choose install folder |
+| **Windows** | [`UmbrellaWallet-Portable-4.3.0.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest) | Portable — unzip and run `Umbrella.exe` |
+| **Linux** | [`UmbrellaWallet-4.3.0-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest) | Unpack, run `./Umbrella.Wallet.App` — no install required |
 | **Android** | _planned_ | A native Android build (Avalonia) is on the roadmap |
 
 ### 🔎 Verify your download
