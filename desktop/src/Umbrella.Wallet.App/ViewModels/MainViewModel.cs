@@ -844,7 +844,12 @@ public partial class MainViewModel : ViewModelBase
     private readonly PublicMarketRatesClient _rates = new();
     private readonly WatchAddressStore _watchStore = new();
     private readonly ActivityStore _activityStore = new();
+    private readonly AddressBookStore _addressBook = new();
     private readonly OnChainHistoryClient _history = new();
+    // Latest fetched USD prices, snapshotted on each live refresh, so the Send screen can show a fiat
+    // equivalent for the amount without re-fetching (roadmap §4).
+    private IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> _priceUsd =
+        new Dictionary<string, (decimal, decimal)>(StringComparer.OrdinalIgnoreCase);
     // On-chain transactions fetched from explorers for the user's own addresses (incl. ones made
     // before the wallet was ever opened). Merged into the Transactions list, deduped by explorer URL.
     private readonly List<ActivityRowViewModel> _onChainRows = new();
@@ -1532,6 +1537,9 @@ public partial class MainViewModel : ViewModelBase
         }
         OnPropertyChanged(nameof(SelectedSendBalance));
         OnPropertyChanged(nameof(SelectedSendBalanceLabel));
+        OnPropertyChanged(nameof(SendAmountFiat));
+        RebuildSendAddressBook();
+        ValidateSendAddress();
     }
 
     // --- Send financial transparency (§6.3): show the available balance and a fee-aware Max. ---
@@ -1544,6 +1552,145 @@ public partial class MainViewModel : ViewModelBase
     public string SelectedSendBalanceLabel => SelectedSendAsset is null
         ? string.Empty
         : $"{Loc.Instance["send.available"]}: {Fmt(SelectedSendBalance)} {SelectedSendAsset.Symbol}";
+
+    // --- Send review breakdown (§4): full destination, amount + fiat, kept separate from the fee. ---
+    /// <summary>The destination shown in review, ALWAYS in full (never shortened) so the user can verify
+    /// every character — long Monero addresses included.</summary>
+    [ObservableProperty] private string _sendReviewTo = string.Empty;
+    [ObservableProperty] private string _sendReviewAmount = string.Empty;
+    [ObservableProperty] private string _sendReviewFiat = string.Empty;
+    /// <summary>Plain statement of what actually leaves the wallet, so the total debit reads separately
+    /// from the network fee above it.</summary>
+    [ObservableProperty] private string _sendReviewDebit = string.Empty;
+
+    /// <summary>Live fiat estimate for the amount being typed, shown under the amount field.</summary>
+    public string SendAmountFiat
+    {
+        get
+        {
+            if (SelectedSendAsset is null) return string.Empty;
+            if (!decimal.TryParse(SendAmount, NumberStyles.Number, CultureInfo.InvariantCulture, out var amt) || amt <= 0)
+                return string.Empty;
+            return FiatEquivalentLabel(SelectedSendAsset.Symbol, amt);
+        }
+    }
+
+    /// <summary>"≈ $123.45" for an asset amount, from the latest fetched USD price (stablecoins = $1).
+    /// Empty when there is no price, so the UI simply omits it rather than showing a wrong number.</summary>
+    private string FiatEquivalentLabel(string symbol, decimal amount)
+    {
+        decimal usdEach;
+        if (symbol is "USDT" or "USDC") usdEach = 1m;
+        else if (_priceUsd.TryGetValue(symbol, out var p) && p.Usd > 0) usdEach = p.Usd;
+        else return string.Empty;
+        return "≈ " + Fx.Money((double)(amount * usdEach));
+    }
+
+    // --- Network-check-on-paste (§4): a non-blocking sanity check that the destination matches the
+    // selected network, so a coin is not sent to an address for the wrong chain. ---
+    [ObservableProperty] private string _sendAddressWarning = string.Empty;
+
+    partial void OnSendToChanged(string value)
+    {
+        HasSendQuote = false;
+        ValidateSendAddress();
+    }
+
+    partial void OnSendAmountChanged(string value)
+    {
+        HasSendQuote = false;
+        OnPropertyChanged(nameof(SendAmountFiat));
+    }
+
+    /// <summary>Heuristic shape check of the destination against the selected network. Deliberately
+    /// advisory only — the authoritative validation still happens per chain when preparing the quote.</summary>
+    private void ValidateSendAddress()
+    {
+        SendAddressWarning = string.Empty;
+        var addr = SendTo?.Trim() ?? string.Empty;
+        if (addr.Length == 0 || SelectedSendAsset is null) return;
+
+        var sym = SelectedSendAsset.Symbol;
+        bool looksRight = sym switch
+        {
+            "BTC" => addr.StartsWith("bc1") || addr.StartsWith("1") || addr.StartsWith("3"),
+            "LTC" => addr.StartsWith("ltc1") || addr.StartsWith("L") || addr.StartsWith("M"),
+            "DOGE" => addr.StartsWith("D") || addr.StartsWith("A"),
+            "ETH" or "BNB" or "MATIC" or "AVAX" or "FTM" or "CRO" => addr.StartsWith("0x") && addr.Length == 42,
+            "TRX" or "USDT" => addr.StartsWith("T") && addr.Length == 34,
+            "SOL" => !addr.StartsWith("0x") && addr.Length is >= 32 and <= 44,
+            "TON" => addr.StartsWith("UQ") || addr.StartsWith("EQ") || addr.StartsWith("0:"),
+            "ADA" => addr.StartsWith("addr1"),
+            "XMR" => addr.Length is >= 90 and <= 106 && (addr.StartsWith("4") || addr.StartsWith("8")),
+            _ => true,
+        };
+        if (!looksRight)
+            SendAddressWarning = string.Format(Loc.Instance["send.addrMismatch"], sym);
+    }
+
+    // --- Local address book (§4): reuse saved destinations instead of re-pasting. Public addresses
+    // only, stored on this device. ---
+    private readonly List<AddressBookEntry> _addressBookAll = new();
+    /// <summary>Saved destinations for the asset currently selected in Send.</summary>
+    public ObservableCollection<AddressBookEntry> SendAddressBook { get; } = [];
+    public bool HasSendAddressBook => SendAddressBook.Count > 0;
+    [ObservableProperty] private string _sendAddressLabel = string.Empty;
+
+    private void LoadAddressBook()
+    {
+        _addressBookAll.Clear();
+        _addressBookAll.AddRange(_addressBook.Load());
+        RebuildSendAddressBook();
+    }
+
+    private void RebuildSendAddressBook()
+    {
+        SendAddressBook.Clear();
+        var sym = SelectedSendAsset?.Symbol;
+        if (!string.IsNullOrEmpty(sym))
+            foreach (var e in _addressBookAll.Where(e =>
+                         string.Equals(e.Chain, sym, StringComparison.OrdinalIgnoreCase)))
+                SendAddressBook.Add(e);
+        OnPropertyChanged(nameof(HasSendAddressBook));
+    }
+
+    /// <summary>Saves the current destination for reuse. Auto-labels with the shortened address when no
+    /// label is given; a repeat address just updates its label rather than duplicating.</summary>
+    [RelayCommand]
+    private void SaveSendAddress()
+    {
+        var addr = SendTo?.Trim() ?? string.Empty;
+        var sym = SelectedSendAsset?.Symbol;
+        if (addr.Length == 0 || string.IsNullOrEmpty(sym)) { SendError = "Enter a destination address first."; return; }
+
+        var label = string.IsNullOrWhiteSpace(SendAddressLabel) ? Shorten(addr) : SendAddressLabel.Trim();
+        _addressBookAll.RemoveAll(e =>
+            string.Equals(e.Address, addr, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(e.Chain, sym, StringComparison.OrdinalIgnoreCase));
+        _addressBookAll.Add(new AddressBookEntry(label, addr, sym));
+        _addressBook.Save(_addressBookAll);
+        SendAddressLabel = string.Empty;
+        RebuildSendAddressBook();
+        ShowToast(Loc.Instance["send.addrSavedOk"], isError: false);
+    }
+
+    [RelayCommand]
+    private void UseSendAddress(AddressBookEntry? entry)
+    {
+        if (entry is null) return;
+        SendTo = entry.Address; // triggers validation + clears any stale quote
+    }
+
+    [RelayCommand]
+    private void RemoveSendAddress(AddressBookEntry? entry)
+    {
+        if (entry is null) return;
+        _addressBookAll.RemoveAll(e =>
+            string.Equals(e.Address, entry.Address, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(e.Chain, entry.Chain, StringComparison.OrdinalIgnoreCase));
+        _addressBook.Save(_addressBookAll);
+        RebuildSendAddressBook();
+    }
 
     /// <summary>How much to leave behind on "Max" so the network fee cannot overrun the balance. Tokens
     /// (USDT/USDC) reserve nothing — their fee is paid in the chain's native coin.</summary>
@@ -3239,6 +3386,8 @@ public partial class MainViewModel : ViewModelBase
                 .Distinct()
                 .ToList();
             var prices = await _rates.GetUsdPricesAsync(symbols, ct);
+            _priceUsd = prices; // snapshot for the Send fiat estimate
+            OnPropertyChanged(nameof(SendAmountFiat));
 
             // Fetch every account's balance CONCURRENTLY, then apply on the UI thread. Sequential
             // awaits here were the main reason the total took many seconds to appear after unlock /
@@ -3994,6 +4143,16 @@ public partial class MainViewModel : ViewModelBase
 
         if (chain == "MONERO") chain = "XMR";
 
+        // Uniform review fields (§4): full destination (never truncated — the user must verify every
+        // character), the amount with its fiat estimate, and a plain statement of the total debit kept
+        // separate from the network fee line.
+        SendReviewTo = SendTo.Trim();
+        SendReviewAmount = $"{Fmt(amount)} {chain}";
+        SendReviewFiat = FiatEquivalentLabel(chain, amount);
+        SendReviewDebit = chain is "USDT" or "USDC"
+            ? string.Format(Loc.Instance["send.debitToken"], SendReviewAmount)
+            : string.Format(Loc.Instance["send.debitNative"], SendReviewAmount);
+
         if (chain == "XMR")
         {
             if (!_monero.IsRunning)
@@ -4659,6 +4818,7 @@ public partial class MainViewModel : ViewModelBase
         RestoreCachedBalances(); // show last-known totals instantly; the live refresh corrects them
         SelectFirstReceive();
         LoadActivity(); // restore the saved history before logging this unlock on top
+        LoadAddressBook(); // saved Send destinations for this device
         PushActivity("Security", "Vault", "unlocked", "this device", "now");
         _onChainRows.Clear();
         if (!_isTonWallet) _ = LoadOnChainHistoryAsync(); // real on-chain history for BTC + TRON

@@ -742,6 +742,52 @@
                     </ComboBox>
                     <TextBlock Classes="eyebrow" Text="{Binding [send.destLabel], Source={x:Static app:Loc.Instance}}"/>
                     <TextBox Text="{Binding SendTo}" Watermark="{Binding [send.destPlaceholder], Source={x:Static app:Loc.Instance}}"/>
+
+                    <!-- Network-check-on-paste: advisory only, but flags a destination that doesn't look
+                         like the selected network before any funds move. -->
+                    <Border IsVisible="{Binding SendAddressWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Background="#2A2416" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="6" Padding="10,7">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="⚠" Foreground="#E7CA83" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding SendAddressWarning}" Foreground="#D8C79A" TextWrapping="Wrap" FontSize="11.5" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Border>
+
+                    <!-- Local address book: save this destination, or reuse a saved one for this asset. -->
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                      <TextBox Grid.Column="0" Text="{Binding SendAddressLabel}"
+                               Watermark="{Binding [send.addrLabel], Source={x:Static app:Loc.Instance}}"/>
+                      <Button Grid.Column="1" Classes="ghost" MinHeight="0" Padding="14,8" VerticalAlignment="Stretch"
+                              Content="{Binding [send.addrSave], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding SaveSendAddressCommand}"/>
+                    </Grid>
+                    <StackPanel Spacing="4" IsVisible="{Binding HasSendAddressBook}">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                 Text="{Binding [send.addrSaved], Source={x:Static app:Loc.Instance}}"/>
+                      <ItemsControl ItemsSource="{Binding SendAddressBook}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="app:AddressBookEntry">
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,1">
+                              <Button Grid.Column="0" Classes="ghost" MinHeight="0" Padding="10,6"
+                                      HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                      ToolTip.Tip="{Binding Address}"
+                                      Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).UseSendAddressCommand}"
+                                      CommandParameter="{Binding}">
+                                <StackPanel Spacing="1">
+                                  <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"/>
+                                  <TextBlock Classes="mono" FontSize="10.5" Foreground="{DynamicResource UmTextMuted}"
+                                             Text="{Binding Address}" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                              </Button>
+                              <Button Grid.Column="1" Classes="chip" Content="✕" VerticalAlignment="Center" Margin="6,0,0,0"
+                                      Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).RemoveSendAddressCommand}"
+                                      CommandParameter="{Binding}"/>
+                            </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+
                     <Grid ColumnDefinitions="*,Auto">
                       <TextBlock Grid.Column="0" Classes="eyebrow" VerticalAlignment="Center"
                                  Text="{Binding [send.amount], Source={x:Static app:Loc.Instance}}"/>
@@ -753,6 +799,9 @@
                       <Button Grid.Column="1" Classes="ghost" MinHeight="0" Padding="18,10" VerticalAlignment="Stretch"
                               Content="{Binding [send.max], Source={x:Static app:Loc.Instance}}" Command="{Binding SetMaxAmountCommand}"/>
                     </Grid>
+                    <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" Margin="2,0,0,0"
+                               IsVisible="{Binding SendAmountFiat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               Text="{Binding SendAmountFiat}"/>
                     <Border IsVisible="{Binding SendError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                             Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="6" Padding="12,9">
                       <TextBlock Text="{Binding SendError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
@@ -762,12 +811,46 @@
                   </StackPanel>
                 </Border>
 
-                <!-- Step 2 · review & confirm -->
+                <!-- Step 2 · review & confirm. Financially transparent (§4): the full destination is
+                     always visible (never truncated), the amount carries its fiat value, and the total
+                     debit reads separately from the network fee. -->
                 <Border Classes="card" BorderBrush="#7A6230" IsVisible="{Binding HasSendQuote}">
                   <StackPanel Spacing="12">
                     <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [send.step2], Source={x:Static app:Loc.Instance}}"/>
-                    <TextBlock Classes="mono" FontSize="13" TextWrapping="Wrap" Text="{Binding SendQuoteSummary}"/>
-                    <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Text="{Binding SendQuoteFee}"/>
+
+                    <!-- Amount + fiat -->
+                    <StackPanel Spacing="2">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [send.amount], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock Classes="mono" FontSize="15" FontWeight="SemiBold" Text="{Binding SendReviewAmount}"/>
+                      <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
+                                 IsVisible="{Binding SendReviewFiat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                 Text="{Binding SendReviewFiat}"/>
+                    </StackPanel>
+
+                    <!-- Full destination — selectable, wraps, never shortened (verify every character). -->
+                    <StackPanel Spacing="2">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [send.destLabel], Source={x:Static app:Loc.Instance}}"/>
+                      <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1"
+                              CornerRadius="8" Padding="10,8">
+                        <SelectableTextBlock Classes="mono" FontSize="12" TextWrapping="Wrap"
+                                             Foreground="{DynamicResource UmTextSoft}" Text="{Binding SendReviewTo}"/>
+                      </Border>
+                    </StackPanel>
+
+                    <!-- Network fee (kept as its own line, separate from the total debit below). -->
+                    <StackPanel Spacing="2">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [send.networkFee], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Text="{Binding SendQuoteFee}"/>
+                    </StackPanel>
+
+                    <!-- Total debit — what actually leaves the wallet, stated apart from the fee. -->
+                    <Border Background="#1E1A12" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="8" Padding="10,8">
+                      <StackPanel Spacing="2">
+                        <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [send.totalDebit], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBlock FontSize="12" Foreground="#D8C79A" TextWrapping="Wrap" Text="{Binding SendReviewDebit}"/>
+                      </StackPanel>
+                    </Border>
+
                     <TextBlock Foreground="#BBAF91" FontSize="12" TextWrapping="Wrap"
                                Text="{Binding [send.step2warn], Source={x:Static app:Loc.Instance}}"/>
                     <StackPanel Orientation="Horizontal" Spacing="10">
