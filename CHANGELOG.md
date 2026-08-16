@@ -64,6 +64,40 @@ The big one: Bitcoin & Litecoin are now a **real HD wallet**, releases are
 - Quieter default motion, aligned button heights, a much fainter rain layer, and
   more of the UI localized across all six languages.
 
+### Send — financial transparency (§4)
+
+- **The review shows the full destination**, never truncated — you can verify
+  every character, including long Monero addresses that were previously shortened
+  and impossible to check.
+- **Amount carries a live fiat estimate** (from the latest fetched prices), shown
+  as you type and again in the review.
+- **Total debit reads as its own line**, kept separate from the network fee, so
+  what actually leaves your wallet is unambiguous.
+- **Network-check-on-paste** — an advisory warning if a destination doesn't look
+  like the selected network, before any funds move.
+- **Local address book** — save, label and reuse destinations per asset. Stored
+  on this device only; public addresses only, never keys.
+
+### Receive — less technical noise (§5)
+
+- **Previous addresses** stay listed and copyable, so funds sent to an earlier
+  address are never orphaned.
+- **Requested amount** folds into a standard BIP21 payment URI (BTC/LTC/DOGE) so
+  the sender's wallet pre-fills it.
+- **Explicit token-network warning** on USDT/USDC: only the shown network is safe.
+- The derivation path moved behind an **Advanced** toggle.
+
+### Activity — one merged feed (§6)
+
+- **Transactions and Activity are now one screen.** Real on-chain history for your
+  own addresses is merged with local events, deduped by explorer link.
+- **Confirmation status per movement** — Confirmed / Pending / Failed. A broadcast
+  send shows *Pending* until it settles; a failed broadcast shows *Failed* with a
+  **Retry** that re-opens a pre-filled Send (never auto-broadcasts, so nothing can
+  be sent twice).
+- **Filters** by type, asset, status and date range, plus a **last-synced** stamp
+  and an on-demand **Refresh**.
+
 > A small real-amount BTC/LTC send is still recommended as a smoke test before
 > relying on rotated addresses. Authenticode code-signing awaits a certificate.
 
