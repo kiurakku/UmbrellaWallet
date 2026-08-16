@@ -76,6 +76,12 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _torStatus = "Direct connection · traffic is NOT anonymised";
     [ObservableProperty] private string _torStatusColor = "#E7CA83";
 
+    /// <summary>A compact connection state for the always-visible sidebar chip — the first clause of
+    /// the live Tor/proxy status, e.g. "Tor connected" / "Direct connection" (roadmap §7.1).</summary>
+    public string ConnectionLabel => (TorStatus ?? string.Empty).Split('·')[0].Trim();
+
+    partial void OnTorStatusChanged(string value) => OnPropertyChanged(nameof(ConnectionLabel));
+
     // In-app documentation panel toggle.
     [ObservableProperty] private bool _isDocsVisible;
 

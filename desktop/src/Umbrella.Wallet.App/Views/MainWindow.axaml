@@ -394,6 +394,17 @@
 
             <Border Grid.Row="2" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Padding="18,14">
               <StackPanel Spacing="10">
+                <!-- Always-visible connection state (§7.1): Tor / Direct / proxy. Tap → Privacy settings. -->
+                <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                        MinHeight="0" Padding="12,9" Command="{Binding SelectSectionCommand}" CommandParameter="Settings">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Ellipse Width="8" Height="8" Fill="{Binding TorStatusColor}" VerticalAlignment="Center"/>
+                    <TextBlock FontSize="12" FontWeight="Medium" Foreground="{Binding TorStatusColor}"
+                               Text="{Binding ConnectionLabel}" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <TextBlock FontSize="10" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
+                           Text="{Binding [conn.note], Source={x:Static app:Loc.Instance}}"/>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                   <Ellipse Width="7" Height="7" Fill="{DynamicResource UmPos}"/>
                   <TextBlock FontSize="11" Foreground="{DynamicResource UmTextDim}" Text="{Binding [footer.keysEncrypted], Source={x:Static app:Loc.Instance}}"/>
