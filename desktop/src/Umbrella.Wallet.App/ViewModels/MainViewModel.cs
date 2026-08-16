@@ -5144,6 +5144,8 @@ public sealed record CoinToggle(string Symbol, string Name, bool Enabled)
 {
     public string BadgeColor => CoinBadge.Color(Symbol);
     public string BadgeGlyph => CoinGlyphs.For(Symbol);
+    public Bitmap? BadgeLogo => CoinBadge.Logo(Symbol);
+    public bool HasBadgeLogo => CoinBadge.HasLogo(Symbol);
 }
 
 /// <summary>A staking row personalised to the user's holdings.</summary>
@@ -5152,6 +5154,8 @@ public sealed record StakingRowViewModel(
 {
     public string BadgeColor => CoinBadge.Color(Symbol);
     public string BadgeGlyph => CoinGlyphs.For(Symbol);
+    public Bitmap? BadgeLogo => CoinBadge.Logo(Symbol);
+    public bool HasBadgeLogo => CoinBadge.HasLogo(Symbol);
 }
 
 public sealed record WalletAccountViewModel(
@@ -5186,6 +5190,8 @@ public sealed record WalletAccountViewModel(
     /// <summary>Coin badge (brand-coloured disc + glyph), matching Holdings/Market.</summary>
     public string BadgeColor => CoinBadge.Color(Symbol);
     public string BadgeGlyph => CoinGlyphs.For(Symbol);
+    public Bitmap? BadgeLogo => CoinBadge.Logo(Symbol);
+    public bool HasBadgeLogo => CoinBadge.HasLogo(Symbol);
 }
 
 /// <summary>
@@ -5291,6 +5297,8 @@ public sealed record HoldingRowViewModel(
     /// Uses each coin's own currency/symbol glyph where one exists (rendered in a symbol-capable
     /// font); anything unmapped falls back to its initial.</summary>
     public string BadgeGlyph => CoinGlyphs.For(Symbol);
+    public Bitmap? BadgeLogo => CoinBadge.Logo(Symbol);
+    public bool HasBadgeLogo => CoinBadge.HasLogo(Symbol);
 }
 
 /// <summary>Coin badge marks — the coins' own currency symbols, so the token badges read as logos
@@ -5347,6 +5355,34 @@ public static class CoinBadge
         "UNI" => "#FF007A",
         _ => "#6E5FB8",
     };
+
+    // Round coin logos sliced from the brand sheet (Assets/coins/*.png). Symbols not here fall back
+    // to the coloured glyph badge, so a coin without a logo still renders cleanly.
+    private static readonly HashSet<string> LogoSymbols = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "BTC", "ETH", "LTC", "DOGE", "TRX", "SOL", "TON", "ADA", "XMR", "USDT",
+        "BCH", "DOT", "XRP", "UNI", "LINK", "USDC", "CRO", "FTM", "AVAX", "MATIC", "BNB",
+    };
+    private static readonly Dictionary<string, Bitmap> LogoCache = new(StringComparer.OrdinalIgnoreCase);
+
+    public static bool HasLogo(string? symbol) => LogoSymbols.Contains((symbol ?? "").ToUpperInvariant());
+
+    /// <summary>The round logo bitmap for a symbol (cached), or null when there is no bundled logo.</summary>
+    public static Bitmap? Logo(string? symbol)
+    {
+        var key = (symbol ?? "").ToUpperInvariant();
+        if (!LogoSymbols.Contains(key)) return null;
+        if (LogoCache.TryGetValue(key, out var cached)) return cached;
+        try
+        {
+            using var s = Avalonia.Platform.AssetLoader.Open(
+                new Uri($"avares://Umbrella.Wallet.App/Assets/coins/{key}.png"));
+            var bmp = new Bitmap(s);
+            LogoCache[key] = bmp;
+            return bmp;
+        }
+        catch { return null; }
+    }
 }
 
 /// <summary>One entry in an asset / network picker.</summary>
@@ -5453,4 +5489,6 @@ public sealed record MarketRowViewModel(
     /// <summary>Coin badge (brand-coloured disc + glyph), matching Holdings.</summary>
     public string BadgeColor => CoinBadge.Color(Symbol);
     public string BadgeGlyph => CoinGlyphs.For(Symbol);
+    public Bitmap? BadgeLogo => CoinBadge.Logo(Symbol);
+    public bool HasBadgeLogo => CoinBadge.HasLogo(Symbol);
 }
