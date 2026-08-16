@@ -1332,8 +1332,24 @@ public partial class MainViewModel : ViewModelBase
     private void CloseNews() => SelectedNews = null;
 
     /// <summary>
+    /// The single source of truth for which symbols this build can actually build, sign and
+    /// broadcast. Both the Send picker (<see cref="SendableAssets"/>) and the Send guard read this,
+    /// and a test pins them together — so the UI can never offer a send the code rejects (the old
+    /// ADA / EVM bug) nor hide one it supports.
+    /// </summary>
+    public static readonly IReadOnlySet<string> SendableSymbols = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "BTC", "LTC",                                // UTXO HD wallet
+        "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
+        "SOL", "TON", "ADA",                         // account-based
+        "TRX", "USDT",                               // TRON + TRC-20
+        "XMR",                                       // Monero (local wallet-rpc)
+    };
+
+    /// <summary>
     /// Assets that can actually be sent, as a pick-list. Typing a ticker by hand is how people
-    /// send on the wrong network, so the UI only offers what this build can really broadcast.
+    /// send on the wrong network, so the UI only offers what this build can really broadcast — the
+    /// symbols here are pinned to <see cref="SendableSymbols"/> by a test.
     /// </summary>
     public IReadOnlyList<SendOption> SendableAssets { get; } =
     [
@@ -1341,6 +1357,7 @@ public partial class MainViewModel : ViewModelBase
         new("BTC", "Bitcoin", "Bitcoin network · native SegWit"),
         new("LTC", "Litecoin", "Litecoin network · native SegWit"),
         new("SOL", "Solana", "Solana network"),
+        new("TON", "Toncoin", "TON network · wallet v4R2"),
         new("XMR", "Monero", "Monero network · needs the Monero service on"),
         new("TRX", "TRON", "TRON network"),
         new("USDT", "Tether (TRC-20)", "TRON network · fee paid in TRX"),
@@ -3924,14 +3941,20 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        if (chain is not ("ETH" or "BTC" or "LTC" or "SOL" or "TON"))
+        // XMR / TRON / USDT were handled and returned above; anything reaching here must be a symbol
+        // with a real send branch below. Drive that off the single capability set, not a hand-kept
+        // list — this is exactly what let the picker offer ADA/EVM while the guard rejected them.
+        if (!SendableSymbols.Contains(chain))
         {
-            SendError =
-                $"Sending {chain} is not available. This build broadcasts ETH, BTC, LTC, SOL, TON, XMR, TRX and USDT (TRC-20).";
+            SendError = string.Format(Loc.Instance["send.notSupported"], chain);
             return;
         }
 
         var from = Accounts.FirstOrDefault(a => a.Symbol == chain && a.SupportStatus == "Ready");
+        // EVM side-chains (BNB/MATIC/…) share the Ethereum key and address; if their row hasn't been
+        // added by a balance refresh yet, fall back to the Ethereum account so the send still works.
+        if (from is null && EthTransactionSender.Chains.ContainsKey(chain))
+            from = Accounts.FirstOrDefault(a => a.Symbol == "ETH" && a.SupportStatus == "Ready");
         if (from is null || !IsRealAddress(from.Address))
         {
             SendError = $"No {chain} account is available.";
