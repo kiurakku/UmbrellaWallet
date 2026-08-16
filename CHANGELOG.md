@@ -45,6 +45,24 @@ The big one: Bitcoin & Litecoin are now a **real HD wallet**, releases are
 - **Docs tell the truth.** The stale web-product docs (React/NestJS/Prisma) are
   archived; the desktop README no longer claims "version 1.7.0", a backend, or
   macOS.
+- **Send offers only what it can send.** ADA and the EVM side-chains (BNB, MATIC,
+  AVAX, FTM, CRO) were offered in the picker but rejected before signing; TON
+  worked but was hidden. One capability set now drives both the picker and the
+  guard, pinned by a test. A full per-network capability matrix (receive /
+  balance / send / history / swap / tokens / maturity) is the single source of
+  truth (`ChainCatalog`).
+
+### Look & feel
+
+- **New app icon** and **real round coin logos** for 21 assets (with a coloured
+  glyph fallback).
+- **Five-item navigation** — Wallet · Activity · Swap · Discover · Settings.
+  Buy / P2P / Market / News moved into a **Discover** hub (external services
+  labelled honestly); Receive/Send live under Wallet.
+- **Connection status is always visible** in the sidebar (Tor / Direct /
+  proxy), with a note that the blockchain is public either way.
+- Quieter default motion, aligned button heights, a much fainter rain layer, and
+  more of the UI localized across all six languages.
 
 > A small real-amount BTC/LTC send is still recommended as a smoke test before
 > relying on rotated addresses. Authenticode code-signing awaits a certificate.
