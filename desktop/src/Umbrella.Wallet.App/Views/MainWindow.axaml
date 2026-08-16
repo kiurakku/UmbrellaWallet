@@ -742,8 +742,17 @@
                     </ComboBox>
                     <TextBlock Classes="eyebrow" Text="{Binding [send.destLabel], Source={x:Static app:Loc.Instance}}"/>
                     <TextBox Text="{Binding SendTo}" Watermark="{Binding [send.destPlaceholder], Source={x:Static app:Loc.Instance}}"/>
-                    <TextBlock Classes="eyebrow" Text="{Binding [send.amount], Source={x:Static app:Loc.Instance}}"/>
-                    <TextBox Text="{Binding SendAmount}" Watermark="0.0"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Grid.Column="0" Classes="eyebrow" VerticalAlignment="Center"
+                                 Text="{Binding [send.amount], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock Grid.Column="1" FontSize="11" Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"
+                                 Text="{Binding SelectedSendBalanceLabel}"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                      <TextBox Grid.Column="0" Text="{Binding SendAmount}" Watermark="0.0"/>
+                      <Button Grid.Column="1" Classes="ghost" MinHeight="0" Padding="18,10" VerticalAlignment="Stretch"
+                              Content="{Binding [send.max], Source={x:Static app:Loc.Instance}}" Command="{Binding SetMaxAmountCommand}"/>
+                    </Grid>
                     <Border IsVisible="{Binding SendError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                             Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="6" Padding="12,9">
                       <TextBlock Text="{Binding SendError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>

@@ -1501,6 +1501,43 @@ public partial class MainViewModel : ViewModelBase
             SendError = string.Empty;
             HasSendQuote = false;
         }
+        OnPropertyChanged(nameof(SelectedSendBalance));
+        OnPropertyChanged(nameof(SelectedSendBalanceLabel));
+    }
+
+    // --- Send financial transparency (§6.3): show the available balance and a fee-aware Max. ---
+    private WalletAccountViewModel? SelectedSendAccount() =>
+        Accounts.FirstOrDefault(a => a.Symbol == (SelectedSendAsset?.Symbol ?? string.Empty)
+            && a.SupportStatus is "Ready" or "Receive only" && IsRealAddress(a.Address));
+
+    public decimal SelectedSendBalance => (decimal)(SelectedSendAccount()?.Amount ?? 0d);
+
+    public string SelectedSendBalanceLabel => SelectedSendAsset is null
+        ? string.Empty
+        : $"{Loc.Instance["send.available"]}: {Fmt(SelectedSendBalance)} {SelectedSendAsset.Symbol}";
+
+    /// <summary>How much to leave behind on "Max" so the network fee cannot overrun the balance. Tokens
+    /// (USDT/USDC) reserve nothing — their fee is paid in the chain's native coin.</summary>
+    private static decimal SendMaxReserve(string symbol) => symbol.ToUpperInvariant() switch
+    {
+        "BTC" or "LTC" => 0.0003m,
+        "ETH" or "BNB" or "MATIC" or "AVAX" or "FTM" or "CRO" => 0.002m,
+        "SOL" => 0.002m,
+        "TON" => 0.05m,
+        "TRX" => 2m,
+        "XMR" => 0.001m,
+        "ADA" => 1m,
+        _ => 0m,
+    };
+
+    [RelayCommand]
+    private void SetMaxAmount()
+    {
+        if (SelectedSendAsset is null) return;
+        var bal = SelectedSendBalance;
+        if (bal <= 0) { SendError = Loc.Instance["send.nothingToSend"]; return; }
+        SendAmount = Fmt(Math.Max(0m, bal - SendMaxReserve(SelectedSendAsset.Symbol)));
+        SendError = string.Empty;
     }
 
     partial void OnSelectedWatchNetworkChanged(SendOption? value)
