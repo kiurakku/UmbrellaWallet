@@ -50,4 +50,25 @@ public sealed class ChainCapabilityTests
         Assert.Equal(Sendable.OrderBy(id => id).ToArray(), fullyReady);
         Assert.DoesNotContain(ChainId.Doge, fullyReady);
     }
+
+    /// <summary>The per-capability matrix (§5.1) must be internally consistent — no impossible combos.</summary>
+    [Fact]
+    public void Every_chain_declares_consistent_capabilities()
+    {
+        foreach (var c in ChainCatalog.All)
+        {
+            if (c.CanSend) Assert.True(c.CanReceive, $"{c.Symbol}: CanSend but not CanReceive");
+            if (ChainCatalog.HasRealAddress(c.Id)) Assert.True(c.CanReceive, $"{c.Symbol}: real address but not CanReceive");
+            if (c.HasTokens) Assert.True(c.CanSend, $"{c.Symbol}: HasTokens but not CanSend");
+            Assert.False(string.IsNullOrWhiteSpace(c.PrivacyNote), $"{c.Symbol}: missing privacy note");
+        }
+    }
+
+    /// <summary>A coin the wallet cannot fully spend must never wear the most-finished maturity badge.</summary>
+    [Fact]
+    public void A_non_sendable_chain_is_never_stable()
+    {
+        foreach (var c in ChainCatalog.All.Where(c => !c.CanSend))
+            Assert.NotEqual(ChainMaturity.Stable, c.Maturity);
+    }
 }
