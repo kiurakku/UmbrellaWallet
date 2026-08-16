@@ -2696,6 +2696,20 @@
                       Command="{Binding CloseQrPopupCommand}"/>
             </Grid>
 
+            <!-- Token-network warning: USDT/USDC are contracts on one specific chain; a transfer over any
+                 other network is unrecoverable, so say it plainly right on the receive screen. -->
+            <Border IsVisible="{Binding IsTokenReceive}" Background="#22E7CA83"
+                    BorderBrush="#E7CA83" BorderThickness="1" CornerRadius="10" Padding="12">
+              <StackPanel Spacing="4">
+                <TextBlock FontWeight="SemiBold" FontSize="12" Foreground="#E7CA83"
+                           Text="{Binding [receive.tokenWarnTitle], Source={x:Static app:Loc.Instance}}"/>
+                <TextBlock FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource UmTextSoft}"
+                           Text="{Binding SelectedReceiveNetwork}"/>
+                <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource UmTextDim}"
+                           Text="{Binding [receive.tokenWarnBody], Source={x:Static app:Loc.Instance}}"/>
+              </StackPanel>
+            </Border>
+
             <Border Background="#FFFFFF" Padding="14" CornerRadius="14"
                     Width="260" Height="260" HorizontalAlignment="Center">
               <Image Source="{Binding ReceiveQr}" Stretch="Uniform"
@@ -2712,14 +2726,29 @@
                          Foreground="{DynamicResource UmTextSoft}" Text="{Binding SelectedReceiveAddress}"/>
             </Border>
 
-            <!-- Which HD address this is; shown only where rotation is offered (BTC/LTC). -->
-            <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" HorizontalAlignment="Center"
-                       IsVisible="{Binding CanRotateReceive}" Text="{Binding ReceivePathLabel}"/>
+            <!-- Requested amount: folded into a BIP21 payment URI so the sender's wallet pre-fills it.
+                 Offered only where the URI scheme is a universal standard (BTC/LTC/DOGE). -->
+            <StackPanel Spacing="5" IsVisible="{Binding CanRequestAmount}">
+              <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                         Text="{Binding [receive.requestAmount], Source={x:Static app:Loc.Instance}}"/>
+              <TextBox Text="{Binding ReceiveAmount}" Watermark="0.0"/>
+            </StackPanel>
 
             <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                     Content="{Binding [common.copyAddress], Source={x:Static app:Loc.Instance}}"
                     Command="{Binding CopyAddressCommand}"
                     CommandParameter="{Binding SelectedReceiveAddress}"/>
+
+            <!-- Derivation path is developer detail: it hides behind "Advanced" so the everyday
+                 receive view stays clean. Shown only where rotation is offered (BTC/LTC). -->
+            <StackPanel Spacing="4" IsVisible="{Binding CanRotateReceive}">
+              <Button Classes="ghost" HorizontalAlignment="Center" Padding="10,5" MinHeight="0"
+                      Content="{Binding [receive.advanced], Source={x:Static app:Loc.Instance}}"
+                      Command="{Binding ToggleReceiveAdvancedCommand}"/>
+              <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextMuted}"
+                         HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
+                         IsVisible="{Binding ShowReceiveAdvanced}" Text="{Binding ReceivePathLabel}"/>
+            </StackPanel>
 
             <!-- HD receive rotation: a fresh address per request reduces on-chain linking. Safe now
                  that the wallet discovers and spends across every issued index. -->
@@ -2730,6 +2759,26 @@
               <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextMuted}" HorizontalAlignment="Center"
                          TextWrapping="Wrap" TextAlignment="Center"
                          Text="{Binding [receive.newAddrHint], Source={x:Static app:Loc.Instance}}"/>
+
+              <!-- Previous addresses: every index already handed out stays copyable, so funds sent to an
+                   older address are never orphaned and the user can re-share one. -->
+              <StackPanel Spacing="4" Margin="0,4,0,0" IsVisible="{Binding HasReceiveHistory}">
+                <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                           Text="{Binding [receive.previous], Source={x:Static app:Loc.Instance}}"/>
+                <ItemsControl ItemsSource="{Binding ReceiveHistory}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Button Classes="ghost" MinHeight="0" Padding="10,6" Margin="0,1"
+                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                              ToolTip.Tip="{Binding}"
+                              Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).CopyAddressCommand}"
+                              CommandParameter="{Binding}">
+                        <TextBlock Classes="mono" FontSize="11" TextTrimming="CharacterEllipsis" Text="{Binding}"/>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
             </StackPanel>
           </StackPanel>
         </Border>

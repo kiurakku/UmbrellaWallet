@@ -64,7 +64,18 @@ public partial class MainViewModel : ViewModelBase
     // issued address (BTC/LTC). A fresh address per request reduces on-chain linking.
     [ObservableProperty] private bool _canRotateReceive;
     [ObservableProperty] private string _receivePathLabel = string.Empty;
+    // Optional "requested amount" folded into a standards payment URI (BIP21) so the sender's wallet
+    // pre-fills it. Only offered on the UTXO chains whose URI scheme is universally recognised.
+    [ObservableProperty] private string _receiveAmount = string.Empty;
+    // The derivation path is developer detail, so it hides behind an "Advanced" toggle by default.
+    [ObservableProperty] private bool _showReceiveAdvanced;
     public System.Collections.ObjectModel.ObservableCollection<string> ReceiveHistory { get; } = new();
+    /// <summary>True once more than the base address has been issued, so the "Previous addresses" list is worth showing.</summary>
+    public bool HasReceiveHistory => ReceiveHistory.Count > 1;
+    /// <summary>Requested-amount is only encoded where the payment-URI scheme is a recognised standard (BIP21).</summary>
+    public bool CanRequestAmount => SelectedReceiveSymbol is "BTC" or "LTC" or "DOGE";
+    /// <summary>Tokens live on one specific chain; sending them over the wrong network burns them. Warn loudly.</summary>
+    public bool IsTokenReceive => SelectedReceiveSymbol is "USDT" or "USDC";
     private ChainId? _receiveChain;
     [ObservableProperty] private string _marketStatus = "Loading market…";
     [ObservableProperty] private string _settingsPassword = string.Empty;
@@ -3670,10 +3681,12 @@ public partial class MainViewModel : ViewModelBase
     private bool SetReceiveTarget(WalletAccountViewModel? account)
     {
         if (account is null || !IsRealAddress(account.Address)) return false;
+        ReceiveAmount = string.Empty; // a fresh target starts with no requested amount
+        ShowReceiveAdvanced = false;  // collapse developer detail on every new target
         SelectedReceiveAddress = account.Address;
         SelectedReceiveSymbol = account.Symbol;
         SelectedReceiveNetwork = $"{account.Symbol} · {account.NetworkLabel}";
-        ReceiveQr = BuildQr(account.Address);
+        ReceiveQr = BuildQr(BuildReceivePayload(account.Address));
 
         // Rotation is only safe where the wallet fully spends across addresses (BTC/LTC).
         _receiveChain = ParseChain(account.Symbol);
@@ -3682,6 +3695,48 @@ public partial class MainViewModel : ViewModelBase
         ReceivePathLabel = CanRotateReceive ? $"{account.Symbol} receive address #0" : string.Empty;
         RebuildReceiveHistory(account.Symbol);
         return true;
+    }
+
+    [RelayCommand]
+    private void ToggleReceiveAdvanced() => ShowReceiveAdvanced = !ShowReceiveAdvanced;
+
+    // Notify the token-warning and requested-amount gates whenever the receive asset changes.
+    partial void OnSelectedReceiveSymbolChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsTokenReceive));
+        OnPropertyChanged(nameof(CanRequestAmount));
+    }
+
+    // Re-render the QR the moment the requested amount changes so what's on screen always matches the field.
+    partial void OnReceiveAmountChanged(string value)
+    {
+        if (!string.IsNullOrEmpty(SelectedReceiveAddress))
+            ReceiveQr = BuildQr(BuildReceivePayload(SelectedReceiveAddress));
+    }
+
+    /// <summary>Encodes the receive target as a wallet payment URI. With a valid requested amount on a
+    /// BIP21 chain (BTC/LTC/DOGE) it returns e.g. <c>bitcoin:addr?amount=0.5</c>; otherwise the plain
+    /// address, so a scan can never carry a malformed or wrong-scheme payload.</summary>
+    private string BuildReceivePayload(string address)
+    {
+        if (!CanRequestAmount || string.IsNullOrWhiteSpace(ReceiveAmount)) return address;
+
+        var raw = ReceiveAmount.Trim().Replace(',', '.');
+        if (!decimal.TryParse(raw, System.Globalization.NumberStyles.Number,
+                System.Globalization.CultureInfo.InvariantCulture, out var amount) || amount <= 0)
+            return address;
+
+        var scheme = SelectedReceiveSymbol switch
+        {
+            "BTC" => "bitcoin",
+            "LTC" => "litecoin",
+            "DOGE" => "dogecoin",
+            _ => null,
+        };
+        if (scheme is null) return address;
+
+        var amountStr = amount.ToString("0.########", System.Globalization.CultureInfo.InvariantCulture);
+        return $"{scheme}:{address}?amount={amountStr}";
     }
 
     /// <summary>Lists the receive addresses already handed out (index 0..last issued), so the user can
@@ -3695,6 +3750,7 @@ public partial class MainViewModel : ViewModelBase
         var lastIssued = _addrIndex.GetState(walletId, symbol).LastIssuedExternalIndex ?? 0;
         for (uint i = 0; i <= lastIssued; i++)
             ReceiveHistory.Add(_deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, _receiveChain.Value, 0, i).Address);
+        OnPropertyChanged(nameof(HasReceiveHistory));
     }
 
     /// <summary>
@@ -3715,9 +3771,10 @@ public partial class MainViewModel : ViewModelBase
             var index = _addrIndex.ReserveNextExternalIndex(walletId, symbol);
             var addr = _deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, _receiveChain.Value, 0, index).Address;
             SelectedReceiveAddress = addr;
-            ReceiveQr = BuildQr(addr);
+            ReceiveQr = BuildQr(BuildReceivePayload(addr));
             ReceivePathLabel = $"{symbol} receive address #{index}";
             if (!ReceiveHistory.Contains(addr)) ReceiveHistory.Add(addr);
+            OnPropertyChanged(nameof(HasReceiveHistory));
             ShowToast(Loc.Instance["receive.newAddr"], isError: false);
         }
         catch
