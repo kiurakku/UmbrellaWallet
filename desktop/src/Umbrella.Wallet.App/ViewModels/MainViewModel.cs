@@ -1011,6 +1011,24 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _activityFilter = "All";
     partial void OnActivityFilterChanged(string value) => RebuildFilteredActivity();
 
+    // Roadmap §6: the merged Activity feed filters by asset, confirmation status and date range as well
+    // as by category. Each dropdown re-narrows the same unified list (local events + real on-chain history).
+    /// <summary>Assets present in the feed, "All" first — built from the rows so it never offers an empty filter.</summary>
+    public ObservableCollection<string> ActivityAssets { get; } = ["All"];
+    [ObservableProperty] private string _activityAssetFilter = "All";
+    partial void OnActivityAssetFilterChanged(string value) => RebuildFilteredActivity();
+
+    public IReadOnlyList<string> ActivityStatuses { get; } = ["All", "Confirmed", "Pending", "Failed"];
+    [ObservableProperty] private string _activityStatusFilter = "All";
+    partial void OnActivityStatusFilterChanged(string value) => RebuildFilteredActivity();
+
+    public IReadOnlyList<string> ActivityDateRanges { get; } = ["All time", "Last 24h", "Last 7 days", "Last 30 days"];
+    [ObservableProperty] private string _activityDateFilter = "All time";
+    partial void OnActivityDateFilterChanged(string value) => RebuildFilteredActivity();
+
+    /// <summary>When the on-chain history was last refreshed, shown on the Activity screen ("—" until synced).</summary>
+    [ObservableProperty] private string _lastHistorySync = "—";
+
     /// <summary>What the total is made of — top assets by value, for the Portfolio-overview ring.</summary>
     public ObservableCollection<PortfolioSlice> PortfolioBreakdown { get; } = [];
     public bool HasBreakdown => PortfolioBreakdown.Count > 0;
@@ -2019,7 +2037,10 @@ public partial class MainViewModel : ViewModelBase
     {
         Activity.Clear();
         RecentActivity.Clear();
+        _onChainRows.Clear();       // fetched chain history too — it re-pulls on the next Refresh
         _activityStore.Clear();
+        LastHistorySync = "—";
+        RebuildActivityAssets();
         RebuildFilteredActivity();
         RebuildTransactions();
         OnPropertyChanged(nameof(HasActivity));
@@ -4404,13 +4425,18 @@ public partial class MainViewModel : ViewModelBase
             StatusMessage = "Transaction broadcast · it will confirm shortly";
             var link = string.IsNullOrWhiteSpace(explorer) ? null
                 : explorer.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? explorer : $"https://{explorer}";
-            PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", link);
+            // Just broadcast, not yet mined — mark it Pending so the feed is honest until it confirms.
+            PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", link, "Pending");
             await RefreshLiveDataAsync();
         }
         else
         {
             SendError = error ?? "Broadcast failed.";
             StatusMessage = "Broadcast failed — nothing was sent";
+            // A failed broadcast never left this device, so record it as retryable (full destination and
+            // amount kept in retry context, not shown, so Retry can safely re-open a pre-filled send).
+            PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", null, "Failed",
+                retryTo: to, retryAmount: amount.ToString(CultureInfo.InvariantCulture), retryChain: symbol);
         }
     }
 
@@ -4854,17 +4880,23 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private void PushActivity(string kind, string asset, string amount, string counter, string when, string? explorer = null)
+    private void PushActivity(string kind, string asset, string amount, string counter, string when,
+        string? explorer = null, string status = "Confirmed",
+        string? retryTo = null, string? retryAmount = null, string? retryChain = null)
     {
         // Real timestamp so persisted history reads correctly after a restart (callers pass "now").
-        var stamp = string.Equals(when, "now", StringComparison.OrdinalIgnoreCase)
+        var isNow = string.Equals(when, "now", StringComparison.OrdinalIgnoreCase);
+        var stamp = isNow
             ? DateTime.Now.ToString("MMM d · HH:mm", CultureInfo.InvariantCulture)
             : when;
-        Activity.Insert(0, new ActivityRowViewModel(kind, asset, amount, counter, stamp, explorer));
+        var unixMs = isNow ? DateTimeOffset.Now.ToUnixTimeMilliseconds() : 0;
+        Activity.Insert(0, new ActivityRowViewModel(kind, asset, amount, counter, stamp, explorer,
+            status, unixMs, retryTo, retryAmount, retryChain));
         while (Activity.Count > 60) Activity.RemoveAt(Activity.Count - 1);
 
         RecentActivity.Clear();
         foreach (var row in Activity.Take(5)) RecentActivity.Add(row);
+        RebuildActivityAssets();
         RebuildFilteredActivity();
         RebuildTransactions();
         OnPropertyChanged(nameof(HasActivity));
@@ -4873,16 +4905,17 @@ public partial class MainViewModel : ViewModelBase
 
     private void PersistActivity() =>
         _activityStore.Save(Activity.Select(a =>
-            new ActivityStore.Entry(a.Kind, a.Asset, a.Amount, a.Counterparty, a.When, a.Explorer)));
+            new ActivityStore.Entry(a.Kind, a.Asset, a.Amount, a.Counterparty, a.When, a.Explorer, a.Status)));
 
     /// <summary>Loads the saved activity/transaction history from the data folder into the feeds.</summary>
     private void LoadActivity()
     {
         Activity.Clear();
         foreach (var e in _activityStore.Load())
-            Activity.Add(new ActivityRowViewModel(e.Kind, e.Asset, e.Amount, e.Counterparty, e.When, e.Explorer));
+            Activity.Add(new ActivityRowViewModel(e.Kind, e.Asset, e.Amount, e.Counterparty, e.When, e.Explorer, e.Status));
         RecentActivity.Clear();
         foreach (var row in Activity.Take(5)) RecentActivity.Add(row);
+        RebuildActivityAssets();
         RebuildFilteredActivity();
         RebuildTransactions();
         OnPropertyChanged(nameof(HasActivity));
@@ -4890,11 +4923,64 @@ public partial class MainViewModel : ViewModelBase
 
     public bool HasFilteredActivity => FilteredActivity.Count > 0;
 
+    /// <summary>The merged feed (roadmap §6): local events plus real on-chain history, deduped by explorer
+    /// link, newest first — the single source the Activity screen renders and every filter narrows.</summary>
+    private IEnumerable<ActivityRowViewModel> MergedActivity()
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in Activity)
+        {
+            if (row.Explorer is { Length: > 0 } ex) seen.Add(ex);
+            yield return row;
+        }
+        foreach (var row in _onChainRows)
+        {
+            if (row.Explorer is { Length: > 0 } ex && !seen.Add(ex)) continue;
+            yield return row;
+        }
+    }
+
+    /// <summary>Rebuilds the asset dropdown from whatever assets the feed currently holds, keeping "All"
+    /// first and dropping a selection that no longer exists.</summary>
+    private void RebuildActivityAssets()
+    {
+        var assets = MergedActivity()
+            .Where(a => a.IsTransaction && !string.IsNullOrWhiteSpace(a.Asset))
+            .Select(a => a.Asset)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(a => a, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        ActivityAssets.Clear();
+        ActivityAssets.Add("All");
+        foreach (var a in assets) ActivityAssets.Add(a);
+        if (!ActivityAssets.Contains(ActivityAssetFilter, StringComparer.OrdinalIgnoreCase))
+            ActivityAssetFilter = "All";
+    }
+
     private void RebuildFilteredActivity()
     {
+        // Date cutoff (unix ms). Rows with an unknown timestamp (0) are always kept — never hide history
+        // just because it predates the timestamped format.
+        long cutoff = ActivityDateFilter switch
+        {
+            "Last 24h" => DateTimeOffset.Now.AddDays(-1).ToUnixTimeMilliseconds(),
+            "Last 7 days" => DateTimeOffset.Now.AddDays(-7).ToUnixTimeMilliseconds(),
+            "Last 30 days" => DateTimeOffset.Now.AddDays(-30).ToUnixTimeMilliseconds(),
+            _ => 0,
+        };
+
         FilteredActivity.Clear();
-        foreach (var row in Activity.Where(a => ActivityFilter == "All" || a.Category == ActivityFilter))
+        foreach (var row in MergedActivity())
+        {
+            if (ActivityFilter != "All" && row.Category != ActivityFilter) continue;
+            if (ActivityAssetFilter != "All" &&
+                !string.Equals(row.Asset, ActivityAssetFilter, StringComparison.OrdinalIgnoreCase)) continue;
+            if (ActivityStatusFilter != "All" &&
+                !string.Equals(row.Status, ActivityStatusFilter, StringComparison.OrdinalIgnoreCase)) continue;
+            if (cutoff > 0 && row.UnixMs > 0 && row.UnixMs < cutoff) continue;
             FilteredActivity.Add(row);
+        }
         OnPropertyChanged(nameof(HasFilteredActivity));
     }
 
@@ -4954,12 +5040,45 @@ public partial class MainViewModel : ViewModelBase
 
             _onChainRows.Clear();
             foreach (var r in rows.OrderByDescending(r => r.Ts)) _onChainRows.Add(r.Row);
+            LastHistorySync = DateTime.Now.ToString("MMM d · HH:mm", CultureInfo.InvariantCulture);
+            RebuildActivityAssets();
+            RebuildFilteredActivity();
             RebuildTransactions();
         }
         catch
         {
             // History is a read-only nicety — never let it disrupt the wallet.
         }
+    }
+
+    /// <summary>User-triggered re-fetch of on-chain history, so the Activity feed and its last-sync
+    /// stamp can be refreshed on demand (roadmap §6). Best-effort; failures leave the feed untouched.</summary>
+    [RelayCommand]
+    private async Task RefreshHistory()
+    {
+        StatusMessage = "Refreshing transaction history…";
+        await LoadOnChainHistoryAsync();
+        ShowToast(Loc.Instance["activity.synced"], isError: false);
+    }
+
+    /// <summary>Re-attempts a failed send. The broadcast never left the device, so this only re-opens the
+    /// Send screen pre-filled with the original destination and amount — it deliberately does NOT
+    /// auto-broadcast, so a transaction that actually went through can never be sent twice.</summary>
+    [RelayCommand]
+    private void RetrySend(ActivityRowViewModel? row)
+    {
+        if (row is null || !row.CanRetry) return;
+
+        var asset = SendableAssets.FirstOrDefault(a =>
+            string.Equals(a.Symbol, row.RetryChain, StringComparison.OrdinalIgnoreCase));
+        if (asset is not null) SelectedSendAsset = asset;
+
+        SendTo = row.RetryTo ?? string.Empty;
+        SendAmount = row.RetryAmount ?? string.Empty;
+        SendError = string.Empty;
+        HasSendQuote = false;
+        SelectSection("Send");
+        StatusMessage = "Retry — review the pre-filled transfer, then send again";
     }
 
     private static ActivityRowViewModel ToActivityRow(ChainTx t)
@@ -4970,8 +5089,10 @@ public partial class MainViewModel : ViewModelBase
         var counter = t.Counterparty.Length > 16
             ? $"{t.Counterparty[..8]}…{t.Counterparty[^6..]}"
             : t.Counterparty;
-        var amount = t.Kind == "Sent" ? $"-{t.Amount} {t.Asset}" : $"+{t.Amount} {t.Asset}";
-        return new ActivityRowViewModel(t.Kind, t.Asset, amount, counter, when, t.Explorer);
+        // Signed number only; the asset shows in its own column now that Activity is merged.
+        var amount = t.Kind == "Sent" ? $"-{t.Amount}" : $"+{t.Amount}";
+        // Explorer history is fetched with only_confirmed, so these are settled — Status "Confirmed".
+        return new ActivityRowViewModel(t.Kind, t.Asset, amount, counter, when, t.Explorer, "Confirmed", t.UnixMs);
     }
 
     /// <summary>Copy a transaction's explorer link to the clipboard — deliberately not opened in
@@ -5491,7 +5612,12 @@ public sealed record ActivityRowViewModel(
     string Amount,
     string Counterparty,
     string When,
-    string? Explorer = null)
+    string? Explorer = null,
+    string Status = "Confirmed",
+    long UnixMs = 0,
+    string? RetryTo = null,
+    string? RetryAmount = null,
+    string? RetryChain = null)
 {
     /// <summary>A block-explorer link exists, so the row is actionable (copy the URL).</summary>
     public bool HasLink => !string.IsNullOrWhiteSpace(Explorer);
@@ -5519,6 +5645,28 @@ public sealed record ActivityRowViewModel(
         "Theme" => "#E7CA83",
         _ => "#8A9099",
     };
+
+    // ---- Confirmation status (roadmap §6: pending / confirmed / failed) ----
+
+    public bool IsPending => string.Equals(Status, "Pending", StringComparison.OrdinalIgnoreCase);
+    public bool IsFailed => string.Equals(Status, "Failed", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>A status pill is only meaningful on money movements; housekeeping rows stay quiet.</summary>
+    public bool ShowStatus => IsTransaction;
+
+    /// <summary>Amber for in-flight, red for failed, teal for confirmed — read the outcome at a glance.</summary>
+    public string StatusColor => Status switch
+    {
+        "Pending" => "#E7CA83",
+        "Failed" => "#E08A8A",
+        _ => "#5AC8B4",
+    };
+
+    /// <summary>Localized status text for the pill (falls back to English via Loc's missing-key handling).</summary>
+    public string StatusLabel => Loc.Instance[$"status.{Status.ToLowerInvariant()}"];
+
+    /// <summary>A failed broadcast never left this device, so re-sending it is safe (and offered).</summary>
+    public bool CanRetry => IsFailed && !string.IsNullOrWhiteSpace(RetryTo) && !string.IsNullOrWhiteSpace(RetryChain);
 }
 
 /// <summary>One entry in the News section: a tagged, dated product note.</summary>
