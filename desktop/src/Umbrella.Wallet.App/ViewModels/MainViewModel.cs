@@ -399,6 +399,53 @@ public partial class MainViewModel : ViewModelBase
         ? (TorEnabled ? Loc.Instance["priv.torOnlyOn"] : Loc.Instance["priv.torOnlyBlocked"])
         : Loc.Instance["priv.torOnlyOff"];
 
+    // ---- Verify Tor: prove the wallet's traffic really exits through Tor (read-only check) ----
+    [ObservableProperty] private string _torCheckStatus = string.Empty;
+    [ObservableProperty] private string _torCheckColor = "#8B909A";
+    [ObservableProperty] private bool _torChecking;
+
+    /// <summary>Asks check.torproject.org (through the wallet's own shared client, so it takes the exact
+    /// same route as every balance/price call) whether this exit is a Tor node — the honest proof that
+    /// the anonymity toggle is actually doing something. With Tor-only on and Tor down the request is
+    /// blocked by the kill-switch, which the result reports as "blocked (kill-switch working)".</summary>
+    [RelayCommand]
+    private async Task VerifyTorAsync()
+    {
+        if (TorChecking) return;
+        TorChecking = true;
+        TorCheckStatus = Loc.Instance["priv.torCheckRunning"];
+        TorCheckColor = "#8B909A";
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var res = await PublicHttp.Shared.GetAsync("https://check.torproject.org/api/ip", cts.Token);
+            var body = (await res.Content.ReadAsStringAsync(cts.Token))
+                .Replace(" ", "").Replace("\n", "").ToLowerInvariant();
+            if (body.Contains("\"istor\":true"))
+            {
+                TorCheckStatus = Loc.Instance["priv.torCheckOk"];
+                TorCheckColor = "#8FCB9B";
+            }
+            else
+            {
+                TorCheckStatus = Loc.Instance["priv.torCheckNo"];
+                TorCheckColor = "#E7CA83";
+            }
+        }
+        catch
+        {
+            // Tor-only + Tor off → the kill-switch refused the request. That's success, not failure.
+            TorCheckStatus = TorOnly && !TorEnabled
+                ? Loc.Instance["priv.torCheckBlocked"]
+                : Loc.Instance["priv.torCheckFail"];
+            TorCheckColor = TorOnly && !TorEnabled ? "#8FCB9B" : "#E09A9A";
+        }
+        finally
+        {
+            TorChecking = false;
+        }
+    }
+
     /// <summary>Normalises "host:port" or a socks URI into a canonical socks URI, or null if invalid.</summary>
     private static string? NormalizeProxyUri(string? raw)
     {
