@@ -31,6 +31,7 @@ public static class PublicHttp
     public enum IpMode { Auto, V4Only, V6Only }
 
     private static IpMode _ipMode = IpMode.Auto;
+    private static bool _requireProxy;
     private static HttpClient _shared = Build(null);
 
     public static HttpClient Shared => _shared;
@@ -40,6 +41,24 @@ public static class PublicHttp
 
     /// <summary>The active IP-family preference for direct connections.</summary>
     public static IpMode IpPreference => _ipMode;
+
+    /// <summary>
+    /// Tor-only kill-switch. When true, any outbound request that would go direct (no proxy) is
+    /// refused at the transport layer instead of leaking to clearnet — so if Tor drops or is turned
+    /// off, the wallet fails closed rather than silently de-anonymising. Covers every request on the
+    /// shared client (balances, prices, history, swap quotes, broadcasts).
+    /// </summary>
+    public static bool RequireProxy => _requireProxy;
+
+    /// <summary>Turns the Tor-only kill-switch on/off and rebuilds the shared client.</summary>
+    public static void SetRequireProxy(bool require)
+    {
+        if (_requireProxy == require) return;
+        _requireProxy = require;
+        var old = _shared;
+        _shared = Build(ActiveProxy);
+        try { old.Dispose(); } catch { /* ignore */ }
+    }
 
     /// <summary>
     /// Route all public requests through a SOCKS5 proxy (e.g. Tor at socks5://127.0.0.1:9050),
@@ -104,6 +123,14 @@ public static class PublicHttp
             // .NET 6+ SocketsHttpHandler understands socks5:// proxies via WebProxy.
             handler.Proxy = new System.Net.WebProxy(socks5Uri);
             handler.UseProxy = true;
+        }
+        else if (_requireProxy)
+        {
+            // Tor-only mode with no proxy active → refuse every connection (fail closed). This is the
+            // kill-switch: a dropped or disabled Tor can never silently fall back to clearnet.
+            handler.ConnectCallback = (_, _) => ValueTask.FromException<System.IO.Stream>(
+                new HttpRequestException(
+                    "Tor-only mode is on but Tor is not connected — clearnet request blocked."));
         }
         else if (_ipMode != IpMode.Auto)
         {

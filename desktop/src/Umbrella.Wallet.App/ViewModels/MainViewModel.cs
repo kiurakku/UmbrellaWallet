@@ -370,6 +370,32 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Tor-only kill-switch: when on, any request that would hit clearnet is refused
+    /// (fail-closed), so turning Tor off or a dropped Tor circuit never silently de-anonymises you.</summary>
+    public bool TorOnly
+    {
+        get => _uiSettings.TorOnlyMode;
+        set
+        {
+            if (_uiSettings.TorOnlyMode == value) return;
+            _uiSettings.TorOnlyMode = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            PublicHttp.SetRequireProxy(value);
+            OnPropertyChanged(nameof(TorOnlyStatus));
+            if (IsUnlocked) PushActivity("Security", "Tor-only", value ? "on" : "off",
+                value ? "clearnet blocked" : "clearnet allowed", "now");
+            // Turning it on with Tor still off means everything is blocked until Tor connects — nudge.
+            if (value && !TorEnabled) TorEnabled = true;
+            _ = RefreshMarketAsync();
+        }
+    }
+
+    /// <summary>One-line explanation shown under the Tor-only toggle.</summary>
+    public string TorOnlyStatus => TorOnly
+        ? (TorEnabled ? Loc.Instance["priv.torOnlyOn"] : Loc.Instance["priv.torOnlyBlocked"])
+        : Loc.Instance["priv.torOnlyOff"];
+
     /// <summary>Normalises "host:port" or a socks URI into a canonical socks URI, or null if invalid.</summary>
     private static string? NormalizeProxyUri(string? raw)
     {
@@ -959,6 +985,9 @@ public partial class MainViewModel : ViewModelBase
 
         // Apply saved privacy routing before any network call goes out.
         PublicHttp.SetIpPreference(PublicHttp.ParseIpMode(_uiSettings.IpMode));
+        // Tor-only kill-switch first: if it was left on, clearnet stays blocked until Tor connects, so
+        // no startup request can leak before the proxy is up.
+        PublicHttp.SetRequireProxy(_uiSettings.TorOnlyMode);
         if (EffectiveCustomProxy() is { } startupProxy)
         {
             PublicHttp.SetProxy(startupProxy);
@@ -2106,6 +2135,7 @@ public partial class MainViewModel : ViewModelBase
                 : $"Off · using your custom proxy ({fallback})";
             TorStatusColor = "#E7CA83";
             if (IsUnlocked) PushActivity("Security", "Tor", "off", "direct connection", "now");
+            OnPropertyChanged(nameof(TorOnlyStatus)); // Tor-only + Tor off = clearnet now blocked
             _ = RefreshMarketAsync();
             return;
         }
@@ -2142,6 +2172,7 @@ public partial class MainViewModel : ViewModelBase
         TorStatus = $"{resultMessage} · your IP is hidden from explorers";
         TorStatusColor = "#8FCB9B";
         if (IsUnlocked) PushActivity("Security", "Tor", "on", "IP hidden from explorers", "now");
+        OnPropertyChanged(nameof(TorOnlyStatus));
         _ = RefreshMarketAsync();
         if (IsUnlocked) _ = RefreshLiveDataAsync();
     }

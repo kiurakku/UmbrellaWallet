@@ -2302,6 +2302,21 @@
                     </StackPanel>
                     <TextBlock FontSize="12" Text="{Binding TorStatus}" Foreground="{Binding TorStatusColor}" TextWrapping="Wrap"/>
 
+                    <!-- Tor-only kill-switch: fail-closed so a dropped/off Tor never leaks to clearnet. -->
+                    <StackPanel Spacing="6" Margin="0,6,0,0">
+                      <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                          <TextBlock FontWeight="SemiBold" FontSize="13"
+                                     Text="{Binding [priv.torOnly], Source={x:Static app:Loc.Instance}}"/>
+                          <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11.5" TextWrapping="Wrap"
+                                     Text="{Binding [priv.torOnlyDesc], Source={x:Static app:Loc.Instance}}"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding TorOnly, Mode=TwoWay}" OnContent="" OffContent="" VerticalAlignment="Top"/>
+                      </Grid>
+                      <TextBlock FontSize="11.5" Classes="mono" Foreground="{DynamicResource UmTextMuted}"
+                                 Text="{Binding TorOnlyStatus}" TextWrapping="Wrap"/>
+                    </StackPanel>
+
                     <Border Background="#22FFFFFF" Height="1" Margin="0,10,0,4"/>
 
                     <TextBlock Classes="eyebrow" Text="{Binding [settings.moneroSvc], Source={x:Static app:Loc.Instance}}"/>

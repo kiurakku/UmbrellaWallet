@@ -29,6 +29,10 @@ public sealed class UiSettings
     /// <summary>Idle minutes before the vault auto-locks; 0 disables auto-lock entirely.</summary>
     public int AutoLockMinutes { get; set; } = 5;
 
+    /// <summary>Tor-only kill-switch: when on, the wallet refuses any request that would go to clearnet
+    /// (fail-closed), so a dropped or disabled Tor can never silently de-anonymise you.</summary>
+    public bool TorOnlyMode { get; set; } = false;
+
     /// <summary>Route all traffic through a user-supplied SOCKS5 proxy instead of the bundled Tor.</summary>
     public bool CustomProxyEnabled { get; set; } = false;
     /// <summary>The user's SOCKS5 proxy, e.g. "socks5://127.0.0.1:9050" (host:port also accepted).</summary>
