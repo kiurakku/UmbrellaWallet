@@ -22,8 +22,13 @@ public sealed class HdAddressDeriver
 
     /// <summary>
     /// Derives the external (receive) address at the given index for a supported chain.
+    /// <paramref name="passphrase"/> is the optional BIP39 passphrase (the "25th word"): empty = the
+    /// normal wallet; a non-empty value derives a wholly separate hidden wallet. It is mixed into the
+    /// BIP39 seed, so it changes every chain — EXCEPT Cardano, whose Icarus scheme derives from the raw
+    /// entropy and cannot honour a passphrase; asking for ADA with a passphrase throws rather than
+    /// silently returning the base wallet's ADA address (which would defeat the hidden-wallet purpose).
     /// </summary>
-    public ReceiveAddress DeriveReceiveAddress(string mnemonic, ChainId chain, uint addressIndex = 0)
+    public ReceiveAddress DeriveReceiveAddress(string mnemonic, ChainId chain, uint addressIndex = 0, string passphrase = "")
     {
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
@@ -38,7 +43,7 @@ public sealed class HdAddressDeriver
         }
 
         var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
-        var masterKey = parsed.DeriveExtKey();
+        var masterKey = parsed.DeriveExtKey(passphrase);
 
         return chain switch
         {
@@ -68,21 +73,26 @@ public sealed class HdAddressDeriver
                 addressIndex),
             ChainId.Eth => DeriveEthereum(masterKey, addressIndex),
             ChainId.Tron => DeriveTron(masterKey, addressIndex),
-            ChainId.Sol => DeriveSolana(parsed, addressIndex),
-            ChainId.Xmr => DeriveMonero(parsed),
-            ChainId.Ton => DeriveTon(parsed),
-            ChainId.Ada => DeriveAda(parsed),
+            ChainId.Sol => DeriveSolana(parsed, addressIndex, passphrase),
+            ChainId.Xmr => DeriveMonero(parsed, passphrase),
+            ChainId.Ton => DeriveTon(parsed, passphrase),
+            ChainId.Ada => HasPassphrase(passphrase)
+                ? throw new PassphraseUnsupportedException(ChainId.Ada)
+                : DeriveAda(parsed),
             _ => throw new ArgumentOutOfRangeException(nameof(chain), chain, "Unknown chain id."),
         };
     }
+
+    /// <summary>True when a non-empty BIP39 passphrase is in play (a hidden wallet).</summary>
+    private static bool HasPassphrase(string? passphrase) => !string.IsNullOrEmpty(passphrase);
 
     /// <summary>
     /// Solana: SLIP-0010 ed25519 at m/44'/501'/0'/{index}', base58 of the public key.
     /// Matches Phantom / solana-keygen for the account-0 address.
     /// </summary>
-    private static ReceiveAddress DeriveSolana(Mnemonic parsed, uint addressIndex)
+    private static ReceiveAddress DeriveSolana(Mnemonic parsed, uint addressIndex, string passphrase = "")
     {
-        var seed = parsed.DeriveSeed();
+        var seed = parsed.DeriveSeed(passphrase);
         var priv = Slip10Ed25519.DerivePrivateKey(seed, new[] { 44u, 501u, 0u, addressIndex });
         var pub = Slip10Ed25519.PublicKey(priv);
         var address = Encoders.Base58.EncodeData(pub);
@@ -95,9 +105,9 @@ public sealed class HdAddressDeriver
     /// Matches multi-coin wallets (e.g. Trust Wallet) that use coin type 607 + v4R2, so the same
     /// BIP39 phrase recovers the funds there. The v4R2 address math is pinned to tonweb by a test.
     /// </summary>
-    private static ReceiveAddress DeriveTon(Mnemonic parsed)
+    private static ReceiveAddress DeriveTon(Mnemonic parsed, string passphrase = "")
     {
-        var seed = parsed.DeriveSeed();
+        var seed = parsed.DeriveSeed(passphrase);
         var priv = Slip10Ed25519.DerivePrivateKey(seed, new[] { 44u, 607u, 0u });
         var pub = Slip10Ed25519.PublicKey(priv);
         var address = TonKeys.WalletV4R2Address(pub);
@@ -134,7 +144,7 @@ public sealed class HdAddressDeriver
     /// Ethereum private key (32 bytes) at m/44'/60'/0'/0/{index}. Used transiently for local
     /// transaction signing only — the caller must zero the array after use.
     /// </summary>
-    public byte[] DeriveEthereumPrivateKey(string mnemonic, uint addressIndex = 0)
+    public byte[] DeriveEthereumPrivateKey(string mnemonic, uint addressIndex = 0, string passphrase = "")
     {
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
@@ -143,7 +153,7 @@ public sealed class HdAddressDeriver
         }
 
         var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
-        var derived = parsed.DeriveExtKey().Derive(new KeyPath($"44'/60'/0'/0/{addressIndex}"));
+        var derived = parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"44'/60'/0'/0/{addressIndex}"));
         return derived.PrivateKey.ToBytes();
     }
 
@@ -151,8 +161,8 @@ public sealed class HdAddressDeriver
     /// The NBitcoin <see cref="Key"/> behind the displayed BTC/LTC receive address, for local
     /// signing only. Path matches <see cref="DeriveReceiveAddress"/> exactly (BIP84).
     /// </summary>
-    public Key DeriveBitcoinLikeKey(string mnemonic, ChainId chain, uint addressIndex = 0) =>
-        DeriveBitcoinLikeAt(mnemonic, chain, change: 0, index: addressIndex).PrivateKey;
+    public Key DeriveBitcoinLikeKey(string mnemonic, ChainId chain, uint addressIndex = 0, string passphrase = "") =>
+        DeriveBitcoinLikeAt(mnemonic, chain, change: 0, index: addressIndex, passphrase).PrivateKey;
 
     /// <summary>
     /// BIP84/44 parameters for the UTXO chains the wallet can build transactions for. Kept in one
@@ -175,16 +185,16 @@ public sealed class HdAddressDeriver
     /// to a fresh internal address instead of re-using a public one. Address, key and scriptPubKey
     /// all come from this one method so they can never drift apart.
     /// </summary>
-    public DerivedUtxoAccount DeriveBitcoinLikeAt(string mnemonic, ChainId chain, uint change, uint index) =>
-        DeriveUtxoAccount(mnemonic, new UtxoDerivationPath(chain, change, index));
+    public DerivedUtxoAccount DeriveBitcoinLikeAt(string mnemonic, ChainId chain, uint change, uint index, string passphrase = "") =>
+        DeriveUtxoAccount(mnemonic, new UtxoDerivationPath(chain, change, index), passphrase);
 
     /// <summary>Derives the signing account for an explicit <see cref="UtxoDerivationPath"/>.</summary>
-    public DerivedUtxoAccount DeriveUtxoAccount(string mnemonic, UtxoDerivationPath path)
+    public DerivedUtxoAccount DeriveUtxoAccount(string mnemonic, UtxoDerivationPath path, string passphrase = "")
     {
         var (purpose, coinType, network, scriptType) = BitcoinLikeParams(path.Chain);
         var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
         var keyPath = new KeyPath($"{purpose}'/{coinType}'/0'/{path.Change}/{path.Index}");
-        var key = parsed.DeriveExtKey().Derive(keyPath).PrivateKey;
+        var key = parsed.DeriveExtKey(passphrase).Derive(keyPath).PrivateKey;
         var address = key.PubKey.GetAddress(scriptType, network).ToString();
         var scriptPubKey = key.PubKey.GetAddress(scriptType, network).ScriptPubKey;
         return new DerivedUtxoAccount(path, address, key, scriptPubKey);
@@ -203,7 +213,7 @@ public sealed class HdAddressDeriver
     /// TRON signing key at m/44'/195'/0'/0/{index} — same path as the displayed TRX address.
     /// Used for native TRX and USDT (TRC-20) transfers.
     /// </summary>
-    public Key DeriveTronKey(string mnemonic, uint addressIndex = 0)
+    public Key DeriveTronKey(string mnemonic, uint addressIndex = 0, string passphrase = "")
     {
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
@@ -212,7 +222,7 @@ public sealed class HdAddressDeriver
         }
 
         var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
-        return parsed.DeriveExtKey()
+        return parsed.DeriveExtKey(passphrase)
             .Derive(new KeyPath($"44'/195'/0'/0/{addressIndex}"))
             .PrivateKey;
     }
@@ -221,7 +231,7 @@ public sealed class HdAddressDeriver
     /// The full Monero account (address + secret keys) for this wallet. The secret keys are what
     /// "Restore from keys" consumes in Feather / monero-wallet-cli.
     /// </summary>
-    public MoneroWallet DeriveMoneroWallet(string mnemonic)
+    public MoneroWallet DeriveMoneroWallet(string mnemonic, string passphrase = "")
     {
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
@@ -230,19 +240,19 @@ public sealed class HdAddressDeriver
         }
 
         var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
-        return MoneroKeys.FromSeed(parsed.DeriveSeed());
+        return MoneroKeys.FromSeed(parsed.DeriveSeed(passphrase));
     }
 
-    private static ReceiveAddress DeriveMonero(Mnemonic parsed)
+    private static ReceiveAddress DeriveMonero(Mnemonic parsed, string passphrase = "")
     {
-        var wallet = MoneroKeys.FromSeed(parsed.DeriveSeed());
+        var wallet = MoneroKeys.FromSeed(parsed.DeriveSeed(passphrase));
         return new ReceiveAddress(ChainId.Xmr, wallet.Address, "umbrella-monero-v1", 0);
     }
 
     /// <summary>
     /// Solana ed25519 secret scalar (32 bytes) at m/44'/501'/0'/{index}', for local signing only.
     /// </summary>
-    public byte[] DeriveSolanaPrivateKey(string mnemonic, uint addressIndex = 0)
+    public byte[] DeriveSolanaPrivateKey(string mnemonic, uint addressIndex = 0, string passphrase = "")
     {
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
@@ -251,13 +261,13 @@ public sealed class HdAddressDeriver
         }
 
         var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
-        return Slip10Ed25519.DerivePrivateKey(parsed.DeriveSeed(), new[] { 44u, 501u, 0u, addressIndex });
+        return Slip10Ed25519.DerivePrivateKey(parsed.DeriveSeed(passphrase), new[] { 44u, 501u, 0u, addressIndex });
     }
 
     /// <summary>
     /// TON ed25519 secret scalar (32 bytes) at m/44'/607'/0', for signing v4R2 transfers locally.
     /// </summary>
-    public byte[] DeriveTonPrivateKey(string mnemonic)
+    public byte[] DeriveTonPrivateKey(string mnemonic, string passphrase = "")
     {
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
@@ -266,7 +276,7 @@ public sealed class HdAddressDeriver
         }
 
         var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
-        return Slip10Ed25519.DerivePrivateKey(parsed.DeriveSeed(), new[] { 44u, 607u, 0u });
+        return Slip10Ed25519.DerivePrivateKey(parsed.DeriveSeed(passphrase), new[] { 44u, 607u, 0u });
     }
 
     private static ReceiveAddress DeriveEthereum(ExtKey masterKey, uint addressIndex)
