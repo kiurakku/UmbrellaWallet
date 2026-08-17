@@ -792,6 +792,7 @@
                                 </StackPanel>
                               </Button>
                               <Button Grid.Column="1" Classes="chip" Content="✕" VerticalAlignment="Center" Margin="6,0,0,0"
+                                      AutomationProperties.Name="{Binding [common.remove], Source={x:Static app:Loc.Instance}}"
                                       Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).RemoveSendAddressCommand}"
                                       CommandParameter="{Binding}"/>
                             </Grid>
@@ -1867,6 +1868,7 @@
                       <TextBox Grid.Column="1" Text="{Binding SettingsSearch, Mode=TwoWay}" Watermark="{Binding [settings.searchPh], Source={x:Static app:Loc.Instance}}"
                                BorderThickness="0" Background="Transparent" Margin="8,0,0,0" VerticalAlignment="Center"/>
                       <Button Grid.Column="2" Classes="chip" Content="✕" Command="{Binding OpenSettingCommand}"
+                              AutomationProperties.Name="{Binding [common.clear], Source={x:Static app:Loc.Instance}}"
                               CommandParameter="" IsVisible="{Binding SettingsSearch, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     </Grid>
                   </Border>
@@ -1968,7 +1970,8 @@
                       <Button Width="24" Height="24" Padding="0" Background="#6EA8FE" Command="{Binding SetWalletColorCommand}" CommandParameter="#6EA8FE"/>
                       <Button Width="24" Height="24" Padding="0" Background="#B99CF0" Command="{Binding SetWalletColorCommand}" CommandParameter="#B99CF0"/>
                       <Button Width="24" Height="24" Padding="0" Background="#5AC8B4" Command="{Binding SetWalletColorCommand}" CommandParameter="#5AC8B4"/>
-                      <Button Classes="chip" Content="✕" Command="{Binding SetWalletColorCommand}" CommandParameter="clear"/>
+                      <Button Classes="chip" Content="✕" Command="{Binding SetWalletColorCommand}" CommandParameter="clear"
+                              AutomationProperties.Name="{Binding [common.clear], Source={x:Static app:Loc.Instance}}"/>
                     </StackPanel>
 
                     <!-- Single-coin / selected-coin wallets: pick which coins this wallet shows. -->
@@ -2811,6 +2814,7 @@
                            Text="{Binding SelectedReceiveNetwork}"/>
               </StackPanel>
               <Button Grid.Column="1" Classes="chip" Content="✕" VerticalAlignment="Top"
+                      AutomationProperties.Name="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}"
                       Command="{Binding CloseQrPopupCommand}"/>
             </Grid>
 

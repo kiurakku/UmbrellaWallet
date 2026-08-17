@@ -5116,13 +5116,20 @@ public partial class MainViewModel : ViewModelBase
             status, unixMs, retryTo, retryAmount, retryChain));
         while (Activity.Count > 60) Activity.RemoveAt(Activity.Count - 1);
 
-        RecentActivity.Clear();
-        foreach (var row in Activity.Take(5)) RecentActivity.Add(row);
+        RebuildRecentActivity();
         RebuildActivityAssets();
         RebuildFilteredActivity();
         RebuildTransactions();
         OnPropertyChanged(nameof(HasActivity));
         PersistActivity();
+    }
+
+    /// <summary>The Portfolio rail's five most-recent events — from the MERGED feed (local + on-chain),
+    /// so real transactions surface there too, not just in-app actions.</summary>
+    private void RebuildRecentActivity()
+    {
+        RecentActivity.Clear();
+        foreach (var row in MergedActivity().Take(5)) RecentActivity.Add(row);
     }
 
     private void PersistActivity() =>
@@ -5135,8 +5142,7 @@ public partial class MainViewModel : ViewModelBase
         Activity.Clear();
         foreach (var e in _activityStore.Load())
             Activity.Add(new ActivityRowViewModel(e.Kind, e.Asset, e.Amount, e.Counterparty, e.When, e.Explorer, e.Status));
-        RecentActivity.Clear();
-        foreach (var row in Activity.Take(5)) RecentActivity.Add(row);
+        RebuildRecentActivity();
         RebuildActivityAssets();
         RebuildFilteredActivity();
         RebuildTransactions();
@@ -5286,6 +5292,7 @@ public partial class MainViewModel : ViewModelBase
             LastHistorySync = DateTime.Now.ToString("MMM d · HH:mm", CultureInfo.InvariantCulture);
             RebuildActivityAssets();
             RebuildFilteredActivity();
+            RebuildRecentActivity(); // on-chain history just arrived — refresh the Portfolio rail too
             RebuildTransactions();
         }
         catch
