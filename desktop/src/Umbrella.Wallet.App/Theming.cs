@@ -19,6 +19,7 @@ public static class Theming
 
     public static IReadOnlyList<ThemeOption> Themes { get; } =
     [
+        new("umbrella", "Umbrella · premium"),
         new("purple", "The fear · noir"),
         new("blue", "Midnight · blue"),
         new("green", "Forest · green"),
@@ -60,6 +61,17 @@ public static class Theming
 
     private static readonly Dictionary<string, string[]> Palettes = new()
     {
+        // Umbrella premium — the signature look: deep navy/graphite base (never pure black), matte
+        // glass cards, cool-white text, and the cyan→blue→violet brand accent. This is the default.
+        // bg        bgAlt      card       input      cardAlt    hover      bd         bd2        bd3        accent     accentBr   accentHv   accentSel  accentDim  text       textSoft   textDim    textMut    pos        inverse    inverseHv  inverseTx
+        ["umbrella"] =
+        [
+            "#080D16", "#0B1220", "#111927", "#0F1826", "#151E2D", "#1B2740",
+            "#1E2A3D", "#26344A", "#33455F",
+            "#3478FF", "#3B82F6", "#4D8BFF", "#16233C", "#1E3A6B",
+            "#F7F9FC", "#C7D0DE", "#8994A7", "#566174", "#45E6A5",
+            "#F7F9FC", "#FFFFFF", "#080D16",
+        ],
         // bg       bgAlt    card     input    cardAlt  hover    bd       bd2      bd3      accent   accentBr accentHv accentSel accentDim text    textSoft textDim  textMut  pos
         // Primary "the fear" look: monochrome noir — near-black with cool white accents (the
         // FROSTFREED / reference mood). The accent is near-white, so accent-filled buttons read
@@ -324,7 +336,7 @@ public static class Theming
         return brush;
     }
 
-    public static string Current { get; private set; } = "purple";
+    public static string Current { get; private set; } = "umbrella";
 
     /// <summary>Light themes need dark artwork; the solid-white logo would vanish.</summary>
     public static bool IsLightTheme(string id) => id == "white";

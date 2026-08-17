@@ -9,6 +9,27 @@
         <local:ViewLocator />
     </Application.DataTemplates>
 
+    <!-- Brand gradients are the same across every palette (they ARE the Umbrella signature), so they
+         live here as static resources rather than in the per-theme brush set. -->
+    <Application.Resources>
+        <LinearGradientBrush x:Key="UmSignature" StartPoint="0%,0%" EndPoint="100%,100%">
+            <GradientStop Offset="0" Color="#24C6FF"/>
+            <GradientStop Offset="0.5" Color="#3478FF"/>
+            <GradientStop Offset="1" Color="#795CFF"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="UmSignatureHover" StartPoint="0%,0%" EndPoint="100%,100%">
+            <GradientStop Offset="0" Color="#3FD0FF"/>
+            <GradientStop Offset="0.5" Color="#4D8BFF"/>
+            <GradientStop Offset="1" Color="#8E72FF"/>
+        </LinearGradientBrush>
+        <!-- Hero balance surface: a muted navy→blue→violet sweep that stays readable under white text. -->
+        <LinearGradientBrush x:Key="UmHeroGradient" StartPoint="0%,0%" EndPoint="100%,100%">
+            <GradientStop Offset="0" Color="#183A66"/>
+            <GradientStop Offset="0.55" Color="#182444"/>
+            <GradientStop Offset="1" Color="#241C46"/>
+        </LinearGradientBrush>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
 
@@ -47,7 +68,7 @@
         <!-- Base button: glassy, rounded, springy hover/press, clear disabled state.
              RenderTransformOrigin keeps the press-scale centred instead of pulling to a corner. -->
         <Style Selector="Button">
-            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="CornerRadius" Value="15" />
             <Setter Property="Padding" Value="16,11" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Cursor" Value="Hand" />
@@ -77,9 +98,9 @@
         <Style Selector="Button.nav">
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
-            <Setter Property="Height" Value="40" />
-            <Setter Property="Padding" Value="16,0" />
-            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Padding" Value="15,0" />
+            <Setter Property="CornerRadius" Value="13" />
             <Setter Property="FontWeight" Value="Medium" />
             <Setter Property="Foreground" Value="{DynamicResource UmTextDim}" />
             <Setter Property="Background" Value="Transparent" />
@@ -96,13 +117,19 @@
             <Setter Property="Foreground" Value="{DynamicResource UmText}" />
         </Style>
         <Style Selector="Button.nav.active">
-            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="BorderBrush" Value="{DynamicResource UmAccentBright}" />
-            <Setter Property="BorderThickness" Value="3,0,0,0" />
+            <Setter Property="BorderBrush" Value="#2E5AA8" />
+            <Setter Property="BorderThickness" Value="1" />
         </Style>
+        <!-- Active nav reads as a soft blue-tinted glass capsule with a faint glow, not a left bar. -->
         <Style Selector="Button.nav.active /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource UmHover}" />
+            <Setter Property="Background">
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Offset="0" Color="#2A3B82FF"/>
+                    <GradientStop Offset="1" Color="#14795CFF"/>
+                </LinearGradientBrush>
+            </Setter>
         </Style>
 
         <!-- Primary: solid, bold — the single strongest call to action on a screen. -->
@@ -111,13 +138,13 @@
         <!-- Primary and ghost share one fixed height (46) and vertical padding, so a primary+ghost
              row lines up exactly — the primary is just wider, coloured and bold, never taller. -->
         <Style Selector="Button.primary">
-            <Setter Property="Background" Value="{DynamicResource UmAccentBright}" />
-            <Setter Property="Foreground" Value="{DynamicResource UmAccentText}" />
-            <Setter Property="Padding" Value="24,12" />
-            <Setter Property="MinHeight" Value="46" />
+            <Setter Property="Background" Value="{DynamicResource UmSignature}" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="Padding" Value="26,13" />
+            <Setter Property="MinHeight" Value="50" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="FontSize" Value="15" />
-            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="CornerRadius" Value="16" />
         </Style>
         <Style Selector="Button.primary /template/ ContentPresenter">
             <Setter Property="Transitions">
@@ -127,10 +154,10 @@
             </Setter>
         </Style>
         <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource UmAccentHover}" />
+            <Setter Property="Background" Value="{DynamicResource UmSignatureHover}" />
         </Style>
         <Style Selector="Button.primary:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource UmAccentHover}" />
+            <Setter Property="Background" Value="{DynamicResource UmSignatureHover}" />
         </Style>
 
         <!-- Ghost: quiet secondary action. Frosted-glass fill (translucent white over the
@@ -368,12 +395,12 @@
             <Setter Property="Background" Value="{DynamicResource UmInput}" />
             <Setter Property="BorderBrush" Value="{DynamicResource UmBorder2}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="11" />
-            <Setter Property="Padding" Value="14,11" />
+            <Setter Property="CornerRadius" Value="15" />
+            <Setter Property="Padding" Value="15,12" />
             <Setter Property="Foreground" Value="{DynamicResource UmText}" />
             <Setter Property="FontWeight" Value="Medium" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="MinHeight" Value="46" />
+            <Setter Property="MinHeight" Value="48" />
         </Style>
         <Style Selector="ComboBox /template/ Border#Background">
             <Setter Property="Transitions">
@@ -417,8 +444,9 @@
             <Setter Property="Background" Value="{DynamicResource UmInput}" />
             <Setter Property="BorderBrush" Value="{DynamicResource UmBorder2}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="9" />
-            <Setter Property="Padding" Value="13,10" />
+            <Setter Property="CornerRadius" Value="15" />
+            <Setter Property="Padding" Value="15,12" />
+            <Setter Property="MinHeight" Value="48" />
             <Setter Property="Foreground" Value="{DynamicResource UmText}" />
             <Setter Property="CaretBrush" Value="{DynamicResource UmText}" />
             <Setter Property="SelectionBrush" Value="{DynamicResource UmAccent}" />
@@ -455,15 +483,26 @@
         <Style Selector="Border.card">
             <Setter Property="BorderBrush" Value="{DynamicResource UmBorder}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="20" />
-            <Setter Property="Padding" Value="22" />
-            <Setter Property="BoxShadow" Value="inset 0 1 0 0 #14FFFFFF, 0 12 34 -10 #5C000000" />
+            <Setter Property="CornerRadius" Value="26" />
+            <Setter Property="Padding" Value="24" />
+            <!-- Matte-glass: a bright hairline at the top edge + a soft, deep drop shadow so the card
+                 floats above the navy ground like frosted glass. -->
+            <Setter Property="BoxShadow" Value="inset 0 1 0 0 #12FFFFFF, 0 20 48 -16 #66000914" />
             <Setter Property="Background">
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
                     <GradientStop Offset="0" Color="{DynamicResource UmCardTop}" />
                     <GradientStop Offset="1" Color="{DynamicResource UmCardBottom}" />
                 </LinearGradientBrush>
             </Setter>
+        </Style>
+        <!-- A "hero" card variant: the signature gradient surface for the balance / headline block. -->
+        <Style Selector="Border.hero">
+            <Setter Property="CornerRadius" Value="30" />
+            <Setter Property="Padding" Value="26" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#1E3A6B" />
+            <Setter Property="Background" Value="{DynamicResource UmHeroGradient}" />
+            <Setter Property="BoxShadow" Value="inset 0 1 0 0 #1FFFFFFF, 0 24 60 -20 #7300060F" />
         </Style>
 
         <Style Selector="Border.hairline">
@@ -736,6 +775,53 @@
         <Style Selector="ScrollBar RepeatButton">
             <Setter Property="Opacity" Value="0" />
             <Setter Property="IsHitTestVisible" Value="False" />
+        </Style>
+
+        <!-- ===== Animated intro (splash) ===== -->
+        <!-- A breathing brand-blue radial glow behind the mark. -->
+        <Style Selector="Ellipse.splashGlow">
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="Fill">
+                <RadialGradientBrush>
+                    <GradientStop Color="#5534C6FF" Offset="0" />
+                    <GradientStop Color="#1A3478FF" Offset="0.45" />
+                    <GradientStop Color="#00080D16" Offset="1" />
+                </RadialGradientBrush>
+            </Setter>
+            <Style.Animations>
+                <Animation Duration="0:0:2.8" IterationCount="INFINITE" Easing="SineEaseInOut" PlaybackDirection="Alternate">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.5" /><Setter Property="ScaleTransform.ScaleX" Value="0.88" /><Setter Property="ScaleTransform.ScaleY" Value="0.88" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.95" /><Setter Property="ScaleTransform.ScaleX" Value="1.06" /><Setter Property="ScaleTransform.ScaleY" Value="1.06" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <!-- The mark scales up and fades in. -->
+        <Style Selector="Image.splashLogo">
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Style.Animations>
+                <Animation Duration="0:0:0.95" Easing="CubicEaseOut" FillMode="Forward">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="ScaleTransform.ScaleX" Value="0.78" /><Setter Property="ScaleTransform.ScaleY" Value="0.78" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /><Setter Property="ScaleTransform.ScaleX" Value="1" /><Setter Property="ScaleTransform.ScaleY" Value="1" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <!-- Wordmark rises and fades in, slightly after the mark. -->
+        <Style Selector="TextBlock.splashTitle">
+            <Style.Animations>
+                <Animation Duration="0:0:0.7" Delay="0:0:0.35" Easing="CubicEaseOut" FillMode="Both">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="14" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /><Setter Property="TranslateTransform.Y" Value="0" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <Style Selector="TextBlock.splashSub">
+            <Style.Animations>
+                <Animation Duration="0:0:0.7" Delay="0:0:0.62" Easing="CubicEaseOut" FillMode="Both">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="10" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /><Setter Property="TranslateTransform.Y" Value="0" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
         </Style>
     </Application.Styles>
 </Application>

@@ -551,6 +551,9 @@
                     <!-- Wash the cinematic backdrop with the theme's accent, so coloured themes get a
                          matching glow instead of the neutral portal alone. -->
                     <Border Background="{DynamicResource UmAccentWash}"/>
+                    <!-- Signature navy→blue→violet sweep, so the hero balance card reads as the premium
+                         Umbrella surface rather than a plain photo. -->
+                    <Border Background="{DynamicResource UmHeroGradient}" Opacity="0.55"/>
                     <!-- Logo to the right, vertically centred — balance sits bottom-left, so the mark
                          reads as the card's brand without covering the numbers. -->
                     <Image Source="{Binding LogoImage}" Width="96" Height="96" Opacity="0.96"
@@ -581,7 +584,7 @@
                   <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
                           Command="{Binding SelectSectionCommand}" CommandParameter="Receive">
                     <Grid ColumnDefinitions="Auto,*">
-                      <Path Classes="tileIcon" VerticalAlignment="Center" Data="M12 3 V17 M12 17 L6 11 M12 17 L18 11 M4 21 H20"/>
+                      <Path Classes="tileIcon" Stroke="#795CFF" VerticalAlignment="Center" Data="M12 3 V17 M12 17 L6 11 M12 17 L18 11 M4 21 H20"/>
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
                         <TextBlock Text="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding [action.getCrypto], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
@@ -591,7 +594,7 @@
                   <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
                           Command="{Binding SelectSectionCommand}" CommandParameter="Send">
                     <Grid ColumnDefinitions="Auto,*">
-                      <Path Classes="tileIcon" VerticalAlignment="Center" Data="M12 21 V7 M12 7 L6 13 M12 7 L18 13 M4 3 H20"/>
+                      <Path Classes="tileIcon" Stroke="#3478FF" VerticalAlignment="Center" Data="M12 21 V7 M12 7 L6 13 M12 7 L18 13 M4 3 H20"/>
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
                         <TextBlock Text="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding [action.sendCrypto], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
@@ -601,7 +604,7 @@
                   <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
                           Command="{Binding SelectSectionCommand}" CommandParameter="Swap">
                     <Grid ColumnDefinitions="Auto,*">
-                      <Path Classes="tileIcon" VerticalAlignment="Center" Data="M6 8 H17 L14 5 M18 16 H7 L10 19"/>
+                      <Path Classes="tileIcon" Stroke="#24C6FF" VerticalAlignment="Center" Data="M6 8 H17 L14 5 M18 16 H7 L10 19"/>
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
                         <TextBlock Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding [sec.swapHere], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
@@ -611,7 +614,7 @@
                   <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
                           Command="{Binding SelectSectionCommand}" CommandParameter="Market">
                     <Grid ColumnDefinitions="Auto,*">
-                      <Path Classes="tileIcon" VerticalAlignment="Center" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
+                      <Path Classes="tileIcon" Stroke="#45E6A5" VerticalAlignment="Center" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
                         <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding [action.pricesCharts], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
