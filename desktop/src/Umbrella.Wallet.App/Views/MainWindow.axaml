@@ -943,18 +943,32 @@
                 <Border Classes="card" BorderBrush="#7A6230" IsVisible="{Binding HasSwapQuote}">
                   <StackPanel Spacing="10">
                     <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [swap.step2], Source={x:Static app:Loc.Instance}}"/>
-                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="6">
-                      <TextBlock Grid.Row="0" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.youGet], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Row="0" Grid.Column="1" Classes="mono" FontSize="15" Foreground="{DynamicResource UmPos}" Text="{Binding SwapExpectedOut}"/>
-                      <TextBlock Grid.Row="1" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.rate], Source={x:Static app:Loc.Instance}}"/>
-                      <TextBlock Grid.Row="1" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapRateText}"/>
-                      <TextBlock Grid.Row="2" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.fee], Source={x:Static app:Loc.Instance}}"/>
-                      <TextBlock Grid.Row="2" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapFeeText}"/>
-                      <TextBlock Grid.Row="3" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.eta], Source={x:Static app:Loc.Instance}}"/>
-                      <TextBlock Grid.Row="3" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapEtaText}"/>
-                      <TextBlock Grid.Row="4" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.toYour], Source={x:Static app:Loc.Instance}}"/>
-                      <TextBlock Grid.Row="4" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Text="{Binding SwapDestination}"/>
+
+                    <!-- You get — the headline figure, matching Send's prominent amount. -->
+                    <StackPanel Spacing="2">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [swap.youGet], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock Classes="mono" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource UmPos}" Text="{Binding SwapExpectedOut}"/>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="6">
+                      <TextBlock Grid.Row="0" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.rate], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock Grid.Row="0" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapRateText}"/>
+                      <TextBlock Grid.Row="1" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.fee], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock Grid.Row="1" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapFeeText}"/>
+                      <TextBlock Grid.Row="2" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.eta], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock Grid.Row="2" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapEtaText}"/>
                     </Grid>
+
+                    <!-- Delivered-to address boxed and full, so you can verify where THORChain sends the output. -->
+                    <StackPanel Spacing="2">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [swap.toYour], Source={x:Static app:Loc.Instance}}"/>
+                      <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1"
+                              CornerRadius="8" Padding="10,8">
+                        <SelectableTextBlock Classes="mono" FontSize="12" TextWrapping="Wrap"
+                                             Foreground="{DynamicResource UmTextSoft}" Text="{Binding SwapDestination}"/>
+                      </Border>
+                    </StackPanel>
+
                     <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" Text="{Binding SwapExpiryText}"/>
                     <Border IsVisible="{Binding SwapWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                             Background="#2A2418" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="6" Padding="12,9">
