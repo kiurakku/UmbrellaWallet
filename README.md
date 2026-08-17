@@ -19,7 +19,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-![Version](https://img.shields.io/badge/version-4.3.0-4B3F86)
+![Version](https://img.shields.io/badge/version-4.4.0-4B3F86)
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-ready-6E5FB8?logo=linux&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-planned-8A8A9C?logo=android&logoColor=white)
@@ -40,7 +40,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 
 <br/>
 
-**[⬇️ Download latest (v4.3.0)](https://github.com/kiurakku/umbrella-wallet/releases/latest)** · [💖 Sponsor](https://github.com/sponsors/kiurakku) · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
+**[⬇️ Download latest (v4.4.0)](https://github.com/kiurakku/umbrella-wallet/releases/latest)** · [💖 Sponsor](https://github.com/sponsors/kiurakku) · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/umbrella-wallet/releases)
 
 <br/>
 
@@ -129,9 +129,9 @@ the files below are attached there for the current version:
 
 | Platform | Package | Notes |
 |----------|---------|-------|
-| **Windows** | [UmbrellaWallet-Setup-4.3.0.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest) | Installer — choose install folder |
-| **Windows** | [`UmbrellaWallet-Portable-4.3.0.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest) | Portable — unzip and run `Umbrella.exe` |
-| **Linux** | [`UmbrellaWallet-4.3.0-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest) | Unpack, run `./Umbrella.Wallet.App` — no install required |
+| **Windows** | [UmbrellaWallet-Setup-4.4.0.exe](https://github.com/kiurakku/umbrella-wallet/releases/latest) | Installer — choose install folder |
+| **Windows** | [`UmbrellaWallet-Portable-4.4.0.zip`](https://github.com/kiurakku/umbrella-wallet/releases/latest) | Portable — unzip and run `Umbrella.exe` |
+| **Linux** | [`UmbrellaWallet-4.4.0-linux-x64.tar.gz`](https://github.com/kiurakku/umbrella-wallet/releases/latest) | Unpack, run `./Umbrella.Wallet.App` — no install required |
 | **Android** | _planned_ | A native Android build (Avalonia) is on the roadmap |
 
 ### 🔎 Verify your download
@@ -146,7 +146,7 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 ```powershell
 # Windows PowerShell — compare against the matching line in SHA256SUMS.txt
-Get-FileHash .\UmbrellaWallet-Setup-4.3.0.exe -Algorithm SHA256
+Get-FileHash .\UmbrellaWallet-Setup-4.4.0.exe -Algorithm SHA256
 ```
 
 A matching hash proves the file wasn't corrupted or tampered with in transit. (Authenticode signing of

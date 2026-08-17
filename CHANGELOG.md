@@ -4,6 +4,48 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.4.0] — 2026-08-18 — premium redesign, hidden wallets, Tor kill-switch
+
+A new look and two headline privacy features, on top of everything in 4.3.0 (which never shipped
+publicly — its notes are kept below).
+
+### Premium redesign
+
+- **A whole new visual system.** Deep navy/graphite glass instead of flat black, big rounded cards
+  (26px), the cyan→blue→violet Umbrella signature gradient on the primary actions, taller inputs,
+  and a soft-glowing capsule for the active sidebar item. The default theme is now **Umbrella ·
+  premium**; all 27 palettes inherit the new rounded-glass structure.
+- **Animated intro.** A small centred splash window — the umbrella mark scaling and fading in over a
+  breathing blue glow — plays first, then the wallet opens.
+- **Dashboard.** The balance card carries the signature sweep; the quick actions get brand-coloured
+  icons (receive violet · send blue · swap cyan · market green).
+- The app/taskbar icon and the in-app logos are unchanged.
+
+### Hidden wallets (BIP39 passphrase)
+
+- **A passphrase field on unlock (behind “Advanced”).** Empty opens your normal wallet; any value
+  opens a wholly separate **hidden wallet** from the same recovery phrase + vault password — for
+  plausible deniability. The passphrase is never stored (that *is* the deniability), and a different
+  passphrase simply opens a different wallet, so there's no “wrong” one.
+- Built on an ambient-passphrase deriver shared by scanning and signing, so the shown, scanned and
+  spent addresses can never disagree. Cardano (whose Icarus scheme can't honour a passphrase) is
+  hidden in a passphrase wallet rather than leaking the base address. Pinned by tests including the
+  canonical BIP39 “TREZOR” seed vector and a shown-address == signing-key check.
+
+### Privacy
+
+- **Tor-only kill-switch.** Settings → Privacy: fail closed — if Tor is off, still connecting or
+  drops, the wallet refuses to touch clearnet instead of leaking your IP. Applies to every request.
+- **Verify Tor.** A one-click check (via check.torproject.org, same route as balances) that proves
+  your traffic really exits through Tor — or, with the kill-switch on and Tor off, that clearnet is
+  blocked.
+
+### Also
+
+- Every remaining screen is now translated across all six languages; fiat amounts and dates follow
+  the interface language's locale. Keyboard focus ring + Enter-to-submit; the Portfolio recent list
+  shows real on-chain transactions.
+
 ## [4.3.0] — 2026-08-15 — full HD wallet, verifiable releases, honest support
 
 The big one: Bitcoin & Litecoin are now a **real HD wallet**, releases are
