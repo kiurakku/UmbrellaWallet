@@ -21,6 +21,18 @@ public sealed class HdAddressDeriver
     }
 
     /// <summary>
+    /// The BIP39 passphrase applied when a caller doesn't pass one explicitly (i.e. passes null). Set
+    /// once at unlock and shared by every service that derives through this instance (the scanner, the
+    /// spender, the Bitcoin sender), so the whole app derives one wallet — there is no way to miss a
+    /// call site and have the shown address disagree with the spent one. Empty = the normal wallet.
+    /// Passing a non-null passphrase to a method overrides this (used by tests).
+    /// </summary>
+    public string ActivePassphrase { get; set; } = "";
+
+    /// <summary>Resolves the effective passphrase: an explicit (non-null) argument wins, else the ambient.</summary>
+    private string Resolve(string? passphrase) => passphrase ?? ActivePassphrase;
+
+    /// <summary>
     /// Derives the external (receive) address at the given index for a supported chain.
     /// <paramref name="passphrase"/> is the optional BIP39 passphrase (the "25th word"): empty = the
     /// normal wallet; a non-empty value derives a wholly separate hidden wallet. It is mixed into the
@@ -28,8 +40,9 @@ public sealed class HdAddressDeriver
     /// entropy and cannot honour a passphrase; asking for ADA with a passphrase throws rather than
     /// silently returning the base wallet's ADA address (which would defeat the hidden-wallet purpose).
     /// </summary>
-    public ReceiveAddress DeriveReceiveAddress(string mnemonic, ChainId chain, uint addressIndex = 0, string passphrase = "")
+    public ReceiveAddress DeriveReceiveAddress(string mnemonic, ChainId chain, uint addressIndex = 0, string? passphrase = null)
     {
+        passphrase = Resolve(passphrase);
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
         {
@@ -144,8 +157,9 @@ public sealed class HdAddressDeriver
     /// Ethereum private key (32 bytes) at m/44'/60'/0'/0/{index}. Used transiently for local
     /// transaction signing only — the caller must zero the array after use.
     /// </summary>
-    public byte[] DeriveEthereumPrivateKey(string mnemonic, uint addressIndex = 0, string passphrase = "")
+    public byte[] DeriveEthereumPrivateKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
     {
+        passphrase = Resolve(passphrase);
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
         {
@@ -161,7 +175,7 @@ public sealed class HdAddressDeriver
     /// The NBitcoin <see cref="Key"/> behind the displayed BTC/LTC receive address, for local
     /// signing only. Path matches <see cref="DeriveReceiveAddress"/> exactly (BIP84).
     /// </summary>
-    public Key DeriveBitcoinLikeKey(string mnemonic, ChainId chain, uint addressIndex = 0, string passphrase = "") =>
+    public Key DeriveBitcoinLikeKey(string mnemonic, ChainId chain, uint addressIndex = 0, string? passphrase = null) =>
         DeriveBitcoinLikeAt(mnemonic, chain, change: 0, index: addressIndex, passphrase).PrivateKey;
 
     /// <summary>
@@ -185,12 +199,13 @@ public sealed class HdAddressDeriver
     /// to a fresh internal address instead of re-using a public one. Address, key and scriptPubKey
     /// all come from this one method so they can never drift apart.
     /// </summary>
-    public DerivedUtxoAccount DeriveBitcoinLikeAt(string mnemonic, ChainId chain, uint change, uint index, string passphrase = "") =>
+    public DerivedUtxoAccount DeriveBitcoinLikeAt(string mnemonic, ChainId chain, uint change, uint index, string? passphrase = null) =>
         DeriveUtxoAccount(mnemonic, new UtxoDerivationPath(chain, change, index), passphrase);
 
     /// <summary>Derives the signing account for an explicit <see cref="UtxoDerivationPath"/>.</summary>
-    public DerivedUtxoAccount DeriveUtxoAccount(string mnemonic, UtxoDerivationPath path, string passphrase = "")
+    public DerivedUtxoAccount DeriveUtxoAccount(string mnemonic, UtxoDerivationPath path, string? passphrase = null)
     {
+        passphrase = Resolve(passphrase);
         var (purpose, coinType, network, scriptType) = BitcoinLikeParams(path.Chain);
         var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
         var keyPath = new KeyPath($"{purpose}'/{coinType}'/0'/{path.Change}/{path.Index}");
@@ -213,8 +228,9 @@ public sealed class HdAddressDeriver
     /// TRON signing key at m/44'/195'/0'/0/{index} — same path as the displayed TRX address.
     /// Used for native TRX and USDT (TRC-20) transfers.
     /// </summary>
-    public Key DeriveTronKey(string mnemonic, uint addressIndex = 0, string passphrase = "")
+    public Key DeriveTronKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
     {
+        passphrase = Resolve(passphrase);
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
         {
@@ -231,8 +247,9 @@ public sealed class HdAddressDeriver
     /// The full Monero account (address + secret keys) for this wallet. The secret keys are what
     /// "Restore from keys" consumes in Feather / monero-wallet-cli.
     /// </summary>
-    public MoneroWallet DeriveMoneroWallet(string mnemonic, string passphrase = "")
+    public MoneroWallet DeriveMoneroWallet(string mnemonic, string? passphrase = null)
     {
+        passphrase = Resolve(passphrase);
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
         {
@@ -252,8 +269,9 @@ public sealed class HdAddressDeriver
     /// <summary>
     /// Solana ed25519 secret scalar (32 bytes) at m/44'/501'/0'/{index}', for local signing only.
     /// </summary>
-    public byte[] DeriveSolanaPrivateKey(string mnemonic, uint addressIndex = 0, string passphrase = "")
+    public byte[] DeriveSolanaPrivateKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
     {
+        passphrase = Resolve(passphrase);
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
         {
@@ -267,8 +285,9 @@ public sealed class HdAddressDeriver
     /// <summary>
     /// TON ed25519 secret scalar (32 bytes) at m/44'/607'/0', for signing v4R2 transfers locally.
     /// </summary>
-    public byte[] DeriveTonPrivateKey(string mnemonic, string passphrase = "")
+    public byte[] DeriveTonPrivateKey(string mnemonic, string? passphrase = null)
     {
+        passphrase = Resolve(passphrase);
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)
         {

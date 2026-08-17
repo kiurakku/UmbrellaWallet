@@ -30,6 +30,11 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _isUnlocked;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _password = string.Empty;
+    // Optional BIP39 passphrase entered on the unlock screen. Empty opens the normal wallet; any value
+    // opens a separate hidden wallet. Never stored — only held long enough to derive this session.
+    [ObservableProperty] private string _unlockPassphrase = string.Empty;
+    // The passphrase field hides behind "Advanced" so a shoulder-surfer doesn't even see it exists.
+    [ObservableProperty] private bool _showUnlockAdvanced;
     [ObservableProperty] private string _confirmPassword = string.Empty;
     [ObservableProperty] private string _formError = string.Empty;
     [ObservableProperty] private string _importPhrase = string.Empty;
@@ -908,6 +913,10 @@ public partial class MainViewModel : ViewModelBase
     }
 
     private string? _unlockedMnemonic;
+    // The BIP39 passphrase of the currently-open wallet (empty = the normal wallet). Held in memory
+    // only for this session (never persisted — that IS the hidden-wallet deniability) and pushed onto
+    // the shared deriver so every derivation uses it. Wiped on lock.
+    private string _unlockedPassphrase = "";
     // One common login password for the whole app: captured on unlock/create so additional wallets
     // reuse it and switching between wallets doesn't re-prompt. Wiped on lock alongside the seed.
     private string? _sessionPassword;
@@ -935,8 +944,10 @@ public partial class MainViewModel : ViewModelBase
     private readonly MarketCache _marketCache = new();
     private readonly ExchangeCredentialStore _exchangeStore = new();
     private readonly EthTransactionSender _ethSender = new();
-    private readonly BitcoinTransactionSender _btcSender = new();
-    private readonly UtxoAccountScanner _utxoScanner = new();
+    // The UTXO scanner and Bitcoin sender share the ONE deriver (with its ambient passphrase), so a
+    // hidden wallet scans, shows and spends the exact same addresses — no call site can drift.
+    private readonly BitcoinTransactionSender _btcSender;
+    private readonly UtxoAccountScanner _utxoScanner;
     private readonly AddressIndexStore _addrIndex = new();
     // Last full UTXO scan per BTC/LTC symbol (all external + internal addresses). Populated by the
     // balance refresh and reused by the send path, so a transfer spends the same discovered set —
@@ -1004,6 +1015,12 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel(WalletRegistry registry)
     {
+        // Scanner + Bitcoin sender share the ONE deriver, so a hidden-wallet passphrase (set on it at
+        // unlock) drives balance scanning and spending too — the shown, scanned and spent addresses
+        // can never disagree.
+        _btcSender = new BitcoinTransactionSender(_deriver);
+        _utxoScanner = new UtxoAccountScanner(_deriver);
+
         // Mobile layout is retired on desktop (it was a phone-shaped desktop, not a real mobile
         // platform). Force it off so any previously-saved state can't strand a desktop user.
         if (_uiSettings.MobileMode) { _uiSettings.MobileMode = false; _uiSettings.Save(); }
@@ -1971,6 +1988,9 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void ToggleUnlockAdvanced() => ShowUnlockAdvanced = !ShowUnlockAdvanced;
+
+    [RelayCommand]
     private async Task UnlockAsync()
     {
         if (Password.Length < MinPasswordLength)
@@ -1983,10 +2003,13 @@ public partial class MainViewModel : ViewModelBase
         {
             var mnemonic = await _vault.UnlockAsync(Password);
             _sessionPassword = Password;
+            var passphrase = UnlockPassphrase ?? string.Empty; // capture before the fields are cleared
             ClearPasswordFields();
-            SetUnlocked(mnemonic);
+            SetUnlocked(mnemonic, passphrase);
             ActiveSection = "Portfolio";
-            StatusMessage = "Vault unlocked · loading chain balances";
+            StatusMessage = passphrase.Length > 0
+                ? "Hidden wallet unlocked · loading chain balances"
+                : "Vault unlocked · loading chain balances";
             await RefreshLiveDataAsync();
         });
     }
@@ -2349,6 +2372,8 @@ public partial class MainViewModel : ViewModelBase
             _unlockedMnemonic = string.Empty;
             _unlockedMnemonic = null;
         }
+        _unlockedPassphrase = "";        // forget the hidden-wallet passphrase
+        _deriver.ActivePassphrase = "";  // and reset derivation back to the base wallet
         SetSessionPassword(null);
         IsResettingPassword = false;
 
@@ -4916,9 +4941,13 @@ public partial class MainViewModel : ViewModelBase
     // a BIP39 seed — it derives ONLY a TON address, not the multi-chain BIP39 set.
     private bool _isTonWallet;
 
-    private void SetUnlocked(string mnemonic)
+    private void SetUnlocked(string mnemonic, string passphrase = "")
     {
         _unlockedMnemonic = mnemonic;
+        // Push the BIP39 passphrase onto the shared deriver BEFORE any derivation, so accounts,
+        // balance scans and signing all target the same (possibly hidden) wallet.
+        _unlockedPassphrase = passphrase ?? "";
+        _deriver.ActivePassphrase = _unlockedPassphrase;
         _isTonWallet = !_mnemonics.Validate(mnemonic).IsValid && TonMnemonic.IsTonMnemonic(mnemonic);
         IsUnlocked = true;
         RefreshWalletList(); // reflect which wallet is now active in the switcher
@@ -4975,7 +5004,17 @@ public partial class MainViewModel : ViewModelBase
                 continue;
             }
 
-            var account = _deriver.DeriveReceiveAddress(mnemonic, chain.Id);
+            ReceiveAddress account;
+            try
+            {
+                account = _deriver.DeriveReceiveAddress(mnemonic, chain.Id);
+            }
+            catch (PassphraseUnsupportedException)
+            {
+                // Hidden wallet (a passphrase is active) on a chain whose scheme can't honour it
+                // (Cardano/Icarus): omit the account entirely rather than show the base wallet's address.
+                continue;
+            }
             // "Ready" means the wallet can both receive AND send. A chain with a real address but no
             // send path (Dogecoin) or no public balance sync (Monero) is shown as "Receive only" so it
             // never looks spendable — the send picker only offers "Ready" accounts (roadmap §5.1).
@@ -5642,6 +5681,7 @@ public partial class MainViewModel : ViewModelBase
     private void ClearPasswordFields()
     {
         Password = string.Empty;
+        UnlockPassphrase = string.Empty;
         ConfirmPassword = string.Empty;
         FormError = string.Empty;
     }
