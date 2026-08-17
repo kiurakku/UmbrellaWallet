@@ -94,8 +94,8 @@
             <!-- Brand mark stays the logo; the Telegram sticker sits beside it as a greeting
                  rather than replacing the identity. -->
             <StackPanel HorizontalAlignment="Center" Margin="0,8,0,0">
-              <!-- Just the umbrella brand mark — the greeting sticker moved into the Local-first card. -->
-              <Image Source="{Binding LogoImage}" Width="140" Stretch="Uniform" HorizontalAlignment="Center"/>
+              <!-- Original Umbrella Wallet wordmark; the greeting sticker moved into the Local-first card. -->
+              <Image Source="{Binding LogoImage}" Width="132" Stretch="Uniform" HorizontalAlignment="Center"/>
             </StackPanel>
             <TextBlock Text="UMBRELLA WALLET" FontSize="30" FontWeight="SemiBold" LetterSpacing="4"
                        HorizontalAlignment="Center" Margin="0,16,0,0"/>
@@ -609,7 +609,7 @@
                   </StackPanel>
                   <Border Grid.Column="1" Classes="hairline" Padding="4">
                     <StackPanel Orientation="Horizontal" Spacing="2">
-                      <Button Classes="chip" Content="All" Command="{Binding SetChainFilterCommand}" CommandParameter="All"
+                      <Button Classes="chip" Content="{Binding [filter.all], Source={x:Static app:Loc.Instance}}" Command="{Binding SetChainFilterCommand}" CommandParameter="All"
                               Classes.active="{Binding ChainFilter, Converter={StaticResource StringEquals}, ConverterParameter=All}"/>
                       <Button Classes="chip" Content="Bitcoin" Command="{Binding SetChainFilterCommand}" CommandParameter="Bitcoin"
                               Classes.active="{Binding ChainFilter, Converter={StaticResource StringEquals}, ConverterParameter=Bitcoin}"/>
@@ -628,7 +628,7 @@
                       <TextBlock Classes="eyebrow" Text="{Binding [col.asset], Source={x:Static app:Loc.Instance}}" Margin="16,0,0,0" VerticalAlignment="Center"/>
                       <TextBlock Grid.Column="1" Classes="eyebrow" Text="{Binding [col.balance], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                       <TextBlock Grid.Column="2" Classes="eyebrow" Text="{Binding [col.value], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="3" Classes="eyebrow" Text="24H" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="3" Classes="eyebrow" Text="{Binding [col.24h], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                       <TextBlock Grid.Column="4" Width="70"/>
                     </Grid>
                     <ItemsControl ItemsSource="{Binding Holdings}">
@@ -1077,7 +1077,7 @@
                                 <TextBlock Text="{Binding Label}" FontWeight="SemiBold"/>
                                 <TextBlock Text="{Binding Exchange}" FontSize="11" Foreground="{DynamicResource UmTextDim}"/>
                               </StackPanel>
-                              <Button Grid.Column="1" Classes="ghost" Content="Disconnect"
+                              <Button Grid.Column="1" Classes="ghost" Content="{Binding [common.disconnect], Source={x:Static app:Loc.Instance}}"
                                       Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).RemoveExchangeCommand}"
                                       CommandParameter="{Binding}"/>
                             </Grid>
@@ -1100,7 +1100,7 @@
                             <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextMuted}"
                                        Text="{Binding Chain}"/>
                           </StackPanel>
-                          <Button Grid.Column="1" Classes="ghost" Content="Remove"
+                          <Button Grid.Column="1" Classes="ghost" Content="{Binding [common.remove], Source={x:Static app:Loc.Instance}}"
                                   Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).RemoveWatchAddressCommand}"
                                   CommandParameter="{Binding}"/>
                         </Grid>
@@ -1118,7 +1118,7 @@
                   <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/67.json" Width="46" Height="46" VerticalAlignment="Center" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
                 </StackPanel>
                 <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" MaxWidth="560" TextWrapping="Wrap"
-                           Text="NFT collections (ERC-721 / ERC-1155) held at your Ethereum address. Only names and counts are read — no images are fetched, so viewing your NFTs never reveals your IP."/>
+                           Text="{Binding [nft.desc], Source={x:Static app:Loc.Instance}}"/>
 
                 <Border Classes="card" Background="{DynamicResource UmCardAlt}" Padding="16,12">
                   <StackPanel Spacing="4">
@@ -1156,9 +1156,9 @@
                 <Border Classes="hairline" Padding="40" MinHeight="220" IsVisible="{Binding !HasNfts}">
                   <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
                     <Path Classes="tileIcon" Width="46" Height="46" Data="M4 16 L9 11 L13 15 L20 8 M4 5 H20 V19 H4 Z"/>
-                    <TextBlock Classes="serif" FontSize="20" Text="No NFTs found" HorizontalAlignment="Center"/>
+                    <TextBlock Classes="serif" FontSize="20" Text="{Binding [nft.emptyTitle], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center"/>
                     <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" MaxWidth="420" TextAlignment="Center" TextWrapping="Wrap"
-                               Text="No ERC-721 or ERC-1155 tokens at your Ethereum address yet. Unlock and let balances sync — anything you hold shows up here automatically."/>
+                               Text="{Binding [nft.emptyBody], Source={x:Static app:Loc.Instance}}"/>
                   </StackPanel>
                 </Border>
               </StackPanel>
@@ -1201,7 +1201,7 @@
                 </ItemsControl>
 
                 <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap" MaxWidth="600"
-                           Text="One-tap staking directly from the wallet is next; for now these are the networks, methods and rates to expect."/>
+                           Text="{Binding [staking.desc], Source={x:Static app:Loc.Instance}}"/>
               </StackPanel>
 
               <!-- Discover: Market + external Buy / P2P·DEX + News, grouped out of the primary nav (§6.1). -->
@@ -1309,16 +1309,16 @@
                       <!-- Line ⇄ Candles toggle, like a pro charting view. -->
                       <Border Grid.Column="3" Classes="hairline" Padding="3" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="2">
-                          <Button Classes="chip" Content="Line" Command="{Binding SetChartViewCommand}"
+                          <Button Classes="chip" Content="{Binding [chart.line], Source={x:Static app:Loc.Instance}}" Command="{Binding SetChartViewCommand}"
                                   CommandParameter="Line" Classes.active="{Binding IsLineView}"/>
-                          <Button Classes="chip" Content="Candles" Command="{Binding SetChartViewCommand}"
+                          <Button Classes="chip" Content="{Binding [chart.candles], Source={x:Static app:Loc.Instance}}" Command="{Binding SetChartViewCommand}"
                                   CommandParameter="Candles" Classes.active="{Binding IsCandleView}"/>
                         </StackPanel>
                       </Border>
                     </Grid>
                     <Border Background="{DynamicResource UmBg}" CornerRadius="10" Height="196" Padding="0" ClipToBounds="True">
                       <Panel>
-                        <TextBlock Text="Loading chart…" Foreground="{DynamicResource UmTextMuted}" FontSize="12"
+                        <TextBlock Text="{Binding [chart.loading], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextMuted}" FontSize="12"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                    IsVisible="{Binding IsChartLoading}"/>
                         <!-- Grid positions are constants (always five levels, five ticks), so the
@@ -1458,9 +1458,9 @@
                     <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                       <Path Classes="tileIcon" Width="16" Height="16" Stretch="Uniform"
                             Data="M11 11 L15 15 M13 8 A5 5 0 1 1 3 8 A5 5 0 0 1 13 8"/>
-                      <TextBox Grid.Column="1" Text="{Binding MarketQuery, Mode=TwoWay}" Watermark="Search coins — name or ticker…"
+                      <TextBox Grid.Column="1" Text="{Binding MarketQuery, Mode=TwoWay}" Watermark="{Binding [market.searchPh], Source={x:Static app:Loc.Instance}}"
                                BorderThickness="0" Background="Transparent" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                      <Button Grid.Column="2" Classes="chip" Content="Clear" Command="{Binding ClearMarketQueryCommand}"
+                      <Button Grid.Column="2" Classes="chip" Content="{Binding [common.clear], Source={x:Static app:Loc.Instance}}" Command="{Binding ClearMarketQueryCommand}"
                               IsVisible="{Binding MarketQuery, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     </Grid>
                   </Border>
@@ -1474,7 +1474,7 @@
                       <TextBlock Classes="eyebrow" Text="{Binding [col.coin], Source={x:Static app:Loc.Instance}}" Margin="16,0,0,0" VerticalAlignment="Center"/>
                       <TextBlock Grid.Column="1" Classes="eyebrow" Text="{Binding ChartRange}" Width="110" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                       <TextBlock Grid.Column="2" Classes="eyebrow" Text="{Binding [col.price], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="3" Classes="eyebrow" Text="24H" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="3" Classes="eyebrow" Text="{Binding [col.24h], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                       <TextBlock Grid.Column="4" Classes="eyebrow" Text="{Binding [col.thisWallet], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Right" Margin="0,0,16,0" VerticalAlignment="Center"/>
                     </Grid>
                     <ItemsControl ItemsSource="{Binding Market}">
@@ -1530,7 +1530,7 @@
                   </StackPanel>
                 </Border>
                 <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="720"
-                           Text="Prices refresh automatically every minute. Use 1H–1Y above to change the window; click any coin for its full chart. &quot;Accepted&quot; means this build derives a real address and syncs the balance; &quot;adapter pending&quot; coins have no address here — do not send them from this wallet."/>
+                           Text="{Binding [market.footer], Source={x:Static app:Loc.Instance}}"/>
               </StackPanel>
 
               <!-- Buy (fiat on-ramps) -->
@@ -1547,30 +1547,30 @@
                     <TextBlock Text="{Binding [sec.howItWorks], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="14"/>
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="14">
                       <StackPanel Spacing="4">
-                        <TextBlock Text="1 · Copy your address" FontWeight="SemiBold" FontSize="12.5"/>
-                        <TextBlock Text="Grab your receive address for the coin you want (e.g. BTC, ETH)." FontSize="11.5"
+                        <TextBlock Text="{Binding [buy.step1], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
+                        <TextBlock Text="{Binding [buy.step1body], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
                                    Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
                       </StackPanel>
                       <StackPanel Grid.Column="1" Spacing="4">
-                        <TextBlock Text="2 · Pick a provider" FontWeight="SemiBold" FontSize="12.5"/>
-                        <TextBlock Text="Open one below, choose amount and payment method, paste your address." FontSize="11.5"
+                        <TextBlock Text="{Binding [buy.step2], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
+                        <TextBlock Text="{Binding [buy.step2body], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
                                    Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
                       </StackPanel>
                       <StackPanel Grid.Column="2" Spacing="4">
-                        <TextBlock Text="3 · It lands here" FontWeight="SemiBold" FontSize="12.5"/>
-                        <TextBlock Text="The provider sends on-chain to you; it shows up in Portfolio once confirmed." FontSize="11.5"
+                        <TextBlock Text="{Binding [buy.step3], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
+                        <TextBlock Text="{Binding [buy.step3body], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
                                    Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
                       </StackPanel>
                     </Grid>
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                      <Button Classes="primary" Content="Show my addresses →"
+                      <Button Classes="primary" Content="{Binding [buy.showAddresses], Source={x:Static app:Loc.Instance}}"
                               Command="{Binding SelectSectionCommand}" CommandParameter="Receive"/>
-                      <Button Classes="ghost" Content="Copy primary address" Command="{Binding CopyPrimaryAddressCommand}"/>
+                      <Button Classes="ghost" Content="{Binding [buy.copyPrimary], Source={x:Static app:Loc.Instance}}" Command="{Binding CopyPrimaryAddressCommand}"/>
                     </StackPanel>
                   </StackPanel>
                 </Border>
 
-                <TextBlock Classes="eyebrow" Text="PROVIDERS — OPEN IN YOUR BROWSER" Margin="2,4,0,0"/>
+                <TextBlock Classes="eyebrow" Text="{Binding [buy.providers], Source={x:Static app:Loc.Instance}}" Margin="2,4,0,0"/>
 
                 <Border Classes="hairline">
                   <ItemsControl ItemsSource="{Binding OnRampVenues}">
@@ -1594,7 +1594,7 @@
                               <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource UmTextDim}"
                                          TextWrapping="Wrap" MaxWidth="620"/>
                             </StackPanel>
-                            <Button Grid.Column="2" Classes="ghost" Content="Open ↗" VerticalAlignment="Center"
+                            <Button Grid.Column="2" Classes="ghost" Content="{Binding [common.open], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
                                     Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).OpenUrlCommand}"
                                     CommandParameter="{Binding Url}"/>
                           </Grid>
@@ -1608,7 +1608,7 @@
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding [sec.beforeBuy], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
                     <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="720"
-                               Text="These are independent third-party providers, listed for convenience — not endorsements, and Umbrella takes no fee. They are regulated on-ramps and will ask for ID (KYC); availability, limits and fees depend on your country. Always double-check the receiving address you paste matches the coin/network, confirm the amount on the provider's own page, and never share your recovery phrase — no on-ramp ever needs it."/>
+                               Text="{Binding [buy.disclaimer], Source={x:Static app:Loc.Instance}}"/>
                   </StackPanel>
                 </Border>
               </StackPanel>
@@ -1616,9 +1616,9 @@
               <!-- P2P & DEX -->
               <StackPanel Classes="page" IsVisible="{Binding IsP2p}" Spacing="14">
                 <StackPanel Spacing="4">
-                  <TextBlock Classes="serif" FontSize="26" Text="P2P &amp; DEX"/>
+                  <TextBlock Classes="serif" FontSize="26" Text="{Binding [p2p.title], Source={x:Static app:Loc.Instance}}"/>
                   <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12"
-                             Text="Trade without giving up custody — on-chain DEXes and peer-to-peer escrow. Your keys never leave this device."/>
+                             Text="{Binding [p2p.desc], Source={x:Static app:Loc.Instance}}"/>
                 </StackPanel>
 
                 <!-- Hero: the in-wallet swap comes first (nothing leaves the app). -->
@@ -1627,19 +1627,19 @@
                     <StackPanel Spacing="6" VerticalAlignment="Center">
                       <StackPanel Orientation="Horizontal" Spacing="8">
                         <Border Background="{DynamicResource UmAccent}" CornerRadius="6" Padding="6,2">
-                          <TextBlock Text="IN-WALLET" FontSize="9.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                          <TextBlock Text="{Binding [p2p.inWallet], Source={x:Static app:Loc.Instance}}" FontSize="9.5" FontWeight="Bold" Foreground="#FFFFFF"/>
                         </Border>
                         <TextBlock Text="{Binding [sec.swapHere], Source={x:Static app:Loc.Instance}}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                       </StackPanel>
                       <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" TextWrapping="Wrap" MaxWidth="560"
-                                 Text="Cross-chain swaps (e.g. BTC ↔ ETH) route through THORChain vaults — non-custodial, no account, no wrapped IOUs. Coins move on-chain and land back in your own addresses."/>
+                                 Text="{Binding [p2p.swapCard], Source={x:Static app:Loc.Instance}}"/>
                     </StackPanel>
-                    <Button Grid.Column="1" Classes="primary" Content="Open Swap →" VerticalAlignment="Center"
+                    <Button Grid.Column="1" Classes="primary" Content="{Binding [p2p.openSwap], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
                             Command="{Binding SelectSectionCommand}" CommandParameter="Swap"/>
                   </Grid>
                 </Border>
 
-                <TextBlock Classes="eyebrow" Text="EXTERNAL — OPENS IN YOUR BROWSER" Margin="2,4,0,0"/>
+                <TextBlock Classes="eyebrow" Text="{Binding [p2p.external], Source={x:Static app:Loc.Instance}}" Margin="2,4,0,0"/>
 
                 <Border Classes="hairline">
                   <ItemsControl ItemsSource="{Binding P2pVenues}">
@@ -1663,7 +1663,7 @@
                               <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource UmTextDim}"
                                          TextWrapping="Wrap" MaxWidth="620"/>
                             </StackPanel>
-                            <Button Grid.Column="2" Classes="ghost" Content="Open ↗" VerticalAlignment="Center"
+                            <Button Grid.Column="2" Classes="ghost" Content="{Binding [common.open], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
                                     Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).OpenUrlCommand}"
                                     CommandParameter="{Binding Url}"/>
                           </Grid>
@@ -1677,7 +1677,7 @@
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding [sec.safety], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
                     <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="720"
-                               Text="These are independent third-party venues, listed for convenience — not endorsements, and Umbrella takes no fee and holds nothing. Every one keeps custody with you (an on-chain DEX or P2P escrow you co-sign). Always confirm the address bar yourself, and remember: no legitimate trade ever needs your recovery phrase. Fiat on-ramps generally require a regulated exchange and are intentionally not listed here."/>
+                               Text="{Binding [p2p.disclaimer], Source={x:Static app:Loc.Instance}}"/>
                   </StackPanel>
                 </Border>
               </StackPanel>
@@ -1690,7 +1690,7 @@
                   <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-12.json" Width="42" Height="42" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
                 </StackPanel>
                 <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5"
-                           Text="Product updates, security notes and guides."/>
+                           Text="{Binding [news.desc], Source={x:Static app:Loc.Instance}}"/>
 
                 <!-- Official Telegram channel — the one place for news and contact. -->
                 <Border Classes="card" Background="{DynamicResource UmCardAlt}">
@@ -1703,7 +1703,7 @@
                       <TextBlock Text="t.me/UmbrellaWallet · news, releases &amp; contact — the only official channel"
                                  FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
                     </StackPanel>
-                    <Button Grid.Column="2" Classes="primary" Content="Open ↗" VerticalAlignment="Center"
+                    <Button Grid.Column="2" Classes="primary" Content="{Binding [common.open], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
                             Command="{Binding OpenUrlCommand}" CommandParameter="{Binding ChannelUrl}"/>
                   </Grid>
                 </Border>
@@ -1726,7 +1726,7 @@
                             <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
                             <TextBlock Text="{Binding Body}" FontSize="12.5" Foreground="{DynamicResource UmTextDim}"
                                        TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Text="Read →" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource UmAccent}"/>
+                            <TextBlock Text="{Binding [news.read], Source={x:Static app:Loc.Instance}}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource UmAccent}"/>
                           </StackPanel>
                         </Border>
                       </Button>
@@ -1743,7 +1743,7 @@
                   <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-10.json" Width="42" Height="42" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
                 </StackPanel>
                 <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" Margin="2,0,0,4"
-                           Text="Everything this wallet does — transfers (with confirmation status), swaps, connections, setting and security changes. Real on-chain history for your own addresses is merged in. Rows with a transaction can be clicked to copy their explorer link. Kept on this device only (never a server); clear it in Settings → Danger zone."/>
+                           Text="{Binding [activity.desc], Source={x:Static app:Loc.Instance}}"/>
 
                 <!-- Last sync + on-demand refresh: the history is fetched from public explorers, so tell
                      the user how fresh it is and let them re-pull it. -->
@@ -1864,7 +1864,7 @@
                     <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                       <Path Classes="tileIcon" Width="16" Height="16" Stretch="Uniform"
                             Data="M11 11 L15 15 M13 8 A5 5 0 1 1 3 8 A5 5 0 0 1 13 8"/>
-                      <TextBox Grid.Column="1" Text="{Binding SettingsSearch, Mode=TwoWay}" Watermark="Search settings…"
+                      <TextBox Grid.Column="1" Text="{Binding SettingsSearch, Mode=TwoWay}" Watermark="{Binding [settings.searchPh], Source={x:Static app:Loc.Instance}}"
                                BorderThickness="0" Background="Transparent" Margin="8,0,0,0" VerticalAlignment="Center"/>
                       <Button Grid.Column="2" Classes="chip" Content="✕" Command="{Binding OpenSettingCommand}"
                               CommandParameter="" IsVisible="{Binding SettingsSearch, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
@@ -1889,7 +1889,7 @@
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
-                      <TextBlock Text="No matching setting" Foreground="{DynamicResource UmTextMuted}" FontSize="12"
+                      <TextBlock Text="{Binding [settings.noMatch], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextMuted}" FontSize="12"
                                  Margin="10,8" IsVisible="{Binding !HasSettingsResults}"/>
                     </StackPanel>
                   </Border>
@@ -2552,7 +2552,7 @@
 
                 <Border Classes="hairline" Padding="18">
                   <StackPanel Spacing="14">
-                    <TextBlock Classes="eyebrow" Text="PORTFOLIO OVERVIEW"/>
+                    <TextBlock Classes="eyebrow" Text="{Binding [portfolio.overview], Source={x:Static app:Loc.Instance}}"/>
                     <Grid HorizontalAlignment="Center" Width="132" Height="132">
                       <Ellipse Width="132" Height="132" Stroke="{DynamicResource UmBorder2}" StrokeThickness="12"/>
                       <Ellipse Width="132" Height="132" Stroke="{DynamicResource UmAccentDim}" StrokeThickness="12"/>
@@ -2567,7 +2567,7 @@
                     <!-- What the total is actually made of: a proportional bar + per-asset legend. -->
                     <TextBlock IsVisible="{Binding !HasBreakdown}" TextWrapping="Wrap" FontSize="11"
                                Foreground="{DynamicResource UmTextMuted}"
-                               Text="Add or receive funds to see what your balance is made of."/>
+                               Text="{Binding [portfolio.overviewEmpty], Source={x:Static app:Loc.Instance}}"/>
                     <StackPanel Spacing="10" IsVisible="{Binding HasBreakdown}">
                       <Border CornerRadius="4" ClipToBounds="True" Height="8" Background="{DynamicResource UmBorder2}">
                         <ItemsControl ItemsSource="{Binding PortfolioBreakdown}">
@@ -2605,11 +2605,11 @@
                 <Border Classes="hairline" Padding="16">
                   <StackPanel Spacing="8">
                     <Grid ColumnDefinitions="*,Auto">
-                      <TextBlock Classes="eyebrow" Text="RECENT ACTIVITY" VerticalAlignment="Center"/>
-                      <Button Grid.Column="1" Classes="chip" Content="View all" Command="{Binding SelectSectionCommand}" CommandParameter="Activity"/>
+                      <TextBlock Classes="eyebrow" Text="{Binding [portfolio.recent], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
+                      <Button Grid.Column="1" Classes="chip" Content="{Binding [common.viewAll], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Activity"/>
                     </Grid>
                     <TextBlock IsVisible="{Binding !HasActivity}" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
-                               Text="Nothing yet — sends, swaps, connections and setting changes show up here." TextWrapping="Wrap"/>
+                               Text="{Binding [portfolio.recentEmpty], Source={x:Static app:Loc.Instance}}" TextWrapping="Wrap"/>
                     <ItemsControl ItemsSource="{Binding RecentActivity}" IsVisible="{Binding HasActivity}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:ActivityRowViewModel">
@@ -2632,8 +2632,8 @@
                 <Border Classes="hairline" Padding="16">
                   <StackPanel Spacing="8">
                     <Grid ColumnDefinitions="*,Auto">
-                      <TextBlock Classes="eyebrow" Text="MARKET OVERVIEW" VerticalAlignment="Center"/>
-                      <Button Grid.Column="1" Classes="chip" Content="Market" Command="{Binding SelectSectionCommand}" CommandParameter="Market"/>
+                      <TextBlock Classes="eyebrow" Text="{Binding [portfolio.marketOverview], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
+                      <Button Grid.Column="1" Classes="chip" Content="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Market"/>
                     </Grid>
                     <ItemsControl ItemsSource="{Binding Market}">
                       <ItemsControl.ItemTemplate>
@@ -2678,9 +2678,9 @@
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                   <Ellipse Width="6" Height="6" Fill="{DynamicResource UmPos}" VerticalAlignment="Center"/>
-                  <TextBlock Classes="mono" FontSize="10.5" Text="Network · Mainnet" Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"/>
+                  <TextBlock Classes="mono" FontSize="10.5" Text="{Binding [status.mainnet], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"/>
                 </StackPanel>
-                <TextBlock Classes="mono" FontSize="10.5" Text="Protected" Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"/>
+                <TextBlock Classes="mono" FontSize="10.5" Text="{Binding [status.protected], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"/>
               </StackPanel>
             </Grid>
           </Border>
@@ -2703,28 +2703,17 @@
                   <TextBlock Text="{Binding ActiveWalletLabel}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
               </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Buy" Classes.active="{Binding IsBuy}">
+              <!-- Discover folds in Buy / P2P / News, so the More sheet matches the 5-item IA. -->
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Discover" Classes.active="{Binding IsDiscoverGroup}">
                 <StackPanel Spacing="4">
-                  <Path Classes="tabIcon" Data="M3 7 H21 V17 H3 Z M3 10 H21 M6 14 H10"/>
-                  <TextBlock Text="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                  <Path Classes="tabIcon" Data="M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M14 14 H20 V20 H14 Z"/>
+                  <TextBlock Text="{Binding [nav.discover], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
               </Button>
               <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Swap" Classes.active="{Binding IsSwap}">
                 <StackPanel Spacing="4">
                   <Path Classes="tabIcon" Data="M6 8 H17 L14 5 M18 16 H7 L10 19"/>
                   <TextBlock Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="P2p" Classes.active="{Binding IsP2p}">
-                <StackPanel Spacing="4">
-                  <Path Classes="tabIcon" Data="M9 10 A2.5 2.5 0 1 0 9 5 A2.5 2.5 0 0 0 9 10 M3 20 C3 16 6 14 9 14 C12 14 15 16 15 20 M16 5.5 A2 2 0 1 1 16 9.5 M15.5 14 C18 14 21 16 21 20"/>
-                  <TextBlock Text="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="News" Classes.active="{Binding IsNews}">
-                <StackPanel Spacing="4">
-                  <Path Classes="tabIcon" Data="M6 3 H16 L19 6 V21 H6 Z M9 8 H15 M9 12 H15 M9 16 H13"/>
-                  <TextBlock Text="{Binding [nav.news], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
               </Button>
               <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Activity" Classes.active="{Binding IsActivity}">

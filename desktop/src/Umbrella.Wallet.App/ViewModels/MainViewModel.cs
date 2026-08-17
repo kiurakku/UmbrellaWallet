@@ -579,11 +579,15 @@ public partial class MainViewModel : ViewModelBase
     public int QuickActionColumns => MobileMode ? 2 : 4;
 
     /// <summary>
-    /// The umbrella brand mark shown on the welcome and unlock screens. Now the full-colour,
-    /// transparent-background icon (matches the app/taskbar icon) — its navy + white-with-blue-glow
-    /// panels read on both the dark and light themes, so one asset serves both.
+    /// The in-app wordmark on the welcome and unlock screens — the ORIGINAL Umbrella Wallet logo,
+    /// swapped for the dark version on light themes (the solid-white one is invisible on white). The
+    /// new full-colour umbrella art is used only for the desktop app / taskbar icon (umbrella.ico),
+    /// not inside the app.
     /// </summary>
-    public Bitmap LogoImage => LoadAsset("umbrella-app.png");
+    public Bitmap LogoImage => LoadAsset(
+        Theming.IsLightTheme(Theming.Current)
+            ? "umbrella-logo-black.png"
+            : "umbrella-logo-solidwhite.png");
 
     /// <summary>The "the fear" maker's mark.</summary>
     public Bitmap FearMark => LoadAsset("thefear-logo.png");
