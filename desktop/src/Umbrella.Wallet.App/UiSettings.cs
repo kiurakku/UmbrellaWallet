@@ -117,6 +117,7 @@ public sealed class UiSettings
         if (Theming.IsKnown(settings.Theme)) Theming.Apply(settings.Theme);
         else Theming.ApplyDefaults();
         Loc.Instance.CurrentCode = settings.Language;
+        Fx.SetLanguage(settings.Language); // fiat amounts follow the UI language's number format
         return settings;
     }
 }

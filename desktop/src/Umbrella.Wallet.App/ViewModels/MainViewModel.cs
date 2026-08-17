@@ -139,10 +139,13 @@ public partial class MainViewModel : ViewModelBase
         {
             if (Loc.Instance.CurrentCode == value) return;
             Loc.Instance.CurrentCode = value;
+            Fx.SetLanguage(value); // switch fiat number formatting to the new language's locale
             _uiSettings.Language = value;
             _uiSettings.Save();
             OnPropertyChanged();
             OnPropertyChanged(nameof(DeleteKeyword));
+            RefreshHoldings();     // re-render money labels (Fx.Money/Price) in the new locale
+            RecalcBalance();
             BuildGuide(); // the guide reads in the wallet's language
             if (IsUnlocked)
                 PushActivity("Settings", "Language",
@@ -5109,7 +5112,7 @@ public partial class MainViewModel : ViewModelBase
         // Real timestamp so persisted history reads correctly after a restart (callers pass "now").
         var isNow = string.Equals(when, "now", StringComparison.OrdinalIgnoreCase);
         var stamp = isNow
-            ? DateTime.Now.ToString("MMM d · HH:mm", CultureInfo.InvariantCulture)
+            ? DateTime.Now.ToString("MMM d · HH:mm", Fx.Culture)
             : when;
         var unixMs = isNow ? DateTimeOffset.Now.ToUnixTimeMilliseconds() : 0;
         Activity.Insert(0, new ActivityRowViewModel(kind, asset, amount, counter, stamp, explorer,
@@ -5289,7 +5292,7 @@ public partial class MainViewModel : ViewModelBase
                 if (r.Row.Explorer is { Length: > 0 } ex && !seen.Add(ex)) continue;
                 _onChainRows.Add(r.Row);
             }
-            LastHistorySync = DateTime.Now.ToString("MMM d · HH:mm", CultureInfo.InvariantCulture);
+            LastHistorySync = DateTime.Now.ToString("MMM d · HH:mm", Fx.Culture);
             RebuildActivityAssets();
             RebuildFilteredActivity();
             RebuildRecentActivity(); // on-chain history just arrived — refresh the Portfolio rail too
@@ -5339,7 +5342,7 @@ public partial class MainViewModel : ViewModelBase
     private static ActivityRowViewModel ToActivityRow(ChainTx t)
     {
         var when = t.UnixMs > 0
-            ? DateTimeOffset.FromUnixTimeMilliseconds(t.UnixMs).LocalDateTime.ToString("MMM d, HH:mm")
+            ? DateTimeOffset.FromUnixTimeMilliseconds(t.UnixMs).LocalDateTime.ToString("MMM d, HH:mm", Fx.Culture)
             : "";
         var counter = t.Counterparty.Length > 16
             ? $"{t.Counterparty[..8]}…{t.Counterparty[^6..]}"
