@@ -579,13 +579,11 @@ public partial class MainViewModel : ViewModelBase
     public int QuickActionColumns => MobileMode ? 2 : 4;
 
     /// <summary>
-    /// The wordmark, swapped for the dark version on light themes — the solid-white logo is
-    /// invisible on a white background.
+    /// The umbrella brand mark shown on the welcome and unlock screens. Now the full-colour,
+    /// transparent-background icon (matches the app/taskbar icon) — its navy + white-with-blue-glow
+    /// panels read on both the dark and light themes, so one asset serves both.
     /// </summary>
-    public Bitmap LogoImage => LoadAsset(
-        Theming.IsLightTheme(Theming.Current)
-            ? "umbrella-logo-black.png"
-            : "umbrella-logo-solidwhite.png");
+    public Bitmap LogoImage => LoadAsset("umbrella-app.png");
 
     /// <summary>The "the fear" maker's mark.</summary>
     public Bitmap FearMark => LoadAsset("thefear-logo.png");
@@ -1033,6 +1031,12 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>When the on-chain history was last refreshed, shown on the Activity screen ("—" until synced).</summary>
     [ObservableProperty] private string _lastHistorySync = "—";
+    /// <summary>True while on-chain history is being fetched, so the Activity screen can say "loading"
+    /// instead of a bare "nothing here" (roadmap §6/§8 — the empty state was ambiguous).</summary>
+    [ObservableProperty] private bool _historyLoading;
+    /// <summary>True once at least one sync has completed, so the empty state can distinguish
+    /// "still loading" from "synced, but genuinely nothing on-chain".</summary>
+    [ObservableProperty] private bool _historySynced;
 
     /// <summary>What the total is made of — top assets by value, for the Portfolio-overview ring.</summary>
     public ObservableCollection<PortfolioSlice> PortfolioBreakdown { get; } = [];
@@ -4626,7 +4630,9 @@ public partial class MainViewModel : ViewModelBase
     private SwapQuote? _swapQuote;
 
     public ObservableCollection<string> SwapFromOptions { get; } = new(ThorchainSwapClient.SendableFrom);
-    public ObservableCollection<string> SwapToOptions { get; } = new(ThorchainSwapClient.ReceivableTo);
+    // "To" excludes whatever "From" is (you can't swap a coin for itself), rebuilt when From changes.
+    public ObservableCollection<string> SwapToOptions { get; } =
+        new(ThorchainSwapClient.ReceivableTo.Where(s => !string.Equals(s, "BTC", StringComparison.OrdinalIgnoreCase)));
 
     [ObservableProperty] private string _swapFromSymbol = "BTC";
     [ObservableProperty] private string _swapToSymbol = "ETH";
@@ -4643,9 +4649,29 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _swapExpiryText = string.Empty;
     [ObservableProperty] private string _swapWarning = string.Empty;
 
-    partial void OnSwapFromSymbolChanged(string value) => InvalidateSwap();
+    partial void OnSwapFromSymbolChanged(string value)
+    {
+        RebuildSwapToOptions();
+        InvalidateSwap();
+    }
     partial void OnSwapToSymbolChanged(string value) => InvalidateSwap();
     partial void OnSwapAmountChanged(string value) => InvalidateSwap();
+
+    /// <summary>Keeps the "To" list to the receivable assets minus the current "From", so an
+    /// impossible same-coin pair can't be selected. Fixes the selection if it becomes invalid.</summary>
+    private void RebuildSwapToOptions()
+    {
+        var wanted = ThorchainSwapClient.ReceivableTo
+            .Where(s => !string.Equals(s, SwapFromSymbol, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (!SwapToOptions.SequenceEqual(wanted, StringComparer.OrdinalIgnoreCase))
+        {
+            SwapToOptions.Clear();
+            foreach (var s in wanted) SwapToOptions.Add(s);
+        }
+        if (!SwapToOptions.Contains(SwapToSymbol, StringComparer.OrdinalIgnoreCase))
+            SwapToSymbol = SwapToOptions.FirstOrDefault() ?? string.Empty;
+    }
 
     private void InvalidateSwap()
     {
@@ -4821,7 +4847,8 @@ public partial class MainViewModel : ViewModelBase
         LoadAddressBook(); // saved Send destinations for this device
         PushActivity("Security", "Vault", "unlocked", "this device", "now");
         _onChainRows.Clear();
-        if (!_isTonWallet) _ = LoadOnChainHistoryAsync(); // real on-chain history for BTC + TRON
+        HistorySynced = false; // this wallet's history hasn't been pulled yet → show "loading", not "empty"
+        if (!_isTonWallet) _ = LoadOnChainHistoryAsync(); // real on-chain history across the user's addresses
     }
 
     private void SelectFirstReceive()
@@ -5162,21 +5189,44 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasTransactions));
     }
 
-    /// <summary>Fetches real on-chain transaction history for the user's own BTC and TRON addresses
-    /// (TRC-20 incl. USDT), so transactions made before the wallet was opened still appear. Best-effort
-    /// and keyless; runs through the same Tor/proxy route as everything else.</summary>
+    /// <summary>Fetches real on-chain transaction history for the user's own addresses, so transactions
+    /// made before the wallet was opened still appear. Covers BTC and LTC across EVERY issued receive
+    /// address (not just #0, so funds received on a rotated address still show), plus ETH and TRON
+    /// (TRC-20 incl. USDT). Best-effort and keyless; runs through the same Tor/proxy route as balances,
+    /// and is deduped by explorer link so a tx seen on two of the user's addresses appears once.</summary>
     private async Task LoadOnChainHistoryAsync()
     {
         if (string.IsNullOrEmpty(_unlockedMnemonic)) return;
+        HistoryLoading = true;
+        OnPropertyChanged(nameof(HasFilteredActivity)); // let the "loading" state show immediately
         try
         {
             var rows = new List<(long Ts, ActivityRowViewModel Row)>();
+            var walletId = _registry.Active?.Id ?? "default";
 
-            string? btc = null, tron = null, eth = null, ltc = null;
-            try { btc = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Btc).Address; } catch { }
+            // BTC / LTC: every issued external address (0..last issued), so a rotated-address history
+            // is not lost. Capped defensively so a huge index never fans out to hundreds of calls.
+            foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc) })
+            {
+                uint lastIssued = 0;
+                try { lastIssued = _addrIndex.GetState(walletId, sym).LastIssuedExternalIndex ?? 0; } catch { }
+                var cap = (uint)Math.Min(lastIssued, 25);
+                for (uint i = 0; i <= cap; i++)
+                {
+                    string addr;
+                    try { addr = _deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, chain, 0, i).Address; }
+                    catch { continue; }
+                    var txs = sym == "BTC"
+                        ? await _history.GetBitcoinAsync(addr)
+                        : await _history.GetLitecoinAsync(addr);
+                    foreach (var t in txs) rows.Add((t.UnixMs, ToActivityRow(t)));
+                }
+            }
+
+            // ETH / TRON: single-address chains in this wallet.
+            string? tron = null, eth = null;
             try { tron = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Tron).Address; } catch { }
             try { eth = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Eth).Address; } catch { }
-            try { ltc = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Ltc).Address; } catch { }
 
             if (!string.IsNullOrEmpty(tron))
             {
@@ -5190,16 +5240,14 @@ public partial class MainViewModel : ViewModelBase
                 foreach (var t in await _history.GetEthereumAsync(eth!))
                     rows.Add((t.UnixMs, ToActivityRow(t)));
 
-            if (!string.IsNullOrEmpty(btc))
-                foreach (var t in await _history.GetBitcoinAsync(btc!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-
-            if (!string.IsNullOrEmpty(ltc))
-                foreach (var t in await _history.GetLitecoinAsync(ltc!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-
+            // Dedupe by explorer URL (a tx that touches two of the user's own addresses is one event).
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             _onChainRows.Clear();
-            foreach (var r in rows.OrderByDescending(r => r.Ts)) _onChainRows.Add(r.Row);
+            foreach (var r in rows.OrderByDescending(r => r.Ts))
+            {
+                if (r.Row.Explorer is { Length: > 0 } ex && !seen.Add(ex)) continue;
+                _onChainRows.Add(r.Row);
+            }
             LastHistorySync = DateTime.Now.ToString("MMM d · HH:mm", CultureInfo.InvariantCulture);
             RebuildActivityAssets();
             RebuildFilteredActivity();
@@ -5208,6 +5256,11 @@ public partial class MainViewModel : ViewModelBase
         catch
         {
             // History is a read-only nicety — never let it disrupt the wallet.
+        }
+        finally
+        {
+            HistoryLoading = false;
+            HistorySynced = true;
         }
     }
 

@@ -82,21 +82,20 @@
       <!-- ============================ ONBOARDING (no sidebar) ============================ -->
       <ScrollViewer x:Name="OnbScroll" IsVisible="{Binding !ShowSidebar}" AllowAutoHide="True"
                     HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <!-- MinHeight = viewport, so short stages (unlock/restore) can centre vertically instead of
-             clinging to the top; taller stages just grow past it and scroll. -->
-        <Panel Margin="0,0,0,40" MinHeight="{Binding #OnbScroll.Bounds.Height}">
+        <!-- MinHeight = viewport, so short stages (unlock/restore) exactly fill it and centre without
+             scrolling; taller stages (welcome/backup) grow past it and scroll. The panel carries NO
+             extra margin — a bottom margin here made even the short unlock screen overflow by 40px and
+             scroll. Tall stages supply their own bottom spacing via their content margins. -->
+        <Panel MinHeight="{Binding #OnbScroll.Bounds.Height}">
 
           <!-- Welcome / cover -->
           <StackPanel IsVisible="{Binding IsWelcomeStage}" MaxWidth="720" Margin="24,48,24,24"
                       HorizontalAlignment="Center" Spacing="0">
             <!-- Brand mark stays the logo; the Telegram sticker sits beside it as a greeting
                  rather than replacing the identity. -->
-            <StackPanel Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center" Margin="0,8,0,0">
-              <Image Source="{Binding LogoImage}" Width="132" Stretch="Uniform" VerticalAlignment="Center"/>
-              <!-- Animated greeting sticker beside the logo (opt-in with the sticker toggle). -->
-              <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/wau.json"
-                             Width="96" Height="96" VerticalAlignment="Center"
-                             RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
+            <StackPanel HorizontalAlignment="Center" Margin="0,8,0,0">
+              <!-- Just the umbrella brand mark — the greeting sticker moved into the Local-first card. -->
+              <Image Source="{Binding LogoImage}" Width="140" Stretch="Uniform" HorizontalAlignment="Center"/>
             </StackPanel>
             <TextBlock Text="UMBRELLA WALLET" FontSize="30" FontWeight="SemiBold" LetterSpacing="4"
                        HorizontalAlignment="Center" Margin="0,16,0,0"/>
@@ -126,7 +125,11 @@
               </Border>
               <Border Grid.Column="2" Classes="hairline" Padding="16,18">
                 <StackPanel Spacing="8" HorizontalAlignment="Center">
-                  <TextBlock Text="⚡" FontSize="20" HorizontalAlignment="Center"/>
+                  <!-- Animated sticker (moved here from beside the logo) instead of a bare ⚡ emoji, so all
+                       three feature cards carry a themed sticker. -->
+                  <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/wau.json"
+                                 Width="48" Height="48" HorizontalAlignment="Center"
+                                 RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
                   <TextBlock Text="{Binding [welcome.local], Source={x:Static app:Loc.Instance}}" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
                   <TextBlock Text="{Binding [welcome.localSub], Source={x:Static app:Loc.Instance}}" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
                              TextWrapping="Wrap" TextAlignment="Center"/>
@@ -900,6 +903,13 @@
                 </StackPanel>
                 <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5"
                            Text="{Binding [swap.desc], Source={x:Static app:Loc.Instance}}"/>
+
+                <!-- Honest coverage note: which chains the non-custodial route reaches, and what to do
+                     for the rest, so "why can't I swap X?" is answered on the screen itself. -->
+                <Border Background="{DynamicResource UmCardAlt}" CornerRadius="10" Padding="12,9">
+                  <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
+                             Text="{Binding [swap.coverage], Source={x:Static app:Loc.Instance}}"/>
+                </Border>
 
                 <!-- Step 1 · pair & amount -->
                 <Border Classes="card">
@@ -1771,13 +1781,28 @@
                   </StackPanel>
                 </WrapPanel>
 
-                <!-- Empty state: the bordered box on its own read as broken when there was no history. -->
+                <!-- Empty state — distinguishes "still fetching" from "synced, genuinely nothing", so an
+                     empty feed never reads as broken. -->
                 <Border Classes="card" IsVisible="{Binding !HasFilteredActivity}" MinHeight="120">
                   <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
-                    <TextBlock HorizontalAlignment="Center" FontSize="14" Foreground="{DynamicResource UmTextDim}"
-                               Text="Nothing to show"/>
-                    <TextBlock HorizontalAlignment="Center" FontSize="12" Foreground="{DynamicResource UmTextMuted}"
-                               Text="No events match this filter yet."/>
+                    <!-- Fetching on-chain history -->
+                    <StackPanel IsVisible="{Binding HistoryLoading}" Spacing="8" HorizontalAlignment="Center">
+                      <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-10.json" Width="46" Height="46"
+                                     HorizontalAlignment="Center" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
+                      <TextBlock HorizontalAlignment="Center" FontSize="13" Foreground="{DynamicResource UmTextDim}"
+                                 Text="{Binding [activity.loading], Source={x:Static app:Loc.Instance}}"/>
+                    </StackPanel>
+                    <!-- Synced, but nothing on-chain / matching -->
+                    <StackPanel IsVisible="{Binding !HistoryLoading}" Spacing="6" HorizontalAlignment="Center">
+                      <TextBlock HorizontalAlignment="Center" FontSize="14" Foreground="{DynamicResource UmTextDim}"
+                                 Text="{Binding [activity.empty], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="380" TextWrapping="Wrap"
+                                 FontSize="12" Foreground="{DynamicResource UmTextMuted}"
+                                 Text="{Binding [activity.emptyHint], Source={x:Static app:Loc.Instance}}"/>
+                      <Button Classes="ghost" Padding="12,5" MinHeight="0" Margin="0,4,0,0" HorizontalAlignment="Center"
+                              Content="{Binding [activity.refresh], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding RefreshHistoryCommand}"/>
+                    </StackPanel>
                   </StackPanel>
                 </Border>
 
