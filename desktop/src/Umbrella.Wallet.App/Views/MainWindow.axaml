@@ -245,8 +245,13 @@
               <TextBlock Classes="serif" FontSize="28" Text="{Binding [onboard.unlock], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center" Margin="0,22,0,0"/>
               <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0"
                          Text="{Binding [unlock.subtitle], Source={x:Static app:Loc.Instance}}"/>
+              <!-- Enter submits the unlock, so a returning user never has to reach for the mouse. -->
               <TextBox Text="{Binding Password}" PasswordChar="●" Margin="0,22,0,0"
-                       Watermark="{Binding [unlock.pw], Source={x:Static app:Loc.Instance}}"/>
+                       Watermark="{Binding [unlock.pw], Source={x:Static app:Loc.Instance}}">
+                <TextBox.KeyBindings>
+                  <KeyBinding Gesture="Enter" Command="{Binding UnlockCommand}"/>
+                </TextBox.KeyBindings>
+              </TextBox>
               <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
                       BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
                 <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
@@ -271,7 +276,11 @@
               <TextBlock Classes="mono" FontSize="11" Margin="2,8,0,0"
                          Text="{Binding PasswordMeterLabel}" Foreground="{Binding PasswordMeterColor}"/>
               <TextBlock Classes="eyebrow" Text="{Binding [onboard.confirmNewPassword], Source={x:Static app:Loc.Instance}}" Margin="0,14,0,8"/>
-              <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="{Binding [onboard.pwRepeatNew], Source={x:Static app:Loc.Instance}}"/>
+              <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="{Binding [onboard.pwRepeatNew], Source={x:Static app:Loc.Instance}}">
+                <TextBox.KeyBindings>
+                  <KeyBinding Gesture="Enter" Command="{Binding ResetWithSeedCommand}"/>
+                </TextBox.KeyBindings>
+              </TextBox>
               <Border Background="#2A2016" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
                 <TextBlock Foreground="#E7CA83" TextWrapping="Wrap" FontSize="11.5"
                            Text="{Binding [onboard.restoreWarn], Source={x:Static app:Loc.Instance}}"/>

@@ -431,6 +431,24 @@
             <Setter Property="Background" Value="{DynamicResource UmCard}" />
         </Style>
 
+        <!-- ===== Keyboard focus (accessibility, §8) =====
+             A control reached by Tab gets a clear accent outline so keyboard users can always see
+             where they are. :focus-visible fires only for keyboard focus, so clicking with the mouse
+             never leaves a lingering ring. Buttons get the outline on their template border; text
+             inputs and dropdowns already show an accent focus border above, so this fills the gap for
+             every clickable control. -->
+        <Style Selector="Button:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource UmAccentBright}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="ComboBox:focus-visible /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="{DynamicResource UmAccentBright}" />
+        </Style>
+        <Style Selector="ToggleButton:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource UmAccentBright}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
         <!-- Cards get a faint top-down sheen so they sit above the background like glass. -->
         <!-- The sheen is driven by Color resources (a GradientStop needs a Color, not a Brush),
              so cards follow the theme instead of staying dark on the light palette. -->
