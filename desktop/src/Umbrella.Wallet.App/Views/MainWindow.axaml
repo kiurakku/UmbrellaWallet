@@ -149,12 +149,12 @@
                     IsVisible="{Binding IsAddingWallet}" Command="{Binding CancelAddWalletCommand}"/>
 
             <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center" Margin="0,28,0,0">
-              <TextBlock Text="built by" Foreground="{DynamicResource UmBorder3}" FontSize="11" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding [onboard.builtBy], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmBorder3}" FontSize="11" VerticalAlignment="Center"/>
               <!-- the fear maker's mark, beside the name rather than replacing it. -->
               <Image Source="{Binding FearMark}" Width="26" Height="26" VerticalAlignment="Center"/>
               <TextBlock Text="the fear" Foreground="{DynamicResource UmAccentBright}" FontSize="12.5" FontWeight="SemiBold"
                          LetterSpacing="0.5" VerticalAlignment="Center"/>
-              <TextBlock Text="· privacy · self-custody · no middlemen" Foreground="{DynamicResource UmBorder3}" FontSize="11"
+              <TextBlock Text="{Binding [onboard.brandTagline], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmBorder3}" FontSize="11"
                          VerticalAlignment="Center"/>
             </StackPanel>
           </StackPanel>
@@ -162,25 +162,25 @@
           <!-- Create -->
           <StackPanel IsVisible="{Binding IsCreateStage}" MaxWidth="480" Margin="24,40,24,24"
                       HorizontalAlignment="Center" Spacing="0">
-            <Button Classes="ghost" Content="← Back" HorizontalAlignment="Left" Padding="12,7"
+            <Button Classes="ghost" Content="{Binding [common.back], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left" Padding="12,7"
                     Command="{Binding GoToWelcomeCommand}"/>
             <TextBlock Classes="serif" FontSize="30" Text="{Binding [onboard.create], Source={x:Static app:Loc.Instance}}" Margin="0,20,0,0"/>
             <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Margin="0,8,0,0"
-                       Text="A fresh 24-word BIP39 seed is generated on this PC and encrypted with a password only you know."/>
+                       Text="{Binding [onboard.createDesc], Source={x:Static app:Loc.Instance}}"/>
 
             <StackPanel Spacing="0" IsVisible="{Binding ShowVaultPasswordFields}">
               <TextBlock Classes="eyebrow" Text="{Binding [onboard.vaultPassword], Source={x:Static app:Loc.Instance}}" Margin="0,22,0,8"/>
-              <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="At least 12 characters"/>
+              <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="{Binding [onboard.pwPlaceholder], Source={x:Static app:Loc.Instance}}"/>
               <TextBlock Classes="mono" FontSize="11" Margin="2,8,0,0"
                          Text="{Binding PasswordMeterLabel}" Foreground="{Binding PasswordMeterColor}"/>
               <TextBlock Classes="eyebrow" Text="{Binding [onboard.confirmPassword], Source={x:Static app:Loc.Instance}}" Margin="0,16,0,8"/>
-              <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="Repeat password"/>
+              <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="{Binding [onboard.pwRepeat], Source={x:Static app:Loc.Instance}}"/>
             </StackPanel>
             <!-- Additional wallets reuse the one app password, so no new password is asked. -->
             <Border IsVisible="{Binding ReuseAppPassword}" Background="{DynamicResource UmCardAlt}"
                     CornerRadius="8" Padding="12,9" Margin="0,20,0,0">
               <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
-                         Text="This new wallet uses your current app password — one login unlocks every wallet."/>
+                         Text="{Binding [onboard.reusePw], Source={x:Static app:Loc.Instance}}"/>
             </Border>
 
             <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
@@ -188,40 +188,40 @@
               <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
             </Border>
 
-            <Button Classes="primary" Content="Create local wallet" HorizontalAlignment="Stretch"
+            <Button Classes="primary" Content="{Binding [onboard.createSubmit], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Center" Margin="0,18,0,0"
                     IsEnabled="{Binding !IsBusy}" Command="{Binding CreateWalletCommand}"/>
             <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,14,0,0"
-                       Text="Argon2id (m=64 MiB, t=4, p=2) → AES-256-GCM. The password is never stored and never leaves this PC — if you lose it, only your 24-word phrase can restore the wallet."/>
+                       Text="{Binding [onboard.cryptoNote], Source={x:Static app:Loc.Instance}}"/>
           </StackPanel>
 
           <!-- Import -->
           <StackPanel IsVisible="{Binding IsImportStage}" MaxWidth="520" Margin="24,40,24,24"
                       HorizontalAlignment="Center" Spacing="0">
-            <Button Classes="ghost" Content="← Back" HorizontalAlignment="Left" Padding="12,7"
+            <Button Classes="ghost" Content="{Binding [common.back], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left" Padding="12,7"
                     Command="{Binding GoToWelcomeCommand}"/>
             <TextBlock Classes="serif" FontSize="30" Text="{Binding [onboard.import], Source={x:Static app:Loc.Instance}}" Margin="0,20,0,0"/>
             <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Margin="0,8,0,0"
-                       Text="Paste your recovery phrase — 12, 15, 18, 21 or 24 English BIP39 words, separated by spaces."/>
+                       Text="{Binding [onboard.importDesc], Source={x:Static app:Loc.Instance}}"/>
 
             <TextBlock Classes="eyebrow" Text="{Binding [onboard.recoveryPhrase], Source={x:Static app:Loc.Instance}}" Margin="0,22,0,8"/>
             <TextBox Text="{Binding ImportPhrase}" AcceptsReturn="True" Height="120"
-                     TextWrapping="Wrap" Watermark="word1 word2 word3 …  (numbers and commas are fine)"/>
+                     TextWrapping="Wrap" Watermark="{Binding [onboard.phrasePh], Source={x:Static app:Loc.Instance}}"/>
             <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap" Margin="2,8,0,0"
-                       Text="Works with any BIP39 wallet — MetaMask, Kraken Wallet, Trust, Ledger, Exodus, Coinbase Wallet and most others (12 or 24 words). TON wallets (Telegram Wallet / Tonkeeper) are supported too: a 24-word TON phrase imports as a Toncoin-only wallet."/>
+                       Text="{Binding [onboard.importNote], Source={x:Static app:Loc.Instance}}"/>
 
             <StackPanel Spacing="0" IsVisible="{Binding ShowVaultPasswordFields}">
               <TextBlock Classes="eyebrow" Text="{Binding [onboard.vaultPassword], Source={x:Static app:Loc.Instance}}" Margin="0,16,0,8"/>
-              <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="At least 12 characters"/>
+              <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="{Binding [onboard.pwPlaceholder], Source={x:Static app:Loc.Instance}}"/>
               <TextBlock Classes="mono" FontSize="11" Margin="2,8,0,0"
                          Text="{Binding PasswordMeterLabel}" Foreground="{Binding PasswordMeterColor}"/>
               <TextBlock Classes="eyebrow" Text="{Binding [onboard.confirmPassword], Source={x:Static app:Loc.Instance}}" Margin="0,16,0,8"/>
-              <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="Repeat password"/>
+              <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="{Binding [onboard.pwRepeat], Source={x:Static app:Loc.Instance}}"/>
             </StackPanel>
             <Border IsVisible="{Binding ReuseAppPassword}" Background="{DynamicResource UmCardAlt}"
                     CornerRadius="8" Padding="12,9" Margin="0,16,0,0">
               <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
-                         Text="This wallet uses your current app password — one login unlocks every wallet."/>
+                         Text="{Binding [onboard.reusePw], Source={x:Static app:Loc.Instance}}"/>
             </Border>
 
             <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
@@ -229,7 +229,7 @@
               <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
             </Border>
 
-            <Button Classes="primary" Content="Import &amp; encrypt" HorizontalAlignment="Stretch"
+            <Button Classes="primary" Content="{Binding [onboard.importSubmit], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Center" Margin="0,18,0,0"
                     IsEnabled="{Binding !IsBusy}" Command="{Binding ImportWalletCommand}"/>
           </StackPanel>
@@ -262,28 +262,28 @@
             <StackPanel IsVisible="{Binding IsResettingPassword}" Spacing="0">
               <TextBlock Classes="serif" FontSize="26" Text="{Binding [onboard.restore], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center" Margin="0,22,0,0"/>
               <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0"
-                         Text="Forgot the password? Enter this wallet's recovery phrase and set a new password. The same phrase restores the same addresses and funds."/>
+                         Text="{Binding [onboard.restoreDesc], Source={x:Static app:Loc.Instance}}"/>
               <TextBlock Classes="eyebrow" Text="{Binding [onboard.recoveryPhrase], Source={x:Static app:Loc.Instance}}" Margin="0,20,0,8"/>
               <TextBox Text="{Binding ImportPhrase}" AcceptsReturn="True" Height="110" TextWrapping="Wrap"
-                       Watermark="word1 word2 word3 …"/>
+                       Watermark="{Binding [onboard.phrasePhShort], Source={x:Static app:Loc.Instance}}"/>
               <TextBlock Classes="eyebrow" Text="{Binding [onboard.newPassword], Source={x:Static app:Loc.Instance}}" Margin="0,14,0,8"/>
-              <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="At least 12 characters"/>
+              <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="{Binding [onboard.pwPlaceholder], Source={x:Static app:Loc.Instance}}"/>
               <TextBlock Classes="mono" FontSize="11" Margin="2,8,0,0"
                          Text="{Binding PasswordMeterLabel}" Foreground="{Binding PasswordMeterColor}"/>
               <TextBlock Classes="eyebrow" Text="{Binding [onboard.confirmNewPassword], Source={x:Static app:Loc.Instance}}" Margin="0,14,0,8"/>
-              <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="Repeat new password"/>
+              <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="{Binding [onboard.pwRepeatNew], Source={x:Static app:Loc.Instance}}"/>
               <Border Background="#2A2016" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
                 <TextBlock Foreground="#E7CA83" TextWrapping="Wrap" FontSize="11.5"
-                           Text="This overwrites this wallet's saved seed with the phrase you enter — make sure it's the correct phrase for this wallet."/>
+                           Text="{Binding [onboard.restoreWarn], Source={x:Static app:Loc.Instance}}"/>
               </Border>
               <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
                       BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,12,0,0">
                 <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
               </Border>
-              <Button Classes="primary" Content="Restore &amp; set new password" HorizontalAlignment="Stretch"
+              <Button Classes="primary" Content="{Binding [onboard.restoreSubmit], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Stretch"
                       HorizontalContentAlignment="Center" Margin="0,16,0,0"
                       IsEnabled="{Binding !IsBusy}" Command="{Binding ResetWithSeedCommand}"/>
-              <Button Classes="ghost" Content="← Back to unlock" HorizontalAlignment="Center" Margin="0,10,0,0"
+              <Button Classes="ghost" Content="{Binding [onboard.backToUnlock], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center" Margin="0,10,0,0"
                       FontSize="12" Command="{Binding CancelPasswordResetCommand}"/>
             </StackPanel>
           </StackPanel>
@@ -296,7 +296,7 @@
             <TextBlock Classes="serif" FontSize="30" Text="{Binding [onboard.backup], Source={x:Static app:Loc.Instance}}"
                        HorizontalAlignment="Center" Margin="0,10,0,0"/>
             <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,10,0,0"
-                       Text="These 24 words are the ONLY way to restore your wallet. Write them on paper, in order. Never screenshot them or paste them into a website."/>
+                       Text="{Binding [onboard.backupWarn], Source={x:Static app:Loc.Instance}}"/>
 
             <Border Background="{DynamicResource UmBg}" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="12"
                     Padding="20" Margin="0,22,0,0">
@@ -307,10 +307,10 @@
             <Border Background="#2A2418" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="10"
                     Padding="14" Margin="0,14,0,0">
               <TextBlock Foreground="#D9C99A" FontSize="12" TextWrapping="Wrap"
-                         Text="Anyone who sees these words can take your funds. Umbrella has no copy — we cannot recover them for you."/>
+                         Text="{Binding [onboard.backupWarn2], Source={x:Static app:Loc.Instance}}"/>
             </Border>
 
-            <Button Classes="primary" Content="I've written it down — continue" HorizontalAlignment="Center"
+            <Button Classes="primary" Content="{Binding [onboard.backupBtn], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center"
                     Margin="0,22,0,0" Command="{Binding ConfirmPhraseBackupCommand}"/>
           </StackPanel>
 
@@ -890,31 +890,31 @@
                   <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-08.json" Width="42" Height="42" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
                 </StackPanel>
                 <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5"
-                           Text="Cross-chain swaps over THORChain — decentralised and non-custodial. No account, no API key, no KYC: your coin is sent to a THORChain vault and the network delivers the swapped coin straight to your own address in this wallet. Nobody ever holds your funds. Pay from BTC or LTC; receive BTC, ETH, LTC or DOGE."/>
+                           Text="{Binding [swap.desc], Source={x:Static app:Loc.Instance}}"/>
 
                 <!-- Step 1 · pair & amount -->
                 <Border Classes="card">
                   <StackPanel Spacing="12">
-                    <TextBlock Classes="eyebrow" Text="STEP 1 · PAIR AND AMOUNT"/>
+                    <TextBlock Classes="eyebrow" Text="{Binding [swap.step1], Source={x:Static app:Loc.Instance}}"/>
                     <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="10">
                       <StackPanel Spacing="6">
-                        <TextBlock Classes="eyebrow" Text="FROM (you pay)"/>
+                        <TextBlock Classes="eyebrow" Text="{Binding [swap.from], Source={x:Static app:Loc.Instance}}"/>
                         <ComboBox ItemsSource="{Binding SwapFromOptions}" SelectedItem="{Binding SwapFromSymbol}" HorizontalAlignment="Stretch"/>
                       </StackPanel>
                       <TextBlock Grid.Column="1" Text="→" FontSize="20" VerticalAlignment="Bottom" Margin="0,0,0,6"
                                  Foreground="{DynamicResource UmTextDim}"/>
                       <StackPanel Grid.Column="2" Spacing="6">
-                        <TextBlock Classes="eyebrow" Text="TO (you receive)"/>
+                        <TextBlock Classes="eyebrow" Text="{Binding [swap.to], Source={x:Static app:Loc.Instance}}"/>
                         <ComboBox ItemsSource="{Binding SwapToOptions}" SelectedItem="{Binding SwapToSymbol}" HorizontalAlignment="Stretch"/>
                       </StackPanel>
                     </Grid>
-                    <TextBlock Classes="eyebrow" Text="AMOUNT TO SWAP"/>
+                    <TextBlock Classes="eyebrow" Text="{Binding [swap.amount], Source={x:Static app:Loc.Instance}}"/>
                     <TextBox Text="{Binding SwapAmount}" Watermark="0.0"/>
                     <Border IsVisible="{Binding SwapError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                             Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="6" Padding="12,9">
                       <TextBlock Text="{Binding SwapError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
                     </Border>
-                    <Button Classes="primary" Content="Get quote" HorizontalAlignment="Left"
+                    <Button Classes="primary" Content="{Binding [swap.getQuote], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left"
                             IsEnabled="{Binding !SwapBusy}" Command="{Binding GetSwapQuoteCommand}"/>
                   </StackPanel>
                 </Border>
@@ -922,17 +922,17 @@
                 <!-- Step 2 · review & confirm -->
                 <Border Classes="card" BorderBrush="#7A6230" IsVisible="{Binding HasSwapQuote}">
                   <StackPanel Spacing="10">
-                    <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="STEP 2 · REVIEW — THIS SENDS FUNDS"/>
+                    <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [swap.step2], Source={x:Static app:Loc.Instance}}"/>
                     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="6">
-                      <TextBlock Grid.Row="0" Grid.Column="0" Classes="eyebrow" Text="YOU GET" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Row="0" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.youGet], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
                       <TextBlock Grid.Row="0" Grid.Column="1" Classes="mono" FontSize="15" Foreground="{DynamicResource UmPos}" Text="{Binding SwapExpectedOut}"/>
-                      <TextBlock Grid.Row="1" Grid.Column="0" Classes="eyebrow" Text="RATE"/>
+                      <TextBlock Grid.Row="1" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.rate], Source={x:Static app:Loc.Instance}}"/>
                       <TextBlock Grid.Row="1" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapRateText}"/>
-                      <TextBlock Grid.Row="2" Grid.Column="0" Classes="eyebrow" Text="FEE"/>
+                      <TextBlock Grid.Row="2" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.fee], Source={x:Static app:Loc.Instance}}"/>
                       <TextBlock Grid.Row="2" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapFeeText}"/>
-                      <TextBlock Grid.Row="3" Grid.Column="0" Classes="eyebrow" Text="ETA"/>
+                      <TextBlock Grid.Row="3" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.eta], Source={x:Static app:Loc.Instance}}"/>
                       <TextBlock Grid.Row="3" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapEtaText}"/>
-                      <TextBlock Grid.Row="4" Grid.Column="0" Classes="eyebrow" Text="TO YOUR"/>
+                      <TextBlock Grid.Row="4" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.toYour], Source={x:Static app:Loc.Instance}}"/>
                       <TextBlock Grid.Row="4" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Text="{Binding SwapDestination}"/>
                     </Grid>
                     <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" Text="{Binding SwapExpiryText}"/>
@@ -941,10 +941,10 @@
                       <TextBlock Text="{Binding SwapWarning}" Foreground="#E7CA83" TextWrapping="Wrap" FontSize="11.5"/>
                     </Border>
                     <TextBlock Foreground="#BBAF91" FontSize="12" TextWrapping="Wrap"
-                               Text="On confirm, the wallet re-checks the live rate, then signs and broadcasts the deposit on this PC. The swap is final once sent — THORChain delivers to the address above automatically."/>
+                               Text="{Binding [swap.confirmNote], Source={x:Static app:Loc.Instance}}"/>
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                      <Button Classes="danger" Content="Confirm &amp; swap" IsEnabled="{Binding !IsBusy}" Command="{Binding ConfirmSwapCommand}"/>
-                      <Button Classes="ghost" Content="Cancel" Command="{Binding CancelSwapCommand}"/>
+                      <Button Classes="danger" Content="{Binding [swap.confirmBtn], Source={x:Static app:Loc.Instance}}" IsEnabled="{Binding !IsBusy}" Command="{Binding ConfirmSwapCommand}"/>
+                      <Button Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}" Command="{Binding CancelSwapCommand}"/>
                     </StackPanel>
                   </StackPanel>
                 </Border>
@@ -978,12 +978,12 @@
                   <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-09.json" Width="42" Height="42" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
                 </StackPanel>
                 <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" MaxWidth="640"
-                           Text="Add watch-only addresses from MetaMask, Ledger, explorers, or hardware wallets. Balances sync via public APIs — no private keys imported."/>
+                           Text="{Binding [connect.watchDesc], Source={x:Static app:Loc.Instance}}"/>
                 <Border Classes="card">
                   <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                       <StackPanel Spacing="8">
-                        <TextBlock Classes="eyebrow" Text="NETWORK"/>
+                        <TextBlock Classes="eyebrow" Text="{Binding [connect.network], Source={x:Static app:Loc.Instance}}"/>
                         <ComboBox ItemsSource="{Binding WatchableNetworks}"
                                   SelectedItem="{Binding SelectedWatchNetwork}"
                                   HorizontalAlignment="Stretch">
@@ -998,29 +998,29 @@
                         </ComboBox>
                       </StackPanel>
                       <StackPanel Grid.Column="1" Spacing="8">
-                        <TextBlock Classes="eyebrow" Text="LABEL (optional)"/>
-                        <TextBox Text="{Binding WatchLabel}" Watermark="e.g. Ledger, Binance"/>
+                        <TextBlock Classes="eyebrow" Text="{Binding [connect.labelOptional], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBox Text="{Binding WatchLabel}" Watermark="{Binding [connect.watchLabelPh], Source={x:Static app:Loc.Instance}}"/>
                       </StackPanel>
                     </Grid>
-                    <TextBlock Classes="eyebrow" Text="PUBLIC ADDRESS"/>
-                    <TextBox Text="{Binding WatchAddress}" Watermark="0x… / bc1… / T… / base58 — public address only, never a key"/>
-                    <Button Classes="primary" Content="Link address" HorizontalAlignment="Left"
+                    <TextBlock Classes="eyebrow" Text="{Binding [connect.publicAddress], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBox Text="{Binding WatchAddress}" Watermark="{Binding [connect.watchAddrPh], Source={x:Static app:Loc.Instance}}"/>
+                    <Button Classes="primary" Content="{Binding [connect.linkBtn], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left"
                             Command="{Binding AddWatchAddressCommand}"/>
                   </StackPanel>
                 </Border>
                 <!-- Exchange accounts (read-only API keys) -->
                 <Border Classes="card" BorderBrush="{DynamicResource UmAccent}">
                   <StackPanel Spacing="12">
-                    <TextBlock Classes="eyebrow" Text="EXCHANGE ACCOUNTS"/>
+                    <TextBlock Classes="eyebrow" Text="{Binding [connect.exchangeAccounts], Source={x:Static app:Loc.Instance}}"/>
                     <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
-                               Text="Pull balances from Binance, Bybit, OKX, Kraken, KuCoin, Gate.io, MEXC, Bitget or Telegram CryptoBot, so exchange funds sit next to your on-chain coins and count toward the same total."/>
+                               Text="{Binding [connect.exchangeDesc], Source={x:Static app:Loc.Instance}}"/>
 
                     <Border Background="#2A2418" BorderBrush="#7A6230" BorderThickness="1"
                             CornerRadius="10" Padding="12">
                       <StackPanel Spacing="6">
-                        <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="CREATE A READ-ONLY KEY"/>
+                        <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [connect.readOnlyKey], Source={x:Static app:Loc.Instance}}"/>
                         <TextBlock Foreground="#BBAF91" FontSize="11.5" TextWrapping="Wrap"
-                                   Text="On the exchange, enable ONLY &quot;read&quot; / &quot;view&quot; permission — never trading and never withdrawal. Umbrella never withdraws from an exchange and has no code that could. Your keys are encrypted on this PC with a key derived from your seed, and are sent only to that exchange."/>
+                                   Text="{Binding [connect.readOnlyNote], Source={x:Static app:Loc.Instance}}"/>
                       </StackPanel>
                     </Border>
 
@@ -1028,14 +1028,14 @@
                       <ComboBox ItemsSource="{Binding SupportedExchanges}"
                                 SelectedItem="{Binding ExchangeName, Mode=TwoWay}"
                                 HorizontalAlignment="Stretch"/>
-                      <TextBox Grid.Column="1" Text="{Binding ExchangeLabel}" Watermark="Label (optional)"/>
+                      <TextBox Grid.Column="1" Text="{Binding ExchangeLabel}" Watermark="{Binding [connect.labelPh], Source={x:Static app:Loc.Instance}}"/>
                     </Grid>
                     <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap"
                                Text="{Binding ExchangeKeyHint}"/>
-                    <TextBox Text="{Binding ExchangeApiKey}" Watermark="API key"/>
-                    <TextBox Text="{Binding ExchangeApiSecret}" PasswordChar="●" Watermark="API secret"
+                    <TextBox Text="{Binding ExchangeApiKey}" Watermark="{Binding [connect.apiKeyPh], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBox Text="{Binding ExchangeApiSecret}" PasswordChar="●" Watermark="{Binding [connect.apiSecretPh], Source={x:Static app:Loc.Instance}}"
                              IsVisible="{Binding ExchangeNeedsSecret}"/>
-                    <TextBox Text="{Binding ExchangePassphrase}" PasswordChar="●" Watermark="API passphrase (OKX only)"
+                    <TextBox Text="{Binding ExchangePassphrase}" PasswordChar="●" Watermark="{Binding [connect.apiPassPh], Source={x:Static app:Loc.Instance}}"
                              IsVisible="{Binding ExchangeNeedsPassphrase}"/>
 
                     <Border IsVisible="{Binding ExchangeError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
@@ -1045,7 +1045,7 @@
                     <TextBlock IsVisible="{Binding ExchangeStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                Text="{Binding ExchangeStatus}" Foreground="{DynamicResource UmPos}" FontSize="12" TextWrapping="Wrap"/>
 
-                    <Button Classes="primary" Content="Connect exchange" HorizontalAlignment="Left"
+                    <Button Classes="primary" Content="{Binding [connect.connectBtn], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left"
                             IsEnabled="{Binding !IsBusy}" Command="{Binding ConnectExchangeCommand}"/>
 
                     <ItemsControl ItemsSource="{Binding Exchanges}">
