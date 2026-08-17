@@ -98,6 +98,29 @@ The big one: Bitcoin & Litecoin are now a **real HD wallet**, releases are
 - **Filters** by type, asset, status and date range, plus a **last-synced** stamp
   and an on-demand **Refresh**.
 
+### Privacy & anonymity
+
+- **Tor-only kill-switch (block clearnet).** A new Settings → Privacy toggle makes
+  the wallet **fail closed**: with it on, any request that would go to clearnet is
+  refused at the transport layer, so a Tor that is off, still connecting or dropped
+  can never silently de-anonymise you. It covers every request the wallet makes
+  (balances, prices, history, swap quotes, broadcasts) and is applied at startup
+  before the first call. Turning it on also switches Tor on.
+- **Clipboard auto-clear** already wipes a copied address after a delay you choose.
+- Reminder of what was already true and stays true: bundled Tor, native Monero,
+  screenshot-capture protection, read-only exchange links, and **zero telemetry**.
+
+### Full localization & polish
+
+- **Every screen is now translated** across all six languages (en/uk/ru/zh/es/de) —
+  Discover/Buy, P2P & DEX, News, Market, NFT, Staking, the Portfolio overview and
+  the onboarding/Swap/Watch/Exchange flows that were still partly English.
+- **Fiat amounts and dates follow the interface language's locale** (e.g. `1 234,56`
+  for uk/ru/de); crypto amounts stay in the universal `.` form.
+- Keyboard focus ring + Enter-to-submit on unlock; screen-reader labels on icon-only
+  buttons; the Swap review now matches Send's structured layout; the Portfolio
+  "recent activity" rail includes real on-chain transactions.
+
 > A small real-amount BTC/LTC send is still recommended as a smoke test before
 > relying on rotated addresses. Authenticode code-signing awaits a certificate.
 

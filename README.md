@@ -60,7 +60,7 @@ Umbrella flips that model:
 
 - 🕵️ **Truly anonymous.** Install and go. There is no registration screen, because there is nothing to register. Nothing in the app identifies you.
 - 🔑 **You hold the keys.** Your 24-word recovery phrase is created on *your* computer and never leaves it. Not to us, not to anyone. We literally *cannot* touch your funds — that's the point.
-- 🧅 **Tor built in.** Flip one switch and the wallet's traffic goes through the Tor network — no separate install, no configuration. Your IP stays out of your finances.
+- 🧅 **Tor built in — with a kill-switch.** Flip one switch and the wallet's traffic goes through the Tor network — no separate install, no configuration. Turn on **Tor-only** and it **fails closed**: if Tor is off, still connecting or drops, the wallet *refuses* to touch the clearnet instead of leaking your IP. Your IP stays out of your finances, guaranteed.
 - 🥷 **Secrets that can't be screenshotted.** While your recovery phrase is on screen, the window renders black to screen-capture and remote-viewing software.
 - 💸 **Real money movement.** Send and receive Bitcoin, Ethereum, Litecoin, Solana, **TON**, TRON, USDT and Monero — to any wallet or exchange in the world. Transactions are signed on your machine; only the signed result ever goes out. TON transfers are pinned byte-for-byte against the reference `@ton` library, so a wrong byte can never strand funds.
 - ₿ **A real Bitcoin/Litecoin HD wallet.** Balance, history and spending work across *every* address you've ever used — plus fresh receive addresses on request, with change returned privately to an internal address. What the wallet shows you is exactly what it can find and spend.
@@ -76,7 +76,7 @@ Umbrella flips that model:
 | Sign-up / KYC | ❌ none | 🪪 passport + selfie | 📧 often email |
 | Who holds the keys | 🫵 you | 🏢 them | 🫵 you |
 | Can freeze your funds | ❌ impossible | ✅ any time | ❌ |
-| Tor anonymity | ✅ one switch | ❌ | ⚠️ manual setup |
+| Tor anonymity | ✅ one switch + kill-switch | ❌ | ⚠️ manual setup |
 | Monero support | ✅ full wallet | ⚠️ delisting it | ❌ rare |
 | Screenshot-proof seed | ✅ | — | ❌ |
 | Tracks you | ❌ zero analytics | ✅ extensively | ⚠️ usually |
