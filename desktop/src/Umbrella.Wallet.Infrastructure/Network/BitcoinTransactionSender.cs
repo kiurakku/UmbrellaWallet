@@ -46,6 +46,8 @@ public sealed class BitcoinTransactionSender
     {
         "BTC" => ChainId.Btc,
         "LTC" => ChainId.Ltc,
+        "DOGE" => ChainId.Doge,
+        "BCH" => ChainId.Bch,
         _ => throw new NotSupportedException($"{symbol} is not a UTXO chain handled here."),
     };
 
@@ -53,8 +55,17 @@ public sealed class BitcoinTransactionSender
     {
         "BTC" => "https://blockstream.info/api",
         "LTC" => "https://litecoinspace.org/api",
+        // Dogecoin has no Esplora instance; BlockCypher supplies fee + broadcast (and UTXOs elsewhere).
+        "DOGE" => "https://api.blockcypher.com/v1/doge/main",
+        // Bitcoin Cash has no Esplora either, and Blockchair rate-limits; Haskoin supplies UTXOs + broadcast.
+        "BCH" => "https://api.haskoin.com/bch",
         _ => throw new NotSupportedException($"No explorer for {symbol}."),
     };
+
+    private static bool IsBlockCypher(string symbol) => symbol.ToUpperInvariant() == "DOGE";
+
+    /// <summary>BCH broadcasts + fee go through Haskoin (its own POST /transactions and a fixed fee).</summary>
+    private static bool IsHaskoin(string symbol) => symbol.ToUpperInvariant() == "BCH";
 
     /// <summary>
     /// HD-aware quote: plans a spend over UTXOs already discovered across EVERY address the wallet
@@ -87,7 +98,7 @@ public sealed class BitcoinTransactionSender
 
         if (amount <= 0) return (null, null, null, "Amount must be positive.");
 
-        var feeRate = await FetchFeeRateAsync(explorer, ct);
+        var feeRate = await FetchFeeRateAsync(symbol.ToUpperInvariant(), explorer, ct);
         var amountSat = (long)(amount * 100_000_000m);
         var devFeeSat = devFeeAmount > 0 ? (long)(devFeeAmount * 100_000_000m) : 0;
 
@@ -131,6 +142,44 @@ public sealed class BitcoinTransactionSender
             if (tx is null) return (false, null, error);
 
             var hex = tx.ToHex();
+
+            if (IsHaskoin(symbol))
+            {
+                // Haskoin broadcast: POST the raw transaction hex as the body; the txid returns at "txid".
+                using var bchContent = new StringContent(hex, Encoding.ASCII, "text/plain");
+                using var bchRes = await Http.PostAsync($"{ExplorerFor(symbol)}/transactions", bchContent, ct);
+                var bchBody = (await bchRes.Content.ReadAsStringAsync(ct)).Trim();
+                if (!bchRes.IsSuccessStatusCode)
+                    return (false, null, $"Explorer rejected the transaction: {bchBody}");
+                try
+                {
+                    using var doc = JsonDocument.Parse(bchBody);
+                    if (doc.RootElement.TryGetProperty("txid", out var th) && th.GetString() is { } h)
+                        return (true, h, null);
+                }
+                catch { /* fall back to the locally-computed hash below */ }
+                return (true, tx.GetHash().ToString(), null);
+            }
+
+            if (IsBlockCypher(symbol))
+            {
+                // BlockCypher broadcast: POST {"tx":"<hex>"} to /txs/push; the txid returns at tx.hash.
+                using var dogeContent = new StringContent($"{{\"tx\":\"{hex}\"}}", Encoding.UTF8, "application/json");
+                using var dogeRes = await Http.PostAsync($"{ExplorerFor(symbol)}/txs/push", dogeContent, ct);
+                var dogeBody = (await dogeRes.Content.ReadAsStringAsync(ct)).Trim();
+                if (!dogeRes.IsSuccessStatusCode)
+                    return (false, null, $"Explorer rejected the transaction: {dogeBody}");
+                try
+                {
+                    using var doc = JsonDocument.Parse(dogeBody);
+                    if (doc.RootElement.TryGetProperty("tx", out var txEl) &&
+                        txEl.TryGetProperty("hash", out var hh) && hh.GetString() is { } h)
+                        return (true, h, null);
+                }
+                catch { /* fall back to the locally-computed hash below */ }
+                return (true, tx.GetHash().ToString(), null);
+            }
+
             using var content = new StringContent(hex, Encoding.UTF8, "text/plain");
             using var res = await Http.PostAsync($"{ExplorerFor(symbol)}/tx", content, ct);
             var body = (await res.Content.ReadAsStringAsync(ct)).Trim();
@@ -151,8 +200,36 @@ public sealed class BitcoinTransactionSender
     /// promptly, and fall back through longer targets if the node omits one. Clamped to the
     /// 1 sat/vB relay minimum so a transaction can never be built below the floor.
     /// </summary>
-    private static async Task<double> FetchFeeRateAsync(string explorer, CancellationToken ct)
+    private static async Task<double> FetchFeeRateAsync(string symbol, string explorer, CancellationToken ct)
     {
+        // Bitcoin Cash blocks are rarely full, so a low fixed rate confirms reliably and cheaply — no fee
+        // API needed. 2 sat/vB sits safely above the 1 sat/byte relay minimum. A too-low fee only ever
+        // gets a tx stuck (recoverable), never lost.
+        if (IsHaskoin(symbol)) return 2.0;
+
+        if (IsBlockCypher(symbol))
+        {
+            // BlockCypher returns fee-per-kB in satoshi. Convert to sat/vB and clamp to a safe Dogecoin
+            // band: ~0.01 DOGE/kB (1000 sat/vB) is the floor today's nodes reliably accept; cap at
+            // ~0.1 DOGE/kB so a spiky estimate can't overpay wildly. A too-low fee only gets the tx
+            // stuck (recoverable), never lost.
+            try
+            {
+                using var res = await Http.GetAsync(explorer, ct);
+                if (res.IsSuccessStatusCode)
+                {
+                    using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                    if (doc.RootElement.TryGetProperty("medium_fee_per_kb", out var f))
+                        return Math.Clamp(f.GetDouble() / 1000.0, 1000.0, 10000.0);
+                }
+            }
+            catch
+            {
+                // fall through to the safe default
+            }
+            return 1000.0; // 0.01 DOGE/kB
+        }
+
         try
         {
             using var res = await Http.GetAsync($"{explorer}/fee-estimates", ct);

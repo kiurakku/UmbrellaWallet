@@ -209,6 +209,31 @@ public partial class MainWindow : Window
         {
             ApplyMobileMode();
         }
+
+        // Focus the command-palette search the instant it opens, so the user just starts typing.
+        // Posted so it runs after the overlay becomes visible and is laid out.
+        if (e.PropertyName is nameof(MainViewModel.IsCommandPaletteOpen) && _observed?.IsCommandPaletteOpen == true)
+        {
+            Dispatcher.UIThread.Post(() => this.FindControl<TextBox>("PaletteSearch")?.Focus());
+        }
+
+        // Keep the ↑/↓ highlight visible: the results list scrolls, so walking past the fold has to
+        // bring the highlighted row along or the keyboard selection disappears off-screen.
+        if (e.PropertyName is nameof(MainViewModel.PaletteSelectedIndex))
+        {
+            Dispatcher.UIThread.Post(BringPaletteSelectionIntoView);
+        }
+    }
+
+    private void BringPaletteSelectionIntoView()
+    {
+        if (_observed is null || !_observed.IsCommandPaletteOpen) return;
+
+        var list = this.FindControl<ItemsControl>("PaletteList");
+        var index = _observed.PaletteSelectedIndex;
+        if (list is null || index < 0 || index >= list.ItemCount) return;
+
+        (list.ContainerFromIndex(index) as Control)?.BringIntoView();
     }
 
     private void UpdateCaptureProtection()

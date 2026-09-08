@@ -3,7 +3,7 @@
 ; create a desktop / Start-menu shortcut, and uninstall cleanly.
 
 #define AppName "Umbrella Wallet"
-#define AppVersion "4.4.0"
+#define AppVersion "4.5.0"
 #define AppPublisher "the fear"
 #define AppExe "Umbrella.exe"
 
@@ -18,7 +18,7 @@
 #endif
 
 #define AppUrl "https://t.me/UmbrellaWallet"
-#define AppReleases "https://github.com/kiurakku/umbrella-wallet/releases"
+#define AppReleases "https://github.com/kiurakku/UmbrellaWallet/releases"
 
 [Setup]
 AppId={{7C1B0E2A-0B7E-4E9A-9C2E-UMBRELLA0001}

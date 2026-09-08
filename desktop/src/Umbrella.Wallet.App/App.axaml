@@ -17,6 +17,13 @@
             <GradientStop Offset="0.5" Color="#3478FF"/>
             <GradientStop Offset="1" Color="#795CFF"/>
         </LinearGradientBrush>
+        <!-- "the fear" gold — matches the gold-ghost maker's mark. A warm metallic sweep so the
+             wordmark reads as the same brand as the ghost beside it. -->
+        <LinearGradientBrush x:Key="UmGold" StartPoint="0%,0%" EndPoint="100%,100%">
+            <GradientStop Offset="0" Color="#FBE9A6"/>
+            <GradientStop Offset="0.5" Color="#E8B23A"/>
+            <GradientStop Offset="1" Color="#B8801C"/>
+        </LinearGradientBrush>
         <LinearGradientBrush x:Key="UmSignatureHover" StartPoint="0%,0%" EndPoint="100%,100%">
             <GradientStop Offset="0" Color="#3FD0FF"/>
             <GradientStop Offset="0.5" Color="#4D8BFF"/>
@@ -117,19 +124,52 @@
             <Setter Property="Foreground" Value="{DynamicResource UmText}" />
         </Style>
         <Style Selector="Button.nav.active">
-            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="BorderBrush" Value="#2E5AA8" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmAccent}" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
-        <!-- Active nav reads as a soft blue-tinted glass capsule with a faint glow, not a left bar. -->
+        <!-- Active nav reads as a theme-tinted capsule (accent selection colour), not a fixed blue bar. -->
         <Style Selector="Button.nav.active /template/ ContentPresenter">
-            <Setter Property="Background">
-                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                    <GradientStop Offset="0" Color="#2A3B82FF"/>
-                    <GradientStop Offset="1" Color="#14795CFF"/>
-                </LinearGradientBrush>
+            <Setter Property="Background" Value="{DynamicResource UmAccentSel}" />
+        </Style>
+
+        <!-- Icon-only nav rail buttons (square, rounded; icon follows the theme, active = accent capsule). -->
+        <Style Selector="Button.navicon">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.navicon /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions><BrushTransition Property="Background" Duration="0:0:0.12" /></Transitions>
             </Setter>
+        </Style>
+        <Style Selector="Button.navicon:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmHover}" />
+        </Style>
+        <Style Selector="Button.navicon.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmAccentSel}" />
+        </Style>
+        <Style Selector="Button.navicon Path">
+            <Setter Property="Stroke" Value="{DynamicResource UmTextDim}" />
+            <Setter Property="StrokeThickness" Value="1.8" />
+            <Setter Property="Fill" Value="Transparent" />
+            <Setter Property="StrokeLineCap" Value="Round" />
+            <Setter Property="StrokeJoin" Value="Round" />
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Stretch" Value="Uniform" />
+        </Style>
+        <Style Selector="Button.navicon:pointerover Path">
+            <Setter Property="Stroke" Value="{DynamicResource UmText}" />
+        </Style>
+        <Style Selector="Button.navicon.active Path">
+            <Setter Property="Stroke" Value="{DynamicResource UmAccentBright}" />
         </Style>
 
         <!-- Primary: solid, bold — the single strongest call to action on a screen. -->
@@ -137,9 +177,10 @@
              main call-to-action, not just the neutrals — orange on The fear, cyan on Blue, and so on. -->
         <!-- Primary and ghost share one fixed height (46) and vertical padding, so a primary+ghost
              row lines up exactly — the primary is just wider, coloured and bold, never taller. -->
+        <!-- Primary: a single solid brand colour — monotone, prestigious, not a gradient. -->
         <Style Selector="Button.primary">
-            <Setter Property="Background" Value="{DynamicResource UmSignature}" />
-            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="Background" Value="{DynamicResource UmAccentBright}" />
+            <Setter Property="Foreground" Value="{DynamicResource UmAccentText}" />
             <Setter Property="Padding" Value="26,13" />
             <Setter Property="MinHeight" Value="50" />
             <Setter Property="FontWeight" Value="Bold" />
@@ -154,10 +195,10 @@
             </Setter>
         </Style>
         <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource UmSignatureHover}" />
+            <Setter Property="Background" Value="{DynamicResource UmAccentHover}" />
         </Style>
         <Style Selector="Button.primary:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource UmSignatureHover}" />
+            <Setter Property="Background" Value="{DynamicResource UmAccentHover}" />
         </Style>
 
         <!-- Ghost: quiet secondary action. Frosted-glass fill (translucent white over the
@@ -187,6 +228,15 @@
             <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
         </Style>
         <Style Selector="Button.ghost:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
+        </Style>
+
+        <!-- Keyboard highlight (command palette): the row ↑/↓ has landed on. Reads as "pressed
+             but waiting" — accent border plus a lit face, so Enter's target is never in doubt. -->
+        <Style Selector="Button.ghost.pick">
+            <Setter Property="BorderBrush" Value="{DynamicResource UmAccent}" />
+        </Style>
+        <Style Selector="Button.ghost.pick /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
         </Style>
 
@@ -253,16 +303,118 @@
             <Setter Property="RenderTransform" Value="translateY(0px) scale(0.98)" />
         </Style>
 
+        <!-- Kraken-style primary action: a round accent disc with a stroked glyph, label underneath.
+             The whole thing is one transparent Button; only the disc carries colour, so a row of them
+             reads as a clean set of round keys rather than a strip of boxes. -->
+        <Style Selector="Button.action">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.action /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.action:pointerover">
+            <Setter Property="RenderTransform" Value="translateY(-3px)" />
+        </Style>
+        <Style Selector="Button.action:pressed">
+            <Setter Property="RenderTransform" Value="translateY(0px) scale(0.95)" />
+        </Style>
+        <!-- The disc itself. -->
+        <Style Selector="Button.action Border.disc">
+            <Setter Property="Width" Value="56" />
+            <Setter Property="Height" Value="56" />
+            <Setter Property="CornerRadius" Value="28" />
+            <Setter Property="Background" Value="{DynamicResource UmAccentWash}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder3}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.14" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.14" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.action:pointerover Border.disc">
+            <Setter Property="Background" Value="{DynamicResource UmAccentBright}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmAccentBright}" />
+        </Style>
+        <Style Selector="Button.action Path.actionIcon">
+            <Setter Property="Stroke" Value="{DynamicResource UmAccentBright}" />
+            <Setter Property="StrokeThickness" Value="2" />
+            <Setter Property="StrokeLineCap" Value="Round" />
+            <Setter Property="StrokeJoin" Value="Round" />
+            <Setter Property="Fill" Value="Transparent" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Stretch" Value="Uniform" />
+        </Style>
+        <!-- On hover the disc fills accent, so the glyph flips to the accent's contrast colour. -->
+        <Style Selector="Button.action:pointerover Path.actionIcon">
+            <Setter Property="Stroke" Value="{DynamicResource UmAccentText}" />
+        </Style>
+        <Style Selector="Button.action TextBlock.actionLabel">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource UmTextSoft}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,8,0,0" />
+        </Style>
+        <Style Selector="Button.action:pointerover TextBlock.actionLabel">
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+        </Style>
+
+        <!-- Dashboard stat tile: a card with a per-tile accent border and a tinted icon disc, so the
+             four tiles read as distinct rather than four identical dark boxes. -->
+        <Style Selector="Border.stat">
+            <Setter Property="Background" Value="{DynamicResource UmCard}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="14,13" />
+        </Style>
+        <Style Selector="Border.statIcon">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <!-- Stat-tile caption: small, no letter-spacing, ellipsis so a long label never clips mid-word. -->
+        <Style Selector="TextBlock.statCap">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="Path.statGlyph">
+            <Setter Property="StrokeThickness" Value="1.8" />
+            <Setter Property="StrokeLineCap" Value="Round" />
+            <Setter Property="StrokeJoin" Value="Round" />
+            <Setter Property="Fill" Value="Transparent" />
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
         <!-- Full-width clickable list row (market coins). -->
         <Style Selector="Button.row">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Cursor" Value="Hand" />
             <!-- Rows are Buttons, so unstyled child text inherits Fluent's control foreground —
                  which stays light and vanishes on the light theme. Pin it to the palette. -->
             <Setter Property="Foreground" Value="{DynamicResource UmText}" />
         </Style>
         <Style Selector="Button.row /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="{TemplateBinding CornerRadius}" />
             <Setter Property="Transitions">
                 <Transitions>
                     <BrushTransition Property="Background" Duration="0:0:0.10" />

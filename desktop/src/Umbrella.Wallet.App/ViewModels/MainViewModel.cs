@@ -14,6 +14,7 @@ using CommunityToolkit.Mvvm.Input;
 using QRCoder;
 using Umbrella.Wallet.Core.Chains;
 using Umbrella.Wallet.Core.Derivation;
+using Umbrella.Wallet.Core.Amounts;
 using Umbrella.Wallet.Core.Seed;
 using Umbrella.Wallet.Core.Utxo;
 using Umbrella.Wallet.Infrastructure;
@@ -46,6 +47,13 @@ public partial class MainViewModel : ViewModelBase
     // Compact portfolio 24h change for the overview ring (real, not a hardcoded 0.00%).
     [ObservableProperty] private string _portfolioChangePercent = "—";
     [ObservableProperty] private string _portfolioChangeColor = "#8A9099";
+    // Home dashboard stat tiles (computed in RecalcBalance) — they fill the portfolio with real,
+    // at-a-glance numbers rather than leaving it as just the balance + a list.
+    [ObservableProperty] private string _portfolioAssetCount = "0";
+    [ObservableProperty] private string _portfolioNetworkCount = "0";
+    [ObservableProperty] private string _portfolioBestLabel = "—";
+    [ObservableProperty] private string _portfolioBestSymbol = "—";
+    [ObservableProperty] private string _portfolioBestColor = "#8A9099";
     [ObservableProperty] private string _searchQuery = string.Empty;
     [ObservableProperty] private string _chainFilter = "All";
     [ObservableProperty] private string _walletLabel = "Umbrella Wallet";
@@ -74,11 +82,16 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _receiveAmount = string.Empty;
     // The derivation path is developer detail, so it hides behind an "Advanced" toggle by default.
     [ObservableProperty] private bool _showReceiveAdvanced;
+    // Address-reuse warning (secure roadmap 3.3): the shown address is checked against the chain and
+    // the banner appears only when it PROVABLY has history — an unreachable explorer says nothing.
+    [ObservableProperty] private bool _receiveAddressReused;
+    [ObservableProperty] private bool _receiveAddressCheckPending;
+    private System.Threading.CancellationTokenSource? _reuseCheckCts;
     public System.Collections.ObjectModel.ObservableCollection<string> ReceiveHistory { get; } = new();
     /// <summary>True once more than the base address has been issued, so the "Previous addresses" list is worth showing.</summary>
     public bool HasReceiveHistory => ReceiveHistory.Count > 1;
     /// <summary>Requested-amount is only encoded where the payment-URI scheme is a recognised standard (BIP21).</summary>
-    public bool CanRequestAmount => SelectedReceiveSymbol is "BTC" or "LTC" or "DOGE";
+    public bool CanRequestAmount => SelectedReceiveSymbol is "BTC" or "LTC" or "DOGE" or "BCH";
     /// <summary>Tokens live on one specific chain; sending them over the wrong network burns them. Warn loudly.</summary>
     public bool IsTokenReceive => SelectedReceiveSymbol is "USDT" or "USDC";
     private ChainId? _receiveChain;
@@ -97,6 +110,13 @@ public partial class MainViewModel : ViewModelBase
     public string ConnectionLabel => (TorStatus ?? string.Empty).Split('·')[0].Trim();
 
     partial void OnTorStatusChanged(string value) => OnPropertyChanged(nameof(ConnectionLabel));
+
+    /// <summary>True when a broadcast would go over clearnet — Tor is off and the Tor-only kill-switch
+    /// isn't forcing it. Shown as an anonymity reminder on the Send review: the node you broadcast to
+    /// would see your IP, linking it to the transaction.</summary>
+    public bool ShowSendClearnetNote => !TorEnabled && !TorOnly;
+
+    partial void OnTorEnabledChanged(bool value) => OnPropertyChanged(nameof(ShowSendClearnetNote));
 
     // In-app documentation panel toggle.
     [ObservableProperty] private bool _isDocsVisible;
@@ -218,9 +238,8 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.Save();
             OnPropertyChanged();
             OnPropertyChanged(nameof(LogoImage));
-            if (IsUnlocked)
-                PushActivity("Theme", "Appearance",
-                    Theming.Themes.FirstOrDefault(t => t.Id == value)?.Name ?? value, "changed", "now");
+            // Theme changes are not real wallet events — logging them spammed the activity feed with
+            // "Theme Appearance changed" rows that read like a developer log, so they're no longer logged.
         }
     }
 
@@ -242,6 +261,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(LottieRepeat));
             OnPropertyChanged(nameof(RainVisible));
             OnPropertyChanged(nameof(AuroraVisible));
+            OnPropertyChanged(nameof(PortfolioVideoOn));
             if (IsUnlocked) PushActivity("Settings", "Animations", value ? "on" : "off", "changed", "now");
         }
     }
@@ -288,10 +308,28 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Portfolio-card video toggle — individual, gated by the master motion toggle. On swaps
+    /// the still photo for the looping rain footage behind the balance.</summary>
+    public bool PortfolioVideo
+    {
+        get => _uiSettings.PortfolioVideo;
+        set
+        {
+            if (_uiSettings.PortfolioVideo == value) return;
+            _uiSettings.PortfolioVideo = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(PortfolioVideoOn));
+        }
+    }
+
     /// <summary>The ambient rain shows only when both the master motion toggle and the rain toggle are on.</summary>
     public bool RainVisible => AnimationsEnabled && RainEnabled;
     /// <summary>The aurora glow shows only when both the master motion toggle and the aurora toggle are on.</summary>
     public bool AuroraVisible => AnimationsEnabled && AuroraEnabled;
+    /// <summary>The balance card plays the rain footage only when both the master motion toggle and the
+    /// portfolio-video toggle are on; otherwise it shows a still photo.</summary>
+    public bool PortfolioVideoOn => AnimationsEnabled && PortfolioVideo;
 
     /// <summary>-1 = loop forever (stickers on); 0 = play once and settle. Off if either the master or
     /// the sticker toggle is disabled.</summary>
@@ -342,9 +380,18 @@ public partial class MainViewModel : ViewModelBase
 
     public int AutoLockMinutes => _uiSettings.AutoLockMinutes;
 
+    /// <summary>The idle interval as a LOCALIZED duration ("5 хв" / "1 год"), for display — the picker
+    /// values themselves stay English keys. Fixes "5 minutes" showing in a non-English UI.</summary>
+    public string AutoLockDurationLabel => _uiSettings.AutoLockMinutes switch
+    {
+        0 => Loc.Instance["sec.autoLockOff2"],
+        60 => $"1 {Loc.Instance["unit.hour"]}",
+        var m => $"{m} {Loc.Instance["unit.min"]}",
+    };
+
     public string AutoLockLabel => _uiSettings.AutoLockMinutes == 0
         ? "Auto-lock · off"
-        : $"Auto-lock · {AutoLockChoice} idle";
+        : $"Auto-lock · {AutoLockDurationLabel} idle";
 
     // ---- Privacy: custom SOCKS proxy, IP family, clipboard auto-clear ----
 
@@ -391,6 +438,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged();
             PublicHttp.SetRequireProxy(value);
             OnPropertyChanged(nameof(TorOnlyStatus));
+            OnPropertyChanged(nameof(ShowSendClearnetNote));
             if (IsUnlocked) PushActivity("Security", "Tor-only", value ? "on" : "off",
                 value ? "clearnet blocked" : "clearnet allowed", "now");
             // Turning it on with Tor still off means everything is blocked until Tor connects — nudge.
@@ -565,6 +613,9 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Clipboard auto-wipe delay in seconds; 0 = never wiped. Read-only view of the setting.</summary>
+    public int ClipboardAutoClearSeconds => _uiSettings.ClipboardAutoClearSeconds;
+
     /// <summary>How long a copied address stays on the clipboard before it's auto-wiped. Persisted.</summary>
     public string ClipboardClearChoice
     {
@@ -670,8 +721,8 @@ public partial class MainViewModel : ViewModelBase
             ? "umbrella-logo-black.png"
             : "umbrella-logo-solidwhite.png");
 
-    /// <summary>The "the fear" maker's mark.</summary>
-    public Bitmap FearMark => LoadAsset("thefear-logo.png");
+    /// <summary>The "the fear" maker's mark — the gold ghost (transparent background).</summary>
+    public Bitmap FearMark => LoadAsset("thefear-ghost.png");
 
     private static readonly Dictionary<string, Bitmap> AssetCache = [];
 
@@ -949,6 +1000,8 @@ public partial class MainViewModel : ViewModelBase
     private readonly BitcoinTransactionSender _btcSender;
     private readonly UtxoAccountScanner _utxoScanner;
     private readonly AddressIndexStore _addrIndex = new();
+    // Decides whether a receive address on screen has already been used (secure roadmap 3.3).
+    private readonly AddressReuseInspector _reuseInspector = new();
     // Last full UTXO scan per BTC/LTC symbol (all external + internal addresses). Populated by the
     // balance refresh and reused by the send path, so a transfer spends the same discovered set —
     // including internal change — that the shown balance is computed from.
@@ -1141,6 +1194,15 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>What the total is made of — top assets by value, for the Portfolio-overview ring.</summary>
     public ObservableCollection<PortfolioSlice> PortfolioBreakdown { get; } = [];
     public bool HasBreakdown => PortfolioBreakdown.Count > 0;
+    /// <summary>"N assets" line under the allocation legend — a small at-a-glance summary of the mix.</summary>
+    public string AllocationSummary
+    {
+        get
+        {
+            var n = Holdings.Count(h => h.Value > 0);
+            return n == 0 ? string.Empty : (n == 1 ? "1 asset" : $"{n} assets");
+        }
+    }
 
     /// <summary>NFT collections held at the wallet's Ethereum address (names + counts, no images).</summary>
     public ObservableCollection<NftHolding> Nfts { get; } = [];
@@ -1483,8 +1545,9 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     public static readonly IReadOnlySet<string> SendableSymbols = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        "BTC", "LTC",                                // UTXO HD wallet
+        "BTC", "LTC", "BCH",                         // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
         "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
+        "ARB", "BASE", "OP",                         // Ethereum L2 rollups — native ETH, same 0x address
         "SOL", "TON", "ADA",                         // account-based
         "TRX", "USDT",                               // TRON + TRC-20
         "XMR",                                       // Monero (local wallet-rpc)
@@ -1500,6 +1563,7 @@ public partial class MainViewModel : ViewModelBase
         new("ETH", "Ethereum", "Ethereum network (ERC-20 compatible)"),
         new("BTC", "Bitcoin", "Bitcoin network · native SegWit"),
         new("LTC", "Litecoin", "Litecoin network · native SegWit"),
+        new("BCH", "Bitcoin Cash", "Bitcoin Cash network · CashAddr"),
         new("SOL", "Solana", "Solana network"),
         new("TON", "Toncoin", "TON network · wallet v4R2"),
         new("XMR", "Monero", "Monero network · needs the Monero service on"),
@@ -1511,6 +1575,10 @@ public partial class MainViewModel : ViewModelBase
         new("AVAX", "Avalanche", "Avalanche C-Chain"),
         new("FTM", "Fantom", "Fantom Opera"),
         new("CRO", "Cronos", "Cronos EVM"),
+        // Ethereum L2 rollups — the coin is ETH, on the same 0x address; only the network differs.
+        new("ARB", "ETH · Arbitrum", "Arbitrum One · native ETH (same 0x address)"),
+        new("BASE", "ETH · Base", "Base · native ETH (same 0x address)"),
+        new("OP", "ETH · Optimism", "Optimism · native ETH (same 0x address)"),
     ];
 
     /// <summary>Networks a watch-only address can be added for.</summary>
@@ -1545,6 +1613,11 @@ public partial class MainViewModel : ViewModelBase
     public bool IsActivity => ActiveSection == "Activity";
     public bool IsTransactions => ActiveSection == "Transactions";
     public bool IsSettings => ActiveSection == "Settings";
+    /// <summary>Asset details: one coin's holding, price, capabilities and its own activity.</summary>
+    public bool IsAsset => ActiveSection == "Asset";
+
+    /// <summary>Security Center: one screen that reports what is actually protecting the wallet.</summary>
+    public bool IsSecurity => ActiveSection == "Security";
     public bool IsConnect => ActiveSection == "Connect";
     public bool IsMarket => ActiveSection == "Market";
     public bool IsNews => ActiveSection == "News";
@@ -1599,6 +1672,10 @@ public partial class MainViewModel : ViewModelBase
         {
             SelectFirstReceive();
         }
+
+        // The Security Center reads live state, so it is rebuilt every time it is opened rather than
+        // cached — a stale "protected" row would be worse than no row at all.
+        if (value == "Security") RefreshSecurityChecks();
     }
 
     partial void OnHasVaultChanged(bool value) => NotifySectionFlags();
@@ -1644,6 +1721,7 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(SendAmountFiat));
         RebuildSendAddressBook();
         ValidateSendAddress();
+        ResetCoinControl();
     }
 
     // --- Send financial transparency (§6.3): show the available balance and a fee-aware Max. ---
@@ -1673,8 +1751,8 @@ public partial class MainViewModel : ViewModelBase
         get
         {
             if (SelectedSendAsset is null) return string.Empty;
-            if (!decimal.TryParse(SendAmount, NumberStyles.Number, CultureInfo.InvariantCulture, out var amt) || amt <= 0)
-                return string.Empty;
+            // The estimate has to read the field exactly as the send path will, or the two disagree.
+            if (!AmountInput.TryParsePositive(SendAmount, out var amt)) return string.Empty;
             return FiatEquivalentLabel(SelectedSendAsset.Symbol, amt);
         }
     }
@@ -1694,10 +1772,87 @@ public partial class MainViewModel : ViewModelBase
     // selected network, so a coin is not sent to an address for the wrong chain. ---
     [ObservableProperty] private string _sendAddressWarning = string.Empty;
 
+    // --- Scam control: address-poisoning / own-address check on the destination. Advisory only. ---
+    [ObservableProperty] private string _sendSafetyTitle = string.Empty;
+    [ObservableProperty] private string _sendSafetyText = string.Empty;
+    [ObservableProperty] private string _sendSafetyColor = "#E7CA83";
+    [ObservableProperty] private bool _sendSafetyShown;
+    // The positive counterpart: a green line when the destination is a trusted one (a saved contact or
+    // one you have paid before), so a known address reads as safe and the warnings stand out by contrast.
+    [ObservableProperty] private string _sendKnownContact = string.Empty;
+    [ObservableProperty] private bool _sendKnownContactShown;
+
     partial void OnSendToChanged(string value)
     {
         HasSendQuote = false;
         ValidateSendAddress();
+        EvaluateSendSafety();
+    }
+
+    /// <summary>
+    /// Scam control: checks the destination against the addresses this wallet already trusts — its own
+    /// receive addresses, the address book and everyone it has paid before — via the offline
+    /// <see cref="Umbrella.Wallet.Core.Safety.AddressSafetyInspector"/>. The loud case is
+    /// address-poisoning: a destination that looks almost exactly like a known address (same start and
+    /// end, different middle) is very likely the attacker's lookalike seeded into your history. Also
+    /// flags sending to one of your own addresses. Never blocks a send — it only warns.
+    /// </summary>
+    private void EvaluateSendSafety()
+    {
+        SendSafetyShown = false;
+        SendSafetyTitle = SendSafetyText = string.Empty;
+        SendKnownContactShown = false;
+        SendKnownContact = string.Empty;
+
+        var dest = SendTo?.Trim() ?? string.Empty;
+        if (dest.Length == 0) return;
+
+        var own = Accounts.Where(a => IsRealAddress(a.Address)).Select(a => a.Address).ToList();
+        var known = _addressBookAll.Select(e => e.Address)
+            .Concat(Transactions.Where(t => !string.IsNullOrWhiteSpace(t.Counterparty)).Select(t => t.Counterparty!))
+            .Where(a => !string.IsNullOrWhiteSpace(a))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var result = Umbrella.Wallet.Core.Safety.AddressSafetyInspector.Inspect(dest, own, known);
+        switch (result.Level)
+        {
+            case Umbrella.Wallet.Core.Safety.AddressSafetyLevel.Lookalike:
+                SendSafetyTitle = Loc.Instance["send.safetyPoisonTitle"];
+                SendSafetyText = string.Format(Loc.Instance["send.safetyPoisonBody"], Shorten(result.SimilarTo ?? ""));
+                SendSafetyColor = "#E09A9A"; // red — the serious one
+                SendSafetyShown = true;
+                break;
+            case Umbrella.Wallet.Core.Safety.AddressSafetyLevel.OwnAddress:
+                SendSafetyTitle = Loc.Instance["send.safetyOwnTitle"];
+                SendSafetyText = Loc.Instance["send.safetyOwnBody"];
+                SendSafetyColor = "#E7CA83"; // amber — a caution, not an alarm
+                SendSafetyShown = true;
+                break;
+            case Umbrella.Wallet.Core.Safety.AddressSafetyLevel.NewRecipient:
+                // A first-time note, but only worth showing when it means something: the address is
+                // actually well-formed for the chosen chain AND you have some history to be "new"
+                // against. On a fresh wallet with no contacts, everyone is new — that would be noise.
+                var sym = SelectedSendAsset?.Symbol;
+                if (known.Count > 0 &&
+                    DestinationAddressCheck.Check(sym, dest) == AddressShape.Matches)
+                {
+                    SendSafetyTitle = Loc.Instance["send.firstTitle"];
+                    SendSafetyText = Loc.Instance["send.firstBody"];
+                    SendSafetyColor = "#8FB8CB"; // teal — informational, not a warning
+                    SendSafetyShown = true;
+                }
+                break;
+            case Umbrella.Wallet.Core.Safety.AddressSafetyLevel.Known:
+                // A trusted destination: name the saved contact, or just note you've paid it before.
+                var contact = _addressBookAll.FirstOrDefault(
+                    e => string.Equals(e.Address?.Trim(), dest, StringComparison.OrdinalIgnoreCase));
+                SendKnownContact = contact is not null && !string.IsNullOrWhiteSpace(contact.Label)
+                    ? string.Format(Loc.Instance["send.savedContact"], contact.Label)
+                    : Loc.Instance["send.sentBefore"];
+                SendKnownContactShown = true;
+                break;
+        }
     }
 
     partial void OnSendAmountChanged(string value)
@@ -1706,30 +1861,32 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(SendAmountFiat));
     }
 
-    /// <summary>Heuristic shape check of the destination against the selected network. Deliberately
-    /// advisory only — the authoritative validation still happens per chain when preparing the quote.</summary>
+    /// <summary>Warns when the destination does not look like an address on the selected network.
+    /// The rules live in <see cref="DestinationAddressCheck"/> (Core, unit-tested); this only decides
+    /// whether to show the warning. Advisory only — the authoritative validation still happens per
+    /// chain when preparing the quote.</summary>
+    private static readonly HashSet<string> EvmSendSymbols =
+        new(StringComparer.OrdinalIgnoreCase) { "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO" };
+
     private void ValidateSendAddress()
     {
         SendAddressWarning = string.Empty;
-        var addr = SendTo?.Trim() ?? string.Empty;
-        if (addr.Length == 0 || SelectedSendAsset is null) return;
+        if (SelectedSendAsset is null) return;
 
         var sym = SelectedSendAsset.Symbol;
-        bool looksRight = sym switch
+        if (DestinationAddressCheck.IsProbablyWrongNetwork(sym, SendTo))
         {
-            "BTC" => addr.StartsWith("bc1") || addr.StartsWith("1") || addr.StartsWith("3"),
-            "LTC" => addr.StartsWith("ltc1") || addr.StartsWith("L") || addr.StartsWith("M"),
-            "DOGE" => addr.StartsWith("D") || addr.StartsWith("A"),
-            "ETH" or "BNB" or "MATIC" or "AVAX" or "FTM" or "CRO" => addr.StartsWith("0x") && addr.Length == 42,
-            "TRX" or "USDT" => addr.StartsWith("T") && addr.Length == 34,
-            "SOL" => !addr.StartsWith("0x") && addr.Length is >= 32 and <= 44,
-            "TON" => addr.StartsWith("UQ") || addr.StartsWith("EQ") || addr.StartsWith("0:"),
-            "ADA" => addr.StartsWith("addr1"),
-            "XMR" => addr.Length is >= 90 and <= 106 && (addr.StartsWith("4") || addr.StartsWith("8")),
-            _ => true,
-        };
-        if (!looksRight)
             SendAddressWarning = string.Format(Loc.Instance["send.addrMismatch"], sym);
+            return;
+        }
+
+        // EIP-55 checksum: a mixed-case EVM address whose casing doesn't match its checksum has almost
+        // certainly been mistyped or altered — warn before it can be signed (Core.Chains.EvmAddress).
+        if (EvmSendSymbols.Contains(sym) &&
+            EvmAddress.Check(SendTo) == EvmChecksumState.Invalid)
+        {
+            SendAddressWarning = Loc.Instance["send.badChecksum"];
+        }
     }
 
     // --- Local address book (§4): reuse saved destinations instead of re-pasting. Public addresses
@@ -1765,7 +1922,7 @@ public partial class MainViewModel : ViewModelBase
     {
         var addr = SendTo?.Trim() ?? string.Empty;
         var sym = SelectedSendAsset?.Symbol;
-        if (addr.Length == 0 || string.IsNullOrEmpty(sym)) { SendError = "Enter a destination address first."; return; }
+        if (addr.Length == 0 || string.IsNullOrEmpty(sym)) { SendError = Loc.Instance["send.errDestFirst"]; return; }
 
         var label = string.IsNullOrWhiteSpace(SendAddressLabel) ? Shorten(addr) : SendAddressLabel.Trim();
         _addressBookAll.RemoveAll(e =>
@@ -1864,6 +2021,8 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsActivity));
         OnPropertyChanged(nameof(IsTransactions));
         OnPropertyChanged(nameof(IsSettings));
+        OnPropertyChanged(nameof(IsSecurity));
+        OnPropertyChanged(nameof(IsAsset));
         OnPropertyChanged(nameof(IsConnect));
         OnPropertyChanged(nameof(IsMarket));
         OnPropertyChanged(nameof(IsNews));
@@ -2945,6 +3104,8 @@ public partial class MainViewModel : ViewModelBase
             var idx = Market.ToList().FindIndex(m => m.Symbol == sym);
             if (idx >= 0) Market[idx] = MarketRowViewModel.LiveCoin(sym, name, e.Price, e.Change, holdable) with { Spark = Market[idx].Spark };
         }
+
+        ApplyWatchlist();
     }
 
     private void SaveMarketCache() =>
@@ -2992,12 +3153,24 @@ public partial class MainViewModel : ViewModelBase
 
             MarketStatus = $"Live · {prices.Count} coins · updated {DateTime.Now:HH:mm:ss}";
             SaveMarketCache();
+            ApplyWatchlist();
             _ = LoadSparklinesAsync();
         }
         catch (Exception ex)
         {
             MarketStatus = $"Market feed failed: {ex.Message}";
         }
+    }
+
+    /// <summary>From a holdings row's "›": jump to Market and open that coin's chart — the reference's
+    /// "tap a coin to see its detail" behaviour, reusing the full Market chart rather than a new page.</summary>
+    [RelayCommand]
+    private async Task OpenAssetChartAsync(string? symbol)
+    {
+        if (string.IsNullOrWhiteSpace(symbol)) return;
+        SelectSection("Market");
+        var row = Market.FirstOrDefault(m => string.Equals(m.Symbol, symbol, StringComparison.OrdinalIgnoreCase));
+        if (row is not null) await SelectMarketCoinAsync(row);
     }
 
     /// <summary>Click a market row → fetch its price series at the selected window and draw a chart.</summary>
@@ -3114,326 +3287,6 @@ public partial class MainViewModel : ViewModelBase
 
     private const double SparkWidth = 110;
     private const double SparkHeight = 30;
-
-    // --- Detail chart geometry (exchange-style: gridded plot with labelled axes) ----
-    // The grid is always five levels and five ticks, so their pixel positions are constants and
-    // the view can place them directly. An ItemsControl over a Canvas does not position its
-    // generated containers, which silently dropped the whole grid.
-    private const double PlotLeft = 58;    // room for price labels
-    private const double PlotRight = 860;
-    private const double PlotTop = 10;
-    private const double PlotBottom = 130; // room for time labels below
-
-    /// <summary>Closed polygon under the price line, so the chart reads as an area not a wire.</summary>
-    [ObservableProperty] private List<Avalonia.Point> _chartArea = [];
-
-    /// <summary>Candlesticks (real OHLC) drawn over the area — green up, red down, like a pro chart.</summary>
-    [ObservableProperty] private List<CandleVm> _chartCandles = [];
-
-    // Price levels, top to bottom.
-    [ObservableProperty] private string _chartLevel0 = string.Empty;
-    [ObservableProperty] private string _chartLevel1 = string.Empty;
-    [ObservableProperty] private string _chartLevel2 = string.Empty;
-    [ObservableProperty] private string _chartLevel3 = string.Empty;
-    [ObservableProperty] private string _chartLevel4 = string.Empty;
-
-    // Time ticks, oldest to newest.
-    [ObservableProperty] private string _chartTime0 = string.Empty;
-    [ObservableProperty] private string _chartTime1 = string.Empty;
-    [ObservableProperty] private string _chartTime2 = string.Empty;
-    [ObservableProperty] private string _chartTime3 = string.Empty;
-    [ObservableProperty] private string _chartTime4 = string.Empty;
-
-    [ObservableProperty] private string _chartHigh = string.Empty;
-    [ObservableProperty] private string _chartLow = string.Empty;
-
-    // --- Chart view mode (Candles ⇄ Line), like a pro charting UI ---------------
-    [ObservableProperty] private string _chartViewMode = "Candles";
-    public bool IsCandleView => ChartViewMode == "Candles";
-    public bool IsLineView => ChartViewMode == "Line";
-    partial void OnChartViewModeChanged(string value)
-    {
-        OnPropertyChanged(nameof(IsCandleView));
-        OnPropertyChanged(nameof(IsLineView));
-    }
-
-    [RelayCommand]
-    private void SetChartView(string? mode)
-    {
-        if (!string.IsNullOrWhiteSpace(mode)) ChartViewMode = mode;
-    }
-
-    // --- Change over the selected window (first→last close), shown in the header --
-    [ObservableProperty] private string _chartChangeLabel = string.Empty;
-    [ObservableProperty] private string _chartChangeColor = "#8A9099";
-
-    /// <summary>Soft vertical gradient under the price line — the change colour fading to nothing,
-    /// like Kraken/TradingView. Rebuilt each time a chart is drawn so it tracks the up/down colour.</summary>
-    [ObservableProperty] private Avalonia.Media.IBrush _chartAreaBrush =
-        new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent);
-
-    // --- Crosshair (hover) state, driven from the view code-behind ----------------
-    [ObservableProperty] private bool _crosshairVisible;
-    [ObservableProperty] private double _crosshairLineLeft;
-    [ObservableProperty] private double _crosshairDotLeft;
-    [ObservableProperty] private double _crosshairDotTop;
-    [ObservableProperty] private double _crosshairLabelLeft;
-    [ObservableProperty] private string _crosshairPrice = string.Empty;
-    [ObservableProperty] private string _crosshairTime = string.Empty;
-
-    // Raw candles + scale of the open chart, so the crosshair can map pixels back to price/time.
-    private IReadOnlyList<PriceCandle> _detailCandles = [];
-    private double _chartMin;
-    private double _chartMax;
-
-    /// <summary>
-    /// Turns a price series into a plotted chart: gridlines with price labels, time labels along
-    /// the bottom, a stroked line and the filled area beneath it.
-    /// </summary>
-    private void BuildDetailChart(IReadOnlyList<PriceCandle> candles)
-    {
-        ChartArea = [];
-        ChartPoints = [];
-        ChartCandles = [];
-        ChartHigh = ChartLow = string.Empty;
-        CrosshairVisible = false;
-        _detailCandles = candles;
-        if (candles.Count < 2) return;
-
-        var min = candles.Min(c => c.Low);
-        var max = candles.Max(c => c.High);
-        var range = max - min;
-        // A dead-flat series would divide by zero; give it a nominal band so it renders centred.
-        if (range <= 0) { min -= 1; max += 1; range = max - min; }
-        _chartMin = min;
-        _chartMax = max;
-
-        var plotW = PlotRight - PlotLeft;
-        var plotH = PlotBottom - PlotTop;
-        double Y(double price) => PlotTop + (1 - (price - min) / range) * plotH;
-
-        // Faint close-line + area behind the candles.
-        var line = new List<Avalonia.Point>(candles.Count);
-        for (var i = 0; i < candles.Count; i++)
-        {
-            var x = PlotLeft + plotW * i / (candles.Count - 1);
-            line.Add(new Avalonia.Point(x, Y(candles[i].Close)));
-        }
-
-        ChartPoints = line;
-        ChartArea = new List<Avalonia.Point>(line) { new(PlotRight, PlotBottom), new(PlotLeft, PlotBottom) };
-
-        // Candlesticks: green when close ≥ open, red otherwise (TradingView colours).
-        var w = Math.Max(1.5, plotW / candles.Count * 0.62);
-        var built = new List<CandleVm>(candles.Count);
-        for (var i = 0; i < candles.Count; i++)
-        {
-            var c = candles[i];
-            var xc = PlotLeft + plotW * (i + 0.5) / candles.Count;
-            var yHigh = Y(c.High);
-            var yLow = Y(c.Low);
-            var bodyTop = Math.Min(Y(c.Open), Y(c.Close));
-            built.Add(new CandleVm(
-                xc - (w / 2), yHigh, w, Math.Max(1, yLow - yHigh),
-                (w / 2) - 0.7, bodyTop - yHigh, Math.Max(1, Math.Abs(Y(c.Close) - Y(c.Open))),
-                c.Close >= c.Open ? "#26A69A" : "#EF5350"));
-        }
-
-        ChartCandles = built;
-
-        // Five price levels, top to bottom.
-        ChartLevel0 = FormatPrice(max);
-        ChartLevel1 = FormatPrice(max - range * 0.25);
-        ChartLevel2 = FormatPrice(max - range * 0.5);
-        ChartLevel3 = FormatPrice(max - range * 0.75);
-        ChartLevel4 = FormatPrice(min);
-
-        // Time axis derived from the selected window — the series is evenly spaced within it.
-        var ticks = TimeAxisLabels(ChartRange);
-        ChartTime0 = ticks[0];
-        ChartTime1 = ticks[1];
-        ChartTime2 = ticks[2];
-        ChartTime3 = ticks[3];
-        ChartTime4 = ticks[4];
-
-        ChartHigh = $"H {FormatPrice(max)}";
-        ChartLow = $"L {FormatPrice(min)}";
-
-        // Change across the whole window (first open → last close), like the header on an exchange.
-        var open0 = candles[0].Open != 0 ? candles[0].Open : candles[0].Close;
-        var closeN = candles[^1].Close;
-        var pct = open0 != 0 ? (closeN - open0) / open0 * 100 : 0;
-        var up = pct >= 0;
-        ChartIsUp = up;
-        ChartChangeColor = up ? "#26A69A" : "#EF5350";
-        // The price line + area must match the chart window's own direction, not the coin's 24h
-        // change — otherwise a green (up-over-window) chart could draw a red line, which is bug #24.
-        SelectedMarketChangeColor = ChartChangeColor;
-        ChartChangeLabel = $"{(up ? "▲" : "▼")} {Math.Abs(pct):0.00}% · {ChartRange}";
-
-        // Gradient fill under the line: change-colour → transparent, top to bottom.
-        var baseColor = Avalonia.Media.Color.Parse(up ? "#26A69A" : "#EF5350");
-        ChartAreaBrush = new Avalonia.Media.LinearGradientBrush
-        {
-            StartPoint = new Avalonia.RelativePoint(0, 0, Avalonia.RelativeUnit.Relative),
-            EndPoint = new Avalonia.RelativePoint(0, 1, Avalonia.RelativeUnit.Relative),
-            GradientStops =
-            {
-                new Avalonia.Media.GradientStop(Avalonia.Media.Color.FromArgb(0x66, baseColor.R, baseColor.G, baseColor.B), 0),
-                new Avalonia.Media.GradientStop(Avalonia.Media.Color.FromArgb(0x1F, baseColor.R, baseColor.G, baseColor.B), 0.55),
-                new Avalonia.Media.GradientStop(Avalonia.Media.Color.FromArgb(0x00, baseColor.R, baseColor.G, baseColor.B), 1),
-            },
-        };
-    }
-
-    /// <summary>Called from the view as the pointer moves over the chart: snaps to the nearest candle
-    /// and updates the crosshair line, dot and floating price/time readout.</summary>
-    public void UpdateCrosshair(double canvasX)
-    {
-        var n = _detailCandles.Count;
-        if (n < 2) { CrosshairVisible = false; return; }
-
-        var plotW = PlotRight - PlotLeft;
-        var plotH = PlotBottom - PlotTop;
-        var range = _chartMax - _chartMin;
-        if (range <= 0) { CrosshairVisible = false; return; }
-
-        var frac = Math.Clamp((canvasX - PlotLeft) / plotW, 0, 1);
-        var i = Math.Clamp((int)Math.Round(frac * (n - 1)), 0, n - 1);
-        var c = _detailCandles[i];
-
-        var x = PlotLeft + plotW * i / (double)(n - 1);
-        var y = PlotTop + (1 - (c.Close - _chartMin) / range) * plotH;
-
-        CrosshairLineLeft = x;
-        CrosshairDotLeft = x - 4;
-        CrosshairDotTop = y - 4;
-        CrosshairLabelLeft = Math.Clamp(x - 62, PlotLeft, PlotRight - 124);
-        CrosshairPrice = FormatPrice(c.Close);
-        CrosshairTime = CrosshairTimeLabel(i, n);
-        CrosshairVisible = true;
-    }
-
-    public void HideCrosshair() => CrosshairVisible = false;
-
-    /// <summary>Approximate wall-clock label for a hovered candle: the window is evenly spaced, so
-    /// candle i of n maps to now − span·(1 − i/(n−1)).</summary>
-    private string CrosshairTimeLabel(int i, int n)
-    {
-        var frac = (double)i / (n - 1);
-        var span = ChartRange switch
-        {
-            "1H" => TimeSpan.FromHours(1),
-            "24H" => TimeSpan.FromHours(24),
-            "7D" => TimeSpan.FromDays(7),
-            "30D" => TimeSpan.FromDays(30),
-            _ => TimeSpan.FromDays(365),
-        };
-        var t = DateTime.Now - TimeSpan.FromTicks((long)(span.Ticks * (1 - frac)));
-        return ChartRange switch
-        {
-            "1H" or "24H" => t.ToString("HH:mm", CultureInfo.InvariantCulture),
-            "7D" or "30D" => t.ToString("MMM d · HH:mm", CultureInfo.InvariantCulture),
-            _ => t.ToString("MMM d, yyyy", CultureInfo.InvariantCulture),
-        };
-    }
-
-    private static string FormatPrice(double value) => value switch
-    {
-        >= 1000 => value.ToString("N0", CultureInfo.InvariantCulture),
-        >= 1 => value.ToString("N2", CultureInfo.InvariantCulture),
-        _ => value.ToString("N6", CultureInfo.InvariantCulture),
-    };
-
-    /// <summary>Evenly spaced ticks labelled for the selected window, oldest on the left.</summary>
-    private static string[] TimeAxisLabels(string range) => range switch
-    {
-        "1H" => ["-60m", "-45m", "-30m", "-15m", "now"],
-        "24H" => ["-24h", "-18h", "-12h", "-6h", "now"],
-        "7D" => ["-7d", "-5d", "-3d", "-2d", "now"],
-        "30D" => ["-30d", "-22d", "-15d", "-7d", "now"],
-        _ => ["-1y", "-9m", "-6m", "-3m", "now"],
-    };
-
-    /// <summary>Free-text Market filter — matches ticker or name. Drives per-row visibility via
-    /// <see cref="MarketFilterConverter"/>, so live price updates (indexed by symbol) are untouched.</summary>
-    [ObservableProperty] private string _marketQuery = string.Empty;
-
-    [RelayCommand]
-    private void ClearMarketQuery() => MarketQuery = string.Empty;
-
-    /// <summary>Selected chart window. Changing it reloads every chart at the new resolution.</summary>
-    [ObservableProperty] private string _chartRange = "24H";
-
-    public IReadOnlyList<string> ChartRanges => PublicMarketRatesClient.ChartRanges;
-
-    [RelayCommand]
-    private async Task SelectChartRangeAsync(string? range)
-    {
-        if (string.IsNullOrWhiteSpace(range) || range == ChartRange) return;
-        ChartRange = range;
-        OnPropertyChanged(nameof(IsRange1H));
-        OnPropertyChanged(nameof(IsRange24H));
-        OnPropertyChanged(nameof(IsRange7D));
-        OnPropertyChanged(nameof(IsRange30D));
-        OnPropertyChanged(nameof(IsRange1Y));
-
-        StatusMessage = $"Loading {range} charts…";
-        await LoadSparklinesAsync(force: true);
-        if (HasChart)
-        {
-            var open = Market.FirstOrDefault(m => m.Symbol == SelectedMarketSymbol);
-            if (open is not null) await SelectMarketCoinAsync(open);
-        }
-        StatusMessage = $"Charts showing the last {range}";
-    }
-
-    public bool IsRange1H => ChartRange == "1H";
-    public bool IsRange24H => ChartRange == "24H";
-    public bool IsRange7D => ChartRange == "7D";
-    public bool IsRange30D => ChartRange == "30D";
-    public bool IsRange1Y => ChartRange == "1Y";
-
-    [RelayCommand]
-    private void CloseChart()
-    {
-        HasChart = false;
-        CrosshairVisible = false;
-        _detailCandles = [];
-        ChartPoints = new System.Collections.Generic.List<Avalonia.Point>();
-    }
-
-    private const double ChartWidth = 620;
-    private const double ChartHeight = 150;
-
-    /// <summary>Scales a price series into polyline points inside the chart box (top-left origin).</summary>
-    private static System.Collections.Generic.List<Avalonia.Point> BuildChartPoints(
-        System.Collections.Generic.IReadOnlyList<double> series, double width, double height)
-    {
-        var points = new System.Collections.Generic.List<Avalonia.Point>();
-        if (series.Count < 2) return points;
-
-        double min = double.MaxValue, max = double.MinValue;
-        foreach (var v in series)
-        {
-            if (v < min) min = v;
-            if (v > max) max = v;
-        }
-
-        var range = max - min;
-        const double pad = 10;
-        var usableH = height - 2 * pad;
-        for (var i = 0; i < series.Count; i++)
-        {
-            var x = width * i / (series.Count - 1);
-            // Flat series → draw a centred line rather than dividing by zero.
-            var norm = range > 0 ? (series[i] - min) / range : 0.5;
-            var y = pad + (1 - norm) * usableH;
-            points.Add(new Avalonia.Point(x, y));
-        }
-
-        return points;
-    }
 
     [RelayCommand]
     private void ToggleBalanceHidden() => IsBalanceHidden = !IsBalanceHidden;
@@ -3911,7 +3764,7 @@ public partial class MainViewModel : ViewModelBase
         if (PickFileAsync is null) return;
 
         var pw = BackupVerifyPassword ?? string.Empty;
-        if (pw.Length == 0) { BackupError = "Enter the vault password to verify the backup."; return; }
+        if (pw.Length == 0) { BackupError = Loc.Instance["backup.errPassword"]; return; }
 
         var path = await PickFileAsync(string.Empty, false);
         if (string.IsNullOrWhiteSpace(path)) return;
@@ -3919,14 +3772,33 @@ public partial class MainViewModel : ViewModelBase
         var result = await VaultBackup.VerifyAsync(path, pw);
         BackupVerifyPassword = string.Empty; // don't keep the password around after the check
 
-        if (!result.Ok) { BackupError = result.Message; return; }
+        if (!result.Ok) { BackupError = BackupMessage(result); return; }
 
         var extras = new List<string>();
-        if (result.ExportedUtc is { } dt) extras.Add($"made {dt.ToLocalTime():yyyy-MM-dd HH:mm}");
-        if (result.HasWatchAddresses) extras.Add("watch addresses");
-        if (result.HasExchanges) extras.Add("exchange keys");
-        BackupStatus = extras.Count > 0 ? $"{result.Message} · {string.Join(" · ", extras)}" : result.Message;
+        if (result.ExportedUtc is { } dt)
+            extras.Add(string.Format(Loc.Instance["backup.made"], dt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")));
+        if (result.HasWatchAddresses) extras.Add(Loc.Instance["backup.hasWatch"]);
+        if (result.HasExchanges) extras.Add(Loc.Instance["backup.hasKeys"]);
+        var verdict = BackupMessage(result);
+        BackupStatus = extras.Count > 0 ? $"{verdict} · {string.Join(" · ", extras)}" : verdict;
     }
+
+    /// <summary>
+    /// The backup verdict in the user’s language. The infrastructure layer reports *why* as an enum;
+    /// only the UI knows about languages, so the mapping lives here. An unrecognised reason falls back
+    /// to the layer’s own sentence rather than showing nothing (roadmap §8.2).
+    /// </summary>
+    private static string BackupMessage(VaultBackupVerification result) => result.Reason switch
+    {
+        VaultBackupReason.Verified => Loc.Instance["backup.verified"],
+        VaultBackupReason.FileMissing => Loc.Instance["backup.fileMissing"],
+        VaultBackupReason.NotABackup => Loc.Instance["backup.notABackup"],
+        VaultBackupReason.NoVault => Loc.Instance["backup.noVault"],
+        VaultBackupReason.WrongPassword => Loc.Instance["backup.wrongPassword"],
+        VaultBackupReason.DamagedPhrase => Loc.Instance["backup.damagedPhrase"],
+        VaultBackupReason.CorruptVault => Loc.Instance["backup.corruptVault"],
+        _ => result.Message,
+    };
 
     [RelayCommand]
     private async Task ExportBackupAsync()
@@ -3978,7 +3850,61 @@ public partial class MainViewModel : ViewModelBase
                            && _receiveChain is not null && _unlockedMnemonic is not null;
         ReceivePathLabel = CanRotateReceive ? $"{account.Symbol} receive address #0" : string.Empty;
         RebuildReceiveHistory(account.Symbol);
+        _receiveIndex = 0;
+        QueueReuseCheck(account.Address, 0);
         return true;
+    }
+
+    /// <summary>The external HD index of the receive address currently on screen (0 = the default one).</summary>
+    private uint _receiveIndex;
+
+    /// <summary>
+    /// Raises the address-reuse warning when the address on screen provably already has on-chain
+    /// history (secure roadmap 3.3). Reusing a receive address lets any observer tie the two senders
+    /// to the same wallet, so the user is told and pointed at "Generate new address".
+    ///
+    /// Only runs where a fresh address can actually be offered (BTC/LTC) — warning without a remedy
+    /// is noise. Fail-closed on *silence*, not on doubt: an unreachable explorer leaves the banner
+    /// off and simply reports nothing, and it never claims an address is fresh without evidence.
+    /// </summary>
+    private void QueueReuseCheck(string address, uint index)
+    {
+        _reuseCheckCts?.Cancel();
+        _reuseCheckCts = null;
+        ReceiveAddressReused = false;
+        ReceiveAddressCheckPending = false;
+
+        if (!CanRotateReceive || string.IsNullOrWhiteSpace(address)) return;
+
+        var cts = new CancellationTokenSource();
+        _reuseCheckCts = cts;
+        var symbol = SelectedReceiveSymbol;
+        var walletId = _registry.Active?.Id ?? "default";
+        uint? floor = null;
+        try { floor = _addrIndex.GetState(walletId, symbol).LastSeenUsedExternalIndex; } catch { }
+        ReceiveAddressCheckPending = true;
+
+        _ = Task.Run(async () =>
+        {
+            AddressUseState verdict;
+            try
+            {
+                verdict = await _reuseInspector.InspectAsync(
+                    UtxoExplorerFor(symbol), address, index, floor, cts.Token);
+            }
+            catch (OperationCanceledException) { return; }
+            catch { verdict = AddressUseState.Unknown; }
+
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                // A newer address may have been shown while this check was in flight — ignore a
+                // stale verdict rather than warning about an address that is no longer on screen.
+                if (cts.IsCancellationRequested || !string.Equals(SelectedReceiveAddress, address, StringComparison.Ordinal))
+                    return;
+                ReceiveAddressCheckPending = false;
+                ReceiveAddressReused = verdict == AddressUseState.Used;
+            });
+        });
     }
 
     [RelayCommand]
@@ -3999,16 +3925,22 @@ public partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>Encodes the receive target as a wallet payment URI. With a valid requested amount on a
-    /// BIP21 chain (BTC/LTC/DOGE) it returns e.g. <c>bitcoin:addr?amount=0.5</c>; otherwise the plain
+    /// BIP21 chain (BTC/LTC/DOGE/BCH) it returns e.g. <c>bitcoin:addr?amount=0.5</c>; otherwise the plain
     /// address, so a scan can never carry a malformed or wrong-scheme payload.</summary>
     private string BuildReceivePayload(string address)
     {
         if (!CanRequestAmount || string.IsNullOrWhiteSpace(ReceiveAmount)) return address;
 
-        var raw = ReceiveAmount.Trim().Replace(',', '.');
-        if (!decimal.TryParse(raw, System.Globalization.NumberStyles.Number,
-                System.Globalization.CultureInfo.InvariantCulture, out var amount) || amount <= 0)
-            return address;
+        if (!AmountInput.TryParsePositive(ReceiveAmount, out var amount)) return address;
+
+        var amountStr = amount.ToString("0.########", System.Globalization.CultureInfo.InvariantCulture);
+
+        // BCH's CashAddr already carries the "bitcoincash:" scheme, so its payment URI is the address
+        // itself plus the amount — prepending a scheme again would double the prefix.
+        if (SelectedReceiveSymbol == "BCH")
+            return address.Contains(':')
+                ? $"{address}?amount={amountStr}"
+                : $"bitcoincash:{address}?amount={amountStr}";
 
         var scheme = SelectedReceiveSymbol switch
         {
@@ -4019,7 +3951,6 @@ public partial class MainViewModel : ViewModelBase
         };
         if (scheme is null) return address;
 
-        var amountStr = amount.ToString("0.########", System.Globalization.CultureInfo.InvariantCulture);
         return $"{scheme}:{address}?amount={amountStr}";
     }
 
@@ -4059,6 +3990,8 @@ public partial class MainViewModel : ViewModelBase
             ReceivePathLabel = $"{symbol} receive address #{index}";
             if (!ReceiveHistory.Contains(addr)) ReceiveHistory.Add(addr);
             OnPropertyChanged(nameof(HasReceiveHistory));
+            _receiveIndex = index;
+            QueueReuseCheck(addr, index);
             ShowToast(Loc.Instance["receive.newAddr"], isError: false);
         }
         catch
@@ -4171,6 +4104,8 @@ public partial class MainViewModel : ViewModelBase
         if (a.Length == 48 && (a.StartsWith("UQ") || a.StartsWith("EQ") || a.StartsWith("kQ") || a.StartsWith("0Q"))) return "TON";
         if ((a.StartsWith('4') || a.StartsWith('8')) && a.Length is 95 or 106) return "XMR";
         if (a.StartsWith('D') && a.Length == 34) return "DOGE";
+        if (a.StartsWith("bitcoincash:", StringComparison.OrdinalIgnoreCase)) return "BCH";
+        if (a.StartsWith("t1", StringComparison.Ordinal) && a.Length == 35) return "ZEC"; // Zcash transparent
         if ((a.StartsWith('1') || a.StartsWith('3')) && a.Length is >= 26 and <= 35) return "BTC";
         return null; // Solana / other base58 is ambiguous — keep the selected network
     }
@@ -4215,726 +4150,6 @@ public partial class MainViewModel : ViewModelBase
         RefreshHoldings();
         RecalcBalance();
         StatusMessage = "Watch address removed";
-    }
-
-    /// <summary>
-    /// Step 1 of the send flow: validate, fetch live nonce/gas/balance, and show a quote.
-    /// Nothing is signed here. ETH only — other chains refuse honestly.
-    /// </summary>
-    [RelayCommand]
-    private async Task PrepareSendAsync()
-    {
-        SendError = string.Empty;
-        SendSuccess = string.Empty;
-        HasSendQuote = false;
-        _sendQuote = null;
-        _tonQuote = null;
-
-        if (!IsUnlocked || _unlockedMnemonic is null)
-        {
-            SendError = "Unlock the vault first.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(SendTo) || string.IsNullOrWhiteSpace(SendAmount))
-        {
-            SendError = "Enter a destination address and an amount.";
-            return;
-        }
-
-        if (!decimal.TryParse(SendAmount, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) ||
-            amount <= 0)
-        {
-            SendError = "Amount must be a positive number.";
-            return;
-        }
-
-        var chain = SendChain.Trim().ToUpperInvariant();
-        if (chain == "ETHEREUM") chain = "ETH";
-        if (chain == "BITCOIN") chain = "BTC";
-        if (chain == "LITECOIN") chain = "LTC";
-        if (chain == "SOLANA") chain = "SOL";
-
-        if (chain == "MONERO") chain = "XMR";
-
-        // Uniform review fields (§4): full destination (never truncated — the user must verify every
-        // character), the amount with its fiat estimate, and a plain statement of the total debit kept
-        // separate from the network fee line.
-        SendReviewTo = SendTo.Trim();
-        SendReviewAmount = $"{Fmt(amount)} {chain}";
-        SendReviewFiat = FiatEquivalentLabel(chain, amount);
-        SendReviewDebit = chain is "USDT" or "USDC"
-            ? string.Format(Loc.Instance["send.debitToken"], SendReviewAmount)
-            : string.Format(Loc.Instance["send.debitNative"], SendReviewAmount);
-
-        if (chain == "XMR")
-        {
-            if (!_monero.IsRunning)
-            {
-                SendError = "Turn on the Monero wallet service in Settings → Privacy first.";
-                return;
-            }
-
-            if (!MoneroKeys.TryDecodeAddress(SendTo.Trim(), out _, out _, out _))
-            {
-                SendError = "That is not a valid Monero address (checksum failed).";
-                return;
-            }
-
-            _sendSymbol = "XMR";
-            _moneroAmount = amount;
-            _moneroTo = SendTo.Trim();
-
-            // Developer fee as a second destination. Only kept if its address is a valid Monero
-            // address — otherwise the whole transfer would fail, so the user's send comes first.
-            _moneroFeeTo = null;
-            _moneroFeeAmount = 0m;
-            var xmrFee = _devFee.QuoteFee("XMR", amount);
-            if (xmrFee is { } f && MoneroKeys.TryDecodeAddress(f.Address, out _, out _, out _))
-            {
-                _moneroFeeTo = f.Address;
-                _moneroFeeAmount = f.Amount;
-            }
-
-            HasSendQuote = true;
-            SendQuoteSummary = $"Send {Fmt(amount)} XMR  →  {Shorten(_moneroTo)}";
-            SendQuoteFee = _moneroFeeTo is not null
-                ? $"Network fee is set by Monero at broadcast · service fee {_devFee.FeePercent:0.##}% ≈ " +
-                  $"{Fmt(_moneroFeeAmount)} XMR to the developer (same transaction)."
-                : "Fee is set by the Monero network at broadcast (priority: normal).";
-            StatusMessage = "Review the transfer, then confirm to broadcast";
-            return;
-        }
-
-        if (chain is "TRX" or "TRON" or "USDT" or "TRC20")
-        {
-            var symbol = chain is "USDT" or "TRC20" ? "USDT" : "TRX";
-            var tronAccount = Accounts.FirstOrDefault(a => a.Symbol == "TRX" && a.SupportStatus == "Ready");
-            if (tronAccount is null || !IsRealAddress(tronAccount.Address))
-            {
-                SendError = "No TRON account is available.";
-                return;
-            }
-
-            _sendSymbol = symbol;
-            await RunBusyAsync(async () =>
-            {
-                StatusMessage = "Building the TRON transaction…";
-                var (quote, error) = await _tronSender.PrepareAsync(
-                    symbol, tronAccount.Address, SendTo.Trim(), amount);
-                if (quote is null) { SendError = error ?? "Could not prepare the transaction."; return; }
-
-                _tronQuote = quote;
-                HasSendQuote = true;
-                SendQuoteSummary = $"Send {Fmt(amount)} {symbol}  →  {quote.To}";
-                SendQuoteFee = symbol == "USDT"
-                    ? "USDT moves on the TRON network — the fee is paid in TRX (energy/bandwidth). Keep a little TRX on this address."
-                    : "Fee is paid in TRX bandwidth.";
-                StatusMessage = "Review the transfer, then confirm to broadcast";
-            });
-            return;
-        }
-
-        // XMR / TRON / USDT were handled and returned above; anything reaching here must be a symbol
-        // with a real send branch below. Drive that off the single capability set, not a hand-kept
-        // list — this is exactly what let the picker offer ADA/EVM while the guard rejected them.
-        if (!SendableSymbols.Contains(chain))
-        {
-            SendError = string.Format(Loc.Instance["send.notSupported"], chain);
-            return;
-        }
-
-        var from = Accounts.FirstOrDefault(a => a.Symbol == chain && a.SupportStatus == "Ready");
-        // EVM side-chains (BNB/MATIC/…) share the Ethereum key and address; if their row hasn't been
-        // added by a balance refresh yet, fall back to the Ethereum account so the send still works.
-        if (from is null && EthTransactionSender.Chains.ContainsKey(chain))
-            from = Accounts.FirstOrDefault(a => a.Symbol == "ETH" && a.SupportStatus == "Ready");
-        if (from is null || !IsRealAddress(from.Address))
-        {
-            SendError = $"No {chain} account is available.";
-            return;
-        }
-
-        _sendSymbol = chain;
-        await RunBusyAsync(async () =>
-        {
-            StatusMessage = "Fetching balance and network fees…";
-            switch (chain)
-            {
-                case "ETH":
-                case "BNB":
-                case "MATIC":
-                case "AVAX":
-                case "FTM":
-                case "CRO":
-                {
-                    var evm = EthTransactionSender.Chains[chain];
-                    var (quote, error) = await _ethSender.PrepareAsync(from.Address, SendTo.Trim(), amount, evm);
-                    if (quote is null) { SendError = error ?? "Could not prepare the transaction."; return; }
-                    _sendQuote = quote;
-                    SendQuoteSummary = $"Send {Fmt(quote.AmountEth)} {quote.Symbol}  →  {quote.To}";
-                    SendQuoteFee =
-                        $"Network fee ≈ {Fmt(quote.MaxFeeEth)} {quote.Symbol} · {evm.Name} · nonce {quote.Nonce} · via {new Uri(quote.Rpc).Host}";
-                    break;
-                }
-
-                case "BTC":
-                case "LTC":
-                {
-                    if (_unlockedMnemonic is null) { SendError = "Unlock the wallet first."; return; }
-                    var walletId = _registry.Active?.Id ?? "default";
-
-                    // Reuse the balance-refresh scan (all external + internal addresses). If a send is
-                    // started before the first refresh finished, scan on demand.
-                    if (!_utxoScans.TryGetValue(chain, out var scan) || scan is null)
-                    {
-                        var chainId0 = ParseChain(chain)!.Value;
-                        var state0 = _addrIndex.GetState(walletId, chain);
-                        var floors0 = new UtxoScanFloors(
-                            state0.LastIssuedExternalIndex, state0.LastSeenUsedExternalIndex,
-                            state0.LastIssuedInternalIndex, state0.LastSeenUsedInternalIndex);
-                        scan = await _utxoScanner.ScanAsync(
-                            _unlockedMnemonic!, chainId0, EsploraUtxoExplorer.For(chain), floors0);
-                        if (!scan.Partial) _utxoScans[chain] = scan;
-                    }
-
-                    if (scan.Partial)
-                    {
-                        SendError = "Balance isn’t fully synced yet — refresh and try again before sending.";
-                        return;
-                    }
-
-                    var devFee = _devFee.QuoteFee(chain, amount);
-                    var (quote, plan, request, error) = await _btcSender.PrepareHdAsync(
-                        chain, scan.Utxos, from.Address, SendTo.Trim(), amount, devFee?.Address, devFee?.Amount ?? 0m);
-                    if (quote is null || plan is null || request is null)
-                    {
-                        SendError = error ?? "Could not prepare the transaction."; return;
-                    }
-
-                    _btcQuote = quote;
-                    _btcPlan = plan;
-                    _btcRequest = request;
-                    _btcPlanSymbol = chain;
-                    SendQuoteSummary = $"Send {Fmt(quote.Amount)} {chain}  →  {quote.To}";
-                    // Disclosure is driven off the plan (the source of truth for what is actually sent).
-                    SendQuoteFee = quote.DevFeeSat > 0
-                        ? $"Network fee ≈ {Fmt(quote.FeeAmount)} {chain} · service fee {_devFee.FeePercent:0.##}% ≈ " +
-                          $"{Fmt(quote.DevFeeSat / 100_000_000m)} {chain} to the developer · {quote.InputCount} input(s) · change to a fresh internal address"
-                        : $"Network fee ≈ {Fmt(quote.FeeAmount)} {chain} · {quote.InputCount} input(s) · change returns to a fresh internal address";
-                    break;
-                }
-
-                case "SOL":
-                {
-                    var devFee = _devFee.QuoteFee("SOL", amount);
-                    var (quote, error) = await _solSender.PrepareAsync(
-                        from.Address, SendTo.Trim(), amount, devFee?.Address, devFee?.Amount ?? 0m);
-                    if (quote is null) { SendError = error ?? "Could not prepare the transaction."; return; }
-                    _solQuote = quote;
-                    SendQuoteSummary = $"Send {Fmt(quote.AmountSol)} SOL  →  {quote.To}";
-                    SendQuoteFee = quote.DevFeeLamports > 0
-                        ? $"Network fee ≈ {Fmt(quote.FeeSol)} SOL · service fee {_devFee.FeePercent:0.##}% ≈ " +
-                          $"{Fmt(quote.DevFeeLamports / 1_000_000_000m)} SOL to the developer (same transaction)"
-                        : $"Network fee ≈ {Fmt(quote.FeeSol)} SOL";
-                    break;
-                }
-
-                case "TON":
-                {
-                    var (quote, error) = await _tonSender.PrepareAsync(from.Address, SendTo.Trim(), amount);
-                    if (quote is null) { SendError = error ?? "Could not prepare the transaction."; return; }
-                    _tonQuote = quote;
-                    SendQuoteSummary = $"Send {Fmt(quote.AmountTon)} TON  →  {quote.To}";
-                    SendQuoteFee = quote.Deploy
-                        ? $"Network fee ≈ {Fmt(quote.FeeTon)} TON · first send also deploys your wallet (seqno 0)"
-                        : $"Network fee ≈ {Fmt(quote.FeeTon)} TON · seqno {quote.Seqno}";
-                    break;
-                }
-
-                case "ADA":
-                {
-                    var (quote, error) = await _adaSender.PrepareAsync(from.Address, SendTo.Trim(), amount);
-                    if (quote is null) { SendError = error ?? "Could not prepare the transaction."; return; }
-                    _adaQuote = quote;
-                    SendQuoteSummary = $"Send {Fmt(quote.Amount)} ADA  →  {quote.To}";
-                    SendQuoteFee = $"Network fee ≈ {Fmt(quote.Fee / 1_000_000m)} ADA · {quote.Inputs.Count} input(s) · change returns to you";
-                    break;
-                }
-            }
-
-            HasSendQuote = true;
-            StatusMessage = "Review the transfer, then confirm to broadcast";
-        });
-    }
-
-    /// <summary>
-    /// Refreshes BTC/LTC balances by scanning every derived address (external + internal) and
-    /// aggregating their UTXOs, caching the scan for the send path. A transient explorer error keeps
-    /// the last good balance rather than showing a lower, wrong number (roadmap §1.10, §3.2).
-    /// </summary>
-    private async Task RefreshUtxoWalletsAsync(
-        IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct)
-    {
-        if (_unlockedMnemonic is null) return;
-        var walletId = _registry.Active?.Id ?? "default";
-
-        foreach (var symbol in new[] { "BTC", "LTC" })
-        {
-            var account = Accounts.FirstOrDefault(a =>
-                a.Symbol == symbol && a.SupportStatus == "Ready" && IsRealAddress(a.Address));
-            if (account is null) continue;
-
-            var chain = ParseChain(symbol);
-            if (chain is null) continue;
-
-            try
-            {
-                var state = _addrIndex.GetState(walletId, symbol);
-                var floors = new UtxoScanFloors(
-                    state.LastIssuedExternalIndex, state.LastSeenUsedExternalIndex,
-                    state.LastIssuedInternalIndex, state.LastSeenUsedInternalIndex);
-
-                var scan = await _utxoScanner.ScanAsync(
-                    _unlockedMnemonic!, chain.Value, EsploraUtxoExplorer.For(symbol), floors, ct: ct);
-
-                // A partial (network-degraded) scan must not lower a balance we already trust.
-                if (scan.Partial && _utxoScans.ContainsKey(symbol)) continue;
-
-                _utxoScans[symbol] = scan;
-                if (scan.HighestUsedExternalIndex is { } he) _addrIndex.RecordSeenUsed(walletId, symbol, 0, he);
-                if (scan.HighestUsedInternalIndex is { } hi) _addrIndex.RecordSeenUsed(walletId, symbol, 1, hi);
-
-                var amount = scan.TotalSat / 100_000_000m;
-                var (usd, change) = prices.GetValueOrDefault(symbol);
-                var idx = Accounts.IndexOf(account);
-                if (idx >= 0)
-                {
-                    Accounts[idx] = account with
-                    {
-                        Amount = (double)amount,
-                        Price = (double)usd,
-                        Change24h = (double)change,
-                    };
-                }
-            }
-            catch (OperationCanceledException) { throw; }
-            catch
-            {
-                // Leave the prior amount in place; the next refresh retries.
-            }
-        }
-
-        RefreshHoldings();
-        RecalcBalance();
-    }
-
-    private static string Fmt(decimal value) =>
-        value.ToString("0.########", CultureInfo.InvariantCulture);
-
-    /// <summary>
-    /// Step 2: the user explicitly confirms — derive the key, sign locally, broadcast, zero the key.
-    /// </summary>
-    [RelayCommand]
-    private async Task ConfirmSendAsync()
-    {
-        var haveQuote = _sendQuote is not null || _btcQuote is not null || _solQuote is not null
-                        || _tonQuote is not null || _tronQuote is not null || _adaQuote is not null
-                        || (_sendSymbol == "XMR" && _moneroAmount > 0);
-        if (_unlockedMnemonic is null || !haveQuote)
-        {
-            SendError = "Prepare the transfer first.";
-            return;
-        }
-
-        await RunBusyAsync(async () =>
-        {
-            StatusMessage = "Signing locally and broadcasting…";
-            switch (_sendSymbol)
-            {
-                case "ETH" or "BNB" or "MATIC" or "AVAX" or "FTM" or "CRO" when _sendQuote is not null:
-                {
-                    var quote = _sendQuote;
-                    // Every EVM chain shares the same Ethereum key and 0x address.
-                    var priv = _deriver.DeriveEthereumPrivateKey(_unlockedMnemonic!);
-                    try
-                    {
-                        var result = await _ethSender.SignAndBroadcastAsync(quote, priv);
-                        var explorer = EthTransactionSender.Chains.TryGetValue(quote.Symbol, out var c)
-                            ? c.ExplorerTx + result.TxHash
-                            : $"etherscan.io/tx/{result.TxHash}";
-                        await FinishSendAsync(result.Ok, result.TxHash, result.Error,
-                            quote.Symbol, quote.AmountEth, quote.To, explorer);
-                    }
-                    finally
-                    {
-                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
-                    }
-
-                    break;
-                }
-
-                case "BTC" or "LTC" when _btcQuote is not null && _btcPlan is not null && _btcRequest is not null:
-                {
-                    var quote = _btcQuote;
-                    var walletId = _registry.Active?.Id ?? "default";
-                    // Signs across every input address in the plan and reserves the internal change
-                    // index (persisted before broadcast) — no key #0 assumption.
-                    var (ok, txid, error) = await _btcSender.SignAndBroadcastHdAsync(
-                        _unlockedMnemonic!, walletId, _addrIndex, _btcPlanSymbol ?? quote.Symbol, _btcPlan, _btcRequest);
-                    // Force a fresh scan next time so the spent inputs and new change are reflected.
-                    _utxoScans.Remove(_btcPlanSymbol ?? quote.Symbol);
-                    var explorer = _sendSymbol == "BTC"
-                        ? $"blockstream.info/tx/{txid}"
-                        : $"litecoinspace.org/tx/{txid}";
-                    await FinishSendAsync(ok, txid, error, quote.Symbol, quote.Amount, quote.To, explorer);
-                    break;
-                }
-
-                case "SOL" when _solQuote is not null:
-                {
-                    var quote = _solQuote;
-                    var priv = _deriver.DeriveSolanaPrivateKey(_unlockedMnemonic!);
-                    try
-                    {
-                        var (ok, signature, error) = await _solSender.SignAndBroadcastAsync(quote, priv);
-                        await FinishSendAsync(ok, signature, error,
-                            "SOL", quote.AmountSol, quote.To, $"solscan.io/tx/{signature}");
-                    }
-                    finally
-                    {
-                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
-                    }
-
-                    break;
-                }
-
-                case "TRX" or "USDT" when _tronQuote is not null:
-                {
-                    var quote = _tronQuote;
-                    var key = _deriver.DeriveTronKey(_unlockedMnemonic!);
-                    var (ok, txId, error) = await _tronSender.SignAndBroadcastAsync(quote, key);
-                    await FinishSendAsync(ok, txId, error, quote.Symbol, quote.Amount, quote.To,
-                        txId is null ? "" : $"tronscan.org/#/transaction/{txId}");
-                    break;
-                }
-
-                case "TON" when _tonQuote is not null:
-                {
-                    var quote = _tonQuote;
-                    // A TON-native wallet signs with the TON-mnemonic seed; a BIP39 wallet uses its
-                    // m/44'/607'/0' key. Both are the 32-byte ed25519 seed the sender expects.
-                    var priv = _isTonWallet
-                        ? TonMnemonic.ToSeed(_unlockedMnemonic!)
-                        : _deriver.DeriveTonPrivateKey(_unlockedMnemonic!);
-                    try
-                    {
-                        var (ok, _, error) = await _tonSender.SignAndBroadcastAsync(quote, priv);
-                        await FinishSendAsync(ok, ok ? quote.To : null, error,
-                            "TON", quote.AmountTon, quote.To, $"tonviewer.com/{quote.From}");
-                    }
-                    finally
-                    {
-                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
-                    }
-
-                    break;
-                }
-
-                case "ADA" when _adaQuote is not null:
-                {
-                    var quote = _adaQuote;
-                    var extendedKey = AdaKeys.PaymentKey(_unlockedMnemonic!);
-                    try
-                    {
-                        var (ok, txId, error) = await _adaSender.SignAndBroadcastAsync(quote, extendedKey);
-                        await FinishSendAsync(ok, txId, error, "ADA", quote.Amount, quote.To,
-                            txId is null ? "" : $"cardanoscan.io/transaction/{txId}");
-                    }
-                    finally
-                    {
-                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(extendedKey);
-                    }
-
-                    break;
-                }
-
-                case "XMR":
-                {
-                    // monero-wallet-rpc builds, signs and relays the RingCT transaction itself.
-                    // The developer fee (if any) rides along as a second destination — disclosed above.
-                    var result = await _monero.SendAsync(_moneroTo, _moneroAmount, _moneroFeeTo, _moneroFeeAmount);
-                    await FinishSendAsync(result.Ok, result.TxHash, result.Error,
-                        "XMR", _moneroAmount, _moneroTo,
-                        result.TxHash is null ? "" : $"xmrchain.net/tx/{result.TxHash}");
-                    if (result.Ok)
-                    {
-                        _moneroAmount = 0;
-                        _moneroTo = string.Empty;
-                        _moneroFeeTo = null;
-                        _moneroFeeAmount = 0m;
-                        await RefreshMoneroAsync();
-                    }
-
-                    break;
-                }
-
-                default:
-                    SendError = "Prepare the transfer first.";
-                    break;
-            }
-        });
-    }
-
-    private async Task FinishSendAsync(
-        bool ok, string? reference, string? error, string symbol, decimal amount, string to, string explorer)
-    {
-        if (ok && reference is not null)
-        {
-            ClearSendQuotes();
-            SendTo = string.Empty;
-            SendAmount = string.Empty;
-            SendSuccess = $"Broadcast ✓  {reference}\nTrack it: {explorer}";
-            StatusMessage = "Transaction broadcast · it will confirm shortly";
-            var link = string.IsNullOrWhiteSpace(explorer) ? null
-                : explorer.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? explorer : $"https://{explorer}";
-            // Just broadcast, not yet mined — mark it Pending so the feed is honest until it confirms.
-            PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", link, "Pending");
-            await RefreshLiveDataAsync();
-        }
-        else
-        {
-            SendError = error ?? "Broadcast failed.";
-            StatusMessage = "Broadcast failed — nothing was sent";
-            // A failed broadcast never left this device, so record it as retryable (full destination and
-            // amount kept in retry context, not shown, so Retry can safely re-open a pre-filled send).
-            PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", null, "Failed",
-                retryTo: to, retryAmount: amount.ToString(CultureInfo.InvariantCulture), retryChain: symbol);
-        }
-    }
-
-    private void ClearSendQuotes()
-    {
-        HasSendQuote = false;
-        _sendQuote = null;
-        _btcQuote = null;
-        _solQuote = null;
-        _tronQuote = null;
-        _tonQuote = null;
-        _adaQuote = null;
-    }
-
-    [RelayCommand]
-    private void CancelSendQuote()
-    {
-        ClearSendQuotes();
-        SendError = string.Empty;
-        StatusMessage = "Transfer cancelled — nothing was signed";
-    }
-
-    // ===== Swap (THORChain — decentralised, non-custodial cross-chain) =============================
-    // The wallet never holds the funds: it sends the source coin to a THORChain inbound vault with a
-    // memo (OP_RETURN), and the network delivers the target coin to the user's own receive address.
-
-    private readonly ThorchainSwapClient _thorchain = new();
-    private SwapQuote? _swapQuote;
-
-    public ObservableCollection<string> SwapFromOptions { get; } = new(ThorchainSwapClient.SendableFrom);
-    // "To" excludes whatever "From" is (you can't swap a coin for itself), rebuilt when From changes.
-    public ObservableCollection<string> SwapToOptions { get; } =
-        new(ThorchainSwapClient.ReceivableTo.Where(s => !string.Equals(s, "BTC", StringComparison.OrdinalIgnoreCase)));
-
-    [ObservableProperty] private string _swapFromSymbol = "BTC";
-    [ObservableProperty] private string _swapToSymbol = "ETH";
-    [ObservableProperty] private string _swapAmount = string.Empty;
-    [ObservableProperty] private bool _hasSwapQuote;
-    [ObservableProperty] private bool _swapBusy;
-    [ObservableProperty] private string _swapError = string.Empty;
-    [ObservableProperty] private string _swapSuccess = string.Empty;
-    [ObservableProperty] private string _swapExpectedOut = string.Empty;
-    [ObservableProperty] private string _swapRateText = string.Empty;
-    [ObservableProperty] private string _swapFeeText = string.Empty;
-    [ObservableProperty] private string _swapEtaText = string.Empty;
-    [ObservableProperty] private string _swapDestination = string.Empty;
-    [ObservableProperty] private string _swapExpiryText = string.Empty;
-    [ObservableProperty] private string _swapWarning = string.Empty;
-
-    partial void OnSwapFromSymbolChanged(string value)
-    {
-        RebuildSwapToOptions();
-        InvalidateSwap();
-    }
-    partial void OnSwapToSymbolChanged(string value) => InvalidateSwap();
-    partial void OnSwapAmountChanged(string value) => InvalidateSwap();
-
-    /// <summary>Keeps the "To" list to the receivable assets minus the current "From", so an
-    /// impossible same-coin pair can't be selected. Fixes the selection if it becomes invalid.</summary>
-    private void RebuildSwapToOptions()
-    {
-        var wanted = ThorchainSwapClient.ReceivableTo
-            .Where(s => !string.Equals(s, SwapFromSymbol, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        if (!SwapToOptions.SequenceEqual(wanted, StringComparer.OrdinalIgnoreCase))
-        {
-            SwapToOptions.Clear();
-            foreach (var s in wanted) SwapToOptions.Add(s);
-        }
-        if (!SwapToOptions.Contains(SwapToSymbol, StringComparer.OrdinalIgnoreCase))
-            SwapToSymbol = SwapToOptions.FirstOrDefault() ?? string.Empty;
-    }
-
-    private void InvalidateSwap()
-    {
-        HasSwapQuote = false;
-        _swapQuote = null;
-        SwapSuccess = string.Empty;
-    }
-
-    private static ChainId? SwapChainId(string symbol) => symbol.ToUpperInvariant() switch
-    {
-        "BTC" => ChainId.Btc,
-        "LTC" => ChainId.Ltc,
-        "ETH" => ChainId.Eth,
-        "DOGE" => ChainId.Doge,
-        _ => null,
-    };
-
-    /// <summary>Step 1: fetch a live, non-binding THORChain quote for the chosen pair and amount.</summary>
-    [RelayCommand]
-    private async Task GetSwapQuoteAsync()
-    {
-        SwapError = string.Empty;
-        SwapSuccess = string.Empty;
-        SwapWarning = string.Empty;
-        InvalidateSwap();
-
-        if (_unlockedMnemonic is null) { SwapError = "Unlock the wallet first."; return; }
-        var from = (SwapFromSymbol ?? "").ToUpperInvariant();
-        var to = (SwapToSymbol ?? "").ToUpperInvariant();
-        if (from == to) { SwapError = "Choose two different assets."; return; }
-        if (!decimal.TryParse(SwapAmount, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) || amount <= 0)
-        {
-            SwapError = "Enter a valid amount.";
-            return;
-        }
-
-        var toChain = SwapChainId(to);
-        if (toChain is null) { SwapError = $"Cannot receive {to}."; return; }
-        var destination = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, toChain.Value).Address;
-
-        SwapBusy = true;
-        try
-        {
-            var (quote, error) = await _thorchain.GetQuoteAsync(from, to, amount, destination);
-            if (quote is null) { SwapError = error ?? "Could not get a quote."; return; }
-
-            _swapQuote = quote;
-            SwapExpectedOut = $"{Fmt(quote.ExpectedOut)} {to}";
-            SwapRateText = $"1 {from} ≈ {Fmt(quote.ExpectedOut / amount)} {to}";
-            SwapFeeText = $"{Fmt(quote.TotalFee)} {to} · {quote.TotalBps / 100.0:0.##}%";
-            SwapEtaText = quote.EtaSeconds >= 60 ? $"~{quote.EtaSeconds / 60} min" : $"~{quote.EtaSeconds} s";
-            SwapDestination = Shorten(destination);
-            var mins = Math.Max(0, (int)(quote.Expiry - DateTimeOffset.UtcNow).TotalMinutes);
-            SwapExpiryText = $"quote valid ~{mins} min";
-            SwapWarning = quote.BelowMinimum
-                ? $"Below the recommended minimum (~{Fmt(quote.RecommendedMinIn)} {from}) — the rate will be poor and the swap may refund."
-                : string.Empty;
-            HasSwapQuote = true;
-        }
-        finally
-        {
-            SwapBusy = false;
-        }
-    }
-
-    /// <summary>Step 2: re-quote for safety, then sign and broadcast the deposit to THORChain's vault.</summary>
-    [RelayCommand]
-    private async Task ConfirmSwapAsync()
-    {
-        if (_unlockedMnemonic is null || _swapQuote is null) { SwapError = "Get a quote first."; return; }
-        var shown = _swapQuote;
-        var from = shown.FromSymbol;
-        var to = shown.ToSymbol;
-
-        if (!ThorchainSwapClient.SendableFrom.Contains(from)) { SwapError = $"Swapping from {from} isn't supported yet."; return; }
-        var fromChain = SwapChainId(from);
-        var toChain = SwapChainId(to);
-        if (fromChain is null || toChain is null) { SwapError = "Unsupported asset."; return; }
-
-        await RunBusyAsync(async () =>
-        {
-            SwapError = string.Empty;
-            StatusMessage = "Refreshing the swap quote…";
-
-            // A fresh quote immediately before sending: THORChain vaults rotate and quotes expire, so a
-            // stale inbound address or memo would send the deposit into the void.
-            var destination = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, toChain.Value).Address;
-            var (fresh, error) = await _thorchain.GetQuoteAsync(from, to, shown.AmountIn, destination);
-            if (fresh is null) { SwapError = error ?? "Could not refresh the quote."; return; }
-            if (fresh.IsExpired) { SwapError = "The quote expired — get a new one."; return; }
-
-            // Refuse if the rate moved materially against the user since they saw it (>3%).
-            if (fresh.ExpectedOut < shown.ExpectedOut * 0.97m)
-            {
-                _swapQuote = fresh;
-                SwapExpectedOut = $"{Fmt(fresh.ExpectedOut)} {to}";
-                SwapError = "The rate moved against you — review the updated quote and confirm again.";
-                StatusMessage = "Swap not sent — the rate changed";
-                return;
-            }
-
-            StatusMessage = "Signing locally and broadcasting the swap deposit…";
-            var fromAddr = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, fromChain.Value).Address;
-            var walletId = _registry.Active?.Id ?? "default";
-
-            // Same multisource HD path as a normal send: gather UTXOs from every owned address, then
-            // sign each with its own key. The THORChain memo rides as an OP_RETURN in the same tx.
-            if (!_utxoScans.TryGetValue(from, out var scan) || scan is null)
-            {
-                var st = _addrIndex.GetState(walletId, from);
-                var fl = new UtxoScanFloors(
-                    st.LastIssuedExternalIndex, st.LastSeenUsedExternalIndex,
-                    st.LastIssuedInternalIndex, st.LastSeenUsedInternalIndex);
-                scan = await _utxoScanner.ScanAsync(_unlockedMnemonic!, fromChain.Value, EsploraUtxoExplorer.For(from), fl);
-                if (!scan.Partial) _utxoScans[from] = scan;
-            }
-            if (scan.Partial) { SwapError = "Balance isn’t fully synced yet — try again in a moment."; return; }
-
-            var (quote, plan, request, prepErr) = await _btcSender.PrepareHdAsync(
-                from, scan.Utxos, fromAddr, fresh.InboundAddress, shown.AmountIn, memo: fresh.Memo);
-            if (quote is null || plan is null || request is null)
-            {
-                SwapError = prepErr ?? "Could not build the swap deposit."; return;
-            }
-
-            var (ok, txid, sendErr) = await _btcSender.SignAndBroadcastHdAsync(
-                _unlockedMnemonic!, walletId, _addrIndex, from, plan, request);
-            _utxoScans.Remove(from);
-            if (ok && txid is not null)
-            {
-                var track = ThorchainSwapClient.TrackUrl(txid);
-                SwapSuccess = $"Swap sent ✓  {txid}\nTHORChain will deliver ~{Fmt(fresh.ExpectedOut)} {to} to your wallet.\nTrack: {track}";
-                StatusMessage = "Swap deposit broadcast · THORChain is processing it";
-                InvalidateSwap();
-                SwapAmount = string.Empty;
-                PushActivity("Swap", $"{from}→{to}", $"-{Fmt(shown.AmountIn)}", Shorten(fresh.InboundAddress), "now", track);
-                await RefreshLiveDataAsync();
-            }
-            else
-            {
-                SwapError = sendErr ?? "Broadcast failed.";
-                StatusMessage = "Swap failed — nothing was sent";
-            }
-        });
-    }
-
-    [RelayCommand]
-    private void CancelSwap()
-    {
-        InvalidateSwap();
-        SwapError = string.Empty;
-        SwapWarning = string.Empty;
-        StatusMessage = "Swap cancelled — nothing was signed";
     }
 
     // True when the unlocked wallet is a TON-native mnemonic (Telegram Wallet / Tonkeeper) rather than
@@ -5119,6 +4334,34 @@ public partial class MainViewModel : ViewModelBase
         PortfolioChangeColor = weight <= 0 ? "#8A9099" : avg >= 0 ? "#7DCF8F" : "#E08A8A";
         OnPropertyChanged(nameof(BalanceDisplayMain));
         OnPropertyChanged(nameof(BalanceDisplayCents));
+
+        // Dashboard stat tiles. These read from the holdings/market data the wallet already has, so
+        // they work even at a zero balance (24h moves exist regardless of what you hold).
+        PortfolioAssetCount = Holdings.Count.ToString(CultureInfo.InvariantCulture);
+        PortfolioNetworkCount = Holdings
+            .Select(h => h.Chain)
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count()
+            .ToString(CultureInfo.InvariantCulture);
+
+        var best = Holdings
+            .Where(h => h.Price > 0 && h.Change24h != 0)
+            .OrderByDescending(h => h.Change24h)
+            .FirstOrDefault();
+        if (best is not null)
+        {
+            PortfolioBestSymbol = best.Symbol;
+            PortfolioBestLabel = $"{(best.Change24h >= 0 ? "▲" : "▼")} {Math.Abs(best.Change24h):0.00}%";
+            PortfolioBestColor = best.Change24h >= 0 ? "#7DCF8F" : "#E08A8A";
+        }
+        else
+        {
+            PortfolioBestSymbol = "—";
+            PortfolioBestLabel = "—";
+            PortfolioBestColor = "#8A9099";
+        }
+
         RebuildBreakdown(total);
     }
 
@@ -5161,6 +4404,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         OnPropertyChanged(nameof(HasBreakdown));
+        OnPropertyChanged(nameof(AllocationSummary));
     }
 
     private async Task LoadExchangesAsync(string mnemonic)
@@ -5191,279 +4435,45 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private void PushActivity(string kind, string asset, string amount, string counter, string when,
-        string? explorer = null, string status = "Confirmed",
-        string? retryTo = null, string? retryAmount = null, string? retryChain = null)
-    {
-        // Real timestamp so persisted history reads correctly after a restart (callers pass "now").
-        var isNow = string.Equals(when, "now", StringComparison.OrdinalIgnoreCase);
-        var stamp = isNow
-            ? DateTime.Now.ToString("MMM d · HH:mm", Fx.Culture)
-            : when;
-        var unixMs = isNow ? DateTimeOffset.Now.ToUnixTimeMilliseconds() : 0;
-        Activity.Insert(0, new ActivityRowViewModel(kind, asset, amount, counter, stamp, explorer,
-            status, unixMs, retryTo, retryAmount, retryChain));
-        while (Activity.Count > 60) Activity.RemoveAt(Activity.Count - 1);
-
-        RebuildRecentActivity();
-        RebuildActivityAssets();
-        RebuildFilteredActivity();
-        RebuildTransactions();
-        OnPropertyChanged(nameof(HasActivity));
-        PersistActivity();
-    }
-
-    /// <summary>The Portfolio rail's five most-recent events — from the MERGED feed (local + on-chain),
-    /// so real transactions surface there too, not just in-app actions.</summary>
-    private void RebuildRecentActivity()
-    {
-        RecentActivity.Clear();
-        foreach (var row in MergedActivity().Take(5)) RecentActivity.Add(row);
-    }
-
-    private void PersistActivity() =>
-        _activityStore.Save(Activity.Select(a =>
-            new ActivityStore.Entry(a.Kind, a.Asset, a.Amount, a.Counterparty, a.When, a.Explorer, a.Status)));
-
-    /// <summary>Loads the saved activity/transaction history from the data folder into the feeds.</summary>
-    private void LoadActivity()
-    {
-        Activity.Clear();
-        foreach (var e in _activityStore.Load())
-            Activity.Add(new ActivityRowViewModel(e.Kind, e.Asset, e.Amount, e.Counterparty, e.When, e.Explorer, e.Status));
-        RebuildRecentActivity();
-        RebuildActivityAssets();
-        RebuildFilteredActivity();
-        RebuildTransactions();
-        OnPropertyChanged(nameof(HasActivity));
-    }
-
-    public bool HasFilteredActivity => FilteredActivity.Count > 0;
-
-    /// <summary>The merged feed (roadmap §6): local events plus real on-chain history, deduped by explorer
-    /// link, newest first — the single source the Activity screen renders and every filter narrows.</summary>
-    private IEnumerable<ActivityRowViewModel> MergedActivity()
-    {
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var row in Activity)
-        {
-            if (row.Explorer is { Length: > 0 } ex) seen.Add(ex);
-            yield return row;
-        }
-        foreach (var row in _onChainRows)
-        {
-            if (row.Explorer is { Length: > 0 } ex && !seen.Add(ex)) continue;
-            yield return row;
-        }
-    }
-
-    /// <summary>Rebuilds the asset dropdown from whatever assets the feed currently holds, keeping "All"
-    /// first and dropping a selection that no longer exists.</summary>
-    private void RebuildActivityAssets()
-    {
-        var assets = MergedActivity()
-            .Where(a => a.IsTransaction && !string.IsNullOrWhiteSpace(a.Asset))
-            .Select(a => a.Asset)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(a => a, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        ActivityAssets.Clear();
-        ActivityAssets.Add("All");
-        foreach (var a in assets) ActivityAssets.Add(a);
-        if (!ActivityAssets.Contains(ActivityAssetFilter, StringComparer.OrdinalIgnoreCase))
-            ActivityAssetFilter = "All";
-    }
-
-    private void RebuildFilteredActivity()
-    {
-        // Date cutoff (unix ms). Rows with an unknown timestamp (0) are always kept — never hide history
-        // just because it predates the timestamped format.
-        long cutoff = ActivityDateFilter switch
-        {
-            "Last 24h" => DateTimeOffset.Now.AddDays(-1).ToUnixTimeMilliseconds(),
-            "Last 7 days" => DateTimeOffset.Now.AddDays(-7).ToUnixTimeMilliseconds(),
-            "Last 30 days" => DateTimeOffset.Now.AddDays(-30).ToUnixTimeMilliseconds(),
-            _ => 0,
-        };
-
-        FilteredActivity.Clear();
-        foreach (var row in MergedActivity())
-        {
-            if (ActivityFilter != "All" && row.Category != ActivityFilter) continue;
-            if (ActivityAssetFilter != "All" &&
-                !string.Equals(row.Asset, ActivityAssetFilter, StringComparison.OrdinalIgnoreCase)) continue;
-            if (ActivityStatusFilter != "All" &&
-                !string.Equals(row.Status, ActivityStatusFilter, StringComparison.OrdinalIgnoreCase)) continue;
-            if (cutoff > 0 && row.UnixMs > 0 && row.UnixMs < cutoff) continue;
-            FilteredActivity.Add(row);
-        }
-        OnPropertyChanged(nameof(HasFilteredActivity));
-    }
-
-    private void RebuildTransactions()
-    {
-        Transactions.Clear();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var row in Activity.Where(a => a.IsTransaction))
-        {
-            Transactions.Add(row);
-            if (row.Explorer is { Length: > 0 } ex) seen.Add(ex);
-        }
-        // Real on-chain history for the user's own addresses — skip any already logged locally.
-        foreach (var row in _onChainRows)
-        {
-            if (row.Explorer is { Length: > 0 } ex && !seen.Add(ex)) continue;
-            Transactions.Add(row);
-        }
-        OnPropertyChanged(nameof(HasTransactions));
-    }
-
-    /// <summary>Fetches real on-chain transaction history for the user's own addresses, so transactions
-    /// made before the wallet was opened still appear. Covers BTC and LTC across EVERY issued receive
-    /// address (not just #0, so funds received on a rotated address still show), plus ETH and TRON
-    /// (TRC-20 incl. USDT). Best-effort and keyless; runs through the same Tor/proxy route as balances,
-    /// and is deduped by explorer link so a tx seen on two of the user's addresses appears once.</summary>
-    private async Task LoadOnChainHistoryAsync()
-    {
-        if (string.IsNullOrEmpty(_unlockedMnemonic)) return;
-        HistoryLoading = true;
-        OnPropertyChanged(nameof(HasFilteredActivity)); // let the "loading" state show immediately
-        try
-        {
-            var rows = new List<(long Ts, ActivityRowViewModel Row)>();
-            var walletId = _registry.Active?.Id ?? "default";
-
-            // BTC / LTC: every issued external address (0..last issued), so a rotated-address history
-            // is not lost. Capped defensively so a huge index never fans out to hundreds of calls.
-            foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc) })
-            {
-                uint lastIssued = 0;
-                try { lastIssued = _addrIndex.GetState(walletId, sym).LastIssuedExternalIndex ?? 0; } catch { }
-                var cap = (uint)Math.Min(lastIssued, 25);
-                for (uint i = 0; i <= cap; i++)
-                {
-                    string addr;
-                    try { addr = _deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, chain, 0, i).Address; }
-                    catch { continue; }
-                    var txs = sym == "BTC"
-                        ? await _history.GetBitcoinAsync(addr)
-                        : await _history.GetLitecoinAsync(addr);
-                    foreach (var t in txs) rows.Add((t.UnixMs, ToActivityRow(t)));
-                }
-            }
-
-            // ETH / TRON: single-address chains in this wallet.
-            string? tron = null, eth = null;
-            try { tron = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Tron).Address; } catch { }
-            try { eth = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Eth).Address; } catch { }
-
-            if (!string.IsNullOrEmpty(tron))
-            {
-                foreach (var t in await _history.GetTronTrc20Async(tron!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-                foreach (var t in await _history.GetTronNativeAsync(tron!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-            }
-
-            if (!string.IsNullOrEmpty(eth))
-                foreach (var t in await _history.GetEthereumAsync(eth!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-
-            // Dedupe by explorer URL (a tx that touches two of the user's own addresses is one event).
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            _onChainRows.Clear();
-            foreach (var r in rows.OrderByDescending(r => r.Ts))
-            {
-                if (r.Row.Explorer is { Length: > 0 } ex && !seen.Add(ex)) continue;
-                _onChainRows.Add(r.Row);
-            }
-            LastHistorySync = DateTime.Now.ToString("MMM d · HH:mm", Fx.Culture);
-            RebuildActivityAssets();
-            RebuildFilteredActivity();
-            RebuildRecentActivity(); // on-chain history just arrived — refresh the Portfolio rail too
-            RebuildTransactions();
-        }
-        catch
-        {
-            // History is a read-only nicety — never let it disrupt the wallet.
-        }
-        finally
-        {
-            HistoryLoading = false;
-            HistorySynced = true;
-        }
-    }
-
-    /// <summary>User-triggered re-fetch of on-chain history, so the Activity feed and its last-sync
-    /// stamp can be refreshed on demand (roadmap §6). Best-effort; failures leave the feed untouched.</summary>
-    [RelayCommand]
-    private async Task RefreshHistory()
-    {
-        StatusMessage = "Refreshing transaction history…";
-        await LoadOnChainHistoryAsync();
-        ShowToast(Loc.Instance["activity.synced"], isError: false);
-    }
-
-    /// <summary>Re-attempts a failed send. The broadcast never left the device, so this only re-opens the
-    /// Send screen pre-filled with the original destination and amount — it deliberately does NOT
-    /// auto-broadcast, so a transaction that actually went through can never be sent twice.</summary>
-    [RelayCommand]
-    private void RetrySend(ActivityRowViewModel? row)
-    {
-        if (row is null || !row.CanRetry) return;
-
-        var asset = SendableAssets.FirstOrDefault(a =>
-            string.Equals(a.Symbol, row.RetryChain, StringComparison.OrdinalIgnoreCase));
-        if (asset is not null) SelectedSendAsset = asset;
-
-        SendTo = row.RetryTo ?? string.Empty;
-        SendAmount = row.RetryAmount ?? string.Empty;
-        SendError = string.Empty;
-        HasSendQuote = false;
-        SelectSection("Send");
-        StatusMessage = "Retry — review the pre-filled transfer, then send again";
-    }
-
-    private static ActivityRowViewModel ToActivityRow(ChainTx t)
-    {
-        var when = t.UnixMs > 0
-            ? DateTimeOffset.FromUnixTimeMilliseconds(t.UnixMs).LocalDateTime.ToString("MMM d, HH:mm", Fx.Culture)
-            : "";
-        var counter = t.Counterparty.Length > 16
-            ? $"{t.Counterparty[..8]}…{t.Counterparty[^6..]}"
-            : t.Counterparty;
-        // Signed number only; the asset shows in its own column now that Activity is merged.
-        var amount = t.Kind == "Sent" ? $"-{t.Amount}" : $"+{t.Amount}";
-        // Explorer history is fetched with only_confirmed, so these are settled — Status "Confirmed".
-        return new ActivityRowViewModel(t.Kind, t.Asset, amount, counter, when, t.Explorer, "Confirmed", t.UnixMs);
-    }
-
-    /// <summary>Copy a transaction's explorer link to the clipboard — deliberately not opened in
-    /// the system browser, which would bypass Tor. Paste it into Tor Browser to view.</summary>
-    [RelayCommand]
-    private async Task CopyActivityLink(ActivityRowViewModel? row)
-    {
-        if (row?.Explorer is not { Length: > 0 } url) return;
-        await CopyTextAsync(url);
-        StatusMessage = "Explorer link copied — paste it into your browser to view the transaction";
-        ShowToast(Loc.Instance["toast.linkCopied"], isError: false);
-    }
-
+    /// <summary>
+    /// Renders a branded, still-scannable receive QR (see <see cref="Controls.QrRenderer"/>): dark
+    /// rounded modules on white, styled finder eyes, the Umbrella mark in the centre. Error-correction
+    /// H keeps it readable under the centre mark. Falls back to a plain QR if the branded render ever
+    /// throws, so the receive screen can never end up with no code at all.
+    /// </summary>
     private static Bitmap? BuildQr(string payload)
     {
+        // A very dark navy rather than pure black: reads as part of the app, still maximal contrast.
+        var dark = Avalonia.Media.Color.FromRgb(0x0B, 0x0E, 0x17);
         try
         {
-            using var gen = new QRCodeGenerator();
-            using var data = gen.CreateQrCode(payload, QRCodeGenerator.ECCLevel.M);
-            var png = new PngByteQRCode(data);
-            var bytes = png.GetGraphic(8);
-            using var ms = new System.IO.MemoryStream(bytes);
-            return new Bitmap(ms);
+            return Controls.QrRenderer.Render(payload, dark, QrCenterMark);
         }
         catch
         {
-            return null;
+            try
+            {
+                using var gen = new QRCodeGenerator();
+                using var data = gen.CreateQrCode(payload, QRCodeGenerator.ECCLevel.M);
+                var png = new PngByteQRCode(data);
+                using var ms = new System.IO.MemoryStream(png.GetGraphic(8));
+                return new Bitmap(ms);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <summary>The mark drawn in the middle of every receive QR — the umbrella glyph in dark, so it
+    /// reads on the white centre pad. Loaded once and reused.</summary>
+    private static Bitmap? QrCenterMark
+    {
+        get
+        {
+            try { return LoadAsset("umbrella-mark-black.png"); }
+            catch { return null; }
         }
     }
 
@@ -5524,8 +4534,21 @@ public partial class MainViewModel : ViewModelBase
         "TON" or "TONCOIN" => ChainId.Ton,
         "XMR" or "MONERO" => ChainId.Xmr,
         "ADA" or "CARDANO" => ChainId.Ada,
+        "BCH" or "BITCOIN CASH" or "BITCOINCASH" => ChainId.Bch,
+        "ZEC" or "ZCASH" => ChainId.Zec,
         _ => null,
     };
+
+    /// <summary>The right UTXO explorer for a chain: BlockCypher for Dogecoin, Haskoin for Bitcoin Cash
+    /// (neither has an Esplora instance; BCH's Blockchair also rate-limits), Esplora (Blockstream /
+    /// litecoinspace) for BTC and LTC.</summary>
+    private static Umbrella.Wallet.Core.Utxo.IUtxoExplorer UtxoExplorerFor(string symbol) =>
+        symbol.Trim().ToUpperInvariant() switch
+        {
+            "DOGE" => BlockCypherUtxoExplorer.For(symbol),
+            "BCH" => HaskoinUtxoExplorer.For(symbol),
+            _ => EsploraUtxoExplorer.For(symbol),
+        };
 
     /// <summary>USDT-TRC20 addresses live on TRON, so a TRC20/TRON watch address may hold USDT.</summary>
     private static bool IsTronLike(string chain) =>
@@ -5572,6 +4595,8 @@ public partial class MainViewModel : ViewModelBase
         ChainId.Ton => "TON",
         ChainId.Xmr => "XMR",
         ChainId.Ada => "ADA",
+        ChainId.Bch => "BCH",
+        ChainId.Zec => "ZEC",
         _ => chain.ToString().ToUpperInvariant(),
     };
 

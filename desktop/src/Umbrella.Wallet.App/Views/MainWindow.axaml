@@ -5,6 +5,7 @@
         xmlns:lottie="using:Avalonia.Labs.Lottie"
         xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
         xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+        xmlns:controls="using:Umbrella.Wallet.App.Controls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
@@ -31,10 +32,12 @@
     <app:MarketFilterConverter x:Key="MarketFilter" />
     <app:ToastBorderConverter x:Key="ToastBorder" />
     <app:ToastGlyphConverter x:Key="ToastGlyph" />
+    <app:ChangeWashConverter x:Key="ChangeWash" />
   </Window.Resources>
 
   <Window.KeyBindings>
     <KeyBinding Gesture="Ctrl+L" Command="{Binding LockCommand}" />
+    <KeyBinding Gesture="Ctrl+K" Command="{Binding OpenCommandPaletteCommand}" />
   </Window.KeyBindings>
 
   <Grid RowDefinitions="36,*">
@@ -46,7 +49,7 @@
 
     <Grid Grid.Row="1">
 
-      <!-- Lock-screen backdrop (the hands), so the unlock screen isn't a flat black. Behind
+      <!-- Lock-screen backdrop (a moody coastline), so the unlock screen isn't a flat black. Behind
            everything and only while the vault is locked; a scrim keeps the form readable. -->
       <Image Source="avares://Umbrella.Wallet.App/Assets/lock-bg.jpg" Stretch="UniformToFill"
              IsVisible="{Binding ShowDefaultLockBg}" Opacity="0.5"/>
@@ -68,7 +71,7 @@
               </StackPanel>
               <Button Grid.Column="1" Classes="ghost" Content="✕  Close" FontSize="12" Command="{Binding CloseNewsCommand}"/>
             </Grid>
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
               <StackPanel Spacing="12">
                 <TextBlock Classes="serif" Text="{Binding SelectedNews.Title}" FontSize="23" TextWrapping="Wrap"/>
                 <TextBlock Text="{Binding SelectedNews.Body}" FontSize="13.5" LineHeight="22"
@@ -81,7 +84,7 @@
 
       <!-- ============================ ONBOARDING (no sidebar) ============================ -->
       <ScrollViewer x:Name="OnbScroll" IsVisible="{Binding !ShowSidebar}" AllowAutoHide="True"
-                    HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
         <!-- MinHeight = viewport, so short stages (unlock/restore) exactly fill it and centre without
              scrolling; taller stages (welcome/backup) grow past it and scroll. The panel carries NO
              extra margin — a bottom margin here made even the short unlock screen overflow by 40px and
@@ -153,9 +156,9 @@
 
             <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center" Margin="0,28,0,0">
               <TextBlock Text="{Binding [onboard.builtBy], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmBorder3}" FontSize="11" VerticalAlignment="Center"/>
-              <!-- the fear maker's mark, beside the name rather than replacing it. -->
-              <Image Source="{Binding FearMark}" Width="26" Height="26" VerticalAlignment="Center"/>
-              <TextBlock Text="the fear" Foreground="{DynamicResource UmAccentBright}" FontSize="12.5" FontWeight="SemiBold"
+              <!-- the fear maker's mark — the gold ghost, beside the name. -->
+              <Image Source="{Binding FearMark}" Width="30" Height="30" VerticalAlignment="Center"/>
+              <TextBlock Text="the fear" Foreground="{DynamicResource UmGold}" FontSize="13.5" FontWeight="Bold"
                          LetterSpacing="0.5" VerticalAlignment="Center"/>
               <TextBlock Text="{Binding [onboard.brandTagline], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmBorder3}" FontSize="11"
                          VerticalAlignment="Center"/>
@@ -256,22 +259,6 @@
                 </TextBox.KeyBindings>
               </TextBox>
 
-              <!-- Hidden-wallet passphrase (BIP39 "25th word"), tucked behind Advanced so it isn't even
-                   visible unless sought. A wrong passphrase silently opens a different, empty wallet —
-                   that's the deniability, and the hint says so plainly. -->
-              <Button Classes="ghost" Padding="8,4" MinHeight="0" FontSize="12" HorizontalAlignment="Center" Margin="0,10,0,0"
-                      Content="{Binding [unlock.advanced], Source={x:Static app:Loc.Instance}}"
-                      Command="{Binding ToggleUnlockAdvancedCommand}"/>
-              <StackPanel Spacing="6" IsVisible="{Binding ShowUnlockAdvanced}" Margin="0,8,0,0">
-                <TextBox Text="{Binding UnlockPassphrase}" PasswordChar="●"
-                         Watermark="{Binding [unlock.passphrase], Source={x:Static app:Loc.Instance}}">
-                  <TextBox.KeyBindings>
-                    <KeyBinding Gesture="Enter" Command="{Binding UnlockCommand}"/>
-                  </TextBox.KeyBindings>
-                </TextBox>
-                <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
-                           Text="{Binding [unlock.passphraseHint], Source={x:Static app:Loc.Instance}}"/>
-              </StackPanel>
 
               <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
                       BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
@@ -353,97 +340,67 @@
         <!-- Navigation panel. Docked per the user's choice; tall on the sides, a compact
              bar on the top or bottom. -->
         <Border DockPanel.Dock="{Binding SidebarDock}" IsVisible="{Binding IsSidebarVertical}"
-                Width="248" Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,0,1,0">
+                Width="86" Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,0,1,0">
           <Grid RowDefinitions="Auto,*,Auto" ClipToBounds="True">
-            <!-- Bundled default sidebar photo (chains); the user's own pick overrides it. A scrim
-                 always sits on top so the profile text and nav stay readable. -->
-            <Image Grid.RowSpan="3" Source="avares://Umbrella.Wallet.App/Assets/sidebar-bg.jpg"
-                   Stretch="UniformToFill" IsVisible="{Binding !HasSidebarBg}" Opacity="0.26"/>
+            <!-- Default sidebar is just the theme colour (no photo). A user-chosen background still
+                 works, with a scrim over it so the profile text and nav stay readable. -->
             <Image Grid.RowSpan="3" Source="{Binding SidebarBgImage}" Stretch="UniformToFill"
                    IsVisible="{Binding HasSidebarBg}" Opacity="0.30"/>
-            <Border Grid.RowSpan="3" Background="#AB000000"/>
+            <Border Grid.RowSpan="3" Background="#AB000000" IsVisible="{Binding HasSidebarBg}"/>
 
-            <StackPanel Grid.Row="0">
-              <!-- Profile banner (the user's own photo), full width at the top. -->
-              <Panel Height="84" IsVisible="{Binding HasBanner}" ClipToBounds="True">
-                <Image Source="{Binding BannerImage}" Stretch="UniformToFill"/>
-              </Panel>
-              <StackPanel Margin="20,14,16,12" Spacing="9">
-                <!-- Avatar: the user's photo, or the umbrella brand mark when none is set. -->
-                <Border Width="54" Height="54" CornerRadius="27" ClipToBounds="True" HorizontalAlignment="Left"
-                        Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder2}" BorderThickness="2">
-                  <Panel>
-                    <Image Source="{Binding AvatarImage}" Stretch="UniformToFill" IsVisible="{Binding HasAvatar}"/>
-                    <Image Source="{Binding LogoImage}" Width="30" Height="30" Stretch="Uniform"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasAvatar}"/>
-                  </Panel>
-                </Border>
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="eyebrow" Text="{Binding [nav.wallet], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
-                  <!-- Wallet switcher: jumps to Settings → Wallets to switch or add a wallet. -->
-                  <Button Grid.Column="1" Classes="chip" Padding="8,2" Command="{Binding OpenWalletsCommand}"
-                          ToolTip.Tip="Switch or add wallet" IsVisible="{Binding IsUnlocked}">
-                    <StackPanel Orientation="Horizontal" Spacing="5">
-                      <TextBlock Text="⇄" FontSize="12" VerticalAlignment="Center"/>
-                      <TextBlock Text="{Binding [nav.walletsSwitch], Source={x:Static app:Loc.Instance}}" FontSize="10.5" VerticalAlignment="Center"/>
-                    </StackPanel>
-                  </Button>
-                </Grid>
-                <Grid ColumnDefinitions="*,Auto">
-                  <StackPanel>
-                    <TextBlock Classes="serif" FontSize="22" Text="{Binding WalletLabel}" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextDim}" Margin="0,6,0,0"
-                               Text="{Binding ShortAddress}"/>
-                  </StackPanel>
-                  <Button Grid.Column="1" Width="30" Height="30" Classes="ghost" Padding="0" VerticalAlignment="Top"
-                          Command="{Binding CopyPrimaryAddressCommand}" ToolTip.Tip="Copy address">
-                    <TextBlock Text="⧉" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                  </Button>
-                </Grid>
-              </StackPanel>
-            </StackPanel>
+            <!-- Brand mark at the top (the same splash logo shown at launch), filling a square button —
+                 no circle. Tap opens the wallet switcher; the wallet name shows as a tooltip. -->
+            <Button Grid.Row="0" Classes="ghost" Padding="6" Margin="0,14,0,8" HorizontalAlignment="Center"
+                    CornerRadius="16" Command="{Binding OpenWalletsCommand}" ToolTip.Tip="{Binding WalletLabel}">
+              <Image Source="avares://Umbrella.Wallet.App/Assets/umbrellaLoadlogo.png"
+                     Width="44" Height="44" Stretch="Uniform"/>
+            </Button>
 
-            <!-- The nav list scrolls inside its own row so it can never overflow into the footer
-                 below (which is what made Settings collide with "Keys encrypted" on a short window). -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Margin="10,4,10,10" Spacing="3">
-              <!-- Primary nav: exactly five (roadmap §6.1). Receive/Send are actions inside the Wallet
-                   home (the quick-action tiles there); Activity absorbs the transaction history. -->
-              <Button Classes="nav" Content="{Binding [nav.wallet], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsWalletGroup}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio"/>
-              <Button Classes="nav" Content="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsActivityGroup}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Activity"/>
-              <Button Classes="nav" Content="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsSwap}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Swap"/>
-              <Button Classes="nav" Content="{Binding [nav.discover], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsDiscoverGroup}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Discover"/>
-              <Button Classes="nav" Content="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsSettings}"
-                      Command="{Binding SelectSectionCommand}" CommandParameter="Settings"/>
-            </StackPanel>
-            </ScrollViewer>
-
-            <Border Grid.Row="2" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Padding="18,14">
-              <StackPanel Spacing="10">
-                <!-- Always-visible connection state (§7.1): Tor / Direct / proxy. Tap → Privacy settings. -->
-                <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                        MinHeight="0" Padding="12,9" Command="{Binding SelectSectionCommand}" CommandParameter="Settings">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Ellipse Width="8" Height="8" Fill="{Binding TorStatusColor}" VerticalAlignment="Center"/>
-                    <TextBlock FontSize="12" FontWeight="Medium" Foreground="{Binding TorStatusColor}"
-                               Text="{Binding ConnectionLabel}" VerticalAlignment="Center"/>
-                  </StackPanel>
+            <!-- Grouped nav capsule: a slightly-lifted rounded area (card colour on the panel) with
+                 padding, icons only. Five sections (roadmap §6.1); Receive/Send live on the Wallet home. -->
+            <Border Grid.Row="1" Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
+                    BorderThickness="1" CornerRadius="22" Margin="0,6" Padding="7,10"
+                    HorizontalAlignment="Center" VerticalAlignment="Top">
+              <StackPanel Spacing="6" HorizontalAlignment="Center">
+                <Button Classes="navicon" Classes.active="{Binding IsWalletGroup}" Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio"
+                        AutomationProperties.Name="{Binding [nav.wallet], Source={x:Static app:Loc.Instance}}"
+                        ToolTip.Tip="{Binding [nav.wallet], Source={x:Static app:Loc.Instance}}">
+                  <Path Data="M4 11 L12 4 L20 11 M6 10 V19 H18 V10"/>
                 </Button>
-                <TextBlock FontSize="10" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
-                           Text="{Binding [conn.note], Source={x:Static app:Loc.Instance}}"/>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Ellipse Width="7" Height="7" Fill="{DynamicResource UmPos}"/>
-                  <TextBlock FontSize="11" Foreground="{DynamicResource UmTextDim}" Text="{Binding [footer.keysEncrypted], Source={x:Static app:Loc.Instance}}"/>
-                </StackPanel>
-                <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" Text="{Binding AutoLockLabel}" TextWrapping="Wrap"/>
-                <Button Classes="ghost" Content="{Binding [footer.lock], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Center" Command="{Binding LockCommand}"/>
+                <Button Classes="navicon" Classes.active="{Binding IsActivityGroup}" Command="{Binding SelectSectionCommand}" CommandParameter="Activity"
+                        AutomationProperties.Name="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}"
+                        ToolTip.Tip="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}">
+                  <Path Data="M3 12 H7 L10 5 L14 19 L17 12 H21"/>
+                </Button>
+                <Button Classes="navicon" Classes.active="{Binding IsSwap}" Command="{Binding SelectSectionCommand}" CommandParameter="Swap"
+                        AutomationProperties.Name="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}"
+                        ToolTip.Tip="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}">
+                  <Path Data="M6 8 H17 L14 5 M18 16 H7 L10 19"/>
+                </Button>
+                <Button Classes="navicon" Classes.active="{Binding IsDiscoverGroup}" Command="{Binding SelectSectionCommand}" CommandParameter="Discover"
+                        AutomationProperties.Name="{Binding [nav.discover], Source={x:Static app:Loc.Instance}}"
+                        ToolTip.Tip="{Binding [nav.discover], Source={x:Static app:Loc.Instance}}">
+                  <Path Data="M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M14 14 H20 V20 H14 Z"/>
+                </Button>
+                <Button Classes="navicon" Classes.active="{Binding IsSecurity}" Command="{Binding SelectSectionCommand}" CommandParameter="Security"
+                        AutomationProperties.Name="{Binding [nav.security], Source={x:Static app:Loc.Instance}}"
+                        ToolTip.Tip="{Binding [nav.security], Source={x:Static app:Loc.Instance}}">
+                  <Path Data="M12 3 L20 6 V12 C20 16.4 16.6 19.7 12 21 C7.4 19.7 4 16.4 4 12 V6 Z"/>
+                </Button>
+                <Button Classes="navicon" Classes.active="{Binding IsSettings}" Command="{Binding SelectSectionCommand}" CommandParameter="Settings"
+                        AutomationProperties.Name="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}"
+                        ToolTip.Tip="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}">
+                  <Path Data="M12 15 A3 3 0 1 0 12 9 A3 3 0 1 0 12 15 M12 3 V5 M12 19 V21 M3 12 H5 M19 12 H21 M6.2 6.2 L7.7 7.7 M16.3 16.3 L17.8 17.8 M17.8 6.2 L16.3 7.7 M7.7 16.3 L6.2 17.8"/>
+                </Button>
               </StackPanel>
             </Border>
+
+            <!-- Footer: lock action, icon only. -->
+            <Button Grid.Row="2" Classes="navicon" Margin="0,6,0,16" HorizontalAlignment="Center"
+                    Command="{Binding LockCommand}" AutomationProperties.Name="{Binding [footer.lock], Source={x:Static app:Loc.Instance}}"
+ ToolTip.Tip="{Binding [footer.lock], Source={x:Static app:Loc.Instance}}">
+              <Path Data="M7 11 V8 A5 5 0 0 1 17 8 V11 M5 11 H19 V20 H5 Z"/>
+            </Button>
           </Grid>
         </Border>
 
@@ -455,6 +412,7 @@
           <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
             <!-- Wallet switcher — always reachable, so switching works when the nav is top/bottom. -->
             <Button Classes="chip" Command="{Binding OpenWalletsCommand}" IsVisible="{Binding IsUnlocked}"
+                    AutomationProperties.Name="{Binding [settings.tabWallets], Source={x:Static app:Loc.Instance}}"
                     ToolTip.Tip="{Binding [settings.tabWallets], Source={x:Static app:Loc.Instance}}"
                     BorderBrush="{DynamicResource UmAccent}">
               <StackPanel Orientation="Horizontal" Spacing="6">
@@ -467,6 +425,7 @@
             <Button Classes="chip" Content="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Activity" Classes.active="{Binding IsActivityGroup}"/>
             <Button Classes="chip" Content="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Swap" Classes.active="{Binding IsSwap}"/>
             <Button Classes="chip" Content="{Binding [nav.discover], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Discover" Classes.active="{Binding IsDiscoverGroup}"/>
+            <Button Classes="chip" Content="{Binding [nav.security], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Security" Classes.active="{Binding IsSecurity}"/>
             <Button Classes="chip" Content="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Settings" Classes.active="{Binding IsSettings}"/>
             <Button Classes="chip" Content="{Binding [nav.lock], Source={x:Static app:Loc.Instance}}" Command="{Binding LockCommand}"/>
           </StackPanel>
@@ -520,40 +479,49 @@
                insets it by the ScrollViewer's padding, so the right edge overflowed by exactly
                that padding — which is what clipped the Receive QR card. A margin is measured. -->
           <ScrollViewer Grid.Column="0" AllowAutoHide="True"
-                        HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
             <!-- Cap the content column and CENTRE it, so a full-screen or large window doesn't
                  stretch the tiles and tables edge-to-edge and doesn't sit lopsided against the left
                  either — it reads as one tidy, balanced column at any size. -->
-            <StackPanel Spacing="24" Margin="34,32,34,88" MaxWidth="{Binding ContentMaxWidth}" HorizontalAlignment="Center">
+            <!-- Right margin is a touch wider than the left so the floating vertical scrollbar never
+                 sits over a card's right edge (which clipped rows on Activity). -->
+            <StackPanel Spacing="24" Margin="34,32,38,88" MaxWidth="{Binding ContentMaxWidth}" HorizontalAlignment="Center">
 
               <!-- Portfolio -->
               <StackPanel Classes="page" IsVisible="{Binding IsPortfolio}" Spacing="18">
+                <!-- Top row: the balance card on the left, a 2×2 grid of live stat tiles filling the
+                     space to its right so the dashboard reads full and balanced rather than a lone card. -->
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="18">
                 <!-- Cinematic balance hero: the generated backdrop, with the balance overlaid on the
                      left and the brand mark over the 'portal' on the right. -->
-                <Border CornerRadius="20" ClipToBounds="True" Height="212" BorderBrush="{DynamicResource UmBorder}"
+                <!-- Balance as a credit-card-sized card (≈1.6:1), left-aligned — not stretched full width. -->
+                <Border CornerRadius="22" ClipToBounds="True" Width="392" Height="266" HorizontalAlignment="Left"
+                        BorderBrush="{DynamicResource UmBorder}"
                         BorderThickness="1" BoxShadow="0 16 44 -16 #80000000"
                         PointerMoved="OnHeroPointerMoved" PointerExited="OnHeroPointerExited">
                   <Panel>
-                    <!-- Oversized so the parallax shift never reveals an edge. -->
-                    <Image x:Name="HeroBg" Source="avares://Umbrella.Wallet.App/Assets/sidebar-bg.jpg" Stretch="UniformToFill" Margin="-18">
-                      <Image.RenderTransform>
-                        <TranslateTransform>
-                          <TranslateTransform.Transitions>
-                            <Transitions>
-                              <DoubleTransition Property="X" Duration="0:0:0.18" Easing="CubicEaseOut"/>
-                              <DoubleTransition Property="Y" Duration="0:0:0.18" Easing="CubicEaseOut"/>
-                            </Transitions>
-                          </TranslateTransform.Transitions>
-                        </TranslateTransform>
-                      </Image.RenderTransform>
-                    </Image>
-                    <Border Background="#4D000000"/>
-                    <!-- Wash the cinematic backdrop with the theme's accent, so coloured themes get a
-                         matching glow instead of the neutral portal alone. -->
-                    <Border Background="{DynamicResource UmAccentWash}"/>
-                    <!-- Signature navy→blue→violet sweep, so the hero balance card reads as the premium
-                         Umbrella surface rather than a plain photo. -->
-                    <Border Background="{DynamicResource UmHeroGradient}" Opacity="0.55"/>
+                    <!-- ANIMATED (default): a deep-navy base with rain footage composited over it. The
+                         frames are keyed to alpha, so only the silver streaks show over the navy — no
+                         darkening. Shown when the portfolio-video toggle and master motion are both on. -->
+                    <Border Background="{DynamicResource UmHeroGradient}" IsVisible="{Binding PortfolioVideoOn}"/>
+                    <Border Background="{DynamicResource UmAccentWash}" IsVisible="{Binding PortfolioVideoOn}"/>
+                    <controls:FrameAnimation Opacity="0.6" Margin="-1" IsVisible="{Binding PortfolioVideoOn}"/>
+
+                    <!-- STILL (motion off): the same clean navy hero gradient as the animated base, just
+                         without the rain. No photo — the old photo backdrop blew out to bright white at
+                         the card edges, which looked broken with motion off. -->
+                    <Border Background="{DynamicResource UmHeroGradient}" IsVisible="{Binding !PortfolioVideoOn}"/>
+                    <Border Background="{DynamicResource UmAccentWash}" IsVisible="{Binding !PortfolioVideoOn}"/>
+
+                    <!-- Bottom-left vignette so the balance always reads cleanly over either backdrop. -->
+                    <Border>
+                      <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,100%" EndPoint="65%,10%">
+                          <GradientStop Color="#B3060B14" Offset="0"/>
+                          <GradientStop Color="#00060B14" Offset="0.9"/>
+                        </LinearGradientBrush>
+                      </Border.Background>
+                    </Border>
                     <!-- Logo to the right, vertically centred — balance sits bottom-left, so the mark
                          reads as the card's brand without covering the numbers. -->
                     <Image Source="{Binding LogoImage}" Width="96" Height="96" Opacity="0.96"
@@ -566,62 +534,150 @@
                           <Button Classes="chip" Content="{Binding HideBalanceLabel}" Command="{Binding ToggleBalanceHiddenCommand}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
-                          <TextBlock Classes="serif" FontSize="52" Foreground="{DynamicResource UmAccentBright}" Text="{Binding CurrencySymbol}" Margin="0,0,3,6" VerticalAlignment="Bottom"/>
-                          <TextBlock Classes="serif" FontSize="56" FontWeight="Medium" Text="{Binding BalanceDisplayMain}" VerticalAlignment="Bottom"/>
-                          <TextBlock Classes="serif" FontSize="25" Foreground="{DynamicResource UmTextDim}" Text="{Binding BalanceDisplayCents}"
-                                     VerticalAlignment="Bottom" Margin="0,0,0,9"/>
+                          <TextBlock Classes="serif" FontSize="30" Foreground="{DynamicResource UmAccentBright}" Text="{Binding CurrencySymbol}" Margin="0,0,4,7" VerticalAlignment="Bottom"/>
+                          <TextBlock Classes="serif" FontSize="54" FontWeight="Medium" Text="{Binding BalanceDisplayMain}" VerticalAlignment="Bottom" LineHeight="58"/>
+                          <TextBlock Classes="serif" FontSize="26" Foreground="{DynamicResource UmTextDim}" Text="{Binding BalanceDisplayCents}"
+                                     VerticalAlignment="Bottom" Margin="1,0,0,7"/>
                         </StackPanel>
-                        <TextBlock Text="{Binding Change24hLabel}" Foreground="{DynamicResource UmPos}" FontSize="13"/>
+                        <Border Background="{Binding PortfolioChangeColor, Converter={StaticResource ChangeWash}}"
+                                CornerRadius="999" Padding="9,4" HorizontalAlignment="Left" Margin="0,2,0,0">
+                          <TextBlock Text="{Binding Change24hLabel}" Foreground="{Binding PortfolioChangeColor}" FontSize="12.5" FontWeight="SemiBold"/>
+                        </Border>
                       </StackPanel>
                     </Grid>
                   </Panel>
                 </Border>
 
-                <!-- Quick actions as wide cards (icon · title · subtitle), like the reference.
-                     UniformGrid so the row wraps to 2×2 on the narrow mobile layout instead of
-                     clipping four tiles across. -->
-                <UniformGrid Columns="{Binding QuickActionColumns}">
-                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
-                          Command="{Binding SelectSectionCommand}" CommandParameter="Receive">
-                    <Grid ColumnDefinitions="Auto,*">
-                      <Path Classes="tileIcon" Stroke="#795CFF" VerticalAlignment="Center" Data="M12 3 V17 M12 17 L6 11 M12 17 L18 11 M4 21 H20"/>
-                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
-                        <TextBlock Text="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding [action.getCrypto], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
+                <!-- Beside the balance card: two DIFFERENT widget types (not four number clones) —
+                     a live "Top movers" list and a horizontal allocation bar — so the dashboard reads
+                     like a real board of distinct modules. -->
+                <Grid Grid.Column="1" RowDefinitions="*,Auto">
+                  <!-- Widget 1 · Top movers (a market list) -->
+                  <Border Classes="card" Padding="16,13">
+                    <StackPanel Spacing="9">
+                      <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"
+                                   Text="{Binding [market.gainers], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBlock Grid.Column="1" Text="24H" FontSize="9.5" Foreground="{DynamicResource UmTextMuted}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      </Grid>
+                      <ItemsControl ItemsSource="{Binding MarketGainers}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:MarketRowViewModel">
+                            <Button Classes="row" CornerRadius="10" Padding="6,5" Margin="0,1" MinHeight="0"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                    Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SelectMarketCoinCommand}"
+                                    CommandParameter="{Binding}">
+                              <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Border Width="26" Height="26" CornerRadius="13" Background="{Binding BadgeBg}" ClipToBounds="True" VerticalAlignment="Center">
+                                  <Panel>
+                                    <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="12.5" FontWeight="Bold"
+                                               Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
+                                  </Panel>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{Binding Symbol}" FontWeight="SemiBold" FontSize="12.5"
+                                           Margin="9,0,0,0" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding ChangeLabel}" Foreground="{Binding ChangeColor}"
+                                           FontSize="12" FontWeight="SemiBold" Classes="mono" VerticalAlignment="Center"/>
+                              </Grid>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+
+                  <!-- Widget 2 · Allocation bar (a chart) with an asset/network footer -->
+                  <Border Grid.Row="1" Classes="card" Padding="16,13" Margin="0,14,0,0">
+                    <StackPanel Spacing="10">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                 Text="{Binding [portfolio.allocation], Source={x:Static app:Loc.Instance}}"/>
+                      <!-- Segmented allocation bar (empty prompt until there are funds). -->
+                      <Border Height="12" CornerRadius="6" Background="{DynamicResource UmInput}" ClipToBounds="True"
+                              IsVisible="{Binding HasBreakdown}">
+                        <ItemsControl ItemsSource="{Binding PortfolioBreakdown}">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PortfolioSlice">
+                              <Border Width="{Binding BarWidth}" Background="{Binding Brush}"/>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </Border>
+                      <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
+                                 IsVisible="{Binding !HasBreakdown}"
+                                 Text="{Binding [portfolio.overviewEmpty], Source={x:Static app:Loc.Instance}}"/>
+                      <!-- Asset + network counts, inline (not their own tiles). -->
+                      <StackPanel Orientation="Horizontal" Spacing="16">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <TextBlock Text="{Binding PortfolioAssetCount}" FontWeight="SemiBold" FontSize="13"/>
+                          <TextBlock Text="{Binding [stat.assets], Source={x:Static app:Loc.Instance}}"
+                                     FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <TextBlock Text="{Binding PortfolioNetworkCount}" FontWeight="SemiBold" FontSize="13"/>
+                          <TextBlock Text="{Binding [stat.networks], Source={x:Static app:Loc.Instance}}"
+                                     FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"/>
+                        </StackPanel>
                       </StackPanel>
-                    </Grid>
+                    </StackPanel>
+                  </Border>
+                </Grid>
+                </Grid>
+
+                <!-- Quick actions, Kraken-style: round accent discs with a label under each, so the
+                     primary things you do with a wallet read at a glance instead of as blank squares. -->
+                <StackPanel Orientation="Horizontal" Spacing="26" HorizontalAlignment="Left" Margin="4,4,0,0">
+                  <Button Classes="action" Command="{Binding SelectSectionCommand}" CommandParameter="Receive"
+                          AutomationProperties.Name="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}">
+                    <StackPanel>
+                      <Border Classes="disc">
+                        <Path Classes="actionIcon" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M12 3 V17 M12 17 L6 11 M12 17 L18 11 M4 21 H20"/>
+                      </Border>
+                      <TextBlock Classes="actionLabel" Text="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}"/>
+                    </StackPanel>
                   </Button>
-                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
-                          Command="{Binding SelectSectionCommand}" CommandParameter="Send">
-                    <Grid ColumnDefinitions="Auto,*">
-                      <Path Classes="tileIcon" Stroke="#3478FF" VerticalAlignment="Center" Data="M12 21 V7 M12 7 L6 13 M12 7 L18 13 M4 3 H20"/>
-                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
-                        <TextBlock Text="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding [action.sendCrypto], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
-                      </StackPanel>
-                    </Grid>
+                  <Button Classes="action" Command="{Binding SelectSectionCommand}" CommandParameter="Send"
+                          AutomationProperties.Name="{Binding [nav.send], Source={x:Static app:Loc.Instance}}">
+                    <StackPanel>
+                      <Border Classes="disc">
+                        <Path Classes="actionIcon" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M12 21 V7 M12 7 L6 13 M12 7 L18 13 M4 3 H20"/>
+                      </Border>
+                      <TextBlock Classes="actionLabel" Text="{Binding [nav.send], Source={x:Static app:Loc.Instance}}"/>
+                    </StackPanel>
                   </Button>
-                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
-                          Command="{Binding SelectSectionCommand}" CommandParameter="Swap">
-                    <Grid ColumnDefinitions="Auto,*">
-                      <Path Classes="tileIcon" Stroke="#24C6FF" VerticalAlignment="Center" Data="M6 8 H17 L14 5 M18 16 H7 L10 19"/>
-                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
-                        <TextBlock Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding [sec.swapHere], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
-                      </StackPanel>
-                    </Grid>
+                  <Button Classes="action" Command="{Binding SelectSectionCommand}" CommandParameter="Swap"
+                          AutomationProperties.Name="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}">
+                    <StackPanel>
+                      <Border Classes="disc">
+                        <Path Classes="actionIcon" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M6 8 H17 L14 5 M18 16 H7 L10 19"/>
+                      </Border>
+                      <TextBlock Classes="actionLabel" Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}"/>
+                    </StackPanel>
                   </Button>
-                  <Button Classes="tile" Height="66" HorizontalContentAlignment="Stretch" Padding="14,0" Margin="0,0,12,12"
-                          Command="{Binding SelectSectionCommand}" CommandParameter="Market">
-                    <Grid ColumnDefinitions="Auto,*">
-                      <Path Classes="tileIcon" Stroke="#45E6A5" VerticalAlignment="Center" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
-                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
-                        <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding [action.pricesCharts], Source={x:Static app:Loc.Instance}}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
-                      </StackPanel>
-                    </Grid>
+                  <Button Classes="action" Command="{Binding SelectSectionCommand}" CommandParameter="Buy"
+                          AutomationProperties.Name="{Binding [section.buyCrypto], Source={x:Static app:Loc.Instance}}">
+                    <StackPanel>
+                      <Border Classes="disc">
+                        <Path Classes="actionIcon" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M12 5 V19 M5 12 H19"/>
+                      </Border>
+                      <TextBlock Classes="actionLabel" Text="{Binding [section.buyCrypto], Source={x:Static app:Loc.Instance}}"/>
+                    </StackPanel>
                   </Button>
-                </UniformGrid>
+                  <Button Classes="action" Command="{Binding SelectSectionCommand}" CommandParameter="Market"
+                          AutomationProperties.Name="{Binding [nav.market], Source={x:Static app:Loc.Instance}}">
+                    <StackPanel>
+                      <Border Classes="disc">
+                        <Path Classes="actionIcon" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
+                      </Border>
+                      <TextBlock Classes="actionLabel" Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}"/>
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
 
                 <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
                   <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
@@ -642,59 +698,58 @@
                   </Border>
                 </Grid>
 
-                <Border Classes="hairline">
-                  <StackPanel>
-                    <!-- Simplified: Asset · Amount · Value · 24h. Price lives on the coin's Market page. -->
-                    <Grid ColumnDefinitions="2.4*,1.5*,1.3*,0.9*,Auto" ColumnSpacing="18" Height="34" Background="{DynamicResource UmCard}">
-                      <TextBlock Classes="eyebrow" Text="{Binding [col.asset], Source={x:Static app:Loc.Instance}}" Margin="16,0,0,0" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="1" Classes="eyebrow" Text="{Binding [col.balance], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="2" Classes="eyebrow" Text="{Binding [col.value], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="3" Classes="eyebrow" Text="{Binding [col.24h], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="4" Width="70"/>
-                    </Grid>
+                <!-- Holdings as clean rows (no column-header table): coin mark + name/ticker on the left,
+                     fiat value over the coin amount on the right, and a tinted 24h pill. The whole row
+                     opens that coin's asset page. Rows scroll inside a fixed height so the list never
+                     eats the page. -->
+                <Border Classes="card" Padding="6">
+                  <ScrollViewer MaxHeight="420" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
                     <ItemsControl ItemsSource="{Binding Holdings}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:HoldingRowViewModel">
-                          <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Height="60">
-                            <Grid ColumnDefinitions="2.4*,1.5*,1.3*,0.9*,Auto" ColumnSpacing="18" Margin="16,0">
-                              <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center" ClipToBounds="True">
-                                <Border Width="38" Height="38" CornerRadius="19" Margin="0,0,10,0" Background="{Binding BadgeColor}"
-                                        BoxShadow="{Binding BadgeShadow}" ClipToBounds="True">
-                                  <Panel>
-                                    <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="18" FontWeight="Bold"
-                                               Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="UniformToFill"/>
-                                  </Panel>
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="0">
-                                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
-                                  <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextMuted}" Text="{Binding NetworkLabel}"
-                                             TextTrimming="CharacterEllipsis"/>
+                          <Button Classes="row" CornerRadius="14" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                  Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).OpenAssetDetailsCommand}"
+                                  CommandParameter="{Binding Symbol}"
+                                  AutomationProperties.Name="{Binding Name}">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Height="64" Margin="14,0">
+                              <!-- Coin mark -->
+                              <Border Width="42" Height="42" CornerRadius="21" Background="{Binding BadgeBg}"
+                                      BoxShadow="{Binding BadgeShadow}" ClipToBounds="True" VerticalAlignment="Center">
+                                <Panel>
+                                  <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="19" FontWeight="Bold"
+                                             Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                  <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
+                                </Panel>
+                              </Border>
+                              <!-- Name + network subtitle -->
+                              <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center" Spacing="2" ClipToBounds="True">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14.5" TextTrimming="CharacterEllipsis"/>
+                                <StackPanel Orientation="Horizontal" Spacing="7">
+                                  <TextBlock Text="{Binding Symbol}" FontSize="12" Foreground="{DynamicResource UmTextMuted}"/>
+                                  <Border Background="{Binding ChangeColor, Converter={StaticResource ChangeWash}}"
+                                          CornerRadius="999" Padding="6,1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding ChangeLabel}" Foreground="{Binding ChangeColor}" FontSize="10.5" FontWeight="SemiBold"/>
+                                  </Border>
                                 </StackPanel>
-                              </Grid>
-                              <Grid Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <TextBlock Classes="mono" FontSize="12.5" Foreground="{DynamicResource UmTextDim}" Text="{Binding AmountLabel}" TextTrimming="CharacterEllipsis"
+                              </StackPanel>
+                              <!-- Value over amount -->
+                              <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="3">
+                                <TextBlock Classes="mono" FontSize="14.5" FontWeight="SemiBold" HorizontalAlignment="Right"
+                                           Text="{Binding ValueLabel}"
                                            IsVisible="{Binding #RootWindow.((vm:MainViewModel)DataContext).AreValuesVisible}"/>
-                                <TextBlock Classes="mono" FontSize="12.5" Foreground="{DynamicResource UmTextDim}" Text="••••"
+                                <TextBlock Classes="mono" FontSize="14.5" FontWeight="SemiBold" HorizontalAlignment="Right" Text="••••"
                                            IsVisible="{Binding #RootWindow.((vm:MainViewModel)DataContext).IsBalanceHidden}"/>
-                              </Grid>
-                              <Grid Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <TextBlock Classes="mono" FontSize="14" FontWeight="SemiBold" Text="{Binding ValueLabel}" TextTrimming="CharacterEllipsis"
+                                <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" HorizontalAlignment="Right"
+                                           Text="{Binding AmountLabel}" TextTrimming="CharacterEllipsis"
                                            IsVisible="{Binding #RootWindow.((vm:MainViewModel)DataContext).AreValuesVisible}"/>
-                                <TextBlock Classes="mono" FontSize="14" FontWeight="SemiBold" Text="••••"
-                                           IsVisible="{Binding #RootWindow.((vm:MainViewModel)DataContext).IsBalanceHidden}"/>
-                              </Grid>
-                              <TextBlock Grid.Column="3" Classes="mono" FontSize="12.5" Text="{Binding ChangeLabel}" Foreground="{Binding ChangeColor}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                              <Button Grid.Column="4" Classes="ghost" Content="{Binding [common.copy], Source={x:Static app:Loc.Instance}}" Height="28" Padding="10,0" Margin="8,0,0,0"
-                                      Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).CopyAddressCommand}"
-                                      CommandParameter="{Binding Address}"/>
+                              </StackPanel>
                             </Grid>
-                          </Border>
+                          </Button>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                  </StackPanel>
+                  </ScrollViewer>
                 </Border>
               </StackPanel>
 
@@ -717,17 +772,18 @@
                       <DataTemplate x:DataType="vm:WalletAccountViewModel">
                         <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                 Margin="0,0,0,8" Padding="12" IsEnabled="{Binding IsReady}"
+                                AutomationProperties.Name="{Binding Name}"
                                 Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SelectReceiveAccountCommand}"
                                 CommandParameter="{Binding}">
                           <Grid ColumnDefinitions="Auto,56,*,Auto">
                             <Ellipse Width="8" Height="8" VerticalAlignment="Center"
                                      Fill="{Binding StatusColor}"/>
-                            <Border Grid.Column="1" Width="44" Height="44" CornerRadius="22" Background="{Binding BadgeColor}" Margin="12,0,0,0" ClipToBounds="True">
+                            <Border Grid.Column="1" Width="44" Height="44" CornerRadius="22" Background="{Binding BadgeBg}" Margin="12,0,0,0" ClipToBounds="True">
                               <Panel>
                                 <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="20" FontWeight="Bold"
                                            Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="UniformToFill"/>
+                                <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
                               </Panel>
                             </Border>
                             <StackPanel Grid.Column="2" Margin="12,0" VerticalAlignment="Center"
@@ -779,10 +835,39 @@
                     <!-- Network-check-on-paste: advisory only, but flags a destination that doesn't look
                          like the selected network before any funds move. -->
                     <Border IsVisible="{Binding SendAddressWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                            Background="#2A2416" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="6" Padding="10,7">
+                            Background="#2A2416" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="8" Padding="12,9">
+                      <!-- Grid (Auto icon, * text) so a long warning wraps inside the card instead of
+                           running off the right edge. -->
+                      <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Text="⚠" Foreground="#E7CA83" VerticalAlignment="Top" Margin="0,0,8,0"/>
+                        <TextBlock Grid.Column="1" Text="{Binding SendAddressWarning}" Foreground="#D8C79A"
+                                   TextWrapping="Wrap" FontSize="11.5"/>
+                      </Grid>
+                    </Border>
+
+                    <!-- Positive trust signal: the destination is a saved contact or one you've paid
+                         before. Green, so a trusted address reads as safe at a glance. -->
+                    <Border IsVisible="{Binding SendKnownContactShown}" CornerRadius="8" Padding="12,8"
+                            Background="#1622C55E" BorderThickness="1" BorderBrush="#2F7D53">
                       <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="⚠" Foreground="#E7CA83" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding SendAddressWarning}" Foreground="#D8C79A" TextWrapping="Wrap" FontSize="11.5" VerticalAlignment="Center"/>
+                        <TextBlock Text="✓" Foreground="#7DCF8F" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding SendKnownContact}" Foreground="#9FE0B1" FontSize="12"
+                                   TextWrapping="Wrap" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Border>
+
+                    <!-- Scam control: address-poisoning / own-address warning. The lookalike case is
+                         red (a likely scam); the own-address case is amber (a caution). Advisory. -->
+                    <Border IsVisible="{Binding SendSafetyShown}" CornerRadius="10" Padding="12,10"
+                            Background="#22000000" BorderThickness="1" BorderBrush="{Binding SendSafetyColor}">
+                      <StackPanel Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="⚠" Foreground="{Binding SendSafetyColor}" FontSize="13" VerticalAlignment="Center"/>
+                          <TextBlock Text="{Binding SendSafetyTitle}" Foreground="{Binding SendSafetyColor}"
+                                     FontWeight="SemiBold" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding SendSafetyText}" Foreground="{DynamicResource UmTextDim}"
+                                   FontSize="11.5" TextWrapping="Wrap"/>
                       </StackPanel>
                     </Border>
 
@@ -836,6 +921,67 @@
                     <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" Margin="2,0,0,0"
                                IsVisible="{Binding SendAmountFiat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                Text="{Binding SendAmountFiat}"/>
+
+                    <!-- Coin control (§3.4): opt-in manual UTXO selection for BTC/LTC/DOGE. Off = automatic
+                         selection (unchanged). On = only the ticked coins may fund the spend, so a payment
+                         never publicly links coins that belong to a different identity. -->
+                    <Border IsVisible="{Binding CoinControlAvailable}"
+                            Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmBorder}"
+                            BorderThickness="1" CornerRadius="10" Padding="12,10">
+                      <StackPanel Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                            <TextBlock Text="Coin control" FontSize="12.5" FontWeight="SemiBold"/>
+                            <TextBlock Text="Choose which coins fund this send" FontSize="11"
+                                       Foreground="{DynamicResource UmTextDim}"/>
+                          </StackPanel>
+                          <ToggleSwitch Grid.Column="1" VerticalAlignment="Center" OnContent="" OffContent=""
+                                        IsChecked="{Binding CoinControlOn}"/>
+                        </Grid>
+
+                        <StackPanel Spacing="8" IsVisible="{Binding CoinControlOn}">
+                          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                            <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource UmTextDim}" Text="{Binding CoinControlSummary}"/>
+                            <Button Grid.Column="1" Classes="ghost" MinHeight="0" Padding="10,5" FontSize="11"
+                                    Content="All" Command="{Binding CoinControlSelectAllCommand}"/>
+                            <Button Grid.Column="2" Classes="ghost" MinHeight="0" Padding="10,5" FontSize="11"
+                                    Content="None" Command="{Binding CoinControlSelectNoneCommand}"/>
+                          </Grid>
+
+                          <TextBlock Text="Loading coins…" FontSize="11" Foreground="{DynamicResource UmTextDim}"
+                                     IsVisible="{Binding CoinControlLoading}"/>
+
+                          <ScrollViewer MaxHeight="188" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+                            <ItemsControl ItemsSource="{Binding CoinControlUtxos}">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CoinControlUtxoVm">
+                                  <Border Background="{DynamicResource UmCard}" CornerRadius="8" Padding="10,7" Margin="0,0,0,6">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                      <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}"
+                                                VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                      <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Amount}" FontWeight="SemiBold" FontSize="12.5" Classes="mono"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                          <Border Background="{DynamicResource UmAccentWash}" CornerRadius="4" Padding="5,1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Kind}" FontSize="9.5" Foreground="{DynamicResource UmAccentText}"/>
+                                          </Border>
+                                          <TextBlock Text="{Binding AddressShort}" FontSize="10.5" Classes="mono"
+                                                     Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                      </StackPanel>
+                                      <TextBlock Grid.Column="2" Text="{Binding Status}" FontSize="10" VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource UmTextMuted}"/>
+                                    </Grid>
+                                  </Border>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </ScrollViewer>
+                        </StackPanel>
+                      </StackPanel>
+                    </Border>
+
                     <Border IsVisible="{Binding SendError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                             Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="6" Padding="12,9">
                       <TextBlock Text="{Binding SendError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
@@ -887,6 +1033,18 @@
 
                     <TextBlock Foreground="#BBAF91" FontSize="12" TextWrapping="Wrap"
                                Text="{Binding [send.step2warn], Source={x:Static app:Loc.Instance}}"/>
+
+                    <!-- Anonymity reminder: broadcasting with Tor off exposes your IP to the node. Only
+                         shown when clearnet is actually possible (Tor off and kill-switch off). -->
+                    <Border IsVisible="{Binding ShowSendClearnetNote}" CornerRadius="8" Padding="12,9"
+                            Background="#22000000" BorderThickness="1" BorderBrush="#7A6230">
+                      <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Text="🧅" VerticalAlignment="Top" Margin="0,0,8,0"/>
+                        <TextBlock Grid.Column="1" Text="{Binding [send.clearnetNote], Source={x:Static app:Loc.Instance}}"
+                                   Foreground="{DynamicResource UmTextDim}" FontSize="11.5" TextWrapping="Wrap"/>
+                      </Grid>
+                    </Border>
+
                     <StackPanel Orientation="Horizontal" Spacing="10">
                       <Button Classes="danger" Content="{Binding [send.confirm], Source={x:Static app:Loc.Instance}}" IsEnabled="{Binding !IsBusy}"
                               Command="{Binding ConfirmSendCommand}"/>
@@ -933,29 +1091,68 @@
                              Text="{Binding [swap.coverage], Source={x:Static app:Loc.Instance}}"/>
                 </Border>
 
-                <!-- Step 1 · pair & amount -->
+                <!-- Step 1 · pair & amount. A DEX-style stacked "You pay → You receive" widget with a
+                     circular flip button straddling the two panels, like Uniswap. -->
                 <Border Classes="card">
                   <StackPanel Spacing="12">
                     <TextBlock Classes="eyebrow" Text="{Binding [swap.step1], Source={x:Static app:Loc.Instance}}"/>
-                    <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="10">
-                      <StackPanel Spacing="6">
-                        <TextBlock Classes="eyebrow" Text="{Binding [swap.from], Source={x:Static app:Loc.Instance}}"/>
-                        <ComboBox ItemsSource="{Binding SwapFromOptions}" SelectedItem="{Binding SwapFromSymbol}" HorizontalAlignment="Stretch"/>
-                      </StackPanel>
-                      <TextBlock Grid.Column="1" Text="→" FontSize="20" VerticalAlignment="Bottom" Margin="0,0,0,6"
-                                 Foreground="{DynamicResource UmTextDim}"/>
-                      <StackPanel Grid.Column="2" Spacing="6">
-                        <TextBlock Classes="eyebrow" Text="{Binding [swap.to], Source={x:Static app:Loc.Instance}}"/>
-                        <ComboBox ItemsSource="{Binding SwapToOptions}" SelectedItem="{Binding SwapToSymbol}" HorizontalAlignment="Stretch"/>
-                      </StackPanel>
+
+                    <Grid RowDefinitions="Auto,Auto">
+                      <!-- You pay -->
+                      <Border Background="{DynamicResource UmInput}" BorderBrush="{DynamicResource UmBorder2}"
+                              BorderThickness="1" CornerRadius="16" Padding="16,13">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <StackPanel Spacing="6" VerticalAlignment="Center">
+                            <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                       Text="{Binding [swap.from], Source={x:Static app:Loc.Instance}}"/>
+                            <TextBox Text="{Binding SwapAmount}" Watermark="0.0" BorderThickness="0" Padding="0"
+                                     MinHeight="0" Background="Transparent" FontSize="26" FontWeight="SemiBold"/>
+                          </StackPanel>
+                          <ComboBox Grid.Column="1" MinWidth="118" VerticalAlignment="Center"
+                                    ItemsSource="{Binding SwapFromOptions}" SelectedItem="{Binding SwapFromSymbol}"/>
+                        </Grid>
+                      </Border>
+
+                      <!-- Flip button, overlapping the seam between the two panels. -->
+                      <Border Grid.Row="0" Grid.RowSpan="2" Width="42" Height="42" CornerRadius="21"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="2"
+                              Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="2">
+                        <Button Classes="action" Command="{Binding FlipSwapCommand}"
+                                AutomationProperties.Name="{Binding [swap.from], Source={x:Static app:Loc.Instance}}"
+                                Width="42" Height="42">
+                          <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="2" StrokeLineCap="Round"
+                                StrokeJoin="Round" Fill="Transparent" Width="18" Height="18" Stretch="Uniform"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Data="M8 4 V16 M8 16 L5 13 M8 16 L11 13 M16 20 V8 M16 8 L13 11 M16 8 L19 11"/>
+                        </Button>
+                      </Border>
+
+                      <!-- You receive -->
+                      <Border Grid.Row="1" Margin="0,8,0,0" Background="{DynamicResource UmInput}"
+                              BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="16" Padding="16,13">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <StackPanel Spacing="6" VerticalAlignment="Center">
+                            <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                       Text="{Binding [swap.to], Source={x:Static app:Loc.Instance}}"/>
+                            <TextBlock Text="{Binding SwapExpectedOut}" FontSize="24" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource UmTextDim}" Classes="mono"
+                                       IsVisible="{Binding SwapExpectedOut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            <TextBlock Text="≈ 0.0" FontSize="24" FontWeight="SemiBold" Classes="mono"
+                                       Foreground="{DynamicResource UmTextMuted}"
+                                       IsVisible="{Binding !HasSwapQuote}"/>
+                          </StackPanel>
+                          <ComboBox Grid.Column="1" MinWidth="118" VerticalAlignment="Center"
+                                    ItemsSource="{Binding SwapToOptions}" SelectedItem="{Binding SwapToSymbol}"/>
+                        </Grid>
+                      </Border>
                     </Grid>
-                    <TextBlock Classes="eyebrow" Text="{Binding [swap.amount], Source={x:Static app:Loc.Instance}}"/>
-                    <TextBox Text="{Binding SwapAmount}" Watermark="0.0"/>
+
                     <Border IsVisible="{Binding SwapError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                             Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="6" Padding="12,9">
                       <TextBlock Text="{Binding SwapError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
                     </Border>
-                    <Button Classes="primary" Content="{Binding [swap.getQuote], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left"
+                    <Button Classes="primary" Content="{Binding [swap.getQuote], Source={x:Static app:Loc.Instance}}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                             IsEnabled="{Binding !SwapBusy}" Command="{Binding GetSwapQuoteCommand}"/>
                   </StackPanel>
                 </Border>
@@ -1213,11 +1410,11 @@
                     <DataTemplate x:DataType="vm:StakingRowViewModel">
                       <Border Classes="card" Margin="0,0,0,10" Padding="16,14">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
-                          <Border Grid.Column="0" Width="42" Height="42" CornerRadius="21" Background="{Binding BadgeColor}" VerticalAlignment="Top" ClipToBounds="True">
+                          <Border Grid.Column="0" Width="42" Height="42" CornerRadius="21" Background="{Binding BadgeBg}" VerticalAlignment="Top" ClipToBounds="True">
                             <Panel>
                               <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" Text="{Binding BadgeGlyph}" FontSize="19" FontWeight="Bold"
                                          Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasBadgeLogo}"/>
-                              <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="UniformToFill"/>
+                              <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
                             </Panel>
                           </Border>
                           <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3" MinWidth="0">
@@ -1248,46 +1445,70 @@
                            Text="{Binding [discover.sub], Source={x:Static app:Loc.Instance}}"/>
 
                 <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
-                        Command="{Binding SelectSectionCommand}" CommandParameter="Market">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Spacing="2">
+                        Command="{Binding SelectSectionCommand}" CommandParameter="Market" AutomationProperties.Name="Market">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border Width="42" Height="42" CornerRadius="21" VerticalAlignment="Center"
+                            Background="{DynamicResource UmAccentWash}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="1">
+                      <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8" StrokeLineCap="Round"
+                            StrokeJoin="Round" Fill="Transparent" Width="22" Height="22" Stretch="Uniform"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
                       <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
                       <TextBlock Text="{Binding [discover.market], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Text="›" FontSize="22" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+                    <TextBlock Grid.Column="2" Text="›" FontSize="22" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
                   </Grid>
                 </Button>
 
                 <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
-                        Command="{Binding SelectSectionCommand}" CommandParameter="Buy">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Spacing="2">
+                        Command="{Binding SelectSectionCommand}" CommandParameter="Buy" AutomationProperties.Name="Buy">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border Width="42" Height="42" CornerRadius="21" VerticalAlignment="Center"
+                            Background="{DynamicResource UmAccentWash}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="1">
+                      <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8" StrokeLineCap="Round"
+                            StrokeJoin="Round" Fill="Transparent" Width="22" Height="22" Stretch="Uniform"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" Data="M12 5 V19 M5 12 H19"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
                       <TextBlock Text="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
                       <TextBlock Text="{Binding [discover.buy], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Text="↗" FontSize="18" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+                    <TextBlock Grid.Column="2" Text="↗" FontSize="18" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
                   </Grid>
                 </Button>
 
                 <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
-                        Command="{Binding SelectSectionCommand}" CommandParameter="P2p">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Spacing="2">
+                        Command="{Binding SelectSectionCommand}" CommandParameter="P2p" AutomationProperties.Name="P2p">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border Width="42" Height="42" CornerRadius="21" VerticalAlignment="Center"
+                            Background="{DynamicResource UmAccentWash}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="1">
+                      <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8" StrokeLineCap="Round"
+                            StrokeJoin="Round" Fill="Transparent" Width="22" Height="22" Stretch="Uniform"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" Data="M8 8 A3 3 0 1 0 8 7.99 M16 16 A3 3 0 1 0 16 15.99 M9 10 L15 14"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
                       <TextBlock Text="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
                       <TextBlock Text="{Binding [discover.p2p], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Text="↗" FontSize="18" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+                    <TextBlock Grid.Column="2" Text="↗" FontSize="18" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
                   </Grid>
                 </Button>
 
                 <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
-                        Command="{Binding SelectSectionCommand}" CommandParameter="News">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Spacing="2">
+                        Command="{Binding SelectSectionCommand}" CommandParameter="News" AutomationProperties.Name="News">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border Width="42" Height="42" CornerRadius="21" VerticalAlignment="Center"
+                            Background="{DynamicResource UmAccentWash}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="1">
+                      <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8" StrokeLineCap="Round"
+                            StrokeJoin="Round" Fill="Transparent" Width="22" Height="22" Stretch="Uniform"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" Data="M5 5 H19 V19 H5 Z M8 9 H16 M8 12 H16 M8 15 H13"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
                       <TextBlock Text="{Binding [nav.news], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
                       <TextBlock Text="{Binding [discover.news], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Text="›" FontSize="22" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+                    <TextBlock Grid.Column="2" Text="›" FontSize="22" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
                   </Grid>
                 </Button>
               </StackPanel>
@@ -1340,8 +1561,11 @@
                     </Grid>
                     <Grid ColumnDefinitions="Auto,Auto,*,Auto">
                       <TextBlock Text="{Binding ChartRange, StringFormat='{}{0} PRICE · USD'}" Classes="eyebrow" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="1" Text="{Binding ChartChangeLabel}" Foreground="{Binding ChartChangeColor}"
-                                 Classes="mono" FontSize="11.5" FontWeight="SemiBold" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                      <Border Grid.Column="1" Background="{Binding ChartChangeColor, Converter={StaticResource ChangeWash}}"
+                              CornerRadius="999" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ChartChangeLabel}" Foreground="{Binding ChartChangeColor}"
+                                   Classes="mono" FontSize="11.5" FontWeight="SemiBold"/>
+                      </Border>
                       <!-- Line ⇄ Candles toggle, like a pro charting view. -->
                       <Border Grid.Column="3" Classes="hairline" Padding="3" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="2">
@@ -1382,15 +1606,35 @@
                           <TextBlock Canvas.Left="2" Canvas.Top="123" Classes="mono" FontSize="9.5" Width="52" TextAlignment="Right" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartLevel4}"/>
 
                           <!-- Soft gradient area (change-colour → transparent) + the price line. -->
-                          <Polygon Points="{Binding ChartArea}" Fill="{Binding ChartAreaBrush}"/>
+                          <!-- Area fill belongs to Line mode only; in Candle mode it smothered the candles
+                               into a solid blob, so it's hidden there and the real candlesticks show. -->
+                          <Polygon Points="{Binding ChartArea}" Fill="{Binding ChartAreaBrush}" IsVisible="{Binding IsLineView}"/>
                           <!-- Faint backdrop line while candles are shown. -->
                           <Polyline Points="{Binding ChartPoints}" Stroke="{Binding SelectedMarketChangeColor}"
                                     StrokeThickness="1" Opacity="0.28" StrokeLineCap="Round" StrokeJoin="Round"
                                     IsVisible="{Binding IsCandleView}"/>
-                          <!-- Bold line in Line mode. -->
+                          <!-- Bold line in Line mode (Uniswap-style: clean line over a soft area). -->
                           <Polyline Points="{Binding ChartPoints}" Stroke="{Binding SelectedMarketChangeColor}"
-                                    StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"
+                                    StrokeThickness="2.8" StrokeLineCap="Round" StrokeJoin="Round"
                                     IsVisible="{Binding IsLineView}"/>
+
+                          <!-- Volume bars along the bottom, behind the candles (pro-terminal cue). -->
+                          <ItemsControl ItemsSource="{Binding ChartVolumeBars}" x:CompileBindings="False">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.Styles>
+                              <Style Selector="ContentPresenter">
+                                <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                              </Style>
+                            </ItemsControl.Styles>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:VolumeBarVm">
+                                <Rectangle Width="{Binding W}" Height="{Binding H}" Fill="{Binding Color}"/>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
 
                           <!-- Real OHLC candlesticks (Binance klines): green up, red down. Reflection
                                bindings on the container (its DataContext is the CandleVm, not the VM). -->
@@ -1414,6 +1658,11 @@
                               </DataTemplate>
                             </ItemsControl.ItemTemplate>
                           </ItemsControl>
+
+                          <!-- Moving-average overlay (gold) on top of the candles — the pro-chart trend line. -->
+                          <Polyline Points="{Binding ChartMa}" Stroke="#E7B24C" StrokeThickness="1.6"
+                                    Opacity="0.9" StrokeLineCap="Round" StrokeJoin="Round"
+                                    IsVisible="{Binding IsCandleView}"/>
 
                           <!-- Crosshair (hover): vertical guide, dot on the close, floating readout. -->
                           <Rectangle Canvas.Left="{Binding CrosshairLineLeft}" Canvas.Top="10" Width="1" Height="120"
@@ -1488,6 +1737,86 @@
                   </StackPanel>
                 </Border>
 
+                <!-- Overview: movers and the watchlist, both computed from prices the wallet has
+                     ALREADY fetched. No extra endpoint and no extra request — a privacy wallet should
+                     not pay for an overview screen with more traffic. Coins with no live price are left
+                     out rather than shown as a flat 0%. -->
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" IsVisible="{Binding HasMarketMovers}">
+                  <Border Classes="card" Padding="16,14">
+                    <StackPanel Spacing="8">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                 Text="{Binding [market.gainers], Source={x:Static app:Loc.Instance}}"/>
+                      <ItemsControl ItemsSource="{Binding MarketGainers}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:MarketRowViewModel">
+                            <Button Classes="ghost" Padding="8,5" Margin="0,1" MinHeight="0"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                    Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SelectMarketCoinCommand}"
+                                    CommandParameter="{Binding}">
+                              <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="{Binding Symbol}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Classes="mono" FontSize="11.5" Text="{Binding ChangeLabel}"
+                                           Foreground="{Binding ChangeColor}" VerticalAlignment="Center"/>
+                              </Grid>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+
+                  <Border Grid.Column="1" Classes="card" Padding="16,14">
+                    <StackPanel Spacing="8">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                 Text="{Binding [market.losers], Source={x:Static app:Loc.Instance}}"/>
+                      <ItemsControl ItemsSource="{Binding MarketLosers}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:MarketRowViewModel">
+                            <Button Classes="ghost" Padding="8,5" Margin="0,1" MinHeight="0"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                    Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SelectMarketCoinCommand}"
+                                    CommandParameter="{Binding}">
+                              <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="{Binding Symbol}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Classes="mono" FontSize="11.5" Text="{Binding ChangeLabel}"
+                                           Foreground="{Binding ChangeColor}" VerticalAlignment="Center"/>
+                              </Grid>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+
+                  <Border Grid.Column="2" Classes="card" Padding="16,14">
+                    <StackPanel Spacing="8">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                 Text="{Binding [market.watchlist], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource UmTextDim}"
+                                 IsVisible="{Binding !HasWatchlist}"
+                                 Text="{Binding [market.watchEmpty], Source={x:Static app:Loc.Instance}}"/>
+                      <ItemsControl ItemsSource="{Binding MarketWatchlist}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:MarketRowViewModel">
+                            <Button Classes="ghost" Padding="8,5" Margin="0,1" MinHeight="0"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                    Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SelectMarketCoinCommand}"
+                                    CommandParameter="{Binding}">
+                              <Grid ColumnDefinitions="*,Auto,Auto">
+                                <TextBlock Text="{Binding Symbol}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Classes="mono" FontSize="11.5" Margin="0,0,8,0"
+                                           Text="{Binding PriceLabel}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Classes="mono" FontSize="11.5" Text="{Binding ChangeLabel}"
+                                           Foreground="{Binding ChangeColor}" VerticalAlignment="Center"/>
+                              </Grid>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+                </Grid>
+
                 <!-- Search: filters rows by ticker or name without touching the live-update list. -->
                 <Grid ColumnDefinitions="*,Auto">
                   <Border Classes="hairline" Padding="12,0" Height="40">
@@ -1517,6 +1846,7 @@
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:MarketRowViewModel">
                           <Button Classes="row" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0"
+                                  AutomationProperties.Name="{Binding Name}"
                                   Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SelectMarketCoinCommand}"
                                   CommandParameter="{Binding}">
                             <Button.IsVisible>
@@ -1529,12 +1859,21 @@
                             <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Height="58">
                               <Grid ColumnDefinitions="1.6*,Auto,1.1*,0.8*,1.4*" Margin="16,0">
                                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                  <Border Width="32" Height="32" CornerRadius="16" Background="{Binding BadgeColor}" ClipToBounds="True">
+                                  <!-- Watchlist star. Nested in the row button on purpose: starring a coin
+                                       must not also open its chart, so it carries its own command. -->
+                                  <Button Classes="ghost" Padding="6,2" MinHeight="0" VerticalAlignment="Center"
+                                          AutomationProperties.Name="{Binding [market.watchHint], Source={x:Static app:Loc.Instance}}"
+                                          ToolTip.Tip="{Binding [market.watchHint], Source={x:Static app:Loc.Instance}}"
+                                          Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).ToggleWatchCommand}"
+                                          CommandParameter="{Binding Symbol}">
+                                    <TextBlock Text="{Binding WatchGlyph}" Foreground="{Binding WatchColor}" FontSize="14"/>
+                                  </Button>
+                                  <Border Width="32" Height="32" CornerRadius="16" Background="{Binding BadgeBg}" ClipToBounds="True">
                                     <Panel>
                                       <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="16" FontWeight="Bold"
                                                  Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                      <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="UniformToFill"/>
+                                      <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
                                     </Panel>
                                   </Border>
                                   <StackPanel VerticalAlignment="Center">
@@ -1747,12 +2086,16 @@
                 <ItemsControl ItemsSource="{Binding News}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:NewsItemViewModel">
-                      <Button Classes="ghost" Padding="0" Margin="0,0,0,10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                      <!-- One clean card per item: a single bordered card that IS the button, so there
+                           is no doubled edge (a ghost button wrapped around a card looked broken). -->
+                      <Button Classes="row" CornerRadius="14" Margin="0,0,0,10" Padding="0"
+                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                               Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).OpenNewsCommand}" CommandParameter="{Binding}">
-                        <Border Classes="card" Background="Transparent">
-                          <StackPanel Spacing="7">
+                        <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
+                                BorderThickness="1" CornerRadius="14" Padding="18,15">
+                          <StackPanel Spacing="8">
                             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                              <Border Background="{Binding TagColor}" CornerRadius="6" Padding="7,2">
+                              <Border Background="{Binding TagColor}" CornerRadius="6" Padding="8,2">
                                 <TextBlock Text="{Binding Tag}" FontSize="9.5" FontWeight="SemiBold"
                                            Foreground="#0C0D10" LetterSpacing="1"/>
                               </Border>
@@ -1881,6 +2224,199 @@
                           </Grid>
                         </Border>
                       </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+
+              <!-- ===== ASSET DETAILS =====
+                   One coin end to end: the holding, the live price, the address it lives on, what this
+                   build can actually do with it (read from ChainCatalog, so the page cannot promise a
+                   capability the wallet lacks) and the movements that touched it. -->
+              <StackPanel Classes="page" IsVisible="{Binding IsAsset}" Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
+                <Button Classes="ghost" Padding="12,5" MinHeight="0" HorizontalAlignment="Left"
+                        Content="{Binding [asset.back], Source={x:Static app:Loc.Instance}}"
+                        Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio"/>
+
+                <!-- Identity + price header -->
+                <Border Classes="card" Padding="20,16">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border Width="46" Height="46" CornerRadius="23" Background="{Binding AssetBadgeBg}"
+                            ClipToBounds="True" VerticalAlignment="Center">
+                      <Panel>
+                        <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="20" FontWeight="Bold"
+                                   Foreground="#FFFFFF" Text="{Binding AssetBadgeGlyph}" IsVisible="{Binding !AssetHasBadgeLogo}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image Source="{Binding AssetBadgeLogo}" IsVisible="{Binding AssetHasBadgeLogo}" Stretch="Uniform"/>
+                      </Panel>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="14,0" Spacing="3" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding AssetName}" FontSize="20" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding AssetNetwork}" FontSize="11.5" Foreground="{DynamicResource UmTextDim}"
+                                 TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="3" HorizontalAlignment="Right" VerticalAlignment="Center">
+                      <TextBlock Classes="mono" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Right"
+                                 Text="{Binding AssetPriceLabel}"/>
+                      <TextBlock Classes="mono" FontSize="12" HorizontalAlignment="Right"
+                                 Text="{Binding AssetChangeLabel}" Foreground="{Binding AssetChangeColor}"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+
+                <!-- Holding. Follows the same hide-balances rule as the rest of the wallet. -->
+                <Border Classes="card" Padding="20,16">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="4">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                 Text="{Binding [asset.holding], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock Classes="mono" FontSize="24" FontWeight="SemiBold"
+                                 Text="{Binding AssetValueLabel}" IsVisible="{Binding AreValuesVisible}"/>
+                      <TextBlock Classes="mono" FontSize="24" FontWeight="SemiBold" Text="•••••"
+                                 IsVisible="{Binding IsBalanceHidden}"/>
+                      <TextBlock Classes="mono" FontSize="12.5" Foreground="{DynamicResource UmTextDim}"
+                                 Text="{Binding AssetAmountLabel}" IsVisible="{Binding AreValuesVisible}"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" Background="Transparent" BorderBrush="{Binding AssetStatusColor}" BorderThickness="1"
+                            CornerRadius="7" Padding="9,2" VerticalAlignment="Top">
+                      <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{Binding AssetStatusColor}"
+                                 Text="{Binding AssetStatusLabel}"/>
+                    </Border>
+                  </Grid>
+                </Border>
+
+                <!-- Actions. Each is offered only where this build can really do it. -->
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Classes="ghost" Padding="14,7" MinHeight="0" IsVisible="{Binding AssetHasAddress}"
+                          Content="{Binding [asset.capReceive], Source={x:Static app:Loc.Instance}}"
+                          Command="{Binding AssetReceiveCommand}"/>
+                  <Button Classes="ghost" Padding="14,7" MinHeight="0" IsVisible="{Binding AssetCanSend}"
+                          Content="{Binding [asset.capSend], Source={x:Static app:Loc.Instance}}"
+                          Command="{Binding AssetSendCommand}"/>
+                  <Button Classes="ghost" Padding="14,7" MinHeight="0" IsVisible="{Binding AssetCanSwap}"
+                          Content="{Binding [asset.capSwap], Source={x:Static app:Loc.Instance}}"
+                          Command="{Binding SelectSectionCommand}" CommandParameter="Swap"/>
+                  <Button Classes="ghost" Padding="14,7" MinHeight="0"
+                          Content="{Binding [asset.chart], Source={x:Static app:Loc.Instance}}"
+                          Command="{Binding AssetChartCommand}"/>
+                </StackPanel>
+
+                <!-- Address on this device -->
+                <Border Classes="card" Padding="16,14">
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                               Text="{Binding [asset.address], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Classes="mono" FontSize="11.5" TextWrapping="Wrap" IsVisible="{Binding AssetHasAddress}"
+                               Foreground="{DynamicResource UmTextSoft}" Text="{Binding AssetAddress}"/>
+                    <TextBlock FontSize="11.5" TextWrapping="Wrap" IsVisible="{Binding !AssetHasAddress}"
+                               Foreground="{DynamicResource UmTextDim}"
+                               Text="{Binding [asset.noAddress], Source={x:Static app:Loc.Instance}}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding AssetHasAddress}">
+                      <Button Classes="ghost" Padding="12,4" MinHeight="0"
+                              Content="{Binding [common.copyAddress], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding CopyAddressCommand}" CommandParameter="{Binding AssetAddress}"/>
+                    </StackPanel>
+                    <TextBlock Classes="mono" FontSize="10.5" Foreground="{DynamicResource UmTextMuted}"
+                               IsVisible="{Binding AssetDerivation, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               Text="{Binding AssetDerivation}"/>
+                  </StackPanel>
+                </Border>
+
+                <!-- Honest capability + privacy lines, straight from the chain catalog. -->
+                <Border Classes="card" Padding="16,14">
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                               Text="{Binding [asset.capabilities], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock FontSize="12" TextWrapping="Wrap" Text="{Binding AssetCapabilityLine}"/>
+                    <TextBlock Classes="eyebrow" Margin="0,8,0,0" Foreground="{DynamicResource UmTextMuted}"
+                               IsVisible="{Binding AssetPrivacyNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               Text="{Binding [asset.privacy], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource UmTextDim}"
+                               IsVisible="{Binding AssetPrivacyNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               Text="{Binding AssetPrivacyNote}"/>
+                  </StackPanel>
+                </Border>
+
+                <!-- This asset's movements -->
+                <TextBlock Classes="eyebrow" Margin="2,4,0,0" Foreground="{DynamicResource UmTextMuted}"
+                           Text="{Binding [asset.activity], Source={x:Static app:Loc.Instance}}"/>
+                <TextBlock FontSize="12" Foreground="{DynamicResource UmTextDim}" Margin="2,0,0,0"
+                           IsVisible="{Binding !HasAssetActivity}"
+                           Text="{Binding [asset.noActivity], Source={x:Static app:Loc.Instance}}"/>
+                <ItemsControl ItemsSource="{Binding AssetActivity}" IsVisible="{Binding HasAssetActivity}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ActivityRowViewModel">
+                      <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
+                              BorderThickness="1" CornerRadius="12" Padding="16,10" Margin="0,0,0,8">
+                        <Grid ColumnDefinitions="96,*,Auto,Auto">
+                          <TextBlock Text="{Binding Kind}" Foreground="{Binding KindColor}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
+                                     Text="{Binding Counterparty}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                          <TextBlock Grid.Column="2" Classes="mono" Text="{Binding Amount}" Foreground="{Binding KindColor}"
+                                     Margin="12,0" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="3" Foreground="{DynamicResource UmTextDim}" FontSize="11"
+                                     Text="{Binding When}" VerticalAlignment="Center"/>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+
+              <!-- ===== SECURITY CENTER =====
+                   One screen answering "what is actually protecting this wallet right now?". Every row
+                   is computed from live settings, so a protection that is off says so instead of being
+                   quietly left out, and the score only counts things the user can switch on. -->
+              <StackPanel Classes="page" IsVisible="{Binding IsSecurity}" Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center"
+                             Text="{Binding [sec.title], Source={x:Static app:Loc.Instance}}"/>
+                </StackPanel>
+                <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" Margin="2,0,0,4" TextWrapping="Wrap"
+                           Text="{Binding [sec.subtitle], Source={x:Static app:Loc.Instance}}"/>
+
+                <!-- Score header: how many switchable protections are on, right now. -->
+                <Border Classes="card" Padding="18,14">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="4">
+                      <TextBlock FontSize="20" FontWeight="SemiBold" Foreground="{Binding SecurityScoreColor}"
+                                 Text="{Binding SecurityScoreLabel}"/>
+                      <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
+                                 Text="{Binding ConnectionLabel}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="ghost" Padding="14,6" MinHeight="0" VerticalAlignment="Center"
+                            Content="{Binding [sec.refresh], Source={x:Static app:Loc.Instance}}"
+                            Command="{Binding RefreshSecurityCommand}"/>
+                  </Grid>
+                </Border>
+
+                <ItemsControl ItemsSource="{Binding SecurityChecks}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SecurityCheckVm">
+                      <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
+                              BorderThickness="1" CornerRadius="12" Padding="16,12" Margin="0,0,0,8">
+                        <Grid ColumnDefinitions="30,*,Auto">
+                          <TextBlock Text="{Binding Glyph}" FontSize="15" VerticalAlignment="Top" Margin="0,1,0,0"/>
+                          <StackPanel Grid.Column="1" Spacing="3" Margin="6,0,12,0">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding Detail}" FontSize="11.5" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource UmTextDim}"/>
+                          </StackPanel>
+                          <StackPanel Grid.Column="2" Spacing="6" HorizontalAlignment="Right">
+                            <Border Background="Transparent" BorderBrush="{Binding StateColor}" BorderThickness="1"
+                                    CornerRadius="7" Padding="9,2" HorizontalAlignment="Right">
+                              <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{Binding StateColor}"
+                                         Text="{Binding StateLabel}"/>
+                            </Border>
+                            <!-- The remedy sits on the row that needs it: no hunting through Settings. -->
+                            <Button Classes="ghost" Padding="10,4" MinHeight="0" HorizontalAlignment="Right"
+                                    IsVisible="{Binding ActionLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                    Content="{Binding ActionLabel}"
+                                    Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).OpenSecurityActionCommand}"
+                                    CommandParameter="{Binding ActionTarget}"/>
+                          </StackPanel>
+                        </Grid>
+                      </Border>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -2022,12 +2558,12 @@
                                   Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).ToggleWalletCoinCommand}"
                                   CommandParameter="{Binding Symbol}" Classes.active="{Binding Enabled}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                              <Border Width="16" Height="16" CornerRadius="8" Background="{Binding BadgeColor}" ClipToBounds="True">
+                              <Border Width="16" Height="16" CornerRadius="8" Background="{Binding BadgeBg}" ClipToBounds="True">
                                 <Panel>
                                   <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" Text="{Binding BadgeGlyph}"
                                              FontSize="9" FontWeight="Bold" Foreground="#FFFFFF" IsVisible="{Binding !HasBadgeLogo}"
                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                  <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="UniformToFill"/>
+                                  <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
                                 </Panel>
                               </Border>
                               <TextBlock Text="{Binding Symbol}" VerticalAlignment="Center"/>
@@ -2157,6 +2693,13 @@
                         <ToggleSwitch Grid.Column="1" IsChecked="{Binding RainEnabled, Mode=TwoWay}" OnContent="" OffContent=""/>
                       </Grid>
                       <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Text="{Binding [settings.portfolioVideo], Source={x:Static app:Loc.Instance}}" FontSize="13"/>
+                          <TextBlock Text="{Binding [settings.portfolioVideoHint], Source={x:Static app:Loc.Instance}}" FontSize="11" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding PortfolioVideo, Mode=TwoWay}" OnContent="" OffContent=""/>
+                      </Grid>
+                      <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Text="{Binding [settings.stickers], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
                         <ToggleSwitch Grid.Column="1" IsChecked="{Binding StickersEnabled, Mode=TwoWay}" OnContent="" OffContent=""/>
                       </Grid>
@@ -2175,22 +2718,12 @@
                                Text="{Binding [settings.profileHint], Source={x:Static app:Loc.Instance}}"/>
                     <TextBox Text="{Binding WalletName, Mode=TwoWay}" Watermark="{Binding [settings.walletNameHint], Source={x:Static app:Loc.Instance}}"
                              MaxWidth="360" HorizontalAlignment="Left"/>
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
-                      <Border Width="58" Height="58" CornerRadius="29" ClipToBounds="True" Background="{DynamicResource UmCard}"
-                              BorderBrush="{DynamicResource UmBorder2}" BorderThickness="2" VerticalAlignment="Top">
-                        <Panel>
-                          <Image Source="{Binding AvatarImage}" Stretch="UniformToFill" IsVisible="{Binding HasAvatar}"/>
-                          <Image Source="{Binding LogoImage}" Width="32" Height="32" HorizontalAlignment="Center"
-                                 VerticalAlignment="Center" IsVisible="{Binding !HasAvatar}"/>
-                        </Panel>
-                      </Border>
-                      <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                        <Button Classes="ghost" Content="{Binding [settings.chooseAvatar], Source={x:Static app:Loc.Instance}}" Margin="0,0,8,8" Command="{Binding PickAvatarCommand}"/>
-                        <Button Classes="ghost" Content="{Binding [settings.chooseBanner], Source={x:Static app:Loc.Instance}}" Margin="0,0,8,8" Command="{Binding PickBannerCommand}"/>
-                        <Button Classes="ghost" Content="{Binding [settings.sidebarBg], Source={x:Static app:Loc.Instance}}" Margin="0,0,8,8" Command="{Binding PickSidebarBgCommand}"/>
-                        <Button Classes="ghost" Content="{Binding [settings.reset], Source={x:Static app:Loc.Instance}}" Margin="0,0,8,8" Command="{Binding ClearProfileImagesCommand}"/>
-                      </WrapPanel>
-                    </Grid>
+                    <!-- Sidebar background is the only profile image actually shown in the UI; the old
+                         avatar/banner pickers were removed because nothing displayed them. -->
+                    <WrapPanel>
+                      <Button Classes="ghost" Content="{Binding [settings.sidebarBg], Source={x:Static app:Loc.Instance}}" Margin="0,0,8,8" Command="{Binding PickSidebarBgCommand}"/>
+                      <Button Classes="ghost" Content="{Binding [settings.reset], Source={x:Static app:Loc.Instance}}" Margin="0,0,8,8" Command="{Binding ClearProfileImagesCommand}"/>
+                    </WrapPanel>
                   </StackPanel>
                 </Border>
 
@@ -2267,34 +2800,26 @@
                 </Border>
 
                 <!-- Local cybersecurity posture — everything that protects the wallet on this machine. -->
+                <!-- Live Security Center shortcut — replaces the old static bullet list, which the
+                     Security Center now shows dynamically with real on/off state. -->
                 <Border Classes="card" IsVisible="{Binding IsTabSecurity}">
-                  <StackPanel Spacing="10">
-                    <TextBlock Classes="eyebrow" Text="{Binding [settings.cyber], Source={x:Static app:Loc.Instance}}"/>
-                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
-                               Text="{Binding [settings.cyberHint], Source={x:Static app:Loc.Instance}}"/>
-                    <!-- Bounded grid (Auto dot, * text) so long lines wrap inside the card instead
-                         of overflowing off the right edge. -->
-                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
-                      <Ellipse Grid.Row="0" Width="7" Height="7" Fill="{DynamicResource UmPos}" VerticalAlignment="Top" Margin="0,5,9,0"/>
-                      <TextBlock Grid.Row="0" Grid.Column="1" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource UmTextSoft}"
-                                 Text="{Binding [settings.cyber1], Source={x:Static app:Loc.Instance}}"/>
-                      <Ellipse Grid.Row="1" Width="7" Height="7" Fill="{DynamicResource UmPos}" VerticalAlignment="Top" Margin="0,5,9,0"/>
-                      <TextBlock Grid.Row="1" Grid.Column="1" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource UmTextSoft}"
-                                 Text="{Binding [settings.cyber2], Source={x:Static app:Loc.Instance}}"/>
-                      <Ellipse Grid.Row="2" Width="7" Height="7" Fill="{DynamicResource UmPos}" VerticalAlignment="Top" Margin="0,5,9,0"/>
-                      <TextBlock Grid.Row="2" Grid.Column="1" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource UmTextSoft}"
-                                 Text="{Binding [settings.cyber3], Source={x:Static app:Loc.Instance}}"/>
-                      <Ellipse Grid.Row="3" Width="7" Height="7" Fill="{DynamicResource UmPos}" VerticalAlignment="Top" Margin="0,5,9,0"/>
-                      <TextBlock Grid.Row="3" Grid.Column="1" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource UmTextSoft}"
-                                 Text="{Binding [settings.cyber4], Source={x:Static app:Loc.Instance}}"/>
-                      <Ellipse Grid.Row="4" Width="7" Height="7" Fill="{DynamicResource UmPos}" VerticalAlignment="Top" Margin="0,5,9,0"/>
-                      <TextBlock Grid.Row="4" Grid.Column="1" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource UmTextSoft}"
-                                 Text="{Binding [settings.cyber5], Source={x:Static app:Loc.Instance}}"/>
-                      <Ellipse Grid.Row="5" Width="7" Height="7" Fill="{DynamicResource UmPos}" VerticalAlignment="Top" Margin="0,5,9,0"/>
-                      <TextBlock Grid.Row="5" Grid.Column="1" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource UmTextSoft}"
-                                 Text="{Binding [settings.cyber6], Source={x:Static app:Loc.Instance}}"/>
-                    </Grid>
-                  </StackPanel>
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                    <Border Width="42" Height="42" CornerRadius="12" VerticalAlignment="Center"
+                            Background="{DynamicResource UmAccentWash}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="1">
+                      <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8" StrokeLineCap="Round"
+                            StrokeJoin="Round" Fill="Transparent" Width="22" Height="22" Stretch="Uniform"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Data="M12 3 L20 6 V12 C20 16.4 16.6 19.7 12 21 C7.4 19.7 4 16.4 4 12 V6 Z"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                      <TextBlock Text="{Binding [settings.secCenter], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="14"/>
+                      <TextBlock Text="{Binding [settings.secCenterHint], Source={x:Static app:Loc.Instance}}"
+                                 FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="primary" VerticalAlignment="Center"
+                            Content="{Binding [settings.openSecCenter], Source={x:Static app:Loc.Instance}}"
+                            Command="{Binding SelectSectionCommand}" CommandParameter="Security"/>
+                  </Grid>
                 </Border>
 
                 <Border Classes="card" IsVisible="{Binding IsTabPrivacy}">
@@ -2611,7 +3136,7 @@
                Collapses to zero width on other sections (Auto column + a hidden Border). -->
           <Border Grid.Column="1" IsVisible="{Binding ShowSideRail}" Width="330"
                   Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}" BorderThickness="1,0,0,0">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
               <StackPanel Margin="18,22" Spacing="16">
 
                 <Border Classes="hairline" Padding="18">
@@ -2662,34 +3187,24 @@
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
+                      <TextBlock Text="{Binding AllocationSummary}" FontSize="10.5" Foreground="{DynamicResource UmTextMuted}"
+                                 HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                   </StackPanel>
                 </Border>
 
-                <Border Classes="hairline" Padding="16">
-                  <StackPanel Spacing="8">
-                    <Grid ColumnDefinitions="*,Auto">
-                      <TextBlock Classes="eyebrow" Text="{Binding [portfolio.recent], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
-                      <Button Grid.Column="1" Classes="chip" Content="{Binding [common.viewAll], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Activity"/>
-                    </Grid>
-                    <TextBlock IsVisible="{Binding !HasActivity}" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
-                               Text="{Binding [portfolio.recentEmpty], Source={x:Static app:Loc.Instance}}" TextWrapping="Wrap"/>
-                    <ItemsControl ItemsSource="{Binding RecentActivity}" IsVisible="{Binding HasActivity}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:ActivityRowViewModel">
-                          <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6" ColumnSpacing="10">
-                            <Ellipse Width="7" Height="7" Fill="{Binding KindColor}" VerticalAlignment="Center"/>
-                            <StackPanel Grid.Column="1" MinWidth="0">
-                              <TextBlock FontSize="12.5" TextTrimming="CharacterEllipsis">
-                                <Run Text="{Binding Kind}"/><Run Text="  "/><Run Text="{Binding Asset}" Foreground="{DynamicResource UmTextDim}"/>
-                              </TextBlock>
-                              <TextBlock Text="{Binding Counterparty}" FontSize="10.5" Foreground="{DynamicResource UmTextMuted}" TextTrimming="CharacterEllipsis"/>
-                            </StackPanel>
-                            <TextBlock Grid.Column="2" Classes="mono" FontSize="11.5" Text="{Binding Amount}" Foreground="{Binding KindColor}" VerticalAlignment="Center"/>
-                          </Grid>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                <!-- Wallet address widget (§6): the primary address at a glance, with copy + a jump to
+                     the Receive screen's QR. Important for a privacy wallet. -->
+                <Border Classes="hairline" Padding="16" IsVisible="{Binding IsUnlocked}">
+                  <StackPanel Spacing="9">
+                    <TextBlock Classes="eyebrow" Text="{Binding [nav.wallet], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Classes="mono" FontSize="13" Text="{Binding ShortAddress}" Foreground="{DynamicResource UmText}"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding WalletLabel}" FontSize="11" Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+                      <Button Classes="chip" Content="{Binding [common.copy], Source={x:Static app:Loc.Instance}}" Command="{Binding CopyPrimaryAddressCommand}"/>
+                      <Button Classes="chip" Content="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Receive"/>
+                    </StackPanel>
                   </StackPanel>
                 </Border>
 
@@ -2786,6 +3301,12 @@
                   <TextBlock Text="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
               </Button>
+              <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Security" Classes.active="{Binding IsSecurity}">
+                <StackPanel Spacing="4">
+                  <Path Classes="tabIcon" Data="M12 3 L20 6 V12 C20 16.4 16.6 19.7 12 21 C7.4 19.7 4 16.4 4 12 V6 Z"/>
+                  <TextBlock Text="{Binding [nav.security], Source={x:Static app:Loc.Instance}}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
               <Button Classes="tab" Command="{Binding SelectSectionCommand}" CommandParameter="Settings" Classes.active="{Binding IsSettings}">
                 <StackPanel Spacing="4">
                   <Path Classes="tabIcon" Data="M12 9 A3 3 0 1 0 12 15 A3 3 0 0 0 12 9 M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22 M5.2 5.2 L7.3 7.3 M16.7 16.7 L18.8 18.8 M18.8 5.2 L16.7 7.3 M7.3 16.7 L5.2 18.8"/>
@@ -2828,6 +3349,63 @@
       <Rectangle Classes="raindrop rd8" Height="36" Canvas.Left="1050"/>
       <Rectangle Classes="raindrop rd4" Height="52" Canvas.Left="1180"/>
     </Canvas>
+
+    <!-- ============================ COMMAND PALETTE (Ctrl+K) ============================
+         A pro-desktop quick launcher: jump to any screen or a coin's chart. Overlay only —
+         it never touches the underlying screens. Esc or a backdrop click closes it. -->
+    <Border Grid.Row="0" Grid.RowSpan="2" IsVisible="{Binding IsCommandPaletteOpen}" Background="#CC07060D">
+      <Border.Transitions>
+        <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.16" Easing="CubicEaseOut"/></Transitions>
+      </Border.Transitions>
+      <Border.KeyBindings>
+        <KeyBinding Gesture="Escape" Command="{Binding CloseCommandPaletteCommand}"/>
+      </Border.KeyBindings>
+      <Grid>
+        <Button Classes="backdrop" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                Command="{Binding CloseCommandPaletteCommand}"/>
+        <Border Classes="card" Width="560" VerticalAlignment="Top" Margin="0,110,0,0" HorizontalAlignment="Center"
+                Padding="0" CornerRadius="18" ClipToBounds="True" BorderBrush="{DynamicResource UmAccent}"
+                BoxShadow="0 24 64 -18 #B3000000">
+          <Grid RowDefinitions="Auto,Auto,*">
+            <Grid ColumnDefinitions="Auto,*" Margin="18,15">
+              <TextBlock Text="⌕" FontSize="18" Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"/>
+              <TextBox Grid.Column="1" x:Name="PaletteSearch" Margin="10,0,0,0" BorderThickness="0" MinHeight="0"
+                       Background="Transparent" Text="{Binding CommandQuery}"
+                       Watermark="Search actions or a coin…">
+                <!-- Keyboard-only operation: ↑/↓ walk the results (they wrap), Enter runs the
+                     highlighted one. Bound on the search box because focus stays there while typing. -->
+                <TextBox.KeyBindings>
+                  <KeyBinding Gesture="Enter" Command="{Binding RunTopPaletteCommandCommand}"/>
+                  <KeyBinding Gesture="Down" Command="{Binding PaletteMoveDownCommand}"/>
+                  <KeyBinding Gesture="Up" Command="{Binding PaletteMoveUpCommand}"/>
+                </TextBox.KeyBindings>
+              </TextBox>
+            </Grid>
+            <Border Grid.Row="1" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0"/>
+            <ScrollViewer Grid.Row="2" MaxHeight="360" x:Name="PaletteScroll">
+              <ItemsControl ItemsSource="{Binding CommandResults}" Margin="8" x:Name="PaletteList">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PaletteCommand">
+                    <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Padding="12,9" Margin="0,1" Classes.pick="{Binding IsSelected}"
+                            Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).RunPaletteCommandCommand}"
+                            CommandParameter="{Binding}">
+                      <Grid ColumnDefinitions="26,*">
+                        <TextBlock Text="{Binding Glyph}" FontSize="15" Foreground="{DynamicResource UmAccentBright}" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                          <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="13.5"/>
+                          <TextBlock Text="{Binding Hint}" FontSize="11" Foreground="{DynamicResource UmTextDim}"/>
+                        </StackPanel>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Grid>
+        </Border>
+      </Grid>
+    </Border>
 
     <!-- ============================ QR POPUP ============================
          Sits in the last row of the root grid so it covers the whole window,
@@ -2878,6 +3456,26 @@
               </StackPanel>
             </Border>
 
+            <!-- Address-reuse warning (secure roadmap 3.3). Only shown once the chain has actually
+                 confirmed this address has history — an unreachable explorer stays silent rather
+                 than crying wolf, and never claims the address is fresh either. -->
+            <Border IsVisible="{Binding ReceiveAddressReused}" Background="#22E7CA83"
+                    BorderBrush="#E7CA83" BorderThickness="1" CornerRadius="10" Padding="12">
+              <StackPanel Spacing="4">
+                <TextBlock FontWeight="SemiBold" FontSize="12" Foreground="#E7CA83" TextWrapping="Wrap"
+                           Text="{Binding [receive.reuseTitle], Source={x:Static app:Loc.Instance}}"/>
+                <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource UmTextDim}"
+                           Text="{Binding [receive.reuseBody], Source={x:Static app:Loc.Instance}}"/>
+                <Button Classes="ghost" HorizontalAlignment="Left" Padding="10,5" MinHeight="0" Margin="0,4,0,0"
+                        Content="{Binding [receive.newAddrBtn], Source={x:Static app:Loc.Instance}}"
+                        Command="{Binding NewReceiveAddressCommand}"/>
+              </StackPanel>
+            </Border>
+
+            <TextBlock IsVisible="{Binding ReceiveAddressCheckPending}" FontSize="11"
+                       HorizontalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"
+                       Text="{Binding [receive.reuseChecking], Source={x:Static app:Loc.Instance}}"/>
+
             <Border Background="#FFFFFF" Padding="14" CornerRadius="14"
                     Width="260" Height="260" HorizontalAlignment="Center">
               <Image Source="{Binding ReceiveQr}" Stretch="Uniform"
@@ -2906,17 +3504,6 @@
                     Content="{Binding [common.copyAddress], Source={x:Static app:Loc.Instance}}"
                     Command="{Binding CopyAddressCommand}"
                     CommandParameter="{Binding SelectedReceiveAddress}"/>
-
-            <!-- Derivation path is developer detail: it hides behind "Advanced" so the everyday
-                 receive view stays clean. Shown only where rotation is offered (BTC/LTC). -->
-            <StackPanel Spacing="4" IsVisible="{Binding CanRotateReceive}">
-              <Button Classes="ghost" HorizontalAlignment="Center" Padding="10,5" MinHeight="0"
-                      Content="{Binding [receive.advanced], Source={x:Static app:Loc.Instance}}"
-                      Command="{Binding ToggleReceiveAdvancedCommand}"/>
-              <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextMuted}"
-                         HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
-                         IsVisible="{Binding ShowReceiveAdvanced}" Text="{Binding ReceivePathLabel}"/>
-            </StackPanel>
 
             <!-- HD receive rotation: a fresh address per request reduces on-chain linking. Safe now
                  that the wallet discovers and spends across every issued index. -->

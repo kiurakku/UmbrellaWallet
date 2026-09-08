@@ -11,27 +11,31 @@ public sealed class ChainCapabilityTests
     // Chains the app can actually build, sign and broadcast a transaction on today.
     private static readonly ChainId[] Sendable =
     {
-        ChainId.Btc, ChainId.Eth, ChainId.Ltc, ChainId.Tron, ChainId.Sol, ChainId.Ton, ChainId.Ada,
+        ChainId.Btc, ChainId.Eth, ChainId.Ltc, ChainId.Doge, ChainId.Tron, ChainId.Sol, ChainId.Ton, ChainId.Ada,
+        ChainId.Bch, // SIGHASH_FORKID spend via the shared spender; Haskoin UTXOs/broadcast
     };
 
     [Fact]
-    public void Dogecoin_can_receive_but_is_not_marked_sendable()
+    public void Dogecoin_can_receive_and_send()
     {
-        // DOGE derives a real address and syncs a balance, but has no send path — it must not be
-        // presentable as a fully spendable ("Ready") coin.
+        // DOGE now has a real UTXO send path (BlockCypher UTXOs/fee/broadcast, signed by the same
+        // spender as BTC/LTC), on top of deriving a real address and syncing a balance.
         var doge = ChainCatalog.Get(ChainId.Doge);
-        Assert.True(ChainCatalog.HasRealAddress(ChainId.Doge)); // can still receive
-        Assert.False(doge.CanSend);
+        Assert.True(ChainCatalog.HasRealAddress(ChainId.Doge));
+        Assert.True(doge.CanReceive);
+        Assert.True(doge.CanSend);
     }
 
     [Theory]
     [InlineData(ChainId.Btc)]
     [InlineData(ChainId.Eth)]
     [InlineData(ChainId.Ltc)]
+    [InlineData(ChainId.Doge)]
     [InlineData(ChainId.Tron)]
     [InlineData(ChainId.Sol)]
     [InlineData(ChainId.Ton)]
     [InlineData(ChainId.Ada)]
+    [InlineData(ChainId.Bch)]
     public void Sendable_chains_are_marked_can_send(ChainId id) =>
         Assert.True(ChainCatalog.Get(id).CanSend);
 
@@ -40,7 +44,7 @@ public sealed class ChainCapabilityTests
     {
         // A coin is shown as fully "Ready" (spendable) only when it is Supported AND CanSend. This is
         // the exact predicate DeriveAccounts uses, pinned here so a future catalog edit can't quietly
-        // present a non-sendable coin (like DOGE) as spendable again.
+        // present a non-sendable coin as spendable, or drop a sendable one.
         var fullyReady = ChainCatalog.All
             .Where(c => c.Support == ChainSupportLevel.Supported && c.CanSend)
             .Select(c => c.Id)
@@ -48,7 +52,6 @@ public sealed class ChainCapabilityTests
             .ToArray();
 
         Assert.Equal(Sendable.OrderBy(id => id).ToArray(), fullyReady);
-        Assert.DoesNotContain(ChainId.Doge, fullyReady);
     }
 
     /// <summary>The per-capability matrix (§5.1) must be internally consistent — no impossible combos.</summary>

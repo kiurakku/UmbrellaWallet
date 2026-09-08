@@ -16,12 +16,24 @@ public sealed class Bip39MnemonicService
     private static readonly int[] AllowedWordCounts = [12, 15, 18, 21, 24];
 
     /// <summary>
-    /// Creates a new cryptographically random 24-word English mnemonic.
+    /// Creates a new 24-word English mnemonic from 256 bits of OS cryptographic randomness.
+    ///
+    /// The entropy is drawn explicitly from <see cref="System.Security.Cryptography.RandomNumberGenerator"/>
+    /// (the OS CSPRNG) rather than letting NBitcoin pick — so the single most important value in the
+    /// wallet can never silently depend on a library's default RNG being what we assume it is. 32 bytes
+    /// = 256 bits = 24 words; the entropy buffer is wiped once the mnemonic is built.
     /// </summary>
     public string Generate()
     {
-        var mnemonic = new Mnemonic(Wordlist.English, WordCount.TwentyFour);
-        return mnemonic.ToString();
+        var entropy = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+        try
+        {
+            return new Mnemonic(Wordlist.English, entropy).ToString();
+        }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(entropy);
+        }
     }
 
     /// <summary>

@@ -120,10 +120,12 @@ public sealed class MainViewModelTests : IDisposable
             $"picker=[{string.Join(",", offered.OrderBy(s => s))}] " +
             $"capability=[{string.Join(",", MainViewModel.SendableSymbols.OrderBy(s => s))}]");
 
-        // DOGE derives an address and syncs a balance but has no send path — never offer it.
+        // DOGE derives an address and syncs a balance but isn't surfaced in the Send picker.
         Assert.DoesNotContain("DOGE", offered);
         // The exact assets the roadmap called out as broken must now be offered AND declared sendable.
-        foreach (var sym in new[] { "ADA", "BNB", "MATIC", "AVAX", "FTM", "CRO", "TON" })
+        // ARB/BASE/OP are the Ethereum L2 rollups (native ETH, same 0x address, EIP-155 with the L2 id).
+        // BCH is a real UTXO spend (SIGHASH_FORKID, Haskoin UTXOs/broadcast).
+        foreach (var sym in new[] { "ADA", "BNB", "MATIC", "AVAX", "FTM", "CRO", "TON", "ARB", "BASE", "OP", "BCH" })
             Assert.Contains(sym, offered);
     }
 

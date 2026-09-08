@@ -1,24 +1,26 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Umbrella.Wallet.App.Views.SplashWindow"
-        Width="460" Height="380"
+        Width="480" Height="400"
         SystemDecorations="None"
         CanResize="False"
         ShowInTaskbar="False"
         Topmost="True"
         WindowStartupLocation="CenterScreen"
-        Background="#070B14">
+        TransparencyLevelHint="Transparent"
+        Background="Transparent">
 
-  <!-- Small animated intro window: the brand mark scales + fades in over a breathing blue glow,
-       then App.axaml.cs reveals the main window and closes this one. Solid (no transparency) so it
-       renders identically on every machine. -->
-  <Border CornerRadius="24" Background="#070B14" BorderBrush="#1E2A3D" BorderThickness="1">
+  <!-- Small animated intro window. Transparent window + a rounded Border give real rounded corners
+       (the sharp square edges came from a solid window). The brand mark scales + fades in over a
+       breathing blue glow, then App.axaml.cs reveals the main window and closes this one. -->
+  <Border CornerRadius="28" Background="#070B14" BorderBrush="#1E2A3D" BorderThickness="1"
+          BoxShadow="0 26 70 -22 #B3000000" ClipToBounds="True">
     <Panel>
-      <Ellipse Width="540" Height="540" HorizontalAlignment="Center" VerticalAlignment="Center" Classes="splashGlow"/>
+      <Ellipse Width="560" Height="560" HorizontalAlignment="Center" VerticalAlignment="Center" Classes="splashGlow"/>
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="22">
-        <Image Source="avares://Umbrella.Wallet.App/Assets/umbrella-logo-solidwhite.png"
-               Width="112" HorizontalAlignment="Center" Classes="splashLogo"/>
-        <TextBlock Text="UMBRELLA WALLET" FontSize="24" FontWeight="SemiBold" LetterSpacing="6"
+        <Image Source="avares://Umbrella.Wallet.App/Assets/umbrellaLoadlogo.png"
+               Width="132" HorizontalAlignment="Center" Classes="splashLogo"/>
+        <TextBlock Text="UMBRELLA WALLET" FontSize="23" FontWeight="SemiBold" LetterSpacing="6"
                    HorizontalAlignment="Center" Foreground="#F7F9FC" Classes="splashTitle"/>
         <TextBlock Text="Secure. Simple. Protected." FontSize="13" HorizontalAlignment="Center"
                    Foreground="#8994A7" Classes="splashSub"/>

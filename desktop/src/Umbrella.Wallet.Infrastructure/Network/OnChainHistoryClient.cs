@@ -108,7 +108,258 @@ public sealed class OnChainHistoryClient
         }
     }
 
+    /// <summary>Native TON transfers for a user-friendly (UQ/EQ) address, via toncenter's keyless API.</summary>
+    public async Task<IReadOnlyList<ChainTx>> GetTonAsync(string address, int limit = 30, CancellationToken ct = default)
+    {
+        try
+        {
+            var url = $"https://toncenter.com/api/v2/getTransactions?address={Uri.EscapeDataString(address)}" +
+                      $"&limit={limit}&archival=true";
+            using var res = await Http.GetAsync(url, ct);
+            if (!res.IsSuccessStatusCode) return [];
+            var json = await res.Content.ReadAsStringAsync(ct);
+            return ParseTon(json, address);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Native ADA transfers for a bech32 (addr1…) address, via Koios's keyless API (two calls:
+    /// recent tx hashes, then their full input/output sets).</summary>
+    public async Task<IReadOnlyList<ChainTx>> GetCardanoAsync(string address, int limit = 25, CancellationToken ct = default)
+    {
+        try
+        {
+            using var body1 = new System.Net.Http.StringContent(
+                $"{{\"_addresses\":[\"{address}\"]}}", System.Text.Encoding.UTF8, "application/json");
+            using var res1 = await Http.PostAsync("https://api.koios.rest/api/v1/address_txs", body1, ct);
+            if (!res1.IsSuccessStatusCode) return [];
+            var j1 = await res1.Content.ReadAsStringAsync(ct);
+
+            var hashes = new List<string>();
+            using (var d1 = JsonDocument.Parse(j1))
+            {
+                if (d1.RootElement.ValueKind == JsonValueKind.Array)
+                    foreach (var t in d1.RootElement.EnumerateArray())
+                    {
+                        var h = Str(t, "tx_hash");
+                        if (h.Length > 0) hashes.Add(h);
+                        if (hashes.Count >= limit) break;
+                    }
+            }
+            if (hashes.Count == 0) return [];
+
+            var hashList = string.Join(",", hashes.Select(h => $"\"{h}\""));
+            using var body2 = new System.Net.Http.StringContent(
+                $"{{\"_tx_hashes\":[{hashList}]}}", System.Text.Encoding.UTF8, "application/json");
+            using var res2 = await Http.PostAsync("https://api.koios.rest/api/v1/tx_info", body2, ct);
+            if (!res2.IsSuccessStatusCode) return [];
+            var j2 = await res2.Content.ReadAsStringAsync(ct);
+            return ParseCardanoTxInfo(j2, address);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Native SOL transfers for an address, via the public Solana RPC. Two calls: recent
+    /// signatures, then a single batched <c>getTransaction</c> for them. Best-effort — the free RPC
+    /// rate-limits, so it falls back to an empty list rather than blocking the feed.</summary>
+    public async Task<IReadOnlyList<ChainTx>> GetSolanaAsync(string address, int limit = 12, CancellationToken ct = default)
+    {
+        try
+        {
+            var sigReq = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getSignaturesForAddress\",\"params\":[\"" +
+                         address + "\",{\"limit\":" + limit + "}]}";
+            using var body1 = new System.Net.Http.StringContent(sigReq, System.Text.Encoding.UTF8, "application/json");
+            using var res1 = await Http.PostAsync("https://api.mainnet-beta.solana.com", body1, ct);
+            if (!res1.IsSuccessStatusCode) return [];
+            var j1 = await res1.Content.ReadAsStringAsync(ct);
+
+            var sigs = new List<string>();
+            using (var d1 = JsonDocument.Parse(j1))
+                if (d1.RootElement.TryGetProperty("result", out var r) && r.ValueKind == JsonValueKind.Array)
+                    foreach (var s in r.EnumerateArray())
+                    {
+                        var sg = Str(s, "signature");
+                        if (sg.Length > 0) sigs.Add(sg);
+                    }
+            if (sigs.Count == 0) return [];
+
+            var reqs = string.Join(",", sigs.Select((sg, i) =>
+                "{\"jsonrpc\":\"2.0\",\"id\":" + i + ",\"method\":\"getTransaction\",\"params\":[\"" + sg +
+                "\",{\"encoding\":\"json\",\"maxSupportedTransactionVersion\":0}]}"));
+            using var body2 = new System.Net.Http.StringContent("[" + reqs + "]", System.Text.Encoding.UTF8, "application/json");
+            using var res2 = await Http.PostAsync("https://api.mainnet-beta.solana.com", body2, ct);
+            if (!res2.IsSuccessStatusCode) return [];
+            var j2 = await res2.Content.ReadAsStringAsync(ct);
+            return ParseSolanaTransactions(j2, address);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
     // ---- Parsers (static + string-in, so they can be unit-tested without the network) ----
+
+    /// <summary>
+    /// Parses a batched Solana <c>getTransaction</c> response into normalized SOL rows by the net change
+    /// to the address's own lamport balance (pre → post). For the fee-payer (index 0) the network fee is
+    /// backed out of a send so the shown amount is what actually left. Lamports are 1e9.
+    /// </summary>
+    public static List<ChainTx> ParseSolanaTransactions(string json, string me)
+    {
+        var outList = new List<ChainTx>();
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var items = root.ValueKind == JsonValueKind.Array ? root.EnumerateArray().ToArray() : new[] { root };
+
+        foreach (var item in items)
+        {
+            if (!item.TryGetProperty("result", out var result) || result.ValueKind != JsonValueKind.Object) continue;
+            if (!result.TryGetProperty("meta", out var meta) || meta.ValueKind != JsonValueKind.Object) continue;
+            if (meta.TryGetProperty("err", out var errEl) && errEl.ValueKind != JsonValueKind.Null) continue; // failed tx
+
+            if (!result.TryGetProperty("transaction", out var txn) ||
+                !txn.TryGetProperty("message", out var msg) ||
+                !msg.TryGetProperty("accountKeys", out var keys) || keys.ValueKind != JsonValueKind.Array) continue;
+
+            var idx = -1;
+            var k = 0;
+            foreach (var key in keys.EnumerateArray())
+            {
+                if (key.ValueKind == JsonValueKind.String && key.GetString() == me) { idx = k; break; }
+                k++;
+            }
+            if (idx < 0) continue;
+
+            var pre = meta.TryGetProperty("preBalances", out var pb) ? LamportsAt(pb, idx) : 0;
+            var post = meta.TryGetProperty("postBalances", out var pob) ? LamportsAt(pob, idx) : 0;
+            var fee = Long(meta, "fee");
+            var delta = post - pre;
+            if (delta == 0) continue;
+
+            var incoming = delta > 0;
+            var lamports = incoming ? delta : (-delta - (idx == 0 ? fee : 0));
+            if (lamports <= 0) continue;
+
+            var amount = ScaleDown(lamports.ToString(CultureInfo.InvariantCulture), 9);
+            var ts = Long(result, "blockTime") * 1000;
+            var sig = txn.TryGetProperty("signatures", out var sgs) && sgs.ValueKind == JsonValueKind.Array &&
+                      sgs.GetArrayLength() > 0 ? sgs[0].GetString() ?? "" : "";
+            outList.Add(new ChainTx(incoming ? "Received" : "Sent", "SOL", amount, "", ts,
+                $"https://solscan.io/tx/{sig}", sig));
+        }
+        return outList;
+    }
+
+    private static long LamportsAt(JsonElement arr, int idx)
+    {
+        if (arr.ValueKind != JsonValueKind.Array) return 0;
+        var i = 0;
+        foreach (var e in arr.EnumerateArray())
+        {
+            if (i == idx) return e.TryGetInt64(out var v) ? v : 0;
+            i++;
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// Parses a Koios <c>tx_info</c> payload into normalized ADA rows, using the same net-effect logic as
+    /// Bitcoin: sum the address's own inputs vs outputs (lovelace, 1e6) to tell a send from a receive.
+    /// </summary>
+    public static List<ChainTx> ParseCardanoTxInfo(string json, string me)
+    {
+        var outList = new List<ChainTx>();
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.ValueKind != JsonValueKind.Array) return outList;
+
+        foreach (var tx in doc.RootElement.EnumerateArray())
+        {
+            var hash = Str(tx, "tx_hash");
+            long inMine = 0, outMine = 0, outToOthers = 0;
+            string firstOther = "";
+
+            if (tx.TryGetProperty("inputs", out var ins) && ins.ValueKind == JsonValueKind.Array)
+                foreach (var i in ins.EnumerateArray())
+                    if (AdaAddr(i) == me) inMine += Long(i, "value");
+
+            if (tx.TryGetProperty("outputs", out var outs) && outs.ValueKind == JsonValueKind.Array)
+                foreach (var o in outs.EnumerateArray())
+                {
+                    var addr = AdaAddr(o);
+                    var val = Long(o, "value");
+                    if (addr == me) outMine += val;
+                    else { outToOthers += val; if (firstOther.Length == 0) firstOther = addr; }
+                }
+
+            var ts = Long(tx, "tx_timestamp") * 1000;
+            var incoming = outMine - inMine >= 0;
+            var shown = incoming ? outMine : outToOthers;
+            var amount = ScaleDown(shown.ToString(CultureInfo.InvariantCulture), 6);
+            if (amount == "0") continue;
+            var counter = incoming ? "" : firstOther;
+            outList.Add(new ChainTx(incoming ? "Received" : "Sent", "ADA", amount, counter, ts,
+                $"https://cardanoscan.io/transaction/{hash}", hash));
+        }
+        return outList;
+    }
+
+    private static string AdaAddr(JsonElement e) =>
+        e.TryGetProperty("payment_addr", out var pa) && pa.TryGetProperty("bech32", out var b) &&
+        b.ValueKind == JsonValueKind.String ? b.GetString() ?? "" : "";
+
+    /// <summary>
+    /// Parses a toncenter <c>getTransactions</c> payload into normalized rows. TON semantics: an
+    /// incoming transfer carries the value on <c>in_msg</c> (with a real source); an outgoing one has an
+    /// empty in_msg source and the transfers sit in <c>out_msgs</c>. Amounts are nanoTON (1e9).
+    /// </summary>
+    public static List<ChainTx> ParseTon(string json, string me)
+    {
+        var outList = new List<ChainTx>();
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("result", out var result) || result.ValueKind != JsonValueKind.Array)
+            return outList;
+
+        foreach (var tx in result.EnumerateArray())
+        {
+            var ts = Long(tx, "utime") * 1000;
+            var hash = tx.TryGetProperty("transaction_id", out var tid) ? Str(tid, "hash") : "";
+            var explorer = $"https://tonviewer.com/transaction/{Uri.EscapeDataString(hash)}";
+
+            // Incoming: in_msg has a non-empty source and a positive value.
+            if (tx.TryGetProperty("in_msg", out var inMsg))
+            {
+                var src = Str(inMsg, "source");
+                var val = Long(inMsg, "value");
+                if (src.Length > 0 && val > 0)
+                {
+                    outList.Add(new ChainTx("Received", "TON", ScaleDown(val.ToString(CultureInfo.InvariantCulture), 9),
+                        src, ts, explorer, hash));
+                    continue; // a plain incoming tx doesn't also count as a send
+                }
+            }
+
+            // Outgoing: the wallet's own external message fans out to out_msgs.
+            if (tx.TryGetProperty("out_msgs", out var outs) && outs.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var m in outs.EnumerateArray())
+                {
+                    var dst = Str(m, "destination");
+                    var val = Long(m, "value");
+                    if (dst.Length == 0 || val <= 0) continue;
+                    outList.Add(new ChainTx("Sent", "TON", ScaleDown(val.ToString(CultureInfo.InvariantCulture), 9),
+                        dst, ts, explorer, hash));
+                }
+            }
+        }
+        return outList;
+    }
 
     public static List<ChainTx> ParseTronTrc20(string json, string me)
     {

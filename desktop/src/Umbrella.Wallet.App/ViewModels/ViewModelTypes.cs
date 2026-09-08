@@ -43,6 +43,9 @@ public sealed record CoinToggle(string Symbol, string Name, bool Enabled)
     public string BadgeGlyph => CoinGlyphs.For(Symbol);
     public Bitmap? BadgeLogo => CoinBadge.Logo(Symbol);
     public bool HasBadgeLogo => CoinBadge.HasLogo(Symbol);
+    /// <summary>The disc behind the coin mark: transparent when we have a real round logo (it is
+    /// already a complete brand icon), else the brand colour behind the letter-glyph fallback.</summary>
+    public string BadgeBg => HasBadgeLogo ? "Transparent" : BadgeColor;
 }
 
 /// <summary>A staking row personalised to the user's holdings.</summary>
@@ -53,6 +56,9 @@ public sealed record StakingRowViewModel(
     public string BadgeGlyph => CoinGlyphs.For(Symbol);
     public Bitmap? BadgeLogo => CoinBadge.Logo(Symbol);
     public bool HasBadgeLogo => CoinBadge.HasLogo(Symbol);
+    /// <summary>The disc behind the coin mark: transparent when we have a real round logo (it is
+    /// already a complete brand icon), else the brand colour behind the letter-glyph fallback.</summary>
+    public string BadgeBg => HasBadgeLogo ? "Transparent" : BadgeColor;
 }
 
 public sealed record WalletAccountViewModel(
@@ -89,6 +95,9 @@ public sealed record WalletAccountViewModel(
     public string BadgeGlyph => CoinGlyphs.For(Symbol);
     public Bitmap? BadgeLogo => CoinBadge.Logo(Symbol);
     public bool HasBadgeLogo => CoinBadge.HasLogo(Symbol);
+    /// <summary>The disc behind the coin mark: transparent when we have a real round logo (it is
+    /// already a complete brand icon), else the brand colour behind the letter-glyph fallback.</summary>
+    public string BadgeBg => HasBadgeLogo ? "Transparent" : BadgeColor;
 }
 
 /// <summary>
@@ -118,6 +127,89 @@ public static class CoinNetworks
 public sealed record CandleVm(
     double ItemX, double ItemY, double W, double H,
     double WickLocalX, double BodyLocalY, double BodyH, string Color);
+
+/// <summary>One volume bar under the price chart: a rectangle placed by Canvas.Left/Top.</summary>
+public sealed record VolumeBarVm(double X, double Y, double W, double H, string Color);
+
+/// <summary>
+/// One line in the Security Center: a protection, what it is doing right now, and (when the answer is
+/// "nothing") where to go and switch it on. Every field is derived from real wallet state — this
+/// screen is a mirror, never a reassurance.
+/// </summary>
+public sealed record SecurityCheckVm(
+    string Glyph,
+    string Title,
+    string Detail,
+    string StateLabel,
+    string StateColor,
+    bool IsGood,
+    string ActionLabel = "",
+    string ActionTarget = "");
+
+/// <summary>One row in the Ctrl+K command palette: a glyph, a label, a hint, and a target the
+/// view model resolves (a section name, "lock", or "coin:SYMBOL").</summary>
+/// <summary>
+/// One row in the Ctrl+K command palette. An observable object rather than a record because the row
+/// has to light up as the user walks the list with ↑/↓ — the keyboard selection is what makes the
+/// palette usable without the mouse.
+/// </summary>
+public sealed partial class PaletteCommand : ObservableObject
+{
+    public PaletteCommand(string glyph, string label, string hint, string target)
+    {
+        Glyph = glyph;
+        Label = label;
+        Hint = hint;
+        Target = target;
+    }
+
+    public string Glyph { get; }
+    public string Label { get; }
+    public string Hint { get; }
+    public string Target { get; }
+
+    /// <summary>True while this row is the keyboard-highlighted one (Enter runs it).</summary>
+    [ObservableProperty] private bool _isSelected;
+}
+
+/// <summary>
+/// One spendable coin (UTXO) on the coin-control panel, with a checkbox the user ticks to decide
+/// whether it may fund the current send. Wraps the underlying <see cref="OwnedUtxo"/> so the send
+/// path can re-match the exact coins the user picked by (TxId, Vout) — coin control never lets the
+/// planner reach a coin the user didn't select (roadmap §3.4, privacy: don't link identities).
+/// </summary>
+public sealed partial class CoinControlUtxoVm : ObservableObject
+{
+    public CoinControlUtxoVm(OwnedUtxo utxo, string symbol, bool selected)
+    {
+        Utxo = utxo;
+        _isSelected = selected;
+        Amount = $"{utxo.ValueSat / 100_000_000m:0.########} {symbol}";
+        // Which address this coin sits on is the whole point of coin control: a change (internal)
+        // output is already unlinked; a receive (external) output ties to whoever you gave it to.
+        Kind = utxo.Path.Change == 1 ? "change" : "receive";
+        var a = utxo.Address ?? string.Empty;
+        AddressShort = a.Length > 16 ? $"{a[..8]}…{a[^6..]}" : a;
+        FullAddress = a;
+        Status = utxo.Confirmed ? "confirmed" : "pending";
+        IsPending = !utxo.Confirmed;
+    }
+
+    public OwnedUtxo Utxo { get; }
+    public string TxId => Utxo.TxId;
+    public int Vout => Utxo.Vout;
+    public long ValueSat => Utxo.ValueSat;
+    public bool Confirmed => Utxo.Confirmed;
+
+    [ObservableProperty] private bool _isSelected;
+
+    public string Amount { get; }
+    public string Kind { get; }
+    public string AddressShort { get; }
+    public string FullAddress { get; }
+    public string Status { get; }
+    public bool IsPending { get; }
+}
 
 /// <summary>One row in the P2P & DEX directory — a self-custody venue the user opens externally.</summary>
 public sealed record P2pVenue(
@@ -196,6 +288,9 @@ public sealed record HoldingRowViewModel(
     public string BadgeGlyph => CoinGlyphs.For(Symbol);
     public Bitmap? BadgeLogo => CoinBadge.Logo(Symbol);
     public bool HasBadgeLogo => CoinBadge.HasLogo(Symbol);
+    /// <summary>The disc behind the coin mark: transparent when we have a real round logo (it is
+    /// already a complete brand icon), else the brand colour behind the letter-glyph fallback.</summary>
+    public string BadgeBg => HasBadgeLogo ? "Transparent" : BadgeColor;
 }
 
 /// <summary>Coin badge marks — the coins' own currency symbols, so the token badges read as logos
@@ -248,6 +343,7 @@ public static class CoinBadge
         "XRP" => "#23292F",
         "DOT" => "#E6007A",
         "BCH" => "#0AC18E",
+        "ZEC" => "#ECB244",
         "LINK" => "#2A5ADA",
         "UNI" => "#FF007A",
         _ => "#6E5FB8",
@@ -390,6 +486,15 @@ public sealed record MarketRowViewModel(
     public static MarketRowViewModel LiveCoin(string symbol, string name, double price, double change, bool holdable) =>
         new(symbol, name, price, change, holdable, price > 0);
 
+    /// <summary>On the user's local watchlist. Carried across refreshes by the view model, which owns
+    /// the list — the row itself stays a value.</summary>
+    public bool IsWatched { get; init; }
+
+    /// <summary>Filled star when watched, hollow when not — the whole control is one toggle.</summary>
+    public string WatchGlyph => IsWatched ? "★" : "☆";
+
+    public string WatchColor => IsWatched ? "#E7CA83" : "#8A9099";
+
     public string PriceLabel => HasPrice ? Fx.Price(Price) : "—";
 
     public string ChangeLabel => HasPrice
@@ -415,4 +520,7 @@ public sealed record MarketRowViewModel(
     public string BadgeGlyph => CoinGlyphs.For(Symbol);
     public Bitmap? BadgeLogo => CoinBadge.Logo(Symbol);
     public bool HasBadgeLogo => CoinBadge.HasLogo(Symbol);
+    /// <summary>The disc behind the coin mark: transparent when we have a real round logo (it is
+    /// already a complete brand icon), else the brand colour behind the letter-glyph fallback.</summary>
+    public string BadgeBg => HasBadgeLogo ? "Transparent" : BadgeColor;
 }

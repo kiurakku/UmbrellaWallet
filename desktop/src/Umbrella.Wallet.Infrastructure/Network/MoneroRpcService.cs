@@ -200,6 +200,17 @@ public sealed class MoneroRpcService : IDisposable
 
         // Route through Tor when it's on, so the remote node never sees the real IP.
         var proxy = PublicHttp.ActiveProxy;
+
+        // Fail-closed, exactly like the clearnet kill-switch: in Tor-only mode we must NOT start the
+        // daemon without a proxy, or it would connect straight to a public node and leak the real IP —
+        // the precise de-anonymisation the kill-switch exists to prevent. XMR is the privacy coin; hold
+        // this line rather than quietly exposing the user.
+        if (PublicHttp.RequireProxy && string.IsNullOrWhiteSpace(proxy))
+        {
+            return (false, "Tor-only mode is on but Tor is not connected — the Monero node connection is " +
+                "blocked (starting it would expose your IP). Connect Tor, or turn Tor-only mode off.");
+        }
+
         var node = PublicNodes[0];
 
         var startInfo = new ProcessStartInfo

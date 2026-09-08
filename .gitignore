@@ -90,3 +90,14 @@ desktop/src/Umbrella.Wallet.App/monero/*
 
 # ── Local AI / scratch prompts ────────────────────────────────
 CURSOR_PROMPT.md
+
+# ── Local scratch / temp hardening dumps ──────────────────────
+.tmp-ruleset.json
+.github/tmp-ruleset*.json
+debug.log
+
+# Source media dumps at repo root (real assets live under docs/ or Assets/)
+/lockscreen.jpg
+/portfolio-static.jpg
+/rain-portfolio.mp4
+/*.mp4

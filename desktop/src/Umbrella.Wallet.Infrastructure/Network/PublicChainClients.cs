@@ -32,7 +32,7 @@ public static class PublicHttp
 
     private static IpMode _ipMode = IpMode.Auto;
     private static bool _requireProxy;
-    private static HttpClient _shared = Build(null);
+    private static HttpClient _shared = Build(null, _requireProxy);
 
     public static HttpClient Shared => _shared;
 
@@ -56,7 +56,7 @@ public static class PublicHttp
         if (_requireProxy == require) return;
         _requireProxy = require;
         var old = _shared;
-        _shared = Build(ActiveProxy);
+        _shared = Build(ActiveProxy, _requireProxy);
         try { old.Dispose(); } catch { /* ignore */ }
     }
 
@@ -68,7 +68,7 @@ public static class PublicHttp
     {
         var normalized = string.IsNullOrWhiteSpace(socks5Uri) ? null : socks5Uri.Trim();
         var old = _shared;
-        _shared = Build(normalized);
+        _shared = Build(normalized, _requireProxy);
         ActiveProxy = normalized;
         try { old.Dispose(); } catch { /* ignore */ }
     }
@@ -81,7 +81,7 @@ public static class PublicHttp
     {
         _ipMode = mode;
         var old = _shared;
-        _shared = Build(ActiveProxy);
+        _shared = Build(ActiveProxy, _requireProxy);
         try { old.Dispose(); } catch { /* ignore */ }
     }
 
@@ -111,7 +111,16 @@ public static class PublicHttp
 
     public static HttpClient Create(int timeoutSeconds) => Shared;
 
-    private static HttpClient Build(string? socks5Uri)
+    /// <summary>
+    /// Builds an ISOLATED client wired exactly like <see cref="Build"/> would wire the shared client
+    /// for the given proxy + kill-switch state — for a self-test that proves, on the real transport,
+    /// that Tor-only mode with no proxy refuses a direct clearnet connection rather than leaking it.
+    /// Touches no shared or global state, so it's safe to run anytime (including from tests) without
+    /// disturbing live traffic. This runs the SAME production wiring the shared client uses.
+    /// </summary>
+    public static HttpClient CreateProbeClient(string? proxy, bool requireProxy) => Build(proxy, requireProxy);
+
+    private static HttpClient Build(string? socks5Uri, bool requireProxy)
     {
         var handler = new SocketsHttpHandler
         {
@@ -124,7 +133,7 @@ public static class PublicHttp
             handler.Proxy = new System.Net.WebProxy(socks5Uri);
             handler.UseProxy = true;
         }
-        else if (_requireProxy)
+        else if (requireProxy)
         {
             // Tor-only mode with no proxy active → refuse every connection (fail closed). This is the
             // kill-switch: a dropped or disabled Tor can never silently fall back to clearnet.
@@ -206,6 +215,8 @@ public sealed class PublicChainBalanceClient
                 ChainId.Ltc => await GetEsploraAsync(
                     "https://litecoinspace.org/api", ChainId.Ltc, address, "LTC", 8, cancellationToken),
                 ChainId.Doge => await GetBlockcypherAsync("doge", ChainId.Doge, address, "DOGE", 8, cancellationToken),
+                ChainId.Bch => await GetHaskoinAsync("bch", ChainId.Bch, "BCH", address, cancellationToken),
+                ChainId.Zec => await GetZecAsync(address, cancellationToken),
                 ChainId.Eth => await GetEthAsync(address, cancellationToken),
                 ChainId.Tron => await GetTronAsync(address, cancellationToken),
                 ChainId.Sol => await GetSolAsync(address, cancellationToken),
@@ -271,6 +282,75 @@ public sealed class PublicChainBalanceClient
         var raw = funded - spent;
         var amount = raw / (decimal)Math.Pow(10, decimals);
         return new ChainBalance(chain, address, amount, symbol);
+    }
+
+    /// <summary>
+    /// Native balance for a Haskoin-served UTXO chain (BCH). Keyless and reliable — Blockchair's free
+    /// tier IP-blacklists a busy caller (HTTP 430) and demands a key, so BCH balance and UTXOs go through
+    /// Haskoin instead. Haskoin takes a CashAddr with or without the "bitcoincash:" prefix; we strip it so
+    /// the ':' never has to be URL-encoded into the path. Returns the CONFIRMED balance in satoshi.
+    /// </summary>
+    private static async Task<ChainBalance?> GetHaskoinAsync(
+        string coin, ChainId chain, string symbol, string address, CancellationToken ct)
+    {
+        var query = address.StartsWith("bitcoincash:", StringComparison.OrdinalIgnoreCase)
+            ? address["bitcoincash:".Length..]
+            : address;
+        using var res = await Http.GetAsync(
+            $"https://api.haskoin.com/{coin}/address/{Uri.EscapeDataString(query)}/balance", ct);
+        if (!res.IsSuccessStatusCode) return null;
+        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+        if (!doc.RootElement.TryGetProperty("confirmed", out var c) || !c.TryGetInt64(out var sats)) return null;
+        return new ChainBalance(chain, address, sats / 100_000_000m, symbol);
+    }
+
+    /// <summary>
+    /// Zcash transparent balance. There is no single reliable keyless ZEC endpoint (Haskoin has no ZEC,
+    /// and Blockchair rate-limits), so we try Trezor's public Blockbook first and fall back to Blockchair.
+    /// If both are unreachable the balance simply reads as unknown (null) rather than wrong — never 0.
+    /// </summary>
+    private static async Task<ChainBalance?> GetZecAsync(string address, CancellationToken ct) =>
+        await GetBlockbookAsync("https://zec1.trezor.io", ChainId.Zec, "ZEC", address, 8, ct)
+        ?? await GetBlockchairAsync("zcash", ChainId.Zec, "ZEC", address, address, ct);
+
+    /// <summary>Balance from a Blockbook v2 explorer (Trezor's public instances). The balance is a
+    /// string in the coin's smallest unit; unconfirmed is reported separately and not counted here.</summary>
+    private static async Task<ChainBalance?> GetBlockbookAsync(
+        string baseUrl, ChainId chain, string symbol, string address, int decimals, CancellationToken ct)
+    {
+        using var res = await Http.GetAsync(
+            $"{baseUrl}/api/v2/address/{Uri.EscapeDataString(address)}?details=basic", ct);
+        if (!res.IsSuccessStatusCode) return null;
+        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+        if (!doc.RootElement.TryGetProperty("balance", out var b)) return null;
+        var raw = b.ValueKind == JsonValueKind.String ? b.GetString() : b.GetRawText();
+        if (!System.Numerics.BigInteger.TryParse(raw, out var sats)) return null;
+        return new ChainBalance(chain, address, (decimal)sats / (decimal)Math.Pow(10, decimals), symbol);
+    }
+
+    /// <summary>
+    /// Native balance from Blockchair's keyless dashboards endpoint. Kept only as a FALLBACK (for ZEC):
+    /// Blockchair's free tier IP-blacklists a busy caller (HTTP 430), so it is never a primary source.
+    /// It keys the "data" object by the exact address queried, so we read the single returned entry.
+    /// </summary>
+    private static async Task<ChainBalance?> GetBlockchairAsync(
+        string blockchairChain, ChainId chain, string symbol,
+        string queryAddress, string reportAddress, CancellationToken ct)
+    {
+        using var res = await Http.GetAsync(
+            $"https://api.blockchair.com/{blockchairChain}/dashboards/address/{Uri.EscapeDataString(queryAddress)}", ct);
+        if (!res.IsSuccessStatusCode) return null;
+        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+        if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
+            return null;
+        foreach (var entry in data.EnumerateObject())
+        {
+            if (!entry.Value.TryGetProperty("address", out var addr)) continue;
+            if (!addr.TryGetProperty("balance", out var bal)) continue;
+            var sats = bal.ValueKind == JsonValueKind.Number && bal.TryGetInt64(out var s) ? s : 0L;
+            return new ChainBalance(chain, reportAddress, sats / 100_000_000m, symbol);
+        }
+        return null;
     }
 
     private static async Task<ChainBalance?> GetBlockcypherAsync(
@@ -623,7 +703,7 @@ public sealed record NftHolding(string Name, string Symbol, int Count, string St
 /// single provider being down or rate-limiting does not blank the whole wallet.
 /// </summary>
 /// <summary>One OHLC candle for the candlestick chart.</summary>
-public readonly record struct PriceCandle(double Open, double High, double Low, double Close);
+public readonly record struct PriceCandle(double Open, double High, double Low, double Close, double Volume = 0);
 
 public sealed class PublicMarketRatesClient
 {
@@ -651,6 +731,7 @@ public sealed class PublicMarketRatesClient
         ["XRP"] = "ripple",
         ["DOT"] = "polkadot",
         ["BCH"] = "bitcoin-cash",
+        ["ZEC"] = "zcash",
         // Tether trades a cent either side of $1; quoting it beats assuming exactly 1.00.
         ["USDT"] = "tether",
     };
@@ -675,6 +756,7 @@ public sealed class PublicMarketRatesClient
         ["XRP"] = "XRPUSDT",
         ["DOT"] = "DOTUSDT",
         ["BCH"] = "BCHUSDT",
+        ["ZEC"] = "ZECUSDT",
         ["USDC"] = "USDCUSDT",
         // CRO has no Binance USDT pair — it prices via CoinGecko only.
     };
@@ -839,14 +921,17 @@ public sealed class PublicMarketRatesClient
                     var candles = new List<PriceCandle>();
                     foreach (var k in doc.RootElement.EnumerateArray())
                     {
-                        // [openTime, open(1), high(2), low(3), close(4), ...]
+                        // [openTime, open(1), high(2), low(3), close(4), volume(5), closeTime(6), quoteVolume(7), ...]
                         if (k.GetArrayLength() > 4 &&
                             double.TryParse(k[1].GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var o) &&
                             double.TryParse(k[2].GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var h) &&
                             double.TryParse(k[3].GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var l) &&
                             double.TryParse(k[4].GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var c))
                         {
-                            candles.Add(new PriceCandle(o, h, l, c));
+                            double vol = 0;
+                            if (k.GetArrayLength() > 7)
+                                double.TryParse(k[7].GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out vol);
+                            candles.Add(new PriceCandle(o, h, l, c, vol));
                         }
                     }
 

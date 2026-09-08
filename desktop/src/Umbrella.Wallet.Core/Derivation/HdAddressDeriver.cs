@@ -84,6 +84,15 @@ public sealed class HdAddressDeriver
                 purpose: 44,
                 coinType: 3,
                 addressIndex),
+            ChainId.Bch => DeriveBitcoinLike(
+                masterKey,
+                ChainId.Bch,
+                BCash.Instance.Mainnet,
+                ScriptPubKeyType.Legacy,
+                purpose: 44,
+                coinType: 145,
+                addressIndex),
+            ChainId.Zec => DeriveZcashTransparent(masterKey, addressIndex),
             ChainId.Eth => DeriveEthereum(masterKey, addressIndex),
             ChainId.Tron => DeriveTron(masterKey, addressIndex),
             ChainId.Sol => DeriveSolana(parsed, addressIndex, passphrase),
@@ -188,6 +197,9 @@ public sealed class HdAddressDeriver
         ChainId.Btc => (84, 0, Network.Main, ScriptPubKeyType.Segwit),
         ChainId.Ltc => (84, 2, Litecoin.Instance.Mainnet, ScriptPubKeyType.Segwit),
         ChainId.Doge => (44, 3, Dogecoin.Instance.Mainnet, ScriptPubKeyType.Legacy),
+        // Bitcoin Cash: BIP44 (m/44'/145'), P2PKH, CashAddr encoding. The BCash network also carries
+        // the SIGHASH_FORKID rules NBitcoin needs to sign a spend correctly.
+        ChainId.Bch => (44, 145, BCash.Instance.Mainnet, ScriptPubKeyType.Legacy),
         _ => throw new UnsupportedChainException(chain),
     };
 
@@ -306,6 +318,27 @@ public sealed class HdAddressDeriver
         var hex = "0x" + Encoders.Hex.EncodeData(addressBytes);
         var checksum = AddressUtil.Current.ConvertToChecksumAddress(hex);
         return new ReceiveAddress(ChainId.Eth, checksum, FormatPath(path), addressIndex);
+    }
+
+    /// <summary>
+    /// Zcash transparent (t-addr) receive address at m/44'/133'/0'/0/{index}. A t-addr is an ordinary
+    /// P2PKH — the SAME Hash160(compressed pubkey) as a Bitcoin address — differing only in Zcash's
+    /// two-byte mainnet version prefix 0x1C 0xB8 (which renders as the "t1" leader), Base58Check with a
+    /// double-SHA256 checksum. This is transparent-only: shielded (z-addr / unified) receiving is a
+    /// separate scheme the wallet does not yet derive, so nothing here implies shielded support.
+    /// </summary>
+    private static ReceiveAddress DeriveZcashTransparent(ExtKey masterKey, uint addressIndex)
+    {
+        var path = new KeyPath($"44'/133'/0'/0/{addressIndex}");
+        var derived = masterKey.Derive(path);
+        var hash160 = derived.PrivateKey.PubKey.Hash.ToBytes(); // RIPEMD160(SHA256(compressed pubkey)), 20 bytes
+
+        var payload = new byte[22];
+        payload[0] = 0x1C;
+        payload[1] = 0xB8;
+        Buffer.BlockCopy(hash160, 0, payload, 2, 20);
+        var address = EncodeBase58Check(payload);
+        return new ReceiveAddress(ChainId.Zec, address, FormatPath(path), addressIndex);
     }
 
     private static ReceiveAddress DeriveTron(ExtKey masterKey, uint addressIndex)

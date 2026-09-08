@@ -25,6 +25,9 @@ public sealed class UiSettings
     /// <summary>Soft drifting "aurora" glow behind the content. Opt-in (off by default) so the default
     /// look stays clean.</summary>
     public bool AuroraEnabled { get; set; } = false;
+    /// <summary>Animated rain footage on the portfolio balance card. On by default; when off the card
+    /// shows a still photo instead — for people who don't want motion. Gated by AnimationsEnabled.</summary>
+    public bool PortfolioVideo { get; set; } = true;
 
     /// <summary>Idle minutes before the vault auto-locks; 0 disables auto-lock entirely.</summary>
     public int AutoLockMinutes { get; set; } = 5;
@@ -50,6 +53,10 @@ public sealed class UiSettings
     /// <summary>Opt-in market-data connector (CoinGecko): adds market cap / FDV / volume to token
     /// pages. Off by default so the privacy-first wallet never contacts a third party you didn't enable.</summary>
     public bool RichMarketData { get; set; } = false;
+
+    /// <summary>Watchlisted tickers, comma-separated. Purely local — a list of coin symbols never
+    /// leaves this device and is not tied to any account.</summary>
+    public string Watchlist { get; set; } = "";
 
     /// <summary>A user-chosen label for this wallet, shown in the top bar; blank uses the brand only.</summary>
     public string WalletName { get; set; } = "";
@@ -84,18 +91,10 @@ public sealed class UiSettings
     }
 
     /// <summary>The OS UI language if Umbrella ships a translation for it, otherwise English.</summary>
-    private static string DefaultLanguage()
-    {
-        try
-        {
-            var os = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant();
-            return Loc.Languages.Any(l => l.Code == os) ? os : "en";
-        }
-        catch
-        {
-            return "en";
-        }
-    }
+    // A fresh install always starts in English; the user can switch language in Settings, and that
+    // choice is then persisted. (Previously this followed the OS locale, which surprised users on a
+    // non-English Windows by opening in a language they hadn't chosen.)
+    private static string DefaultLanguage() => "en";
 
     public void Save()
     {

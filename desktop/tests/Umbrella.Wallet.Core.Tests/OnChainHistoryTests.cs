@@ -138,4 +138,88 @@ public sealed class OnChainHistoryTests
         Assert.Equal("bc1qmerchant", rows[1].Counterparty);
         Assert.Equal("0.007", rows[1].Amount);           // 700000 sats to others
     }
+
+    [Fact]
+    public void ParseTon_classifiesReceiveAndSend()
+    {
+        const string me = "EQMe0000000000000000000000000000000000000000";
+        // TON: an incoming transfer carries value on in_msg (with a real source); an outgoing one has an
+        // empty in_msg source and the transfers live in out_msgs. Amounts are nanoTON (1e9).
+        var json = """
+        {"ok":true,"result":[
+          {"utime":1723600000,"transaction_id":{"hash":"rx1"},
+           "in_msg":{"source":"EQSenderAddr","destination":"EQMe","value":"2500000000"},"out_msgs":[]},
+          {"utime":1723700000,"transaction_id":{"hash":"sx1"},
+           "in_msg":{"source":"","destination":"EQMe","value":"0"},
+           "out_msgs":[{"source":"EQMe","destination":"EQRecipient","value":"1000000000"}]}
+        ]}
+        """;
+        var rows = OnChainHistoryClient.ParseTon(json, me);
+        Assert.Equal(2, rows.Count);
+
+        Assert.Equal("Received", rows[0].Kind);
+        Assert.Equal("TON", rows[0].Asset);
+        Assert.Equal("2.5", rows[0].Amount);             // 2.5e9 nanoTON
+        Assert.Equal("EQSenderAddr", rows[0].Counterparty);
+
+        Assert.Equal("Sent", rows[1].Kind);
+        Assert.Equal("1", rows[1].Amount);               // 1e9 nanoTON
+        Assert.Equal("EQRecipient", rows[1].Counterparty);
+    }
+
+    [Fact]
+    public void ParseCardanoTxInfo_classifiesReceiveAndSpend()
+    {
+        const string me = "addr1me";
+        // Same net-effect logic as Bitcoin: own inputs vs own outputs (lovelace, 1e6).
+        var json = """
+        [
+          {"tx_hash":"rx1","tx_timestamp":1723600000,
+           "inputs":[{"payment_addr":{"bech32":"addr1other"},"value":"5000000"}],
+           "outputs":[{"payment_addr":{"bech32":"addr1me"},"value":"3000000"},
+                      {"payment_addr":{"bech32":"addr1other"},"value":"1800000"}]},
+          {"tx_hash":"sx1","tx_timestamp":1723700000,
+           "inputs":[{"payment_addr":{"bech32":"addr1me"},"value":"10000000"}],
+           "outputs":[{"payment_addr":{"bech32":"addr1merchant"},"value":"7000000"},
+                      {"payment_addr":{"bech32":"addr1me"},"value":"2800000"}]}
+        ]
+        """;
+        var rows = OnChainHistoryClient.ParseCardanoTxInfo(json, me);
+        Assert.Equal(2, rows.Count);
+
+        Assert.Equal("Received", rows[0].Kind);
+        Assert.Equal("ADA", rows[0].Asset);
+        Assert.Equal("3", rows[0].Amount);               // 3e6 lovelace to us
+
+        Assert.Equal("Sent", rows[1].Kind);
+        Assert.Equal("7", rows[1].Amount);               // 7e6 lovelace to others
+        Assert.Equal("addr1merchant", rows[1].Counterparty);
+    }
+
+    [Fact]
+    public void ParseSolanaTransactions_classifiesByBalanceDelta()
+    {
+        const string me = "MEsol";
+        // Batched getTransaction responses: classify by the net change to our own lamport balance
+        // (1e9). For a send we're the fee payer (index 0), so the fee is backed out of the amount.
+        var json = """
+        [
+          {"jsonrpc":"2.0","id":0,"result":{"blockTime":1723600000,
+            "meta":{"err":null,"fee":5000,"preBalances":[9000000000,1000000000],"postBalances":[9000000000,1500000000]},
+            "transaction":{"message":{"accountKeys":["OTHER","MEsol"]},"signatures":["sigRX"]}}},
+          {"jsonrpc":"2.0","id":1,"result":{"blockTime":1723700000,
+            "meta":{"err":null,"fee":5000,"preBalances":[3000000000,7000000000],"postBalances":[1999995000,8000000000]},
+            "transaction":{"message":{"accountKeys":["MEsol","OTHER"]},"signatures":["sigTX"]}}}
+        ]
+        """;
+        var rows = OnChainHistoryClient.ParseSolanaTransactions(json, me);
+        Assert.Equal(2, rows.Count);
+
+        Assert.Equal("Received", rows[0].Kind);
+        Assert.Equal("SOL", rows[0].Asset);
+        Assert.Equal("0.5", rows[0].Amount);             // +0.5 SOL to us
+
+        Assert.Equal("Sent", rows[1].Kind);
+        Assert.Equal("1", rows[1].Amount);               // 1 SOL out, fee backed out
+    }
 }

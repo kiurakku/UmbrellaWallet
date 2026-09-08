@@ -135,6 +135,13 @@ public sealed class HdUtxoSpender
             var (_, _, network, _) = HdAddressDeriver.BitcoinLikeParams(plan.Chain);
             var builder = network.CreateTransactionBuilder();
 
+            // We size every output ourselves in PlanSpend (the recipient is validated above the dust limit,
+            // change below dust is rolled into the fee, and the memo rides a provably-unspendable zero-value
+            // OP_RETURN). NBitcoin's dust guard would otherwise reject that OP_RETURN on some altcoin
+            // networks (NBitcoin.Altcoins' BCash doesn't exempt it the way Bitcoin mainnet does), so we turn
+            // the guard off — the plan, not the builder, is the authority on outputs.
+            builder.DustPrevention = false;
+
             foreach (var input in plan.Inputs)
             {
                 var account = _deriver.DeriveUtxoAccount(mnemonic, input.Path);

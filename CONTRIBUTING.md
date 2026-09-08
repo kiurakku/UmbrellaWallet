@@ -10,8 +10,8 @@ Umbrella Wallet is an **independent product** by **the fear** (kiurakku). The so
 
 ## What we welcome
 
-- **Bug reports** — [GitHub Issues](https://github.com/kiurakku/umbrella-wallet/issues) with steps to reproduce, version, and platform.
-- **Security reports** — privately via [GitHub Security Advisories](https://github.com/kiurakku/umbrella-wallet/security/advisories/new). Do not open public issues for vulnerabilities.
+- **Bug reports** — [GitHub Issues](https://github.com/kiurakku/UmbrellaWallet/issues) with steps to reproduce, version, and platform.
+- **Security reports** — privately via [GitHub Security Advisories](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new). Do not open public issues for vulnerabilities.
 - **Sponsorship** — [GitHub Sponsors](https://github.com/sponsors/kiurakku) helps fund development. It does not buy roadmap priority or access to user data.
 
 ## What we do not accept

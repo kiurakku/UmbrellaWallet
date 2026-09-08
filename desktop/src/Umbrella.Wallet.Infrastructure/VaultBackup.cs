@@ -11,6 +11,19 @@ public sealed record VaultBackupContents(
     string? WatchAddresses,
     string? Exchanges);
 
+/// <summary>Why a backup check ended the way it did, so the UI can say it in the user's language
+/// instead of showing this layer's English sentence (roadmap §8.2).</summary>
+public enum VaultBackupReason
+{
+    Verified = 0,
+    FileMissing,
+    NotABackup,
+    NoVault,
+    WrongPassword,
+    DamagedPhrase,
+    CorruptVault,
+}
+
 /// <summary>
 /// The outcome of verifying a backup — proof that it is actually restorable, without ever exposing
 /// the seed. Carries only non-secret metadata.
@@ -20,7 +33,8 @@ public sealed record VaultBackupVerification(
     string Message,
     DateTime? ExportedUtc = null,
     bool HasWatchAddresses = false,
-    bool HasExchanges = false);
+    bool HasExchanges = false,
+    VaultBackupReason Reason = VaultBackupReason.Verified);
 
 /// <summary>
 /// Export and restore of the encrypted vault.
@@ -78,7 +92,8 @@ public static class VaultBackup
         string sourcePath, string password, CancellationToken ct = default)
     {
         if (!File.Exists(sourcePath))
-            return new VaultBackupVerification(false, "That backup file does not exist.");
+            return new VaultBackupVerification(false, "That backup file does not exist.",
+                Reason: VaultBackupReason.FileMissing);
 
         Dictionary<string, string?>? bundle;
         try
@@ -88,14 +103,17 @@ public static class VaultBackup
         }
         catch
         {
-            return new VaultBackupVerification(false, "That file is not an Umbrella backup.");
+            return new VaultBackupVerification(false, "That file is not an Umbrella backup.",
+                Reason: VaultBackupReason.NotABackup);
         }
 
         if (bundle is null || !bundle.TryGetValue("magic", out var magic) || magic != Magic)
-            return new VaultBackupVerification(false, "That file is not an Umbrella backup.");
+            return new VaultBackupVerification(false, "That file is not an Umbrella backup.",
+                Reason: VaultBackupReason.NotABackup);
 
         if (!bundle.TryGetValue("vault", out var vault) || string.IsNullOrWhiteSpace(vault))
-            return new VaultBackupVerification(false, "The backup does not contain a vault.");
+            return new VaultBackupVerification(false, "The backup does not contain a vault.",
+                Reason: VaultBackupReason.NoVault);
 
         DateTime? exportedUtc = null;
         if (bundle.TryGetValue("exportedUtc", out var exported) &&
@@ -117,30 +135,30 @@ public static class VaultBackup
             if (!check.IsValid)
                 return new VaultBackupVerification(false,
                     "The backup decrypted, but its recovery phrase is not valid — the backup is damaged.",
-                    exportedUtc, hasWatch, hasExchanges);
+                    exportedUtc, hasWatch, hasExchanges, VaultBackupReason.DamagedPhrase);
 
             return new VaultBackupVerification(true,
                 "Backup verified — it decrypts with this password and holds a valid recovery phrase.",
-                exportedUtc, hasWatch, hasExchanges);
+                exportedUtc, hasWatch, hasExchanges, VaultBackupReason.Verified);
         }
         catch (UnauthorizedAccessException)
         {
             return new VaultBackupVerification(false,
                 "Could not decrypt the backup — wrong password, or the backup is damaged.",
-                exportedUtc, hasWatch, hasExchanges);
+                exportedUtc, hasWatch, hasExchanges, VaultBackupReason.WrongPassword);
         }
         catch (ArgumentException)
         {
             // The vault password must be ≥12 chars; a shorter one can never be correct.
             return new VaultBackupVerification(false,
                 "Could not decrypt the backup — wrong password, or the backup is damaged.",
-                exportedUtc, hasWatch, hasExchanges);
+                exportedUtc, hasWatch, hasExchanges, VaultBackupReason.WrongPassword);
         }
         catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or FormatException)
         {
             return new VaultBackupVerification(false,
                 "The backup's vault is corrupt or from an unsupported version.",
-                exportedUtc, hasWatch, hasExchanges);
+                exportedUtc, hasWatch, hasExchanges, VaultBackupReason.CorruptVault);
         }
         finally
         {
