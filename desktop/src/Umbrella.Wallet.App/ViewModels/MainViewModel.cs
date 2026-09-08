@@ -14,7 +14,9 @@ using CommunityToolkit.Mvvm.Input;
 using QRCoder;
 using Umbrella.Wallet.Core.Chains;
 using Umbrella.Wallet.Core.Derivation;
+using Umbrella.Wallet.Core.Amounts;
 using Umbrella.Wallet.Core.Seed;
+using Umbrella.Wallet.Core.Utxo;
 using Umbrella.Wallet.Infrastructure;
 using Umbrella.Wallet.Infrastructure.Network;
 
@@ -29,6 +31,11 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _isUnlocked;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _password = string.Empty;
+    // Optional BIP39 passphrase entered on the unlock screen. Empty opens the normal wallet; any value
+    // opens a separate hidden wallet. Never stored — only held long enough to derive this session.
+    [ObservableProperty] private string _unlockPassphrase = string.Empty;
+    // The passphrase field hides behind "Advanced" so a shoulder-surfer doesn't even see it exists.
+    [ObservableProperty] private bool _showUnlockAdvanced;
     [ObservableProperty] private string _confirmPassword = string.Empty;
     [ObservableProperty] private string _formError = string.Empty;
     [ObservableProperty] private string _importPhrase = string.Empty;
@@ -40,6 +47,13 @@ public partial class MainViewModel : ViewModelBase
     // Compact portfolio 24h change for the overview ring (real, not a hardcoded 0.00%).
     [ObservableProperty] private string _portfolioChangePercent = "—";
     [ObservableProperty] private string _portfolioChangeColor = "#8A9099";
+    // Home dashboard stat tiles (computed in RecalcBalance) — they fill the portfolio with real,
+    // at-a-glance numbers rather than leaving it as just the balance + a list.
+    [ObservableProperty] private string _portfolioAssetCount = "0";
+    [ObservableProperty] private string _portfolioNetworkCount = "0";
+    [ObservableProperty] private string _portfolioBestLabel = "—";
+    [ObservableProperty] private string _portfolioBestSymbol = "—";
+    [ObservableProperty] private string _portfolioBestColor = "#8A9099";
     [ObservableProperty] private string _searchQuery = string.Empty;
     [ObservableProperty] private string _chainFilter = "All";
     [ObservableProperty] private string _walletLabel = "Umbrella Wallet";
@@ -59,6 +73,28 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _selectedReceiveAddress = string.Empty;
     [ObservableProperty] private string _selectedReceiveSymbol = "ETH";
     [ObservableProperty] private string _selectedReceiveNetwork = string.Empty;
+    // HD receive rotation: only offered on chains the wallet can fully discover AND spend across every
+    // issued address (BTC/LTC). A fresh address per request reduces on-chain linking.
+    [ObservableProperty] private bool _canRotateReceive;
+    [ObservableProperty] private string _receivePathLabel = string.Empty;
+    // Optional "requested amount" folded into a standards payment URI (BIP21) so the sender's wallet
+    // pre-fills it. Only offered on the UTXO chains whose URI scheme is universally recognised.
+    [ObservableProperty] private string _receiveAmount = string.Empty;
+    // The derivation path is developer detail, so it hides behind an "Advanced" toggle by default.
+    [ObservableProperty] private bool _showReceiveAdvanced;
+    // Address-reuse warning (secure roadmap 3.3): the shown address is checked against the chain and
+    // the banner appears only when it PROVABLY has history — an unreachable explorer says nothing.
+    [ObservableProperty] private bool _receiveAddressReused;
+    [ObservableProperty] private bool _receiveAddressCheckPending;
+    private System.Threading.CancellationTokenSource? _reuseCheckCts;
+    public System.Collections.ObjectModel.ObservableCollection<string> ReceiveHistory { get; } = new();
+    /// <summary>True once more than the base address has been issued, so the "Previous addresses" list is worth showing.</summary>
+    public bool HasReceiveHistory => ReceiveHistory.Count > 1;
+    /// <summary>Requested-amount is only encoded where the payment-URI scheme is a recognised standard (BIP21).</summary>
+    public bool CanRequestAmount => SelectedReceiveSymbol is "BTC" or "LTC" or "DOGE" or "BCH";
+    /// <summary>Tokens live on one specific chain; sending them over the wrong network burns them. Warn loudly.</summary>
+    public bool IsTokenReceive => SelectedReceiveSymbol is "USDT" or "USDC";
+    private ChainId? _receiveChain;
     [ObservableProperty] private string _marketStatus = "Loading market…";
     [ObservableProperty] private string _settingsPassword = string.Empty;
     [ObservableProperty] private string _deleteConfirmation = string.Empty;
@@ -68,6 +104,19 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _torEnabled;
     [ObservableProperty] private string _torStatus = "Direct connection · traffic is NOT anonymised";
     [ObservableProperty] private string _torStatusColor = "#E7CA83";
+
+    /// <summary>A compact connection state for the always-visible sidebar chip — the first clause of
+    /// the live Tor/proxy status, e.g. "Tor connected" / "Direct connection" (roadmap §7.1).</summary>
+    public string ConnectionLabel => (TorStatus ?? string.Empty).Split('·')[0].Trim();
+
+    partial void OnTorStatusChanged(string value) => OnPropertyChanged(nameof(ConnectionLabel));
+
+    /// <summary>True when a broadcast would go over clearnet — Tor is off and the Tor-only kill-switch
+    /// isn't forcing it. Shown as an anonymity reminder on the Send review: the node you broadcast to
+    /// would see your IP, linking it to the transaction.</summary>
+    public bool ShowSendClearnetNote => !TorEnabled && !TorOnly;
+
+    partial void OnTorEnabledChanged(bool value) => OnPropertyChanged(nameof(ShowSendClearnetNote));
 
     // In-app documentation panel toggle.
     [ObservableProperty] private bool _isDocsVisible;
@@ -115,10 +164,13 @@ public partial class MainViewModel : ViewModelBase
         {
             if (Loc.Instance.CurrentCode == value) return;
             Loc.Instance.CurrentCode = value;
+            Fx.SetLanguage(value); // switch fiat number formatting to the new language's locale
             _uiSettings.Language = value;
             _uiSettings.Save();
             OnPropertyChanged();
             OnPropertyChanged(nameof(DeleteKeyword));
+            RefreshHoldings();     // re-render money labels (Fx.Money/Price) in the new locale
+            RecalcBalance();
             BuildGuide(); // the guide reads in the wallet's language
             if (IsUnlocked)
                 PushActivity("Settings", "Language",
@@ -186,9 +238,8 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.Save();
             OnPropertyChanged();
             OnPropertyChanged(nameof(LogoImage));
-            if (IsUnlocked)
-                PushActivity("Theme", "Appearance",
-                    Theming.Themes.FirstOrDefault(t => t.Id == value)?.Name ?? value, "changed", "now");
+            // Theme changes are not real wallet events — logging them spammed the activity feed with
+            // "Theme Appearance changed" rows that read like a developer log, so they're no longer logged.
         }
     }
 
@@ -210,6 +261,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(LottieRepeat));
             OnPropertyChanged(nameof(RainVisible));
             OnPropertyChanged(nameof(AuroraVisible));
+            OnPropertyChanged(nameof(PortfolioVideoOn));
             if (IsUnlocked) PushActivity("Settings", "Animations", value ? "on" : "off", "changed", "now");
         }
     }
@@ -256,10 +308,28 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Portfolio-card video toggle — individual, gated by the master motion toggle. On swaps
+    /// the still photo for the looping rain footage behind the balance.</summary>
+    public bool PortfolioVideo
+    {
+        get => _uiSettings.PortfolioVideo;
+        set
+        {
+            if (_uiSettings.PortfolioVideo == value) return;
+            _uiSettings.PortfolioVideo = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(PortfolioVideoOn));
+        }
+    }
+
     /// <summary>The ambient rain shows only when both the master motion toggle and the rain toggle are on.</summary>
     public bool RainVisible => AnimationsEnabled && RainEnabled;
     /// <summary>The aurora glow shows only when both the master motion toggle and the aurora toggle are on.</summary>
     public bool AuroraVisible => AnimationsEnabled && AuroraEnabled;
+    /// <summary>The balance card plays the rain footage only when both the master motion toggle and the
+    /// portfolio-video toggle are on; otherwise it shows a still photo.</summary>
+    public bool PortfolioVideoOn => AnimationsEnabled && PortfolioVideo;
 
     /// <summary>-1 = loop forever (stickers on); 0 = play once and settle. Off if either the master or
     /// the sticker toggle is disabled.</summary>
@@ -278,6 +348,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(SidebarDock));
             OnPropertyChanged(nameof(IsSidebarVertical));
             OnPropertyChanged(nameof(IsSidebarHorizontal));
+            OnPropertyChanged(nameof(IsDesktopHorizontalNav));
             if (IsUnlocked) PushActivity("Settings", "Nav panel", value, "changed", "now");
         }
     }
@@ -309,9 +380,256 @@ public partial class MainViewModel : ViewModelBase
 
     public int AutoLockMinutes => _uiSettings.AutoLockMinutes;
 
+    /// <summary>The idle interval as a LOCALIZED duration ("5 хв" / "1 год"), for display — the picker
+    /// values themselves stay English keys. Fixes "5 minutes" showing in a non-English UI.</summary>
+    public string AutoLockDurationLabel => _uiSettings.AutoLockMinutes switch
+    {
+        0 => Loc.Instance["sec.autoLockOff2"],
+        60 => $"1 {Loc.Instance["unit.hour"]}",
+        var m => $"{m} {Loc.Instance["unit.min"]}",
+    };
+
     public string AutoLockLabel => _uiSettings.AutoLockMinutes == 0
         ? "Auto-lock · off"
-        : $"Auto-lock · {AutoLockChoice} idle";
+        : $"Auto-lock · {AutoLockDurationLabel} idle";
+
+    // ---- Privacy: custom SOCKS proxy, IP family, clipboard auto-clear ----
+
+    [ObservableProperty] private string _proxyStatus = string.Empty;
+    [ObservableProperty] private string _proxyStatusColor = "#8B909A";
+
+    /// <summary>Route traffic through a user-supplied SOCKS5 proxy instead of the bundled Tor.</summary>
+    public bool CustomProxyEnabled
+    {
+        get => _uiSettings.CustomProxyEnabled;
+        set
+        {
+            if (_uiSettings.CustomProxyEnabled == value) return;
+            _uiSettings.CustomProxyEnabled = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            ApplyCustomProxy();
+        }
+    }
+
+    /// <summary>The user's SOCKS5 proxy string; "host:port" or a full socks5:// URI.</summary>
+    public string CustomProxyUri
+    {
+        get => _uiSettings.CustomProxyUri;
+        set
+        {
+            if (_uiSettings.CustomProxyUri == value) return;
+            _uiSettings.CustomProxyUri = value ?? string.Empty;
+            _uiSettings.Save();
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Tor-only kill-switch: when on, any request that would hit clearnet is refused
+    /// (fail-closed), so turning Tor off or a dropped Tor circuit never silently de-anonymises you.</summary>
+    public bool TorOnly
+    {
+        get => _uiSettings.TorOnlyMode;
+        set
+        {
+            if (_uiSettings.TorOnlyMode == value) return;
+            _uiSettings.TorOnlyMode = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            PublicHttp.SetRequireProxy(value);
+            OnPropertyChanged(nameof(TorOnlyStatus));
+            OnPropertyChanged(nameof(ShowSendClearnetNote));
+            if (IsUnlocked) PushActivity("Security", "Tor-only", value ? "on" : "off",
+                value ? "clearnet blocked" : "clearnet allowed", "now");
+            // Turning it on with Tor still off means everything is blocked until Tor connects — nudge.
+            if (value && !TorEnabled) TorEnabled = true;
+            _ = RefreshMarketAsync();
+        }
+    }
+
+    /// <summary>One-line explanation shown under the Tor-only toggle.</summary>
+    public string TorOnlyStatus => TorOnly
+        ? (TorEnabled ? Loc.Instance["priv.torOnlyOn"] : Loc.Instance["priv.torOnlyBlocked"])
+        : Loc.Instance["priv.torOnlyOff"];
+
+    // ---- Verify Tor: prove the wallet's traffic really exits through Tor (read-only check) ----
+    [ObservableProperty] private string _torCheckStatus = string.Empty;
+    [ObservableProperty] private string _torCheckColor = "#8B909A";
+    [ObservableProperty] private bool _torChecking;
+
+    /// <summary>Asks check.torproject.org (through the wallet's own shared client, so it takes the exact
+    /// same route as every balance/price call) whether this exit is a Tor node — the honest proof that
+    /// the anonymity toggle is actually doing something. With Tor-only on and Tor down the request is
+    /// blocked by the kill-switch, which the result reports as "blocked (kill-switch working)".</summary>
+    [RelayCommand]
+    private async Task VerifyTorAsync()
+    {
+        if (TorChecking) return;
+        TorChecking = true;
+        TorCheckStatus = Loc.Instance["priv.torCheckRunning"];
+        TorCheckColor = "#8B909A";
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var res = await PublicHttp.Shared.GetAsync("https://check.torproject.org/api/ip", cts.Token);
+            var body = (await res.Content.ReadAsStringAsync(cts.Token))
+                .Replace(" ", "").Replace("\n", "").ToLowerInvariant();
+            if (body.Contains("\"istor\":true"))
+            {
+                TorCheckStatus = Loc.Instance["priv.torCheckOk"];
+                TorCheckColor = "#8FCB9B";
+            }
+            else
+            {
+                TorCheckStatus = Loc.Instance["priv.torCheckNo"];
+                TorCheckColor = "#E7CA83";
+            }
+        }
+        catch
+        {
+            // Tor-only + Tor off → the kill-switch refused the request. That's success, not failure.
+            TorCheckStatus = TorOnly && !TorEnabled
+                ? Loc.Instance["priv.torCheckBlocked"]
+                : Loc.Instance["priv.torCheckFail"];
+            TorCheckColor = TorOnly && !TorEnabled ? "#8FCB9B" : "#E09A9A";
+        }
+        finally
+        {
+            TorChecking = false;
+        }
+    }
+
+    /// <summary>Normalises "host:port" or a socks URI into a canonical socks URI, or null if invalid.</summary>
+    private static string? NormalizeProxyUri(string? raw)
+    {
+        var s = (raw ?? string.Empty).Trim();
+        if (s.Length == 0) return null;
+        if (!s.Contains("://", StringComparison.Ordinal)) s = "socks5://" + s;
+        if (!Uri.TryCreate(s, UriKind.Absolute, out var uri)) return null;
+        var scheme = uri.Scheme.ToLowerInvariant();
+        if (scheme is not ("socks5" or "socks5h" or "socks4" or "socks4a")) return null;
+        if (uri.Port <= 0 || string.IsNullOrEmpty(uri.Host)) return null;
+        return $"{scheme}://{uri.Host}:{uri.Port}";
+    }
+
+    /// <summary>The custom proxy URI if it's enabled and valid, otherwise null.</summary>
+    private string? EffectiveCustomProxy() =>
+        CustomProxyEnabled ? NormalizeProxyUri(CustomProxyUri) : null;
+
+    [RelayCommand]
+    private void ApplyCustomProxy()
+    {
+        if (!CustomProxyEnabled)
+        {
+            // Hand routing back to Tor (its proxy if on, else direct).
+            PublicHttp.SetProxy(TorEnabled ? _tor.ProxyUri : null);
+            ProxyStatus = string.Empty;
+            _ = RefreshMarketAsync();
+            return;
+        }
+
+        var normalized = EffectiveCustomProxy();
+        if (normalized is null)
+        {
+            ProxyStatus = "Enter a valid SOCKS proxy, e.g. socks5://127.0.0.1:9050";
+            ProxyStatusColor = "#E09A9A";
+            return;
+        }
+
+        // A custom proxy and the bundled Tor are mutually exclusive routes.
+        if (TorEnabled)
+        {
+            TorEnabled = false;
+            _tor.Stop();
+            TorStatus = "Off · using your custom proxy instead";
+            TorStatusColor = "#E7CA83";
+        }
+
+        PublicHttp.SetProxy(normalized);
+        ProxyStatus = $"Routing through {normalized}";
+        ProxyStatusColor = "#8FCB9B";
+        if (IsUnlocked) PushActivity("Security", "Proxy", "on", normalized, "now");
+        _ = RefreshMarketAsync();
+    }
+
+    public System.Collections.Generic.IReadOnlyList<string> IpModeOptions { get; } =
+        new[] { "Automatic", "IPv4 only", "IPv6 only" };
+
+    /// <summary>Which IP family direct connections may use. Persisted; applied immediately.</summary>
+    public string IpModeChoice
+    {
+        get => _uiSettings.IpMode switch
+        {
+            "ipv4" => "IPv4 only",
+            "ipv6" => "IPv6 only",
+            _ => "Automatic",
+        };
+        set
+        {
+            var code = value switch { "IPv4 only" => "ipv4", "IPv6 only" => "ipv6", _ => "auto" };
+            if (_uiSettings.IpMode == code) return;
+            _uiSettings.IpMode = code;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            PublicHttp.SetIpPreference(PublicHttp.ParseIpMode(code));
+            if (IsUnlocked) PushActivity("Security", "IP version", value, "changed", "now");
+            _ = RefreshMarketAsync();
+        }
+    }
+
+    private static readonly Dictionary<string, int> ClipboardClearMap = new()
+    {
+        ["Never"] = 0, ["30 seconds"] = 30, ["45 seconds"] = 45, ["1 minute"] = 60, ["2 minutes"] = 120,
+    };
+
+    public System.Collections.Generic.IReadOnlyList<string> ClipboardClearOptions { get; } =
+        new[] { "Never", "30 seconds", "45 seconds", "1 minute", "2 minutes" };
+
+    /// <summary>Start each unlock with balances hidden. Persisted.</summary>
+    public bool HideBalancesDefault
+    {
+        get => _uiSettings.HideBalancesDefault;
+        set
+        {
+            if (_uiSettings.HideBalancesDefault == value) return;
+            _uiSettings.HideBalancesDefault = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            if (value) IsBalanceHidden = true;
+        }
+    }
+
+    /// <summary>Lock the vault the moment the window is minimized. Persisted; the window reads it.</summary>
+    public bool LockOnMinimize
+    {
+        get => _uiSettings.LockOnMinimize;
+        set
+        {
+            if (_uiSettings.LockOnMinimize == value) return;
+            _uiSettings.LockOnMinimize = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            if (IsUnlocked) PushActivity("Security", "Lock on minimize", value ? "on" : "off", "changed", "now");
+        }
+    }
+
+    /// <summary>Clipboard auto-wipe delay in seconds; 0 = never wiped. Read-only view of the setting.</summary>
+    public int ClipboardAutoClearSeconds => _uiSettings.ClipboardAutoClearSeconds;
+
+    /// <summary>How long a copied address stays on the clipboard before it's auto-wiped. Persisted.</summary>
+    public string ClipboardClearChoice
+    {
+        get => ClipboardClearMap.FirstOrDefault(kv => kv.Value == _uiSettings.ClipboardAutoClearSeconds).Key
+               ?? "45 seconds";
+        set
+        {
+            if (!ClipboardClearMap.TryGetValue(value, out var secs) ||
+                secs == _uiSettings.ClipboardAutoClearSeconds) return;
+            _uiSettings.ClipboardAutoClearSeconds = secs;
+            _uiSettings.Save();
+            OnPropertyChanged();
+        }
+    }
 
     /// <summary>A user-chosen name for this wallet, shown in the top bar. Persisted.</summary>
     public string WalletName
@@ -334,7 +652,9 @@ public partial class MainViewModel : ViewModelBase
 
     public bool HasWalletName => !string.IsNullOrWhiteSpace(_uiSettings.WalletName);
 
-    public Dock SidebarDock => SidebarPosition switch
+    // Mobile mode forces a bottom tab bar regardless of the saved SidebarPosition, so the phone
+    // layout is consistent; the user's real preference is untouched and returns when it's turned off.
+    public Dock SidebarDock => MobileMode ? Dock.Bottom : SidebarPosition switch
     {
         "Right" => Dock.Right,
         "Top" => Dock.Top,
@@ -344,23 +664,65 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// Left and right keep the tall panel; top and bottom switch to a compact horizontal bar,
-    /// because a 248px-wide column laid on its side would eat most of the window height.
+    /// because a 248px-wide column laid on its side would eat most of the window height. Mobile mode
+    /// is always horizontal (a bottom bar).
     /// </summary>
-    public bool IsSidebarVertical => SidebarPosition is "Left" or "Right";
+    public bool IsSidebarVertical => !MobileMode && SidebarPosition is "Left" or "Right";
 
     public bool IsSidebarHorizontal => !IsSidebarVertical;
 
+    /// <summary>The dedicated phone tab bar (icons) shows only in mobile mode.</summary>
+    public bool IsMobileNav => MobileMode;
+
+    /// <summary>The desktop text-chip bar shows for Top/Bottom desktop layouts, but never in mobile —
+    /// there the icon tab bar takes over.</summary>
+    public bool IsDesktopHorizontalNav => IsSidebarHorizontal && !MobileMode;
+
+    /// <summary>Phone-style compact layout on the desktop: a narrow centred column and a bottom tab
+    /// bar in a phone-sized window (the window itself is resized by the view). Persisted.</summary>
+    public bool MobileMode
+    {
+        get => _uiSettings.MobileMode;
+        set
+        {
+            if (_uiSettings.MobileMode == value) return;
+            _uiSettings.MobileMode = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SidebarDock));
+            OnPropertyChanged(nameof(IsSidebarVertical));
+            OnPropertyChanged(nameof(IsSidebarHorizontal));
+            OnPropertyChanged(nameof(IsMobileNav));
+            OnPropertyChanged(nameof(IsDesktopHorizontalNav));
+            OnPropertyChanged(nameof(ContentMaxWidth));
+            OnPropertyChanged(nameof(QuickActionColumns));
+            OnPropertyChanged(nameof(ShowSideRail));
+            if (!value) IsMoreSheetOpen = false;
+            if (IsUnlocked) PushActivity("Settings", "Layout", value ? "mobile" : "desktop", "changed", "now");
+        }
+    }
+
+    /// <summary>Width cap for the main dashboard column — a phone-like column in mobile mode, the
+    /// roomy desktop width otherwise.</summary>
+    public double ContentMaxWidth => MobileMode ? 460 : 1120;
+
+    /// <summary>The quick-action tiles wrap to two columns on the narrow phone layout so their
+    /// labels don't clip; four across on the desktop.</summary>
+    public int QuickActionColumns => MobileMode ? 2 : 4;
+
     /// <summary>
-    /// The wordmark, swapped for the dark version on light themes — the solid-white logo is
-    /// invisible on a white background.
+    /// The in-app wordmark on the welcome and unlock screens — the ORIGINAL Umbrella Wallet logo,
+    /// swapped for the dark version on light themes (the solid-white one is invisible on white). The
+    /// new full-colour umbrella art is used only for the desktop app / taskbar icon (umbrella.ico),
+    /// not inside the app.
     /// </summary>
     public Bitmap LogoImage => LoadAsset(
         Theming.IsLightTheme(Theming.Current)
             ? "umbrella-logo-black.png"
             : "umbrella-logo-solidwhite.png");
 
-    /// <summary>The "the fear" maker's mark.</summary>
-    public Bitmap FearMark => LoadAsset("thefear-logo.png");
+    /// <summary>The "the fear" maker's mark — the gold ghost (transparent background).</summary>
+    public Bitmap FearMark => LoadAsset("thefear-ghost.png");
 
     private static readonly Dictionary<string, Bitmap> AssetCache = [];
 
@@ -525,6 +887,11 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _sendSuccess = string.Empty;
     private EthSendQuote? _sendQuote;
     private BtcSendQuote? _btcQuote;
+    // The HD spend plan behind the pending BTC/LTC quote: the exact inputs (drawn from every owned
+    // address) and request that Confirm signs — so nothing is re-selected between review and broadcast.
+    private UtxoSpendPlan? _btcPlan;
+    private UtxoSpendRequest? _btcRequest;
+    private string? _btcPlanSymbol;
     private SolSendQuote? _solQuote;
     private TronSendQuote? _tronQuote;
     private TonSendQuote? _tonQuote;
@@ -566,7 +933,41 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _isChartLoading;
     [ObservableProperty] private System.Collections.Generic.List<Avalonia.Point> _chartPoints = new();
 
+    /// <summary>Whether the open chart is up over its window — drives the up/down market sticker.</summary>
+    [ObservableProperty] private bool _chartIsUp = true;
+
+    // Uniswap-style token stats under the chart (24h high/low/volume from the same Binance feed).
+    [ObservableProperty] private bool _hasMarketStats;
+    [ObservableProperty] private string _statHigh24h = "—";
+    [ObservableProperty] private string _statLow24h = "—";
+    [ObservableProperty] private string _statVolume24h = "—";
+
+    // Richer stats from the optional CoinGecko connector (market cap / FDV), only when enabled.
+    [ObservableProperty] private bool _hasRichStats;
+    [ObservableProperty] private string _statMarketCap = "—";
+    [ObservableProperty] private string _statFdv = "—";
+
+    /// <summary>Opt-in market-data connector (CoinGecko) for richer token stats. Persisted; off by
+    /// default so the wallet contacts no third party unless the user turns it on.</summary>
+    public bool RichMarketData
+    {
+        get => _uiSettings.RichMarketData;
+        set
+        {
+            if (_uiSettings.RichMarketData == value) return;
+            _uiSettings.RichMarketData = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            if (!value) HasRichStats = false;
+            if (IsUnlocked) PushActivity("Settings", "Market data", value ? "on" : "off", "CoinGecko", "now");
+        }
+    }
+
     private string? _unlockedMnemonic;
+    // The BIP39 passphrase of the currently-open wallet (empty = the normal wallet). Held in memory
+    // only for this session (never persisted — that IS the hidden-wallet deniability) and pushed onto
+    // the shared deriver so every derivation uses it. Wiped on lock.
+    private string _unlockedPassphrase = "";
     // One common login password for the whole app: captured on unlock/create so additional wallets
     // reuse it and switching between wallets doesn't re-prompt. Wiped on lock alongside the seed.
     private string? _sessionPassword;
@@ -581,11 +982,30 @@ public partial class MainViewModel : ViewModelBase
     private readonly PublicMarketRatesClient _rates = new();
     private readonly WatchAddressStore _watchStore = new();
     private readonly ActivityStore _activityStore = new();
+    private readonly AddressBookStore _addressBook = new();
+    private readonly OnChainHistoryClient _history = new();
+    // Latest fetched USD prices, snapshotted on each live refresh, so the Send screen can show a fiat
+    // equivalent for the amount without re-fetching (roadmap §4).
+    private IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> _priceUsd =
+        new Dictionary<string, (decimal, decimal)>(StringComparer.OrdinalIgnoreCase);
+    // On-chain transactions fetched from explorers for the user's own addresses (incl. ones made
+    // before the wallet was ever opened). Merged into the Transactions list, deduped by explorer URL.
+    private readonly List<ActivityRowViewModel> _onChainRows = new();
     private readonly BalanceStore _balanceStore = new();
     private readonly MarketCache _marketCache = new();
     private readonly ExchangeCredentialStore _exchangeStore = new();
     private readonly EthTransactionSender _ethSender = new();
-    private readonly BitcoinTransactionSender _btcSender = new();
+    // The UTXO scanner and Bitcoin sender share the ONE deriver (with its ambient passphrase), so a
+    // hidden wallet scans, shows and spends the exact same addresses — no call site can drift.
+    private readonly BitcoinTransactionSender _btcSender;
+    private readonly UtxoAccountScanner _utxoScanner;
+    private readonly AddressIndexStore _addrIndex = new();
+    // Decides whether a receive address on screen has already been used (secure roadmap 3.3).
+    private readonly AddressReuseInspector _reuseInspector = new();
+    // Last full UTXO scan per BTC/LTC symbol (all external + internal addresses). Populated by the
+    // balance refresh and reused by the send path, so a transfer spends the same discovered set —
+    // including internal change — that the shown balance is computed from.
+    private readonly Dictionary<string, UtxoScanResult> _utxoScans = new(StringComparer.OrdinalIgnoreCase);
     private readonly SolanaTransactionSender _solSender = new();
     private readonly TronTransactionSender _tronSender = new();
     private readonly TonTransactionSender _tonSender = new();
@@ -648,6 +1068,16 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel(WalletRegistry registry)
     {
+        // Scanner + Bitcoin sender share the ONE deriver, so a hidden-wallet passphrase (set on it at
+        // unlock) drives balance scanning and spending too — the shown, scanned and spent addresses
+        // can never disagree.
+        _btcSender = new BitcoinTransactionSender(_deriver);
+        _utxoScanner = new UtxoAccountScanner(_deriver);
+
+        // Mobile layout is retired on desktop (it was a phone-shaped desktop, not a real mobile
+        // platform). Force it off so any previously-saved state can't strand a desktop user.
+        if (_uiSettings.MobileMode) { _uiSettings.MobileMode = false; _uiSettings.Save(); }
+
         _registry = registry;
         _vault = BuildActiveVault();
         SelfHealWallets();
@@ -672,6 +1102,18 @@ public partial class MainViewModel : ViewModelBase
         SelectedWatchNetwork = WatchableNetworks[0];
         BuildGuide();
         LoadProfileImages();
+
+        // Apply saved privacy routing before any network call goes out.
+        PublicHttp.SetIpPreference(PublicHttp.ParseIpMode(_uiSettings.IpMode));
+        // Tor-only kill-switch first: if it was left on, clearnet stays blocked until Tor connects, so
+        // no startup request can leak before the proxy is up.
+        PublicHttp.SetRequireProxy(_uiSettings.TorOnlyMode);
+        if (EffectiveCustomProxy() is { } startupProxy)
+        {
+            PublicHttp.SetProxy(startupProxy);
+            ProxyStatus = $"Routing through {startupProxy}";
+            ProxyStatusColor = "#8FCB9B";
+        }
 
         Fx.Symbol = Fx.SymbolFor(_uiSettings.Currency); // right symbol immediately; rate loads next
         _ = LoadWatchAddressesAsync();
@@ -725,9 +1167,42 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _activityFilter = "All";
     partial void OnActivityFilterChanged(string value) => RebuildFilteredActivity();
 
+    // Roadmap §6: the merged Activity feed filters by asset, confirmation status and date range as well
+    // as by category. Each dropdown re-narrows the same unified list (local events + real on-chain history).
+    /// <summary>Assets present in the feed, "All" first — built from the rows so it never offers an empty filter.</summary>
+    public ObservableCollection<string> ActivityAssets { get; } = ["All"];
+    [ObservableProperty] private string _activityAssetFilter = "All";
+    partial void OnActivityAssetFilterChanged(string value) => RebuildFilteredActivity();
+
+    public IReadOnlyList<string> ActivityStatuses { get; } = ["All", "Confirmed", "Pending", "Failed"];
+    [ObservableProperty] private string _activityStatusFilter = "All";
+    partial void OnActivityStatusFilterChanged(string value) => RebuildFilteredActivity();
+
+    public IReadOnlyList<string> ActivityDateRanges { get; } = ["All time", "Last 24h", "Last 7 days", "Last 30 days"];
+    [ObservableProperty] private string _activityDateFilter = "All time";
+    partial void OnActivityDateFilterChanged(string value) => RebuildFilteredActivity();
+
+    /// <summary>When the on-chain history was last refreshed, shown on the Activity screen ("—" until synced).</summary>
+    [ObservableProperty] private string _lastHistorySync = "—";
+    /// <summary>True while on-chain history is being fetched, so the Activity screen can say "loading"
+    /// instead of a bare "nothing here" (roadmap §6/§8 — the empty state was ambiguous).</summary>
+    [ObservableProperty] private bool _historyLoading;
+    /// <summary>True once at least one sync has completed, so the empty state can distinguish
+    /// "still loading" from "synced, but genuinely nothing on-chain".</summary>
+    [ObservableProperty] private bool _historySynced;
+
     /// <summary>What the total is made of — top assets by value, for the Portfolio-overview ring.</summary>
     public ObservableCollection<PortfolioSlice> PortfolioBreakdown { get; } = [];
     public bool HasBreakdown => PortfolioBreakdown.Count > 0;
+    /// <summary>"N assets" line under the allocation legend — a small at-a-glance summary of the mix.</summary>
+    public string AllocationSummary
+    {
+        get
+        {
+            var n = Holdings.Count(h => h.Value > 0);
+            return n == 0 ? string.Empty : (n == 1 ? "1 asset" : $"{n} assets");
+        }
+    }
 
     /// <summary>NFT collections held at the wallet's Ethereum address (names + counts, no images).</summary>
     public ObservableCollection<NftHolding> Nfts { get; } = [];
@@ -735,7 +1210,7 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Stakeable coins the wallet holds keys for, with the network's typical (approximate)
     /// reward and how staking is done. Informational — not live positions.</summary>
-    public IReadOnlyList<StakingOption> StakingOptions { get; } =
+    private static readonly IReadOnlyList<StakingOption> StakingCatalog =
     [
         new("ETH", "Ethereum", "~3–4%", "Beacon-chain staking (32 ETH solo) or a liquid-staking pool"),
         new("SOL", "Solana", "~6–7%", "Delegate to a validator — native, unbonds in a few days"),
@@ -744,6 +1219,47 @@ public partial class MainViewModel : ViewModelBase
         new("TRX", "TRON", "~4–5%", "Freeze TRX for resources and vote for a Super Representative"),
         new("MATIC", "Polygon", "~4%", "Delegate to a validator on the Polygon staking contract"),
     ];
+
+    /// <summary>Staking, personalised to what you actually hold: coins you own are shown first with an
+    /// estimated yearly reward from their live value; the rest are listed as available. Rebuilt on every
+    /// holdings refresh, so it's driven by your wallet, not a fixed table.</summary>
+    public ObservableCollection<StakingRowViewModel> StakingRows { get; } = [];
+
+    private void RebuildStaking()
+    {
+        var held = Holdings
+            .GroupBy(h => h.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => (Amount: g.Sum(x => x.Amount), Value: g.Sum(x => x.Value)),
+                StringComparer.OrdinalIgnoreCase);
+
+        var rows = StakingCatalog.Select(o =>
+        {
+            held.TryGetValue(o.Symbol, out var h);
+            var has = h.Amount > 0;
+            string hold;
+            if (has)
+            {
+                var mid = AprMidpoint(o.Apr);
+                var estYear = h.Value * mid / 100.0;
+                hold = $"{Loc.Instance["staking.youHold"]} {h.Amount:0.####} {o.Symbol} · ~{FormatCompactMoney(estYear)}/yr";
+            }
+            else hold = "";
+            return new StakingRowViewModel(o.Symbol, o.Name, o.Apr, o.Method, hold, has);
+        })
+        .OrderByDescending(r => r.HasHolding)
+        .ToList();
+
+        StakingRows.Clear();
+        foreach (var r in rows) StakingRows.Add(r);
+    }
+
+    /// <summary>Rough midpoint of an APR string like "~3–4%" or "~6%" → 3.5 / 6.</summary>
+    private static double AprMidpoint(string apr)
+    {
+        var nums = System.Text.RegularExpressions.Regex.Matches(apr ?? "", @"\d+(\.\d+)?")
+            .Select(m => double.Parse(m.Value, CultureInfo.InvariantCulture)).ToList();
+        return nums.Count == 0 ? 0 : nums.Average();
+    }
 
     /// <summary>Drives the Activity empty-state; raised whenever the log changes.</summary>
     public bool HasActivity => Activity.Count > 0;
@@ -772,6 +1288,58 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("4.0", "Version 4.0 — on-chain history, richer token pages, more",
+            "A big update:\n\n" +
+            "• On-chain transaction history. The Transactions tab now pulls your real history straight from the chain for your own addresses — including transactions from before you first opened the wallet. Covers TRX (native + USDT/TRC-20), Bitcoin, Ethereum and Litecoin, keyless and through Tor/your proxy.\n" +
+            "• Richer token pages. Open any coin for 24h High / Low / Volume. Turn on the optional CoinGecko connector (Settings → Privacy — off by default) to also see Market Cap, FDV and Volume.\n" +
+            "• Colour-tag your wallets (Settings → Wallets) — a coloured ring so you can tell them apart at a glance.\n" +
+            "• Your new stickers everywhere — greeting by the logo, GhostPepe, encryption, NFT, Receive, the send animation, and up/down on the market chart. All toggle with the other animations.\n" +
+            "• More privacy: lock on minimize, hide balances by default, custom SOCKS5 proxy, IPv4/IPv6, clipboard auto-clear.\n" +
+            "• Lots of fixes: Top/Bottom nav, green-chart line colour, centred unlock, tidier tiles and Activity cards, toasts across the app, new Telegram news logo.\n\n" +
+            "Still coming, done deliberately with your testing: in-page swap + swap between all pairs, Telegram NFTs, SOL/DOGE history, single-coin wallets, and per-coin logos. 146/146 tests pass.",
+            "2026-08-15"),
+        new("NEW", "Token pages now show 24h high, low and volume",
+            "Version 3.5.1:\n\n" +
+            "• Open any coin in Market and you'll see a stats row under the chart — 24h High, 24h Low and 24h Volume — in your chosen currency. It comes from the same price feed, so there's no new tracking and it still goes through Tor/your proxy.\n\n" +
+            "Coming next as an optional, off-by-default connector (so nothing calls a third party unless you switch it on): richer token data (market cap, FDV, TVL, 52-week range) and an in-page swap widget, plus real on-chain transaction history.",
+            "2026-08-15"),
+        new("NEW", "A Uniswap-style mobile UI + a batch of interface fixes",
+            "Version 3.5.0 — mobile polish and fixes from your screenshots:\n\n" +
+            "• Uniswap-style phone nav. The mobile layout now has a floating pill bottom bar with five fixed tabs (Portfolio · Receive · Send · Market · More) — no more sideways scrolling. The rest of the sections open in a tidy 'More' sheet.\n" +
+            "• Cleaner phone screen. The wide side panel is hidden on mobile, so it's one clean column instead of a cramped split.\n" +
+            "• the fear logo now sits beside the umbrella on the welcome screen.\n" +
+            "• Quick-action tiles no longer cut off their labels, and the Activity list now shows each event as its own rounded card with spacing.\n" +
+            "• Toasts are quicker and stay top-centre.\n" +
+            "• New: Hide balances by default (Settings → Security) — every unlock starts with amounts hidden.\n" +
+            "• More non-custodial P2P/DEX venues: SushiSwap and Raydium.\n\n" +
+            "Still ahead: real on-chain transaction history (including before you connected), Telegram-gift NFTs, one-coin wallets, and wider swap coverage. 139/139 tests pass.",
+            "2026-08-15"),
+        new("NEW", "A real phone layout, clearer backup, lock-on-minimize",
+            "Version 3.4.2 — polish from your feedback:\n\n" +
+            "• Mobile layout now feels like a phone. It has a proper bottom icon tab bar (scroll it for every section) instead of a squished desktop menu, and the dashboard actions wrap to 2×2. There's also a soft glow behind the the-fear logo on the welcome screen.\n" +
+            "• Backup made clear. The recovery phrase and the optional Monero keys are now one card that explains, in plain words, that your 24 words are the real backup and the Monero keys are an advanced extra most people never touch.\n" +
+            "• Activity feed cleaned up. It no longer logs a 'Sync · OK' line every minute — that was just noise.\n" +
+            "• Lock on minimize. Settings → Privacy: lock the wallet the instant the window is minimized.\n" +
+            "• More P2P/DEX venues, all non-custodial: CoW Swap, Matcha, Curve, Osmosis, plus Haveno (Monero), Vexl and LocalCoinSwap.\n" +
+            "• More of the app follows your language (welcome screen and section headers).\n\n" +
+            "139/139 tests pass.",
+            "2026-08-15"),
+        new("NEW", "Use Umbrella like a phone app on your PC",
+            "Version 3.4:\n\n" +
+            "• Mobile layout. Settings → Appearance → Mobile layout turns the whole wallet into a phone-style app on your desktop — a narrow centred column, a bottom tab bar, and a phone-sized window. Flip it off and you're back to the full wide desktop layout instantly.\n" +
+            "• It remembers your setup. Mobile mode docks the menu to the bottom for that phone feel, but your saved menu position comes back untouched when you switch off.\n" +
+            "• Tidier on a narrow screen. The dashboard's quick actions now wrap to a 2×2 grid instead of squashing four across, and 'Prices & charts' is translated in every language.\n\n" +
+            "This is the first step toward a real phone build — the same layout that a future native Android app will use. 139/139 tests pass.",
+            "2026-08-14"),
+        new("SECURITY", "Security review, a custom proxy, and IP controls",
+            "Version 3.3 — a hardening + privacy release:\n\n" +
+            "• Security review. A full pass over the wallet's crypto and storage. The vault now rejects out-of-range key-derivation parameters, so a tampered or foreign vault file can no longer stall or exhaust the app when you try to unlock it. The screenshot/screen-share blackout, the on-device Argon2id + AES-256-GCM vault and the sign-then-wipe key handling were all re-verified.\n" +
+            "• Custom proxy. Settings → Privacy now lets you route every request through your own SOCKS5 proxy — a VPN, an SSH tunnel or another Tor instance — instead of the bundled Tor. Enter host:port and apply; Tor and your proxy are mutually exclusive.\n" +
+            "• IP version control. Force outgoing connections onto IPv4 or IPv6, or leave it automatic — handy on networks where one family is broken or leaks.\n" +
+            "• Clipboard auto-clear. A copied address is now wiped from the clipboard after a delay you choose (off / 30s / 45s / 1m / 2m), so it doesn't linger for other apps to read.\n" +
+            "• More of the app is translated. The onboarding screens (create / import / unlock / restore / back-up), the section titles and the holdings columns now follow your language in all six locales instead of showing English.\n" +
+            "• Trustworthier installer. The Windows setup now shows the licence, carries proper publisher details, and on uninstall tells you exactly where your encrypted wallet data is kept and how to erase it yourself.",
+            "2026-08-14"),
         new("NEW", "Custom lock screen + instant market",
             "Version 3.2:\n\n" +
             "• Lock-screen background is yours: Settings → Appearance → Lock screen — pick your own image, use the default, or turn it off for a flat lock screen.\n" +
@@ -970,15 +1538,34 @@ public partial class MainViewModel : ViewModelBase
     private void CloseNews() => SelectedNews = null;
 
     /// <summary>
+    /// The single source of truth for which symbols this build can actually build, sign and
+    /// broadcast. Both the Send picker (<see cref="SendableAssets"/>) and the Send guard read this,
+    /// and a test pins them together — so the UI can never offer a send the code rejects (the old
+    /// ADA / EVM bug) nor hide one it supports.
+    /// </summary>
+    public static readonly IReadOnlySet<string> SendableSymbols = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "BTC", "LTC", "BCH",                         // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
+        "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
+        "ARB", "BASE", "OP",                         // Ethereum L2 rollups — native ETH, same 0x address
+        "SOL", "TON", "ADA",                         // account-based
+        "TRX", "USDT",                               // TRON + TRC-20
+        "XMR",                                       // Monero (local wallet-rpc)
+    };
+
+    /// <summary>
     /// Assets that can actually be sent, as a pick-list. Typing a ticker by hand is how people
-    /// send on the wrong network, so the UI only offers what this build can really broadcast.
+    /// send on the wrong network, so the UI only offers what this build can really broadcast — the
+    /// symbols here are pinned to <see cref="SendableSymbols"/> by a test.
     /// </summary>
     public IReadOnlyList<SendOption> SendableAssets { get; } =
     [
         new("ETH", "Ethereum", "Ethereum network (ERC-20 compatible)"),
         new("BTC", "Bitcoin", "Bitcoin network · native SegWit"),
         new("LTC", "Litecoin", "Litecoin network · native SegWit"),
+        new("BCH", "Bitcoin Cash", "Bitcoin Cash network · CashAddr"),
         new("SOL", "Solana", "Solana network"),
+        new("TON", "Toncoin", "TON network · wallet v4R2"),
         new("XMR", "Monero", "Monero network · needs the Monero service on"),
         new("TRX", "TRON", "TRON network"),
         new("USDT", "Tether (TRC-20)", "TRON network · fee paid in TRX"),
@@ -988,6 +1575,10 @@ public partial class MainViewModel : ViewModelBase
         new("AVAX", "Avalanche", "Avalanche C-Chain"),
         new("FTM", "Fantom", "Fantom Opera"),
         new("CRO", "Cronos", "Cronos EVM"),
+        // Ethereum L2 rollups — the coin is ETH, on the same 0x address; only the network differs.
+        new("ARB", "ETH · Arbitrum", "Arbitrum One · native ETH (same 0x address)"),
+        new("BASE", "ETH · Base", "Base · native ETH (same 0x address)"),
+        new("OP", "ETH · Optimism", "Optimism · native ETH (same 0x address)"),
     ];
 
     /// <summary>Networks a watch-only address can be added for.</summary>
@@ -1003,12 +1594,30 @@ public partial class MainViewModel : ViewModelBase
 
     public string VaultLocation => _vault.VaultPath;
     public bool IsPortfolio => ActiveSection == "Portfolio";
+
+    /// <summary>The 330px right rail only makes sense on the wide desktop layout — on the narrow phone
+    /// layout it would crowd the content, so it's hidden there and the column stays clean.</summary>
+    public bool ShowSideRail => IsPortfolio && !MobileMode;
+
+    /// <summary>The mobile "More" sheet: overflow sections that don't fit the 5-slot bottom bar.</summary>
+    [ObservableProperty] private bool _isMoreSheetOpen;
+
+    [RelayCommand]
+    private void ToggleMoreSheet() => IsMoreSheetOpen = !IsMoreSheetOpen;
+
+    [RelayCommand]
+    private void CloseMoreSheet() => IsMoreSheetOpen = false;
     public bool IsReceive => ActiveSection == "Receive";
     public bool IsSend => ActiveSection == "Send";
     public bool IsSwap => ActiveSection == "Swap";
     public bool IsActivity => ActiveSection == "Activity";
     public bool IsTransactions => ActiveSection == "Transactions";
     public bool IsSettings => ActiveSection == "Settings";
+    /// <summary>Asset details: one coin's holding, price, capabilities and its own activity.</summary>
+    public bool IsAsset => ActiveSection == "Asset";
+
+    /// <summary>Security Center: one screen that reports what is actually protecting the wallet.</summary>
+    public bool IsSecurity => ActiveSection == "Security";
     public bool IsConnect => ActiveSection == "Connect";
     public bool IsMarket => ActiveSection == "Market";
     public bool IsNews => ActiveSection == "News";
@@ -1016,6 +1625,15 @@ public partial class MainViewModel : ViewModelBase
     public bool IsStaking => ActiveSection == "Staking";
     public bool IsP2p => ActiveSection == "P2p";
     public bool IsBuy => ActiveSection == "Buy";
+    // Discover is a hub over Market + the external Buy / P2P·DEX catalogues + News, so the primary nav
+    // stays focused on wallet actions (roadmap §6.1).
+    public bool IsDiscover => ActiveSection == "Discover";
+    // The Discover nav item stays highlighted while the user is inside any of its sub-pages.
+    public bool IsDiscoverGroup => IsDiscover || IsMarket || IsBuy || IsP2p || IsNews;
+    // Five-item primary nav (§6.1): Receive/Send live under Wallet, Transactions under Activity, so
+    // those nav items stay highlighted while the user is on a sub-screen reached from them.
+    public bool IsWalletGroup => IsPortfolio || IsReceive || IsSend;
+    public bool IsActivityGroup => IsActivity || IsTransactions;
 
     // --- Onboarding state machine: each is a full-screen page, sidebar only in the workspace ---
     public bool IsWelcomeStage => !HasVault && SetupStage == "Welcome";
@@ -1054,10 +1672,19 @@ public partial class MainViewModel : ViewModelBase
         {
             SelectFirstReceive();
         }
+
+        // The Security Center reads live state, so it is rebuilt every time it is opened rather than
+        // cached — a stale "protected" row would be worse than no row at all.
+        if (value == "Security") RefreshSecurityChecks();
     }
 
     partial void OnHasVaultChanged(bool value) => NotifySectionFlags();
-    partial void OnIsUnlockedChanged(bool value) => NotifySectionFlags();
+    partial void OnIsUnlockedChanged(bool value)
+    {
+        NotifySectionFlags();
+        // If the user asked for it, every unlock starts with balances hidden.
+        if (value && _uiSettings.HideBalancesDefault) IsBalanceHidden = true;
+    }
     partial void OnSetupStageChanged(string value) => NotifySectionFlags();
     partial void OnPendingPhraseBackupChanged(bool value) => NotifySectionFlags();
 
@@ -1089,6 +1716,265 @@ public partial class MainViewModel : ViewModelBase
             SendError = string.Empty;
             HasSendQuote = false;
         }
+        OnPropertyChanged(nameof(SelectedSendBalance));
+        OnPropertyChanged(nameof(SelectedSendBalanceLabel));
+        OnPropertyChanged(nameof(SendAmountFiat));
+        RebuildSendAddressBook();
+        ValidateSendAddress();
+        ResetCoinControl();
+    }
+
+    // --- Send financial transparency (§6.3): show the available balance and a fee-aware Max. ---
+    private WalletAccountViewModel? SelectedSendAccount() =>
+        Accounts.FirstOrDefault(a => a.Symbol == (SelectedSendAsset?.Symbol ?? string.Empty)
+            && a.SupportStatus is "Ready" or "Receive only" && IsRealAddress(a.Address));
+
+    public decimal SelectedSendBalance => (decimal)(SelectedSendAccount()?.Amount ?? 0d);
+
+    public string SelectedSendBalanceLabel => SelectedSendAsset is null
+        ? string.Empty
+        : $"{Loc.Instance["send.available"]}: {Fmt(SelectedSendBalance)} {SelectedSendAsset.Symbol}";
+
+    // --- Send review breakdown (§4): full destination, amount + fiat, kept separate from the fee. ---
+    /// <summary>The destination shown in review, ALWAYS in full (never shortened) so the user can verify
+    /// every character — long Monero addresses included.</summary>
+    [ObservableProperty] private string _sendReviewTo = string.Empty;
+    [ObservableProperty] private string _sendReviewAmount = string.Empty;
+    [ObservableProperty] private string _sendReviewFiat = string.Empty;
+    /// <summary>Plain statement of what actually leaves the wallet, so the total debit reads separately
+    /// from the network fee above it.</summary>
+    [ObservableProperty] private string _sendReviewDebit = string.Empty;
+
+    /// <summary>Live fiat estimate for the amount being typed, shown under the amount field.</summary>
+    public string SendAmountFiat
+    {
+        get
+        {
+            if (SelectedSendAsset is null) return string.Empty;
+            // The estimate has to read the field exactly as the send path will, or the two disagree.
+            if (!AmountInput.TryParsePositive(SendAmount, out var amt)) return string.Empty;
+            return FiatEquivalentLabel(SelectedSendAsset.Symbol, amt);
+        }
+    }
+
+    /// <summary>"≈ $123.45" for an asset amount, from the latest fetched USD price (stablecoins = $1).
+    /// Empty when there is no price, so the UI simply omits it rather than showing a wrong number.</summary>
+    private string FiatEquivalentLabel(string symbol, decimal amount)
+    {
+        decimal usdEach;
+        if (symbol is "USDT" or "USDC") usdEach = 1m;
+        else if (_priceUsd.TryGetValue(symbol, out var p) && p.Usd > 0) usdEach = p.Usd;
+        else return string.Empty;
+        return "≈ " + Fx.Money((double)(amount * usdEach));
+    }
+
+    // --- Network-check-on-paste (§4): a non-blocking sanity check that the destination matches the
+    // selected network, so a coin is not sent to an address for the wrong chain. ---
+    [ObservableProperty] private string _sendAddressWarning = string.Empty;
+
+    // --- Scam control: address-poisoning / own-address check on the destination. Advisory only. ---
+    [ObservableProperty] private string _sendSafetyTitle = string.Empty;
+    [ObservableProperty] private string _sendSafetyText = string.Empty;
+    [ObservableProperty] private string _sendSafetyColor = "#E7CA83";
+    [ObservableProperty] private bool _sendSafetyShown;
+    // The positive counterpart: a green line when the destination is a trusted one (a saved contact or
+    // one you have paid before), so a known address reads as safe and the warnings stand out by contrast.
+    [ObservableProperty] private string _sendKnownContact = string.Empty;
+    [ObservableProperty] private bool _sendKnownContactShown;
+
+    partial void OnSendToChanged(string value)
+    {
+        HasSendQuote = false;
+        ValidateSendAddress();
+        EvaluateSendSafety();
+    }
+
+    /// <summary>
+    /// Scam control: checks the destination against the addresses this wallet already trusts — its own
+    /// receive addresses, the address book and everyone it has paid before — via the offline
+    /// <see cref="Umbrella.Wallet.Core.Safety.AddressSafetyInspector"/>. The loud case is
+    /// address-poisoning: a destination that looks almost exactly like a known address (same start and
+    /// end, different middle) is very likely the attacker's lookalike seeded into your history. Also
+    /// flags sending to one of your own addresses. Never blocks a send — it only warns.
+    /// </summary>
+    private void EvaluateSendSafety()
+    {
+        SendSafetyShown = false;
+        SendSafetyTitle = SendSafetyText = string.Empty;
+        SendKnownContactShown = false;
+        SendKnownContact = string.Empty;
+
+        var dest = SendTo?.Trim() ?? string.Empty;
+        if (dest.Length == 0) return;
+
+        var own = Accounts.Where(a => IsRealAddress(a.Address)).Select(a => a.Address).ToList();
+        var known = _addressBookAll.Select(e => e.Address)
+            .Concat(Transactions.Where(t => !string.IsNullOrWhiteSpace(t.Counterparty)).Select(t => t.Counterparty!))
+            .Where(a => !string.IsNullOrWhiteSpace(a))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var result = Umbrella.Wallet.Core.Safety.AddressSafetyInspector.Inspect(dest, own, known);
+        switch (result.Level)
+        {
+            case Umbrella.Wallet.Core.Safety.AddressSafetyLevel.Lookalike:
+                SendSafetyTitle = Loc.Instance["send.safetyPoisonTitle"];
+                SendSafetyText = string.Format(Loc.Instance["send.safetyPoisonBody"], Shorten(result.SimilarTo ?? ""));
+                SendSafetyColor = "#E09A9A"; // red — the serious one
+                SendSafetyShown = true;
+                break;
+            case Umbrella.Wallet.Core.Safety.AddressSafetyLevel.OwnAddress:
+                SendSafetyTitle = Loc.Instance["send.safetyOwnTitle"];
+                SendSafetyText = Loc.Instance["send.safetyOwnBody"];
+                SendSafetyColor = "#E7CA83"; // amber — a caution, not an alarm
+                SendSafetyShown = true;
+                break;
+            case Umbrella.Wallet.Core.Safety.AddressSafetyLevel.NewRecipient:
+                // A first-time note, but only worth showing when it means something: the address is
+                // actually well-formed for the chosen chain AND you have some history to be "new"
+                // against. On a fresh wallet with no contacts, everyone is new — that would be noise.
+                var sym = SelectedSendAsset?.Symbol;
+                if (known.Count > 0 &&
+                    DestinationAddressCheck.Check(sym, dest) == AddressShape.Matches)
+                {
+                    SendSafetyTitle = Loc.Instance["send.firstTitle"];
+                    SendSafetyText = Loc.Instance["send.firstBody"];
+                    SendSafetyColor = "#8FB8CB"; // teal — informational, not a warning
+                    SendSafetyShown = true;
+                }
+                break;
+            case Umbrella.Wallet.Core.Safety.AddressSafetyLevel.Known:
+                // A trusted destination: name the saved contact, or just note you've paid it before.
+                var contact = _addressBookAll.FirstOrDefault(
+                    e => string.Equals(e.Address?.Trim(), dest, StringComparison.OrdinalIgnoreCase));
+                SendKnownContact = contact is not null && !string.IsNullOrWhiteSpace(contact.Label)
+                    ? string.Format(Loc.Instance["send.savedContact"], contact.Label)
+                    : Loc.Instance["send.sentBefore"];
+                SendKnownContactShown = true;
+                break;
+        }
+    }
+
+    partial void OnSendAmountChanged(string value)
+    {
+        HasSendQuote = false;
+        OnPropertyChanged(nameof(SendAmountFiat));
+    }
+
+    /// <summary>Warns when the destination does not look like an address on the selected network.
+    /// The rules live in <see cref="DestinationAddressCheck"/> (Core, unit-tested); this only decides
+    /// whether to show the warning. Advisory only — the authoritative validation still happens per
+    /// chain when preparing the quote.</summary>
+    private static readonly HashSet<string> EvmSendSymbols =
+        new(StringComparer.OrdinalIgnoreCase) { "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO" };
+
+    private void ValidateSendAddress()
+    {
+        SendAddressWarning = string.Empty;
+        if (SelectedSendAsset is null) return;
+
+        var sym = SelectedSendAsset.Symbol;
+        if (DestinationAddressCheck.IsProbablyWrongNetwork(sym, SendTo))
+        {
+            SendAddressWarning = string.Format(Loc.Instance["send.addrMismatch"], sym);
+            return;
+        }
+
+        // EIP-55 checksum: a mixed-case EVM address whose casing doesn't match its checksum has almost
+        // certainly been mistyped or altered — warn before it can be signed (Core.Chains.EvmAddress).
+        if (EvmSendSymbols.Contains(sym) &&
+            EvmAddress.Check(SendTo) == EvmChecksumState.Invalid)
+        {
+            SendAddressWarning = Loc.Instance["send.badChecksum"];
+        }
+    }
+
+    // --- Local address book (§4): reuse saved destinations instead of re-pasting. Public addresses
+    // only, stored on this device. ---
+    private readonly List<AddressBookEntry> _addressBookAll = new();
+    /// <summary>Saved destinations for the asset currently selected in Send.</summary>
+    public ObservableCollection<AddressBookEntry> SendAddressBook { get; } = [];
+    public bool HasSendAddressBook => SendAddressBook.Count > 0;
+    [ObservableProperty] private string _sendAddressLabel = string.Empty;
+
+    private void LoadAddressBook()
+    {
+        _addressBookAll.Clear();
+        _addressBookAll.AddRange(_addressBook.Load());
+        RebuildSendAddressBook();
+    }
+
+    private void RebuildSendAddressBook()
+    {
+        SendAddressBook.Clear();
+        var sym = SelectedSendAsset?.Symbol;
+        if (!string.IsNullOrEmpty(sym))
+            foreach (var e in _addressBookAll.Where(e =>
+                         string.Equals(e.Chain, sym, StringComparison.OrdinalIgnoreCase)))
+                SendAddressBook.Add(e);
+        OnPropertyChanged(nameof(HasSendAddressBook));
+    }
+
+    /// <summary>Saves the current destination for reuse. Auto-labels with the shortened address when no
+    /// label is given; a repeat address just updates its label rather than duplicating.</summary>
+    [RelayCommand]
+    private void SaveSendAddress()
+    {
+        var addr = SendTo?.Trim() ?? string.Empty;
+        var sym = SelectedSendAsset?.Symbol;
+        if (addr.Length == 0 || string.IsNullOrEmpty(sym)) { SendError = Loc.Instance["send.errDestFirst"]; return; }
+
+        var label = string.IsNullOrWhiteSpace(SendAddressLabel) ? Shorten(addr) : SendAddressLabel.Trim();
+        _addressBookAll.RemoveAll(e =>
+            string.Equals(e.Address, addr, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(e.Chain, sym, StringComparison.OrdinalIgnoreCase));
+        _addressBookAll.Add(new AddressBookEntry(label, addr, sym));
+        _addressBook.Save(_addressBookAll);
+        SendAddressLabel = string.Empty;
+        RebuildSendAddressBook();
+        ShowToast(Loc.Instance["send.addrSavedOk"], isError: false);
+    }
+
+    [RelayCommand]
+    private void UseSendAddress(AddressBookEntry? entry)
+    {
+        if (entry is null) return;
+        SendTo = entry.Address; // triggers validation + clears any stale quote
+    }
+
+    [RelayCommand]
+    private void RemoveSendAddress(AddressBookEntry? entry)
+    {
+        if (entry is null) return;
+        _addressBookAll.RemoveAll(e =>
+            string.Equals(e.Address, entry.Address, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(e.Chain, entry.Chain, StringComparison.OrdinalIgnoreCase));
+        _addressBook.Save(_addressBookAll);
+        RebuildSendAddressBook();
+    }
+
+    /// <summary>How much to leave behind on "Max" so the network fee cannot overrun the balance. Tokens
+    /// (USDT/USDC) reserve nothing — their fee is paid in the chain's native coin.</summary>
+    private static decimal SendMaxReserve(string symbol) => symbol.ToUpperInvariant() switch
+    {
+        "BTC" or "LTC" => 0.0003m,
+        "ETH" or "BNB" or "MATIC" or "AVAX" or "FTM" or "CRO" => 0.002m,
+        "SOL" => 0.002m,
+        "TON" => 0.05m,
+        "TRX" => 2m,
+        "XMR" => 0.001m,
+        "ADA" => 1m,
+        _ => 0m,
+    };
+
+    [RelayCommand]
+    private void SetMaxAmount()
+    {
+        if (SelectedSendAsset is null) return;
+        var bal = SelectedSendBalance;
+        if (bal <= 0) { SendError = Loc.Instance["send.nothingToSend"]; return; }
+        SendAmount = Fmt(Math.Max(0m, bal - SendMaxReserve(SelectedSendAsset.Symbol)));
+        SendError = string.Empty;
     }
 
     partial void OnSelectedWatchNetworkChanged(SendOption? value)
@@ -1135,6 +2021,8 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsActivity));
         OnPropertyChanged(nameof(IsTransactions));
         OnPropertyChanged(nameof(IsSettings));
+        OnPropertyChanged(nameof(IsSecurity));
+        OnPropertyChanged(nameof(IsAsset));
         OnPropertyChanged(nameof(IsConnect));
         OnPropertyChanged(nameof(IsMarket));
         OnPropertyChanged(nameof(IsNews));
@@ -1142,6 +2030,10 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsStaking));
         OnPropertyChanged(nameof(IsP2p));
         OnPropertyChanged(nameof(IsBuy));
+        OnPropertyChanged(nameof(IsDiscover));
+        OnPropertyChanged(nameof(IsDiscoverGroup));
+        OnPropertyChanged(nameof(IsWalletGroup));
+        OnPropertyChanged(nameof(IsActivityGroup));
         OnPropertyChanged(nameof(IsWelcomeStage));
         OnPropertyChanged(nameof(IsCreateStage));
         OnPropertyChanged(nameof(IsImportStage));
@@ -1151,6 +2043,7 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsBackupStage));
         OnPropertyChanged(nameof(IsWorkspace));
         OnPropertyChanged(nameof(ShowSidebar));
+        OnPropertyChanged(nameof(ShowSideRail));
     }
 
     // --- Onboarding navigation (full-screen pages) ----------------------------
@@ -1254,6 +2147,9 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void ToggleUnlockAdvanced() => ShowUnlockAdvanced = !ShowUnlockAdvanced;
+
+    [RelayCommand]
     private async Task UnlockAsync()
     {
         if (Password.Length < MinPasswordLength)
@@ -1266,10 +2162,13 @@ public partial class MainViewModel : ViewModelBase
         {
             var mnemonic = await _vault.UnlockAsync(Password);
             _sessionPassword = Password;
+            var passphrase = UnlockPassphrase ?? string.Empty; // capture before the fields are cleared
             ClearPasswordFields();
-            SetUnlocked(mnemonic);
+            SetUnlocked(mnemonic, passphrase);
             ActiveSection = "Portfolio";
-            StatusMessage = "Vault unlocked · loading chain balances";
+            StatusMessage = passphrase.Length > 0
+                ? "Hidden wallet unlocked · loading chain balances"
+                : "Vault unlocked · loading chain balances";
             await RefreshLiveDataAsync();
         });
     }
@@ -1460,12 +2359,24 @@ public partial class MainViewModel : ViewModelBase
         if (!TorEnabled)
         {
             _tor.Stop();
-            PublicHttp.SetProxy(null);
-            TorStatus = "Direct connection · traffic is NOT anonymised";
+            // Fall back to the custom proxy if the user has one, otherwise go direct.
+            var fallback = EffectiveCustomProxy();
+            PublicHttp.SetProxy(fallback);
+            TorStatus = fallback is null
+                ? "Direct connection · traffic is NOT anonymised"
+                : $"Off · using your custom proxy ({fallback})";
             TorStatusColor = "#E7CA83";
             if (IsUnlocked) PushActivity("Security", "Tor", "off", "direct connection", "now");
+            OnPropertyChanged(nameof(TorOnlyStatus)); // Tor-only + Tor off = clearnet now blocked
             _ = RefreshMarketAsync();
             return;
+        }
+
+        // Tor and a custom proxy are mutually exclusive — turning Tor on takes over the route.
+        if (CustomProxyEnabled)
+        {
+            CustomProxyEnabled = false;
+            ProxyStatus = "Off · Tor is handling the route";
         }
 
         if (!EmbeddedTorService.IsBundlePresent)
@@ -1493,6 +2404,7 @@ public partial class MainViewModel : ViewModelBase
         TorStatus = $"{resultMessage} · your IP is hidden from explorers";
         TorStatusColor = "#8FCB9B";
         if (IsUnlocked) PushActivity("Security", "Tor", "on", "IP hidden from explorers", "now");
+        OnPropertyChanged(nameof(TorOnlyStatus));
         _ = RefreshMarketAsync();
         if (IsUnlocked) _ = RefreshLiveDataAsync();
     }
@@ -1543,7 +2455,10 @@ public partial class MainViewModel : ViewModelBase
     {
         Activity.Clear();
         RecentActivity.Clear();
+        _onChainRows.Clear();       // fetched chain history too — it re-pulls on the next Refresh
         _activityStore.Clear();
+        LastHistorySync = "—";
+        RebuildActivityAssets();
         RebuildFilteredActivity();
         RebuildTransactions();
         OnPropertyChanged(nameof(HasActivity));
@@ -1616,6 +2531,8 @@ public partial class MainViewModel : ViewModelBase
             _unlockedMnemonic = string.Empty;
             _unlockedMnemonic = null;
         }
+        _unlockedPassphrase = "";        // forget the hidden-wallet passphrase
+        _deriver.ActivePassphrase = "";  // and reset derivation back to the base wallet
         SetSessionPassword(null);
         IsResettingPassword = false;
 
@@ -1689,10 +2606,84 @@ public partial class MainViewModel : ViewModelBase
         var activeId = _registry.Active?.Id;
         foreach (var w in _registry.Wallets)
         {
-            Wallets.Add(new WalletListItemViewModel(w.Id, w.Label, w.Id == activeId, w.IsLegacy));
+            Wallets.Add(new WalletListItemViewModel(w.Id, w.Label, w.Id == activeId, w.IsLegacy, w.Color));
         }
         OnPropertyChanged(nameof(ActiveWalletLabel));
         OnPropertyChanged(nameof(HasMultipleWallets));
+        RebuildWalletCoinToggles();
+    }
+
+    /// <summary>Coins the active wallet is set to accept — a checkbox row in Settings → Wallets.
+    /// Empty selection means "all coins".</summary>
+    public ObservableCollection<CoinToggle> WalletCoinToggles { get; } = [];
+
+    /// <summary>Whether a coin is shown for the active wallet (all coins when no restriction is set).</summary>
+    private bool IsWalletCoinEnabled(string symbol)
+    {
+        var coins = _registry.Active?.Coins;
+        return coins is null || coins.Count == 0
+            || coins.Contains(symbol, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private void RebuildWalletCoinToggles()
+    {
+        WalletCoinToggles.Clear();
+        var coins = _registry.Active?.Coins;
+        var restricted = coins is { Count: > 0 };
+        foreach (var chain in ChainCatalog.All)
+        {
+            var on = !restricted || coins!.Contains(chain.Symbol, StringComparer.OrdinalIgnoreCase);
+            WalletCoinToggles.Add(new CoinToggle(chain.Symbol, chain.Name, on));
+        }
+        OnPropertyChanged(nameof(WalletCoinsAllLabel));
+    }
+
+    /// <summary>Summary line: "All coins" or "N coins".</summary>
+    public string WalletCoinsAllLabel
+    {
+        get
+        {
+            var coins = _registry.Active?.Coins;
+            return coins is { Count: > 0 }
+                ? $"{coins.Count}"
+                : Loc.Instance["settings.walletCoinsAll"];
+        }
+    }
+
+    /// <summary>Toggle a coin for the active wallet, persist, and re-derive so the change is immediate.</summary>
+    [RelayCommand]
+    private void ToggleWalletCoin(string? symbol)
+    {
+        if (string.IsNullOrWhiteSpace(symbol)) return;
+        var active = _registry.Active;
+        if (active is null || string.IsNullOrEmpty(_unlockedMnemonic)) return;
+
+        // Start from the current effective set (all coins if unrestricted), then flip this one.
+        var set = new HashSet<string>(
+            (active.Coins is { Count: > 0 } c ? c : ChainCatalog.All.Select(x => x.Symbol)),
+            StringComparer.OrdinalIgnoreCase);
+        if (!set.Remove(symbol)) set.Add(symbol);
+
+        // Never allow an empty wallet: an empty selection means "all coins".
+        var full = ChainCatalog.All.Select(x => x.Symbol).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        IReadOnlyList<string>? value = set.Count == 0 || set.SetEquals(full) ? null : set.ToList();
+
+        _registry.SetCoins(active.Id, value);
+        DeriveAccounts(_unlockedMnemonic!);   // re-derive so hidden coins disappear immediately
+        RebuildWalletCoinToggles();
+        if (IsUnlocked) PushActivity("Settings", "Wallet coins", active.Label, symbol, "now");
+    }
+
+    /// <summary>Colour-tag the active wallet (pass "clear" to remove the tag). Persisted.</summary>
+    [RelayCommand]
+    private void SetWalletColor(string? color)
+    {
+        var active = _registry.Active;
+        if (active is null) return;
+        var value = string.Equals(color, "clear", StringComparison.OrdinalIgnoreCase) ? null : color;
+        _registry.SetColor(active.Id, value);
+        RefreshWalletList();
+        if (IsUnlocked) PushActivity("Settings", "Wallet colour", active.Label, value ?? "cleared", "now");
     }
 
     /// <summary>Switch to another wallet. With one common password, the target is unlocked seamlessly;
@@ -1957,6 +2948,8 @@ public partial class MainViewModel : ViewModelBase
 
         // Never leave the QR popup floating over a different section.
         IsQrPopupOpen = false;
+        // Choosing a section from the mobile "More" sheet closes it.
+        IsMoreSheetOpen = false;
 
         ActiveSection = section;
         StatusMessage = section switch
@@ -1970,6 +2963,9 @@ public partial class MainViewModel : ViewModelBase
             "Buy" => "Buy · card/bank on-ramps deliver straight to your own address — nothing is held here",
             _ => StatusMessage,
         };
+
+        // Refresh real on-chain history when the user opens Transactions.
+        if (section == "Transactions" && IsUnlocked && !_isTonWallet) _ = LoadOnChainHistoryAsync();
     }
 
     /// <summary>Opens an external URL in the user's default browser. Used by the P2P/DEX directory and
@@ -1987,6 +2983,7 @@ public partial class MainViewModel : ViewModelBase
                 UseShellExecute = true,
             });
             StatusMessage = $"Opened {url} in your browser";
+            ShowToast(Loc.Instance["toast.opened"], isError: false);
         }
         catch (Exception ex)
         {
@@ -2014,6 +3011,24 @@ public partial class MainViewModel : ViewModelBase
         new("PancakeSwap", "DEX", "Non-custodial",
             "The main BNB Chain DEX (also on Ethereum and more) — swap, provide liquidity, all on-chain.",
             "https://pancakeswap.finance", "CAKE", "#D1884F"),
+        new("CoW Swap", "DEX · MEV-protected", "Non-custodial",
+            "Settles Ethereum & L2 swaps through batch auctions that shield you from front-running/MEV, and only fills at your limit price. Privacy- and price-friendly.",
+            "https://swap.cow.fi", "COW", "#0F4DC4"),
+        new("Matcha", "DEX aggregator", "Non-custodial",
+            "0x-powered aggregator that routes across dozens of DEXes on Ethereum, Base, Arbitrum and more for the best on-chain fill.",
+            "https://matcha.xyz", "MAT", "#2E7DF7"),
+        new("Curve", "DEX · stablecoins", "Non-custodial",
+            "The deepest liquidity for stablecoin and pegged-asset swaps, with minimal slippage. All on-chain.",
+            "https://curve.finance", "CRV", "#F5C542"),
+        new("Osmosis", "DEX · Cosmos", "Non-custodial",
+            "The main Cosmos-ecosystem DEX — cross-chain swaps over IBC, fast and low-fee, custody stays with you.",
+            "https://app.osmosis.zone", "OSMO", "#7A5CFF"),
+        new("SushiSwap", "DEX", "Non-custodial",
+            "Long-running multi-chain DEX (Ethereum, Arbitrum, Base, Polygon and more) — swap and pool on-chain, no account.",
+            "https://www.sushi.com/swap", "SUSHI", "#E5568F"),
+        new("Raydium", "DEX · Solana", "Non-custodial",
+            "A leading Solana AMM/DEX — fast, cheap on-chain swaps across the Solana ecosystem.",
+            "https://raydium.io/swap", "RAY", "#3AB7E0"),
         new("Bisq", "P2P exchange", "Non-custodial · P2P",
             "Desktop, account-free Bitcoin ↔ fiat over a secured peer network with security deposits. Nothing is held by a company.",
             "https://bisq.network", "BSQ", "#25B135"),
@@ -2026,6 +3041,15 @@ public partial class MainViewModel : ViewModelBase
         new("Peach", "P2P", "Non-custodial · escrow",
             "Bitcoin ↔ fiat peer-to-peer with escrow, mobile-first, many local payment methods.",
             "https://peachbitcoin.com", "PCH", "#F97362"),
+        new("Haveno", "P2P · Monero", "Non-custodial · P2P",
+            "Decentralised Monero ↔ fiat/crypto exchange with multisig escrow and no accounts — the private-coin counterpart to Bisq.",
+            "https://haveno.exchange", "HAV", "#F26822"),
+        new("Vexl", "P2P · no-KYC", "Non-custodial · P2P",
+            "Buy/sell Bitcoin peer-to-peer through your own social circle, phone-based, no accounts and no data harvesting — privacy first.",
+            "https://vexl.it", "VEXL", "#EAB308"),
+        new("LocalCoinSwap", "P2P escrow", "Non-custodial · escrow",
+            "Global multi-coin P2P with non-custodial escrow and hundreds of payment methods; you hold the keys throughout.",
+            "https://localcoinswap.com", "LCS", "#16A34A"),
     ];
 
     /// <summary>Card/bank fiat on-ramps for the Buy page. Every one delivers the crypto straight to a
@@ -2080,6 +3104,8 @@ public partial class MainViewModel : ViewModelBase
             var idx = Market.ToList().FindIndex(m => m.Symbol == sym);
             if (idx >= 0) Market[idx] = MarketRowViewModel.LiveCoin(sym, name, e.Price, e.Change, holdable) with { Spark = Market[idx].Spark };
         }
+
+        ApplyWatchlist();
     }
 
     private void SaveMarketCache() =>
@@ -2127,12 +3153,24 @@ public partial class MainViewModel : ViewModelBase
 
             MarketStatus = $"Live · {prices.Count} coins · updated {DateTime.Now:HH:mm:ss}";
             SaveMarketCache();
+            ApplyWatchlist();
             _ = LoadSparklinesAsync();
         }
         catch (Exception ex)
         {
             MarketStatus = $"Market feed failed: {ex.Message}";
         }
+    }
+
+    /// <summary>From a holdings row's "›": jump to Market and open that coin's chart — the reference's
+    /// "tap a coin to see its detail" behaviour, reusing the full Market chart rather than a new page.</summary>
+    [RelayCommand]
+    private async Task OpenAssetChartAsync(string? symbol)
+    {
+        if (string.IsNullOrWhiteSpace(symbol)) return;
+        SelectSection("Market");
+        var row = Market.FirstOrDefault(m => string.Equals(m.Symbol, symbol, StringComparison.OrdinalIgnoreCase));
+        if (row is not null) await SelectMarketCoinAsync(row);
     }
 
     /// <summary>Click a market row → fetch its price series at the selected window and draw a chart.</summary>
@@ -2166,6 +3204,54 @@ public partial class MainViewModel : ViewModelBase
         {
             IsChartLoading = false;
         }
+
+        // Uniswap-style 24h stats under the chart, from the same Binance feed (best-effort).
+        HasMarketStats = false;
+        try
+        {
+            var stats = await _rates.GetMarketStatsAsync(row.Symbol, CancellationToken.None);
+            if (stats is not null)
+            {
+                StatHigh24h = Fx.Price((double)stats.High);
+                StatLow24h = Fx.Price((double)stats.Low);
+                StatVolume24h = FormatCompactMoney((double)stats.QuoteVolume);
+                HasMarketStats = true;
+            }
+        }
+        catch { /* stats are a nicety; never break the detail view over them */ }
+
+        // Optional richer stats (market cap / FDV) — only if the user enabled the connector.
+        HasRichStats = false;
+        if (RichMarketData)
+        {
+            try
+            {
+                var md = await _rates.GetTokenMarketDataAsync(row.Symbol, CancellationToken.None);
+                if (md is not null && md.MarketCap > 0)
+                {
+                    StatMarketCap = FormatCompactMoney((double)md.MarketCap);
+                    StatFdv = md.Fdv > 0 ? FormatCompactMoney((double)md.Fdv) : StatMarketCap;
+                    if (md.Volume24h > 0) StatVolume24h = FormatCompactMoney((double)md.Volume24h);
+                    HasRichStats = true;
+                }
+            }
+            catch { /* connector is best-effort */ }
+        }
+    }
+
+    /// <summary>Compact money in the display currency: 4.6B, 1.5T, 32.4K…</summary>
+    private static string FormatCompactMoney(double usd)
+    {
+        var v = usd * (double)Fx.Rate;
+        var (num, suffix) = v switch
+        {
+            >= 1e12 => (v / 1e12, "T"),
+            >= 1e9 => (v / 1e9, "B"),
+            >= 1e6 => (v / 1e6, "M"),
+            >= 1e3 => (v / 1e3, "K"),
+            _ => (v, ""),
+        };
+        return $"{Fx.Symbol}{num:0.##}{suffix}";
     }
 
     /// <summary>
@@ -2201,322 +3287,6 @@ public partial class MainViewModel : ViewModelBase
 
     private const double SparkWidth = 110;
     private const double SparkHeight = 30;
-
-    // --- Detail chart geometry (exchange-style: gridded plot with labelled axes) ----
-    // The grid is always five levels and five ticks, so their pixel positions are constants and
-    // the view can place them directly. An ItemsControl over a Canvas does not position its
-    // generated containers, which silently dropped the whole grid.
-    private const double PlotLeft = 58;    // room for price labels
-    private const double PlotRight = 860;
-    private const double PlotTop = 10;
-    private const double PlotBottom = 130; // room for time labels below
-
-    /// <summary>Closed polygon under the price line, so the chart reads as an area not a wire.</summary>
-    [ObservableProperty] private List<Avalonia.Point> _chartArea = [];
-
-    /// <summary>Candlesticks (real OHLC) drawn over the area — green up, red down, like a pro chart.</summary>
-    [ObservableProperty] private List<CandleVm> _chartCandles = [];
-
-    // Price levels, top to bottom.
-    [ObservableProperty] private string _chartLevel0 = string.Empty;
-    [ObservableProperty] private string _chartLevel1 = string.Empty;
-    [ObservableProperty] private string _chartLevel2 = string.Empty;
-    [ObservableProperty] private string _chartLevel3 = string.Empty;
-    [ObservableProperty] private string _chartLevel4 = string.Empty;
-
-    // Time ticks, oldest to newest.
-    [ObservableProperty] private string _chartTime0 = string.Empty;
-    [ObservableProperty] private string _chartTime1 = string.Empty;
-    [ObservableProperty] private string _chartTime2 = string.Empty;
-    [ObservableProperty] private string _chartTime3 = string.Empty;
-    [ObservableProperty] private string _chartTime4 = string.Empty;
-
-    [ObservableProperty] private string _chartHigh = string.Empty;
-    [ObservableProperty] private string _chartLow = string.Empty;
-
-    // --- Chart view mode (Candles ⇄ Line), like a pro charting UI ---------------
-    [ObservableProperty] private string _chartViewMode = "Candles";
-    public bool IsCandleView => ChartViewMode == "Candles";
-    public bool IsLineView => ChartViewMode == "Line";
-    partial void OnChartViewModeChanged(string value)
-    {
-        OnPropertyChanged(nameof(IsCandleView));
-        OnPropertyChanged(nameof(IsLineView));
-    }
-
-    [RelayCommand]
-    private void SetChartView(string? mode)
-    {
-        if (!string.IsNullOrWhiteSpace(mode)) ChartViewMode = mode;
-    }
-
-    // --- Change over the selected window (first→last close), shown in the header --
-    [ObservableProperty] private string _chartChangeLabel = string.Empty;
-    [ObservableProperty] private string _chartChangeColor = "#8A9099";
-
-    /// <summary>Soft vertical gradient under the price line — the change colour fading to nothing,
-    /// like Kraken/TradingView. Rebuilt each time a chart is drawn so it tracks the up/down colour.</summary>
-    [ObservableProperty] private Avalonia.Media.IBrush _chartAreaBrush =
-        new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent);
-
-    // --- Crosshair (hover) state, driven from the view code-behind ----------------
-    [ObservableProperty] private bool _crosshairVisible;
-    [ObservableProperty] private double _crosshairLineLeft;
-    [ObservableProperty] private double _crosshairDotLeft;
-    [ObservableProperty] private double _crosshairDotTop;
-    [ObservableProperty] private double _crosshairLabelLeft;
-    [ObservableProperty] private string _crosshairPrice = string.Empty;
-    [ObservableProperty] private string _crosshairTime = string.Empty;
-
-    // Raw candles + scale of the open chart, so the crosshair can map pixels back to price/time.
-    private IReadOnlyList<PriceCandle> _detailCandles = [];
-    private double _chartMin;
-    private double _chartMax;
-
-    /// <summary>
-    /// Turns a price series into a plotted chart: gridlines with price labels, time labels along
-    /// the bottom, a stroked line and the filled area beneath it.
-    /// </summary>
-    private void BuildDetailChart(IReadOnlyList<PriceCandle> candles)
-    {
-        ChartArea = [];
-        ChartPoints = [];
-        ChartCandles = [];
-        ChartHigh = ChartLow = string.Empty;
-        CrosshairVisible = false;
-        _detailCandles = candles;
-        if (candles.Count < 2) return;
-
-        var min = candles.Min(c => c.Low);
-        var max = candles.Max(c => c.High);
-        var range = max - min;
-        // A dead-flat series would divide by zero; give it a nominal band so it renders centred.
-        if (range <= 0) { min -= 1; max += 1; range = max - min; }
-        _chartMin = min;
-        _chartMax = max;
-
-        var plotW = PlotRight - PlotLeft;
-        var plotH = PlotBottom - PlotTop;
-        double Y(double price) => PlotTop + (1 - (price - min) / range) * plotH;
-
-        // Faint close-line + area behind the candles.
-        var line = new List<Avalonia.Point>(candles.Count);
-        for (var i = 0; i < candles.Count; i++)
-        {
-            var x = PlotLeft + plotW * i / (candles.Count - 1);
-            line.Add(new Avalonia.Point(x, Y(candles[i].Close)));
-        }
-
-        ChartPoints = line;
-        ChartArea = new List<Avalonia.Point>(line) { new(PlotRight, PlotBottom), new(PlotLeft, PlotBottom) };
-
-        // Candlesticks: green when close ≥ open, red otherwise (TradingView colours).
-        var w = Math.Max(1.5, plotW / candles.Count * 0.62);
-        var built = new List<CandleVm>(candles.Count);
-        for (var i = 0; i < candles.Count; i++)
-        {
-            var c = candles[i];
-            var xc = PlotLeft + plotW * (i + 0.5) / candles.Count;
-            var yHigh = Y(c.High);
-            var yLow = Y(c.Low);
-            var bodyTop = Math.Min(Y(c.Open), Y(c.Close));
-            built.Add(new CandleVm(
-                xc - (w / 2), yHigh, w, Math.Max(1, yLow - yHigh),
-                (w / 2) - 0.7, bodyTop - yHigh, Math.Max(1, Math.Abs(Y(c.Close) - Y(c.Open))),
-                c.Close >= c.Open ? "#26A69A" : "#EF5350"));
-        }
-
-        ChartCandles = built;
-
-        // Five price levels, top to bottom.
-        ChartLevel0 = FormatPrice(max);
-        ChartLevel1 = FormatPrice(max - range * 0.25);
-        ChartLevel2 = FormatPrice(max - range * 0.5);
-        ChartLevel3 = FormatPrice(max - range * 0.75);
-        ChartLevel4 = FormatPrice(min);
-
-        // Time axis derived from the selected window — the series is evenly spaced within it.
-        var ticks = TimeAxisLabels(ChartRange);
-        ChartTime0 = ticks[0];
-        ChartTime1 = ticks[1];
-        ChartTime2 = ticks[2];
-        ChartTime3 = ticks[3];
-        ChartTime4 = ticks[4];
-
-        ChartHigh = $"H {FormatPrice(max)}";
-        ChartLow = $"L {FormatPrice(min)}";
-
-        // Change across the whole window (first open → last close), like the header on an exchange.
-        var open0 = candles[0].Open != 0 ? candles[0].Open : candles[0].Close;
-        var closeN = candles[^1].Close;
-        var pct = open0 != 0 ? (closeN - open0) / open0 * 100 : 0;
-        var up = pct >= 0;
-        ChartChangeColor = up ? "#26A69A" : "#EF5350";
-        ChartChangeLabel = $"{(up ? "▲" : "▼")} {Math.Abs(pct):0.00}% · {ChartRange}";
-
-        // Gradient fill under the line: change-colour → transparent, top to bottom.
-        var baseColor = Avalonia.Media.Color.Parse(up ? "#26A69A" : "#EF5350");
-        ChartAreaBrush = new Avalonia.Media.LinearGradientBrush
-        {
-            StartPoint = new Avalonia.RelativePoint(0, 0, Avalonia.RelativeUnit.Relative),
-            EndPoint = new Avalonia.RelativePoint(0, 1, Avalonia.RelativeUnit.Relative),
-            GradientStops =
-            {
-                new Avalonia.Media.GradientStop(Avalonia.Media.Color.FromArgb(0x66, baseColor.R, baseColor.G, baseColor.B), 0),
-                new Avalonia.Media.GradientStop(Avalonia.Media.Color.FromArgb(0x1F, baseColor.R, baseColor.G, baseColor.B), 0.55),
-                new Avalonia.Media.GradientStop(Avalonia.Media.Color.FromArgb(0x00, baseColor.R, baseColor.G, baseColor.B), 1),
-            },
-        };
-    }
-
-    /// <summary>Called from the view as the pointer moves over the chart: snaps to the nearest candle
-    /// and updates the crosshair line, dot and floating price/time readout.</summary>
-    public void UpdateCrosshair(double canvasX)
-    {
-        var n = _detailCandles.Count;
-        if (n < 2) { CrosshairVisible = false; return; }
-
-        var plotW = PlotRight - PlotLeft;
-        var plotH = PlotBottom - PlotTop;
-        var range = _chartMax - _chartMin;
-        if (range <= 0) { CrosshairVisible = false; return; }
-
-        var frac = Math.Clamp((canvasX - PlotLeft) / plotW, 0, 1);
-        var i = Math.Clamp((int)Math.Round(frac * (n - 1)), 0, n - 1);
-        var c = _detailCandles[i];
-
-        var x = PlotLeft + plotW * i / (double)(n - 1);
-        var y = PlotTop + (1 - (c.Close - _chartMin) / range) * plotH;
-
-        CrosshairLineLeft = x;
-        CrosshairDotLeft = x - 4;
-        CrosshairDotTop = y - 4;
-        CrosshairLabelLeft = Math.Clamp(x - 62, PlotLeft, PlotRight - 124);
-        CrosshairPrice = FormatPrice(c.Close);
-        CrosshairTime = CrosshairTimeLabel(i, n);
-        CrosshairVisible = true;
-    }
-
-    public void HideCrosshair() => CrosshairVisible = false;
-
-    /// <summary>Approximate wall-clock label for a hovered candle: the window is evenly spaced, so
-    /// candle i of n maps to now − span·(1 − i/(n−1)).</summary>
-    private string CrosshairTimeLabel(int i, int n)
-    {
-        var frac = (double)i / (n - 1);
-        var span = ChartRange switch
-        {
-            "1H" => TimeSpan.FromHours(1),
-            "24H" => TimeSpan.FromHours(24),
-            "7D" => TimeSpan.FromDays(7),
-            "30D" => TimeSpan.FromDays(30),
-            _ => TimeSpan.FromDays(365),
-        };
-        var t = DateTime.Now - TimeSpan.FromTicks((long)(span.Ticks * (1 - frac)));
-        return ChartRange switch
-        {
-            "1H" or "24H" => t.ToString("HH:mm", CultureInfo.InvariantCulture),
-            "7D" or "30D" => t.ToString("MMM d · HH:mm", CultureInfo.InvariantCulture),
-            _ => t.ToString("MMM d, yyyy", CultureInfo.InvariantCulture),
-        };
-    }
-
-    private static string FormatPrice(double value) => value switch
-    {
-        >= 1000 => value.ToString("N0", CultureInfo.InvariantCulture),
-        >= 1 => value.ToString("N2", CultureInfo.InvariantCulture),
-        _ => value.ToString("N6", CultureInfo.InvariantCulture),
-    };
-
-    /// <summary>Evenly spaced ticks labelled for the selected window, oldest on the left.</summary>
-    private static string[] TimeAxisLabels(string range) => range switch
-    {
-        "1H" => ["-60m", "-45m", "-30m", "-15m", "now"],
-        "24H" => ["-24h", "-18h", "-12h", "-6h", "now"],
-        "7D" => ["-7d", "-5d", "-3d", "-2d", "now"],
-        "30D" => ["-30d", "-22d", "-15d", "-7d", "now"],
-        _ => ["-1y", "-9m", "-6m", "-3m", "now"],
-    };
-
-    /// <summary>Free-text Market filter — matches ticker or name. Drives per-row visibility via
-    /// <see cref="MarketFilterConverter"/>, so live price updates (indexed by symbol) are untouched.</summary>
-    [ObservableProperty] private string _marketQuery = string.Empty;
-
-    [RelayCommand]
-    private void ClearMarketQuery() => MarketQuery = string.Empty;
-
-    /// <summary>Selected chart window. Changing it reloads every chart at the new resolution.</summary>
-    [ObservableProperty] private string _chartRange = "24H";
-
-    public IReadOnlyList<string> ChartRanges => PublicMarketRatesClient.ChartRanges;
-
-    [RelayCommand]
-    private async Task SelectChartRangeAsync(string? range)
-    {
-        if (string.IsNullOrWhiteSpace(range) || range == ChartRange) return;
-        ChartRange = range;
-        OnPropertyChanged(nameof(IsRange1H));
-        OnPropertyChanged(nameof(IsRange24H));
-        OnPropertyChanged(nameof(IsRange7D));
-        OnPropertyChanged(nameof(IsRange30D));
-        OnPropertyChanged(nameof(IsRange1Y));
-
-        StatusMessage = $"Loading {range} charts…";
-        await LoadSparklinesAsync(force: true);
-        if (HasChart)
-        {
-            var open = Market.FirstOrDefault(m => m.Symbol == SelectedMarketSymbol);
-            if (open is not null) await SelectMarketCoinAsync(open);
-        }
-        StatusMessage = $"Charts showing the last {range}";
-    }
-
-    public bool IsRange1H => ChartRange == "1H";
-    public bool IsRange24H => ChartRange == "24H";
-    public bool IsRange7D => ChartRange == "7D";
-    public bool IsRange30D => ChartRange == "30D";
-    public bool IsRange1Y => ChartRange == "1Y";
-
-    [RelayCommand]
-    private void CloseChart()
-    {
-        HasChart = false;
-        CrosshairVisible = false;
-        _detailCandles = [];
-        ChartPoints = new System.Collections.Generic.List<Avalonia.Point>();
-    }
-
-    private const double ChartWidth = 620;
-    private const double ChartHeight = 150;
-
-    /// <summary>Scales a price series into polyline points inside the chart box (top-left origin).</summary>
-    private static System.Collections.Generic.List<Avalonia.Point> BuildChartPoints(
-        System.Collections.Generic.IReadOnlyList<double> series, double width, double height)
-    {
-        var points = new System.Collections.Generic.List<Avalonia.Point>();
-        if (series.Count < 2) return points;
-
-        double min = double.MaxValue, max = double.MinValue;
-        foreach (var v in series)
-        {
-            if (v < min) min = v;
-            if (v > max) max = v;
-        }
-
-        var range = max - min;
-        const double pad = 10;
-        var usableH = height - 2 * pad;
-        for (var i = 0; i < series.Count; i++)
-        {
-            var x = width * i / (series.Count - 1);
-            // Flat series → draw a centred line rather than dividing by zero.
-            var norm = range > 0 ? (series[i] - min) / range : 0.5;
-            var y = pad + (1 - norm) * usableH;
-            points.Add(new Avalonia.Point(x, y));
-        }
-
-        return points;
-    }
 
     [RelayCommand]
     private void ToggleBalanceHidden() => IsBalanceHidden = !IsBalanceHidden;
@@ -2583,13 +3353,19 @@ public partial class MainViewModel : ViewModelBase
                 .Distinct()
                 .ToList();
             var prices = await _rates.GetUsdPricesAsync(symbols, ct);
+            _priceUsd = prices; // snapshot for the Send fiat estimate
+            OnPropertyChanged(nameof(SendAmountFiat));
 
             // Fetch every account's balance CONCURRENTLY, then apply on the UI thread. Sequential
             // awaits here were the main reason the total took many seconds to appear after unlock /
             // wallet switch; firing them together cuts that to roughly the slowest single call.
             // (Receive-only chains TON/ADA have public balance APIs; XMR returns null safely.)
+            // BTC/LTC are handled by the HD scan below (aggregated across every address), not by the
+            // single-address balance call — otherwise change sent to an internal address would vanish
+            // from the shown balance.
             var balanceTargets = Accounts.ToList()
-                .Where(a => a.SupportStatus is "Ready" or "Receive only" && ParseChain(a.Symbol) is not null)
+                .Where(a => a.SupportStatus is "Ready" or "Receive only" && ParseChain(a.Symbol) is not null
+                            && a.Symbol is not ("BTC" or "LTC"))
                 .ToList();
             var balanceResults = await Task.WhenAll(
                 balanceTargets.Select(a => _balances.GetBalanceAsync(ParseChain(a.Symbol)!.Value, a.Address, ct)));
@@ -2613,6 +3389,10 @@ public partial class MainViewModel : ViewModelBase
             // Show the total from native balances immediately, before the slower token/NFT/watch passes.
             RefreshHoldings();
             RecalcBalance();
+
+            // BTC/LTC: scan every derived address (external + internal) and aggregate — the balance
+            // the wallet shows is exactly the set it can find and spend.
+            await RefreshUtxoWalletsAsync(prices, ct);
 
             // Every TRC-20 token on our OWN derived TRON account — not just USDT. Reward tokens,
             // other stablecoins and any TRC-20 asset now appear next to the native coins, which is
@@ -2678,7 +3458,9 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();
             RecalcBalance();
             SaveBalanceCache(); // remember these totals so the next unlock/switch is instant
-            PushActivity("Sync", "All", "OK", "Public RPC / explorers", "now");
+            // NOTE: deliberately no "Sync" activity entry here. This runs every 60s on a timer, and
+            // logging it flooded the Activity feed with identical "Sync · OK" rows. The live status
+            // line below already shows the last-updated time; the Activity feed is for real events.
             StatusMessage = $"Live · {Holdings.Count} assets · updated {DateTime.Now:HH:mm:ss}";
         }
         catch (OperationCanceledException)
@@ -2832,6 +3614,7 @@ public partial class MainViewModel : ViewModelBase
 
         await CopyTextAsync(ready.Address);
         StatusMessage = $"Copied {ready.Symbol} address";
+        ShowToast($"{ready.Symbol} · {Loc.Instance["toast.copied"]}", isError: false);
     }
 
     [RelayCommand]
@@ -2840,6 +3623,7 @@ public partial class MainViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(address) || !IsRealAddress(address)) return;
         await CopyTextAsync(address);
         StatusMessage = "Address copied";
+        ShowToast(Loc.Instance["toast.copied"], isError: false);
     }
 
     [RelayCommand]
@@ -2965,6 +3749,57 @@ public partial class MainViewModel : ViewModelBase
         LoadProfileImages();
     }
 
+    // Password typed to verify a backup can actually be decrypted. Held only for the check, then cleared.
+    [ObservableProperty] private string _backupVerifyPassword = string.Empty;
+
+    /// <summary>
+    /// Proves a chosen backup file is genuinely restorable — it decrypts with the given password and
+    /// holds a valid recovery phrase — without ever revealing the seed. A backup you cannot restore is
+    /// worthless, so this lets the user confirm it BEFORE they rely on it.
+    /// </summary>
+    [RelayCommand]
+    private async Task VerifyBackupAsync()
+    {
+        BackupStatus = BackupError = string.Empty;
+        if (PickFileAsync is null) return;
+
+        var pw = BackupVerifyPassword ?? string.Empty;
+        if (pw.Length == 0) { BackupError = Loc.Instance["backup.errPassword"]; return; }
+
+        var path = await PickFileAsync(string.Empty, false);
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        var result = await VaultBackup.VerifyAsync(path, pw);
+        BackupVerifyPassword = string.Empty; // don't keep the password around after the check
+
+        if (!result.Ok) { BackupError = BackupMessage(result); return; }
+
+        var extras = new List<string>();
+        if (result.ExportedUtc is { } dt)
+            extras.Add(string.Format(Loc.Instance["backup.made"], dt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")));
+        if (result.HasWatchAddresses) extras.Add(Loc.Instance["backup.hasWatch"]);
+        if (result.HasExchanges) extras.Add(Loc.Instance["backup.hasKeys"]);
+        var verdict = BackupMessage(result);
+        BackupStatus = extras.Count > 0 ? $"{verdict} · {string.Join(" · ", extras)}" : verdict;
+    }
+
+    /// <summary>
+    /// The backup verdict in the user’s language. The infrastructure layer reports *why* as an enum;
+    /// only the UI knows about languages, so the mapping lives here. An unrecognised reason falls back
+    /// to the layer’s own sentence rather than showing nothing (roadmap §8.2).
+    /// </summary>
+    private static string BackupMessage(VaultBackupVerification result) => result.Reason switch
+    {
+        VaultBackupReason.Verified => Loc.Instance["backup.verified"],
+        VaultBackupReason.FileMissing => Loc.Instance["backup.fileMissing"],
+        VaultBackupReason.NotABackup => Loc.Instance["backup.notABackup"],
+        VaultBackupReason.NoVault => Loc.Instance["backup.noVault"],
+        VaultBackupReason.WrongPassword => Loc.Instance["backup.wrongPassword"],
+        VaultBackupReason.DamagedPhrase => Loc.Instance["backup.damagedPhrase"],
+        VaultBackupReason.CorruptVault => Loc.Instance["backup.corruptVault"],
+        _ => result.Message,
+    };
+
     [RelayCommand]
     private async Task ExportBackupAsync()
     {
@@ -2996,15 +3831,174 @@ public partial class MainViewModel : ViewModelBase
         BackupStatus = message;
     }
 
-    /// <summary>Points the QR/address at an account without showing the popup.</summary>
+    /// <summary>Points the QR/address at an account. Opens on the base receive address (#0); on the
+    /// full-HD chains (BTC/LTC) the user can then rotate to a fresh address — safe now that the wallet
+    /// discovers and spends across every issued index, so funds on #1+ are found and spendable.</summary>
     private bool SetReceiveTarget(WalletAccountViewModel? account)
     {
         if (account is null || !IsRealAddress(account.Address)) return false;
+        ReceiveAmount = string.Empty; // a fresh target starts with no requested amount
+        ShowReceiveAdvanced = false;  // collapse developer detail on every new target
         SelectedReceiveAddress = account.Address;
         SelectedReceiveSymbol = account.Symbol;
         SelectedReceiveNetwork = $"{account.Symbol} · {account.NetworkLabel}";
-        ReceiveQr = BuildQr(account.Address);
+        ReceiveQr = BuildQr(BuildReceivePayload(account.Address));
+
+        // Rotation is only safe where the wallet fully spends across addresses (BTC/LTC).
+        _receiveChain = ParseChain(account.Symbol);
+        CanRotateReceive = account.Symbol is "BTC" or "LTC"
+                           && _receiveChain is not null && _unlockedMnemonic is not null;
+        ReceivePathLabel = CanRotateReceive ? $"{account.Symbol} receive address #0" : string.Empty;
+        RebuildReceiveHistory(account.Symbol);
+        _receiveIndex = 0;
+        QueueReuseCheck(account.Address, 0);
         return true;
+    }
+
+    /// <summary>The external HD index of the receive address currently on screen (0 = the default one).</summary>
+    private uint _receiveIndex;
+
+    /// <summary>
+    /// Raises the address-reuse warning when the address on screen provably already has on-chain
+    /// history (secure roadmap 3.3). Reusing a receive address lets any observer tie the two senders
+    /// to the same wallet, so the user is told and pointed at "Generate new address".
+    ///
+    /// Only runs where a fresh address can actually be offered (BTC/LTC) — warning without a remedy
+    /// is noise. Fail-closed on *silence*, not on doubt: an unreachable explorer leaves the banner
+    /// off and simply reports nothing, and it never claims an address is fresh without evidence.
+    /// </summary>
+    private void QueueReuseCheck(string address, uint index)
+    {
+        _reuseCheckCts?.Cancel();
+        _reuseCheckCts = null;
+        ReceiveAddressReused = false;
+        ReceiveAddressCheckPending = false;
+
+        if (!CanRotateReceive || string.IsNullOrWhiteSpace(address)) return;
+
+        var cts = new CancellationTokenSource();
+        _reuseCheckCts = cts;
+        var symbol = SelectedReceiveSymbol;
+        var walletId = _registry.Active?.Id ?? "default";
+        uint? floor = null;
+        try { floor = _addrIndex.GetState(walletId, symbol).LastSeenUsedExternalIndex; } catch { }
+        ReceiveAddressCheckPending = true;
+
+        _ = Task.Run(async () =>
+        {
+            AddressUseState verdict;
+            try
+            {
+                verdict = await _reuseInspector.InspectAsync(
+                    UtxoExplorerFor(symbol), address, index, floor, cts.Token);
+            }
+            catch (OperationCanceledException) { return; }
+            catch { verdict = AddressUseState.Unknown; }
+
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                // A newer address may have been shown while this check was in flight — ignore a
+                // stale verdict rather than warning about an address that is no longer on screen.
+                if (cts.IsCancellationRequested || !string.Equals(SelectedReceiveAddress, address, StringComparison.Ordinal))
+                    return;
+                ReceiveAddressCheckPending = false;
+                ReceiveAddressReused = verdict == AddressUseState.Used;
+            });
+        });
+    }
+
+    [RelayCommand]
+    private void ToggleReceiveAdvanced() => ShowReceiveAdvanced = !ShowReceiveAdvanced;
+
+    // Notify the token-warning and requested-amount gates whenever the receive asset changes.
+    partial void OnSelectedReceiveSymbolChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsTokenReceive));
+        OnPropertyChanged(nameof(CanRequestAmount));
+    }
+
+    // Re-render the QR the moment the requested amount changes so what's on screen always matches the field.
+    partial void OnReceiveAmountChanged(string value)
+    {
+        if (!string.IsNullOrEmpty(SelectedReceiveAddress))
+            ReceiveQr = BuildQr(BuildReceivePayload(SelectedReceiveAddress));
+    }
+
+    /// <summary>Encodes the receive target as a wallet payment URI. With a valid requested amount on a
+    /// BIP21 chain (BTC/LTC/DOGE/BCH) it returns e.g. <c>bitcoin:addr?amount=0.5</c>; otherwise the plain
+    /// address, so a scan can never carry a malformed or wrong-scheme payload.</summary>
+    private string BuildReceivePayload(string address)
+    {
+        if (!CanRequestAmount || string.IsNullOrWhiteSpace(ReceiveAmount)) return address;
+
+        if (!AmountInput.TryParsePositive(ReceiveAmount, out var amount)) return address;
+
+        var amountStr = amount.ToString("0.########", System.Globalization.CultureInfo.InvariantCulture);
+
+        // BCH's CashAddr already carries the "bitcoincash:" scheme, so its payment URI is the address
+        // itself plus the amount — prepending a scheme again would double the prefix.
+        if (SelectedReceiveSymbol == "BCH")
+            return address.Contains(':')
+                ? $"{address}?amount={amountStr}"
+                : $"bitcoincash:{address}?amount={amountStr}";
+
+        var scheme = SelectedReceiveSymbol switch
+        {
+            "BTC" => "bitcoin",
+            "LTC" => "litecoin",
+            "DOGE" => "dogecoin",
+            _ => null,
+        };
+        if (scheme is null) return address;
+
+        return $"{scheme}:{address}?amount={amountStr}";
+    }
+
+    /// <summary>Lists the receive addresses already handed out (index 0..last issued), so the user can
+    /// see and re-copy a past address. Re-derived from the seed; the indices come from durable state.</summary>
+    private void RebuildReceiveHistory(string symbol)
+    {
+        ReceiveHistory.Clear();
+        if (!CanRotateReceive || _receiveChain is null || _unlockedMnemonic is null) return;
+
+        var walletId = _registry.Active?.Id ?? "default";
+        var lastIssued = _addrIndex.GetState(walletId, symbol).LastIssuedExternalIndex ?? 0;
+        for (uint i = 0; i <= lastIssued; i++)
+            ReceiveHistory.Add(_deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, _receiveChain.Value, 0, i).Address);
+        OnPropertyChanged(nameof(HasReceiveHistory));
+    }
+
+    /// <summary>
+    /// Hands out a fresh receive address by reserving the next external HD index. The index is
+    /// persisted BEFORE the address is shown and reserving throws on write failure, so a crash can
+    /// never lose an address the user has already published. Bumping the issued index also raises the
+    /// discovery scan floor, so funds received here are found and spendable.
+    /// </summary>
+    [RelayCommand]
+    private void NewReceiveAddress()
+    {
+        if (!CanRotateReceive || _receiveChain is null || _unlockedMnemonic is null) return;
+
+        var symbol = SelectedReceiveSymbol;
+        var walletId = _registry.Active?.Id ?? "default";
+        try
+        {
+            var index = _addrIndex.ReserveNextExternalIndex(walletId, symbol);
+            var addr = _deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, _receiveChain.Value, 0, index).Address;
+            SelectedReceiveAddress = addr;
+            ReceiveQr = BuildQr(BuildReceivePayload(addr));
+            ReceivePathLabel = $"{symbol} receive address #{index}";
+            if (!ReceiveHistory.Contains(addr)) ReceiveHistory.Add(addr);
+            OnPropertyChanged(nameof(HasReceiveHistory));
+            _receiveIndex = index;
+            QueueReuseCheck(addr, index);
+            ShowToast(Loc.Instance["receive.newAddr"], isError: false);
+        }
+        catch
+        {
+            // Fail-closed: if the new index could not be persisted, do NOT show an address we might forget.
+            ShowToast(Loc.Instance["receive.newAddrFail"], isError: true);
+        }
     }
 
     /// <summary>
@@ -3110,6 +4104,8 @@ public partial class MainViewModel : ViewModelBase
         if (a.Length == 48 && (a.StartsWith("UQ") || a.StartsWith("EQ") || a.StartsWith("kQ") || a.StartsWith("0Q"))) return "TON";
         if ((a.StartsWith('4') || a.StartsWith('8')) && a.Length is 95 or 106) return "XMR";
         if (a.StartsWith('D') && a.Length == 34) return "DOGE";
+        if (a.StartsWith("bitcoincash:", StringComparison.OrdinalIgnoreCase)) return "BCH";
+        if (a.StartsWith("t1", StringComparison.Ordinal) && a.Length == 35) return "ZEC"; // Zcash transparent
         if ((a.StartsWith('1') || a.StartsWith('3')) && a.Length is >= 26 and <= 35) return "BTC";
         return null; // Solana / other base58 is ambiguous — keep the selected network
     }
@@ -3156,575 +4152,17 @@ public partial class MainViewModel : ViewModelBase
         StatusMessage = "Watch address removed";
     }
 
-    /// <summary>
-    /// Step 1 of the send flow: validate, fetch live nonce/gas/balance, and show a quote.
-    /// Nothing is signed here. ETH only — other chains refuse honestly.
-    /// </summary>
-    [RelayCommand]
-    private async Task PrepareSendAsync()
-    {
-        SendError = string.Empty;
-        SendSuccess = string.Empty;
-        HasSendQuote = false;
-        _sendQuote = null;
-        _tonQuote = null;
-
-        if (!IsUnlocked || _unlockedMnemonic is null)
-        {
-            SendError = "Unlock the vault first.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(SendTo) || string.IsNullOrWhiteSpace(SendAmount))
-        {
-            SendError = "Enter a destination address and an amount.";
-            return;
-        }
-
-        if (!decimal.TryParse(SendAmount, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) ||
-            amount <= 0)
-        {
-            SendError = "Amount must be a positive number.";
-            return;
-        }
-
-        var chain = SendChain.Trim().ToUpperInvariant();
-        if (chain == "ETHEREUM") chain = "ETH";
-        if (chain == "BITCOIN") chain = "BTC";
-        if (chain == "LITECOIN") chain = "LTC";
-        if (chain == "SOLANA") chain = "SOL";
-
-        if (chain == "MONERO") chain = "XMR";
-
-        if (chain == "XMR")
-        {
-            if (!_monero.IsRunning)
-            {
-                SendError = "Turn on the Monero wallet service in Settings → Privacy first.";
-                return;
-            }
-
-            if (!MoneroKeys.TryDecodeAddress(SendTo.Trim(), out _, out _, out _))
-            {
-                SendError = "That is not a valid Monero address (checksum failed).";
-                return;
-            }
-
-            _sendSymbol = "XMR";
-            _moneroAmount = amount;
-            _moneroTo = SendTo.Trim();
-
-            // Developer fee as a second destination. Only kept if its address is a valid Monero
-            // address — otherwise the whole transfer would fail, so the user's send comes first.
-            _moneroFeeTo = null;
-            _moneroFeeAmount = 0m;
-            var xmrFee = _devFee.QuoteFee("XMR", amount);
-            if (xmrFee is { } f && MoneroKeys.TryDecodeAddress(f.Address, out _, out _, out _))
-            {
-                _moneroFeeTo = f.Address;
-                _moneroFeeAmount = f.Amount;
-            }
-
-            HasSendQuote = true;
-            SendQuoteSummary = $"Send {Fmt(amount)} XMR  →  {Shorten(_moneroTo)}";
-            SendQuoteFee = _moneroFeeTo is not null
-                ? $"Network fee is set by Monero at broadcast · service fee {_devFee.FeePercent:0.##}% ≈ " +
-                  $"{Fmt(_moneroFeeAmount)} XMR to the developer (same transaction)."
-                : "Fee is set by the Monero network at broadcast (priority: normal).";
-            StatusMessage = "Review the transfer, then confirm to broadcast";
-            return;
-        }
-
-        if (chain is "TRX" or "TRON" or "USDT" or "TRC20")
-        {
-            var symbol = chain is "USDT" or "TRC20" ? "USDT" : "TRX";
-            var tronAccount = Accounts.FirstOrDefault(a => a.Symbol == "TRX" && a.SupportStatus == "Ready");
-            if (tronAccount is null || !IsRealAddress(tronAccount.Address))
-            {
-                SendError = "No TRON account is available.";
-                return;
-            }
-
-            _sendSymbol = symbol;
-            await RunBusyAsync(async () =>
-            {
-                StatusMessage = "Building the TRON transaction…";
-                var (quote, error) = await _tronSender.PrepareAsync(
-                    symbol, tronAccount.Address, SendTo.Trim(), amount);
-                if (quote is null) { SendError = error ?? "Could not prepare the transaction."; return; }
-
-                _tronQuote = quote;
-                HasSendQuote = true;
-                SendQuoteSummary = $"Send {Fmt(amount)} {symbol}  →  {quote.To}";
-                SendQuoteFee = symbol == "USDT"
-                    ? "USDT moves on the TRON network — the fee is paid in TRX (energy/bandwidth). Keep a little TRX on this address."
-                    : "Fee is paid in TRX bandwidth.";
-                StatusMessage = "Review the transfer, then confirm to broadcast";
-            });
-            return;
-        }
-
-        if (chain is not ("ETH" or "BTC" or "LTC" or "SOL" or "TON"))
-        {
-            SendError =
-                $"Sending {chain} is not available. This build broadcasts ETH, BTC, LTC, SOL, TON, XMR, TRX and USDT (TRC-20).";
-            return;
-        }
-
-        var from = Accounts.FirstOrDefault(a => a.Symbol == chain && a.SupportStatus == "Ready");
-        if (from is null || !IsRealAddress(from.Address))
-        {
-            SendError = $"No {chain} account is available.";
-            return;
-        }
-
-        _sendSymbol = chain;
-        await RunBusyAsync(async () =>
-        {
-            StatusMessage = "Fetching balance and network fees…";
-            switch (chain)
-            {
-                case "ETH":
-                case "BNB":
-                case "MATIC":
-                case "AVAX":
-                case "FTM":
-                case "CRO":
-                {
-                    var evm = EthTransactionSender.Chains[chain];
-                    var (quote, error) = await _ethSender.PrepareAsync(from.Address, SendTo.Trim(), amount, evm);
-                    if (quote is null) { SendError = error ?? "Could not prepare the transaction."; return; }
-                    _sendQuote = quote;
-                    SendQuoteSummary = $"Send {Fmt(quote.AmountEth)} {quote.Symbol}  →  {quote.To}";
-                    SendQuoteFee =
-                        $"Network fee ≈ {Fmt(quote.MaxFeeEth)} {quote.Symbol} · {evm.Name} · nonce {quote.Nonce} · via {new Uri(quote.Rpc).Host}";
-                    break;
-                }
-
-                case "BTC":
-                case "LTC":
-                {
-                    var devFee = _devFee.QuoteFee(chain, amount);
-                    var (quote, error) = await _btcSender.PrepareAsync(
-                        chain, from.Address, SendTo.Trim(), amount, devFee?.Address, devFee?.Amount ?? 0m);
-                    if (quote is null) { SendError = error ?? "Could not prepare the transaction."; return; }
-                    _btcQuote = quote;
-                    SendQuoteSummary = $"Send {Fmt(quote.Amount)} {chain}  →  {quote.To}";
-                    // Disclosure is driven off the quote (the source of truth for what is actually sent).
-                    SendQuoteFee = quote.DevFeeSat > 0
-                        ? $"Network fee ≈ {Fmt(quote.FeeAmount)} {chain} · service fee {_devFee.FeePercent:0.##}% ≈ " +
-                          $"{Fmt(quote.DevFeeSat / 100_000_000m)} {chain} to the developer · change returns to you"
-                        : $"Network fee ≈ {Fmt(quote.FeeAmount)} {chain} · {quote.InputCount} input(s) · change returns to you";
-                    break;
-                }
-
-                case "SOL":
-                {
-                    var devFee = _devFee.QuoteFee("SOL", amount);
-                    var (quote, error) = await _solSender.PrepareAsync(
-                        from.Address, SendTo.Trim(), amount, devFee?.Address, devFee?.Amount ?? 0m);
-                    if (quote is null) { SendError = error ?? "Could not prepare the transaction."; return; }
-                    _solQuote = quote;
-                    SendQuoteSummary = $"Send {Fmt(quote.AmountSol)} SOL  →  {quote.To}";
-                    SendQuoteFee = quote.DevFeeLamports > 0
-                        ? $"Network fee ≈ {Fmt(quote.FeeSol)} SOL · service fee {_devFee.FeePercent:0.##}% ≈ " +
-                          $"{Fmt(quote.DevFeeLamports / 1_000_000_000m)} SOL to the developer (same transaction)"
-                        : $"Network fee ≈ {Fmt(quote.FeeSol)} SOL";
-                    break;
-                }
-
-                case "TON":
-                {
-                    var (quote, error) = await _tonSender.PrepareAsync(from.Address, SendTo.Trim(), amount);
-                    if (quote is null) { SendError = error ?? "Could not prepare the transaction."; return; }
-                    _tonQuote = quote;
-                    SendQuoteSummary = $"Send {Fmt(quote.AmountTon)} TON  →  {quote.To}";
-                    SendQuoteFee = quote.Deploy
-                        ? $"Network fee ≈ {Fmt(quote.FeeTon)} TON · first send also deploys your wallet (seqno 0)"
-                        : $"Network fee ≈ {Fmt(quote.FeeTon)} TON · seqno {quote.Seqno}";
-                    break;
-                }
-
-                case "ADA":
-                {
-                    var (quote, error) = await _adaSender.PrepareAsync(from.Address, SendTo.Trim(), amount);
-                    if (quote is null) { SendError = error ?? "Could not prepare the transaction."; return; }
-                    _adaQuote = quote;
-                    SendQuoteSummary = $"Send {Fmt(quote.Amount)} ADA  →  {quote.To}";
-                    SendQuoteFee = $"Network fee ≈ {Fmt(quote.Fee / 1_000_000m)} ADA · {quote.Inputs.Count} input(s) · change returns to you";
-                    break;
-                }
-            }
-
-            HasSendQuote = true;
-            StatusMessage = "Review the transfer, then confirm to broadcast";
-        });
-    }
-
-    private static string Fmt(decimal value) =>
-        value.ToString("0.########", CultureInfo.InvariantCulture);
-
-    /// <summary>
-    /// Step 2: the user explicitly confirms — derive the key, sign locally, broadcast, zero the key.
-    /// </summary>
-    [RelayCommand]
-    private async Task ConfirmSendAsync()
-    {
-        var haveQuote = _sendQuote is not null || _btcQuote is not null || _solQuote is not null
-                        || _tonQuote is not null || _tronQuote is not null || _adaQuote is not null
-                        || (_sendSymbol == "XMR" && _moneroAmount > 0);
-        if (_unlockedMnemonic is null || !haveQuote)
-        {
-            SendError = "Prepare the transfer first.";
-            return;
-        }
-
-        await RunBusyAsync(async () =>
-        {
-            StatusMessage = "Signing locally and broadcasting…";
-            switch (_sendSymbol)
-            {
-                case "ETH" or "BNB" or "MATIC" or "AVAX" or "FTM" or "CRO" when _sendQuote is not null:
-                {
-                    var quote = _sendQuote;
-                    // Every EVM chain shares the same Ethereum key and 0x address.
-                    var priv = _deriver.DeriveEthereumPrivateKey(_unlockedMnemonic!);
-                    try
-                    {
-                        var result = await _ethSender.SignAndBroadcastAsync(quote, priv);
-                        var explorer = EthTransactionSender.Chains.TryGetValue(quote.Symbol, out var c)
-                            ? c.ExplorerTx + result.TxHash
-                            : $"etherscan.io/tx/{result.TxHash}";
-                        await FinishSendAsync(result.Ok, result.TxHash, result.Error,
-                            quote.Symbol, quote.AmountEth, quote.To, explorer);
-                    }
-                    finally
-                    {
-                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
-                    }
-
-                    break;
-                }
-
-                case "BTC" or "LTC" when _btcQuote is not null:
-                {
-                    var quote = _btcQuote;
-                    var chainId = _sendSymbol == "BTC" ? ChainId.Btc : ChainId.Ltc;
-                    var key = _deriver.DeriveBitcoinLikeKey(_unlockedMnemonic!, chainId);
-                    var (ok, txid, error) = await _btcSender.SignAndBroadcastAsync(quote, key);
-                    var explorer = _sendSymbol == "BTC"
-                        ? $"blockstream.info/tx/{txid}"
-                        : $"litecoinspace.org/tx/{txid}";
-                    await FinishSendAsync(ok, txid, error, quote.Symbol, quote.Amount, quote.To, explorer);
-                    break;
-                }
-
-                case "SOL" when _solQuote is not null:
-                {
-                    var quote = _solQuote;
-                    var priv = _deriver.DeriveSolanaPrivateKey(_unlockedMnemonic!);
-                    try
-                    {
-                        var (ok, signature, error) = await _solSender.SignAndBroadcastAsync(quote, priv);
-                        await FinishSendAsync(ok, signature, error,
-                            "SOL", quote.AmountSol, quote.To, $"solscan.io/tx/{signature}");
-                    }
-                    finally
-                    {
-                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
-                    }
-
-                    break;
-                }
-
-                case "TRX" or "USDT" when _tronQuote is not null:
-                {
-                    var quote = _tronQuote;
-                    var key = _deriver.DeriveTronKey(_unlockedMnemonic!);
-                    var (ok, txId, error) = await _tronSender.SignAndBroadcastAsync(quote, key);
-                    await FinishSendAsync(ok, txId, error, quote.Symbol, quote.Amount, quote.To,
-                        txId is null ? "" : $"tronscan.org/#/transaction/{txId}");
-                    break;
-                }
-
-                case "TON" when _tonQuote is not null:
-                {
-                    var quote = _tonQuote;
-                    // A TON-native wallet signs with the TON-mnemonic seed; a BIP39 wallet uses its
-                    // m/44'/607'/0' key. Both are the 32-byte ed25519 seed the sender expects.
-                    var priv = _isTonWallet
-                        ? TonMnemonic.ToSeed(_unlockedMnemonic!)
-                        : _deriver.DeriveTonPrivateKey(_unlockedMnemonic!);
-                    try
-                    {
-                        var (ok, _, error) = await _tonSender.SignAndBroadcastAsync(quote, priv);
-                        await FinishSendAsync(ok, ok ? quote.To : null, error,
-                            "TON", quote.AmountTon, quote.To, $"tonviewer.com/{quote.From}");
-                    }
-                    finally
-                    {
-                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
-                    }
-
-                    break;
-                }
-
-                case "ADA" when _adaQuote is not null:
-                {
-                    var quote = _adaQuote;
-                    var extendedKey = AdaKeys.PaymentKey(_unlockedMnemonic!);
-                    try
-                    {
-                        var (ok, txId, error) = await _adaSender.SignAndBroadcastAsync(quote, extendedKey);
-                        await FinishSendAsync(ok, txId, error, "ADA", quote.Amount, quote.To,
-                            txId is null ? "" : $"cardanoscan.io/transaction/{txId}");
-                    }
-                    finally
-                    {
-                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(extendedKey);
-                    }
-
-                    break;
-                }
-
-                case "XMR":
-                {
-                    // monero-wallet-rpc builds, signs and relays the RingCT transaction itself.
-                    // The developer fee (if any) rides along as a second destination — disclosed above.
-                    var result = await _monero.SendAsync(_moneroTo, _moneroAmount, _moneroFeeTo, _moneroFeeAmount);
-                    await FinishSendAsync(result.Ok, result.TxHash, result.Error,
-                        "XMR", _moneroAmount, _moneroTo,
-                        result.TxHash is null ? "" : $"xmrchain.net/tx/{result.TxHash}");
-                    if (result.Ok)
-                    {
-                        _moneroAmount = 0;
-                        _moneroTo = string.Empty;
-                        _moneroFeeTo = null;
-                        _moneroFeeAmount = 0m;
-                        await RefreshMoneroAsync();
-                    }
-
-                    break;
-                }
-
-                default:
-                    SendError = "Prepare the transfer first.";
-                    break;
-            }
-        });
-    }
-
-    private async Task FinishSendAsync(
-        bool ok, string? reference, string? error, string symbol, decimal amount, string to, string explorer)
-    {
-        if (ok && reference is not null)
-        {
-            ClearSendQuotes();
-            SendTo = string.Empty;
-            SendAmount = string.Empty;
-            SendSuccess = $"Broadcast ✓  {reference}\nTrack it: {explorer}";
-            StatusMessage = "Transaction broadcast · it will confirm shortly";
-            var link = string.IsNullOrWhiteSpace(explorer) ? null
-                : explorer.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? explorer : $"https://{explorer}";
-            PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", link);
-            await RefreshLiveDataAsync();
-        }
-        else
-        {
-            SendError = error ?? "Broadcast failed.";
-            StatusMessage = "Broadcast failed — nothing was sent";
-        }
-    }
-
-    private void ClearSendQuotes()
-    {
-        HasSendQuote = false;
-        _sendQuote = null;
-        _btcQuote = null;
-        _solQuote = null;
-        _tronQuote = null;
-        _tonQuote = null;
-        _adaQuote = null;
-    }
-
-    [RelayCommand]
-    private void CancelSendQuote()
-    {
-        ClearSendQuotes();
-        SendError = string.Empty;
-        StatusMessage = "Transfer cancelled — nothing was signed";
-    }
-
-    // ===== Swap (THORChain — decentralised, non-custodial cross-chain) =============================
-    // The wallet never holds the funds: it sends the source coin to a THORChain inbound vault with a
-    // memo (OP_RETURN), and the network delivers the target coin to the user's own receive address.
-
-    private readonly ThorchainSwapClient _thorchain = new();
-    private SwapQuote? _swapQuote;
-
-    public ObservableCollection<string> SwapFromOptions { get; } = new(ThorchainSwapClient.SendableFrom);
-    public ObservableCollection<string> SwapToOptions { get; } = new(ThorchainSwapClient.ReceivableTo);
-
-    [ObservableProperty] private string _swapFromSymbol = "BTC";
-    [ObservableProperty] private string _swapToSymbol = "ETH";
-    [ObservableProperty] private string _swapAmount = string.Empty;
-    [ObservableProperty] private bool _hasSwapQuote;
-    [ObservableProperty] private bool _swapBusy;
-    [ObservableProperty] private string _swapError = string.Empty;
-    [ObservableProperty] private string _swapSuccess = string.Empty;
-    [ObservableProperty] private string _swapExpectedOut = string.Empty;
-    [ObservableProperty] private string _swapRateText = string.Empty;
-    [ObservableProperty] private string _swapFeeText = string.Empty;
-    [ObservableProperty] private string _swapEtaText = string.Empty;
-    [ObservableProperty] private string _swapDestination = string.Empty;
-    [ObservableProperty] private string _swapExpiryText = string.Empty;
-    [ObservableProperty] private string _swapWarning = string.Empty;
-
-    partial void OnSwapFromSymbolChanged(string value) => InvalidateSwap();
-    partial void OnSwapToSymbolChanged(string value) => InvalidateSwap();
-    partial void OnSwapAmountChanged(string value) => InvalidateSwap();
-
-    private void InvalidateSwap()
-    {
-        HasSwapQuote = false;
-        _swapQuote = null;
-        SwapSuccess = string.Empty;
-    }
-
-    private static ChainId? SwapChainId(string symbol) => symbol.ToUpperInvariant() switch
-    {
-        "BTC" => ChainId.Btc,
-        "LTC" => ChainId.Ltc,
-        "ETH" => ChainId.Eth,
-        "DOGE" => ChainId.Doge,
-        _ => null,
-    };
-
-    /// <summary>Step 1: fetch a live, non-binding THORChain quote for the chosen pair and amount.</summary>
-    [RelayCommand]
-    private async Task GetSwapQuoteAsync()
-    {
-        SwapError = string.Empty;
-        SwapSuccess = string.Empty;
-        SwapWarning = string.Empty;
-        InvalidateSwap();
-
-        if (_unlockedMnemonic is null) { SwapError = "Unlock the wallet first."; return; }
-        var from = (SwapFromSymbol ?? "").ToUpperInvariant();
-        var to = (SwapToSymbol ?? "").ToUpperInvariant();
-        if (from == to) { SwapError = "Choose two different assets."; return; }
-        if (!decimal.TryParse(SwapAmount, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) || amount <= 0)
-        {
-            SwapError = "Enter a valid amount.";
-            return;
-        }
-
-        var toChain = SwapChainId(to);
-        if (toChain is null) { SwapError = $"Cannot receive {to}."; return; }
-        var destination = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, toChain.Value).Address;
-
-        SwapBusy = true;
-        try
-        {
-            var (quote, error) = await _thorchain.GetQuoteAsync(from, to, amount, destination);
-            if (quote is null) { SwapError = error ?? "Could not get a quote."; return; }
-
-            _swapQuote = quote;
-            SwapExpectedOut = $"{Fmt(quote.ExpectedOut)} {to}";
-            SwapRateText = $"1 {from} ≈ {Fmt(quote.ExpectedOut / amount)} {to}";
-            SwapFeeText = $"{Fmt(quote.TotalFee)} {to} · {quote.TotalBps / 100.0:0.##}%";
-            SwapEtaText = quote.EtaSeconds >= 60 ? $"~{quote.EtaSeconds / 60} min" : $"~{quote.EtaSeconds} s";
-            SwapDestination = Shorten(destination);
-            var mins = Math.Max(0, (int)(quote.Expiry - DateTimeOffset.UtcNow).TotalMinutes);
-            SwapExpiryText = $"quote valid ~{mins} min";
-            SwapWarning = quote.BelowMinimum
-                ? $"Below the recommended minimum (~{Fmt(quote.RecommendedMinIn)} {from}) — the rate will be poor and the swap may refund."
-                : string.Empty;
-            HasSwapQuote = true;
-        }
-        finally
-        {
-            SwapBusy = false;
-        }
-    }
-
-    /// <summary>Step 2: re-quote for safety, then sign and broadcast the deposit to THORChain's vault.</summary>
-    [RelayCommand]
-    private async Task ConfirmSwapAsync()
-    {
-        if (_unlockedMnemonic is null || _swapQuote is null) { SwapError = "Get a quote first."; return; }
-        var shown = _swapQuote;
-        var from = shown.FromSymbol;
-        var to = shown.ToSymbol;
-
-        if (!ThorchainSwapClient.SendableFrom.Contains(from)) { SwapError = $"Swapping from {from} isn't supported yet."; return; }
-        var fromChain = SwapChainId(from);
-        var toChain = SwapChainId(to);
-        if (fromChain is null || toChain is null) { SwapError = "Unsupported asset."; return; }
-
-        await RunBusyAsync(async () =>
-        {
-            SwapError = string.Empty;
-            StatusMessage = "Refreshing the swap quote…";
-
-            // A fresh quote immediately before sending: THORChain vaults rotate and quotes expire, so a
-            // stale inbound address or memo would send the deposit into the void.
-            var destination = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, toChain.Value).Address;
-            var (fresh, error) = await _thorchain.GetQuoteAsync(from, to, shown.AmountIn, destination);
-            if (fresh is null) { SwapError = error ?? "Could not refresh the quote."; return; }
-            if (fresh.IsExpired) { SwapError = "The quote expired — get a new one."; return; }
-
-            // Refuse if the rate moved materially against the user since they saw it (>3%).
-            if (fresh.ExpectedOut < shown.ExpectedOut * 0.97m)
-            {
-                _swapQuote = fresh;
-                SwapExpectedOut = $"{Fmt(fresh.ExpectedOut)} {to}";
-                SwapError = "The rate moved against you — review the updated quote and confirm again.";
-                StatusMessage = "Swap not sent — the rate changed";
-                return;
-            }
-
-            StatusMessage = "Signing locally and broadcasting the swap deposit…";
-            var fromAddr = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, fromChain.Value).Address;
-            var (quote, prepErr) = await _btcSender.PrepareAsync(from, fromAddr, fresh.InboundAddress, shown.AmountIn, memo: fresh.Memo);
-            if (quote is null) { SwapError = prepErr ?? "Could not build the swap deposit."; return; }
-
-            var key = _deriver.DeriveBitcoinLikeKey(_unlockedMnemonic!, fromChain.Value);
-            var (ok, txid, sendErr) = await _btcSender.SignAndBroadcastAsync(quote, key);
-            if (ok && txid is not null)
-            {
-                var track = ThorchainSwapClient.TrackUrl(txid);
-                SwapSuccess = $"Swap sent ✓  {txid}\nTHORChain will deliver ~{Fmt(fresh.ExpectedOut)} {to} to your wallet.\nTrack: {track}";
-                StatusMessage = "Swap deposit broadcast · THORChain is processing it";
-                InvalidateSwap();
-                SwapAmount = string.Empty;
-                PushActivity("Swap", $"{from}→{to}", $"-{Fmt(shown.AmountIn)}", Shorten(fresh.InboundAddress), "now", track);
-                await RefreshLiveDataAsync();
-            }
-            else
-            {
-                SwapError = sendErr ?? "Broadcast failed.";
-                StatusMessage = "Swap failed — nothing was sent";
-            }
-        });
-    }
-
-    [RelayCommand]
-    private void CancelSwap()
-    {
-        InvalidateSwap();
-        SwapError = string.Empty;
-        SwapWarning = string.Empty;
-        StatusMessage = "Swap cancelled — nothing was signed";
-    }
-
     // True when the unlocked wallet is a TON-native mnemonic (Telegram Wallet / Tonkeeper) rather than
     // a BIP39 seed — it derives ONLY a TON address, not the multi-chain BIP39 set.
     private bool _isTonWallet;
 
-    private void SetUnlocked(string mnemonic)
+    private void SetUnlocked(string mnemonic, string passphrase = "")
     {
         _unlockedMnemonic = mnemonic;
+        // Push the BIP39 passphrase onto the shared deriver BEFORE any derivation, so accounts,
+        // balance scans and signing all target the same (possibly hidden) wallet.
+        _unlockedPassphrase = passphrase ?? "";
+        _deriver.ActivePassphrase = _unlockedPassphrase;
         _isTonWallet = !_mnemonics.Validate(mnemonic).IsValid && TonMnemonic.IsTonMnemonic(mnemonic);
         IsUnlocked = true;
         RefreshWalletList(); // reflect which wallet is now active in the switcher
@@ -3735,7 +4173,11 @@ public partial class MainViewModel : ViewModelBase
         RestoreCachedBalances(); // show last-known totals instantly; the live refresh corrects them
         SelectFirstReceive();
         LoadActivity(); // restore the saved history before logging this unlock on top
+        LoadAddressBook(); // saved Send destinations for this device
         PushActivity("Security", "Vault", "unlocked", "this device", "now");
+        _onChainRows.Clear();
+        HistorySynced = false; // this wallet's history hasn't been pulled yet → show "loading", not "empty"
+        if (!_isTonWallet) _ = LoadOnChainHistoryAsync(); // real on-chain history across the user's addresses
     }
 
     private void SelectFirstReceive()
@@ -3764,6 +4206,9 @@ public partial class MainViewModel : ViewModelBase
 
         foreach (var chain in ChainCatalog.All)
         {
+            // Single-coin / selected-coin wallets: only derive the coins this wallet is set to accept.
+            if (!IsWalletCoinEnabled(chain.Symbol)) continue;
+
             if (!ChainCatalog.HasRealAddress(chain.Id))
             {
                 Accounts.Add(new WalletAccountViewModel(
@@ -3774,10 +4219,23 @@ public partial class MainViewModel : ViewModelBase
                 continue;
             }
 
-            var account = _deriver.DeriveReceiveAddress(mnemonic, chain.Id);
-            // Monero has a real address but no public balance sync — say so rather than
-            // showing a confident 0.00 next to coins we genuinely track.
-            var status = chain.Support == ChainSupportLevel.ReceiveOnly ? "Receive only" : "Ready";
+            ReceiveAddress account;
+            try
+            {
+                account = _deriver.DeriveReceiveAddress(mnemonic, chain.Id);
+            }
+            catch (PassphraseUnsupportedException)
+            {
+                // Hidden wallet (a passphrase is active) on a chain whose scheme can't honour it
+                // (Cardano/Icarus): omit the account entirely rather than show the base wallet's address.
+                continue;
+            }
+            // "Ready" means the wallet can both receive AND send. A chain with a real address but no
+            // send path (Dogecoin) or no public balance sync (Monero) is shown as "Receive only" so it
+            // never looks spendable — the send picker only offers "Ready" accounts (roadmap §5.1).
+            var status = (chain.Support == ChainSupportLevel.ReceiveOnly || !chain.CanSend)
+                ? "Receive only"
+                : "Ready";
             Accounts.Add(new WalletAccountViewModel(
                 chain.Symbol, chain.Name, status,
                 account.Address, account.DerivationPath,
@@ -3845,6 +4303,8 @@ public partial class MainViewModel : ViewModelBase
                 a.Symbol, a.Name, a.Chain, a.Price, a.Amount,
                 a.Price * a.Amount, a.Change24h, a.Address, a.SupportStatus));
         }
+
+        RebuildStaking(); // keep the staking list driven by what the user actually holds
     }
 
     private void RecalcBalance()
@@ -3874,6 +4334,34 @@ public partial class MainViewModel : ViewModelBase
         PortfolioChangeColor = weight <= 0 ? "#8A9099" : avg >= 0 ? "#7DCF8F" : "#E08A8A";
         OnPropertyChanged(nameof(BalanceDisplayMain));
         OnPropertyChanged(nameof(BalanceDisplayCents));
+
+        // Dashboard stat tiles. These read from the holdings/market data the wallet already has, so
+        // they work even at a zero balance (24h moves exist regardless of what you hold).
+        PortfolioAssetCount = Holdings.Count.ToString(CultureInfo.InvariantCulture);
+        PortfolioNetworkCount = Holdings
+            .Select(h => h.Chain)
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count()
+            .ToString(CultureInfo.InvariantCulture);
+
+        var best = Holdings
+            .Where(h => h.Price > 0 && h.Change24h != 0)
+            .OrderByDescending(h => h.Change24h)
+            .FirstOrDefault();
+        if (best is not null)
+        {
+            PortfolioBestSymbol = best.Symbol;
+            PortfolioBestLabel = $"{(best.Change24h >= 0 ? "▲" : "▼")} {Math.Abs(best.Change24h):0.00}%";
+            PortfolioBestColor = best.Change24h >= 0 ? "#7DCF8F" : "#E08A8A";
+        }
+        else
+        {
+            PortfolioBestSymbol = "—";
+            PortfolioBestLabel = "—";
+            PortfolioBestColor = "#8A9099";
+        }
+
         RebuildBreakdown(total);
     }
 
@@ -3916,6 +4404,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         OnPropertyChanged(nameof(HasBreakdown));
+        OnPropertyChanged(nameof(AllocationSummary));
     }
 
     private async Task LoadExchangesAsync(string mnemonic)
@@ -3946,85 +4435,49 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private void PushActivity(string kind, string asset, string amount, string counter, string when, string? explorer = null)
-    {
-        // Real timestamp so persisted history reads correctly after a restart (callers pass "now").
-        var stamp = string.Equals(when, "now", StringComparison.OrdinalIgnoreCase)
-            ? DateTime.Now.ToString("MMM d · HH:mm", CultureInfo.InvariantCulture)
-            : when;
-        Activity.Insert(0, new ActivityRowViewModel(kind, asset, amount, counter, stamp, explorer));
-        while (Activity.Count > 60) Activity.RemoveAt(Activity.Count - 1);
-
-        RecentActivity.Clear();
-        foreach (var row in Activity.Take(5)) RecentActivity.Add(row);
-        RebuildFilteredActivity();
-        RebuildTransactions();
-        OnPropertyChanged(nameof(HasActivity));
-        PersistActivity();
-    }
-
-    private void PersistActivity() =>
-        _activityStore.Save(Activity.Select(a =>
-            new ActivityStore.Entry(a.Kind, a.Asset, a.Amount, a.Counterparty, a.When, a.Explorer)));
-
-    /// <summary>Loads the saved activity/transaction history from the data folder into the feeds.</summary>
-    private void LoadActivity()
-    {
-        Activity.Clear();
-        foreach (var e in _activityStore.Load())
-            Activity.Add(new ActivityRowViewModel(e.Kind, e.Asset, e.Amount, e.Counterparty, e.When, e.Explorer));
-        RecentActivity.Clear();
-        foreach (var row in Activity.Take(5)) RecentActivity.Add(row);
-        RebuildFilteredActivity();
-        RebuildTransactions();
-        OnPropertyChanged(nameof(HasActivity));
-    }
-
-    public bool HasFilteredActivity => FilteredActivity.Count > 0;
-
-    private void RebuildFilteredActivity()
-    {
-        FilteredActivity.Clear();
-        foreach (var row in Activity.Where(a => ActivityFilter == "All" || a.Category == ActivityFilter))
-            FilteredActivity.Add(row);
-        OnPropertyChanged(nameof(HasFilteredActivity));
-    }
-
-    private void RebuildTransactions()
-    {
-        Transactions.Clear();
-        foreach (var row in Activity.Where(a => a.IsTransaction)) Transactions.Add(row);
-        OnPropertyChanged(nameof(HasTransactions));
-    }
-
-    /// <summary>Copy a transaction's explorer link to the clipboard — deliberately not opened in
-    /// the system browser, which would bypass Tor. Paste it into Tor Browser to view.</summary>
-    [RelayCommand]
-    private async Task CopyActivityLink(ActivityRowViewModel? row)
-    {
-        if (row?.Explorer is not { Length: > 0 } url) return;
-        await CopyTextAsync(url);
-        StatusMessage = "Explorer link copied — paste it into your browser to view the transaction";
-    }
-
+    /// <summary>
+    /// Renders a branded, still-scannable receive QR (see <see cref="Controls.QrRenderer"/>): dark
+    /// rounded modules on white, styled finder eyes, the Umbrella mark in the centre. Error-correction
+    /// H keeps it readable under the centre mark. Falls back to a plain QR if the branded render ever
+    /// throws, so the receive screen can never end up with no code at all.
+    /// </summary>
     private static Bitmap? BuildQr(string payload)
     {
+        // A very dark navy rather than pure black: reads as part of the app, still maximal contrast.
+        var dark = Avalonia.Media.Color.FromRgb(0x0B, 0x0E, 0x17);
         try
         {
-            using var gen = new QRCodeGenerator();
-            using var data = gen.CreateQrCode(payload, QRCodeGenerator.ECCLevel.M);
-            var png = new PngByteQRCode(data);
-            var bytes = png.GetGraphic(8);
-            using var ms = new System.IO.MemoryStream(bytes);
-            return new Bitmap(ms);
+            return Controls.QrRenderer.Render(payload, dark, QrCenterMark);
         }
         catch
         {
-            return null;
+            try
+            {
+                using var gen = new QRCodeGenerator();
+                using var data = gen.CreateQrCode(payload, QRCodeGenerator.ECCLevel.M);
+                var png = new PngByteQRCode(data);
+                using var ms = new System.IO.MemoryStream(png.GetGraphic(8));
+                return new Bitmap(ms);
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 
-    private static async Task CopyTextAsync(string text)
+    /// <summary>The mark drawn in the middle of every receive QR — the umbrella glyph in dark, so it
+    /// reads on the white centre pad. Loaded once and reused.</summary>
+    private static Bitmap? QrCenterMark
+    {
+        get
+        {
+            try { return LoadAsset("umbrella-mark-black.png"); }
+            catch { return null; }
+        }
+    }
+
+    private async Task CopyTextAsync(string text)
     {
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime
             {
@@ -4032,7 +4485,32 @@ public partial class MainViewModel : ViewModelBase
             })
         {
             await clipboard.SetTextAsync(text);
+            var seconds = _uiSettings.ClipboardAutoClearSeconds;
+            if (seconds > 0) ScheduleClipboardClear(clipboard, text, seconds);
         }
+    }
+
+    /// <summary>Wipes the clipboard after a delay, but only if it still holds exactly what we put
+    /// there — so a later copy the user makes is never clobbered. Best-effort; never throws.</summary>
+    private static void ScheduleClipboardClear(
+        Avalonia.Input.Platform.IClipboard clipboard, string original, int seconds)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(seconds));
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    var current = await Avalonia.Input.Platform.ClipboardExtensions.TryGetTextAsync(clipboard);
+                    if (current == original) await clipboard.ClearAsync();
+                });
+            }
+            catch
+            {
+                // Clipboard may be unavailable or held by another app — clearing is best-effort.
+            }
+        });
     }
 
     private static bool IsRealAddress(string address) =>
@@ -4056,8 +4534,21 @@ public partial class MainViewModel : ViewModelBase
         "TON" or "TONCOIN" => ChainId.Ton,
         "XMR" or "MONERO" => ChainId.Xmr,
         "ADA" or "CARDANO" => ChainId.Ada,
+        "BCH" or "BITCOIN CASH" or "BITCOINCASH" => ChainId.Bch,
+        "ZEC" or "ZCASH" => ChainId.Zec,
         _ => null,
     };
+
+    /// <summary>The right UTXO explorer for a chain: BlockCypher for Dogecoin, Haskoin for Bitcoin Cash
+    /// (neither has an Esplora instance; BCH's Blockchair also rate-limits), Esplora (Blockstream /
+    /// litecoinspace) for BTC and LTC.</summary>
+    private static Umbrella.Wallet.Core.Utxo.IUtxoExplorer UtxoExplorerFor(string symbol) =>
+        symbol.Trim().ToUpperInvariant() switch
+        {
+            "DOGE" => BlockCypherUtxoExplorer.For(symbol),
+            "BCH" => HaskoinUtxoExplorer.For(symbol),
+            _ => EsploraUtxoExplorer.For(symbol),
+        };
 
     /// <summary>USDT-TRC20 addresses live on TRON, so a TRC20/TRON watch address may hold USDT.</summary>
     private static bool IsTronLike(string chain) =>
@@ -4104,6 +4595,8 @@ public partial class MainViewModel : ViewModelBase
         ChainId.Ton => "TON",
         ChainId.Xmr => "XMR",
         ChainId.Ada => "ADA",
+        ChainId.Bch => "BCH",
+        ChainId.Zec => "ZEC",
         _ => chain.ToString().ToUpperInvariant(),
     };
 
@@ -4176,7 +4669,8 @@ public partial class MainViewModel : ViewModelBase
         ToastVisible = true;
         _toastTimer ??= new Avalonia.Threading.DispatcherTimer();
         _toastTimer.Stop();
-        _toastTimer.Interval = TimeSpan.FromSeconds(isError ? 5 : 3);
+        // Kept short so a toast is a quick "спливашка", not something that lingers.
+        _toastTimer.Interval = TimeSpan.FromSeconds(isError ? 3.5 : 2.2);
         _toastTimer.Tick -= HideToastTick;
         _toastTimer.Tick += HideToastTick;
         _toastTimer.Start();
@@ -4212,275 +4706,9 @@ public partial class MainViewModel : ViewModelBase
     private void ClearPasswordFields()
     {
         Password = string.Empty;
+        UnlockPassphrase = string.Empty;
         ConfirmPassword = string.Empty;
         FormError = string.Empty;
     }
 }
 
-/// <summary>One slice of the portfolio-overview breakdown: an asset, its share, value and colour.</summary>
-public sealed record PortfolioSlice(string Symbol, double Percent, double Value, Avalonia.Media.IBrush Brush)
-{
-    public string PercentLabel => $"{Percent:0.#}%";
-    public string ValueLabel => Fx.Money(Value);
-    /// <summary>Segment width for a fixed 232 px stacked bar (min 3 px so a tiny slice stays visible).</summary>
-    public double BarWidth => System.Math.Max(3, Percent / 100.0 * 232.0);
-}
-
-/// <summary>A stakeable coin: symbol, name, typical (approximate) reward and how staking is done.</summary>
-public sealed record StakingOption(string Symbol, string Name, string Apr, string Method);
-
-public sealed record WalletAccountViewModel(
-    string Symbol,
-    string Name,
-    string SupportStatus,
-    string Address,
-    string Derivation,
-    double Price,
-    double Amount,
-    string Chain,
-    double Change24h)
-{
-    /// <summary>Colour hint for the Receive list so status reads at a glance.</summary>
-    public string StatusColor => SupportStatus switch
-    {
-        "Ready" => "#8FCB9B",        // green — real address, balance tracked
-        "Receive only" => "#8FB8CB", // teal — real address, no balance sync (Monero)
-        "Watch" => "#9AB0D6",        // blue — external watch-only
-        _ => "#8A9099",               // muted — adapter pending
-    };
-
-    public bool IsReady => SupportStatus is "Ready" or "Watch" or "Receive only";
-    public string StatusLabel => SupportStatus == "Planned" ? "Not ready" : SupportStatus;
-
-    /// <summary>
-    /// Which chain this address actually lives on. Sending a coin over the wrong network is one
-    /// of the most common ways people lose funds, so every row states it explicitly.
-    /// </summary>
-    public string NetworkLabel => CoinNetworks.For(Symbol, Chain);
-}
-
-/// <summary>
-/// Single source of truth for the human-readable network behind a ticker, so Holdings, Receive
-/// and the pickers can never disagree about which chain a coin is on.
-/// </summary>
-public static class CoinNetworks
-{
-    public static string For(string symbol, string fallback) => symbol.ToUpperInvariant() switch
-    {
-        "BTC" => "Bitcoin network · BIP84 native SegWit",
-        "ETH" => "Ethereum network (ERC-20 compatible)",
-        "LTC" => "Litecoin network · BIP84 native SegWit",
-        "DOGE" => "Dogecoin network",
-        "TRX" => "TRON network (TRC-20 compatible)",
-        "SOL" => "Solana network (SPL compatible)",
-        "USDT" => "TRC-20 · Tether on the TRON network",
-        "XMR" => "Monero network · private by default",
-        "TON" => "TON network",
-        "ADA" => "Cardano network",
-        _ => fallback,
-    };
-}
-
-/// <summary>One candlestick, pre-computed to pixel coordinates: the container sits at (ItemX,ItemY)
-/// with size W×H; inside, the wick is a thin bar at WickLocalX and the body starts at BodyLocalY.</summary>
-public sealed record CandleVm(
-    double ItemX, double ItemY, double W, double H,
-    double WickLocalX, double BodyLocalY, double BodyH, string Color);
-
-/// <summary>One row in the P2P & DEX directory — a self-custody venue the user opens externally.</summary>
-public sealed record P2pVenue(
-    string Name, string Kind, string Custody, string Description, string Url, string Tag, string Accent);
-
-/// <summary>A searchable Settings entry: a label, the pane it lives in, and hidden keywords.</summary>
-public sealed record SettingsShortcut(string Label, string Tab, string Keywords)
-{
-    public string TabLabel => Tab;
-}
-
-/// <summary>One wallet in the multi-wallet switcher.</summary>
-public sealed record WalletListItemViewModel(string Id, string Label, bool IsActive, bool IsLegacy)
-{
-    public string Badge => IsLegacy ? "MAIN" : Label.Length > 0 ? Label[..1].ToUpperInvariant() : "W";
-    public string StatusLabel => IsActive
-        ? Umbrella.Wallet.App.Loc.Instance["settings.walletActive"]
-        : Umbrella.Wallet.App.Loc.Instance["settings.walletLocked"];
-    public bool CanRemove => !IsActive; // the active wallet (and the Main seed file) are protected
-}
-
-public sealed record HoldingRowViewModel(
-    string Symbol,
-    string Name,
-    string Chain,
-    double Price,
-    double Amount,
-    double Value,
-    double Change24h,
-    string Address,
-    string SupportStatus)
-{
-    public string PriceLabel => Fx.Price(Price);
-    public string AmountLabel => $"{Amount.ToString("N6", CultureInfo.InvariantCulture)} {Symbol}";
-    public string ValueLabel => Fx.Money(Value);
-    public string ChangeLabel =>
-        $"{(Change24h > 0 ? "▲" : Change24h < 0 ? "▼" : "·")} {Math.Abs(Change24h):0.00}%";
-    public string ChangeColor =>
-        Change24h > 0 ? "#8FCB9B" : Change24h < 0 ? "#E09A9A" : "#8A9099";
-
-    /// <summary>The chain this holding sits on — shown under the coin name.</summary>
-    public string NetworkLabel => CoinNetworks.For(Symbol, Chain);
-
-    /// <summary>Each coin's own brand colour, so the token badges read at a glance instead of
-    /// being ten identical grey discs. Falls back to the app violet for anything unmapped.</summary>
-    public string BadgeColor => Symbol.ToUpperInvariant() switch
-    {
-        "BTC" => "#F7931A",
-        "ETH" => "#627EEA",
-        "LTC" => "#4C6FB1",
-        "DOGE" => "#C2A633",
-        "TRX" => "#EF0027",
-        "SOL" => "#14A87A",
-        "TON" => "#0098EA",
-        "ADA" => "#2A5ED9",
-        "XMR" => "#F26822",
-        "USDT" => "#26A17B",
-        _ => "#6E5FB8",
-    };
-
-    /// <summary>A soft glow of the coin's own colour under its badge — the thematic, bolder touch.
-    /// Typed as <see cref="Avalonia.Media.BoxShadows"/> so the binding is an identity assignment;
-    /// a raw string would not runtime-convert to the BoxShadow property the way a colour string does.</summary>
-    public Avalonia.Media.BoxShadows BadgeShadow =>
-        Avalonia.Media.BoxShadows.Parse($"0 0 15 0 #59{BadgeColor[1..]}");
-
-    /// <summary>A single recognizable mark for each coin, replacing the 3-letter ticker on the badge.
-    /// Uses each coin's own currency/symbol glyph where one exists (rendered in a symbol-capable
-    /// font); anything unmapped falls back to its initial.</summary>
-    public string BadgeGlyph => CoinGlyphs.For(Symbol);
-}
-
-/// <summary>Coin badge marks — the coins' own currency symbols, so the token badges read as logos
-/// rather than tickers, without shipping any external icon set.</summary>
-public static class CoinGlyphs
-{
-    private static readonly Dictionary<string, string> Map = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["BTC"] = "₿",   // ₿
-        ["ETH"] = "Ξ",   // Ξ
-        ["LTC"] = "Ł",   // Ł
-        ["DOGE"] = "Ð",  // Ð
-        ["ADA"] = "₳",   // ₳
-        ["USDT"] = "₮",  // ₮
-        ["XMR"] = "ɱ",   // ɱ
-        ["SOL"] = "◎",   // ◎
-        ["TON"] = "◈",   // ◈
-        ["TRX"] = "▲",   // ▲
-        ["BNB"] = "◆",   // ◆
-        ["MATIC"] = "⬡", // ⬡
-    };
-
-    public static string For(string symbol) =>
-        Map.TryGetValue(symbol ?? "", out var g) ? g
-        : string.IsNullOrEmpty(symbol) ? "?" : symbol[..1].ToUpperInvariant();
-}
-
-/// <summary>One entry in an asset / network picker.</summary>
-public sealed record SendOption(string Symbol, string Name, string Network)
-{
-    public string Display => $"{Symbol} · {Name}";
-}
-
-public sealed record ActivityRowViewModel(
-    string Kind,
-    string Asset,
-    string Amount,
-    string Counterparty,
-    string When,
-    string? Explorer = null)
-{
-    /// <summary>A block-explorer link exists, so the row is actionable (copy the URL).</summary>
-    public bool HasLink => !string.IsNullOrWhiteSpace(Explorer);
-
-    /// <summary>True for money movements (used by the Transactions section and the "Transactions" filter).</summary>
-    public bool IsTransaction => Kind is "Sent" or "Received" or "Swap";
-
-    /// <summary>Which activity filter tab this row belongs to.</summary>
-    public string Category => Kind switch
-    {
-        "Sent" or "Received" or "Swap" => "Transactions",
-        "Connected" => "Connections",
-        "Theme" or "Settings" => "Settings",
-        _ => "System",
-    };
-
-    /// <summary>Colour the type at a glance: outgoing red, incoming/connected teal, swap violet,
-    /// theme/settings/security/sync housekeeping muted.</summary>
-    public string KindColor => Kind switch
-    {
-        "Sent" => "#E08A8A",
-        "Received" => "#5AC8B4",
-        "Connected" => "#5AC8B4",
-        "Swap" => "#8A5FD6",
-        "Theme" => "#E7CA83",
-        _ => "#8A9099",
-    };
-}
-
-/// <summary>One entry in the News section: a tagged, dated product note.</summary>
-public sealed record NewsItemViewModel(string Tag, string Title, string Body, string Date)
-{
-    /// <summary>Tag accent colour, so update/security/guide read at a glance.</summary>
-    public string TagColor => Tag switch
-    {
-        "SECURITY" => "#E7CA83",
-        "GUIDE" => "#5AC8B4",
-        _ => "#8A5FD6",
-    };
-}
-
-/// <summary>
-/// One coin in the market list. <see cref="IsSupported"/> states plainly whether this wallet can
-/// actually hold the coin today — a "Planned" coin has no address adapter, so claiming
-/// otherwise would invite someone to send funds nowhere.
-/// </summary>
-public sealed record MarketRowViewModel(
-    string Symbol,
-    string Name,
-    double Price,
-    double Change24h,
-    bool IsSupported,
-    bool HasPrice)
-{
-    public static MarketRowViewModel Pending(ChainInfo chain) =>
-        new(chain.Symbol, chain.Name, 0, 0, chain.Support == ChainSupportLevel.Supported, false);
-
-    public static MarketRowViewModel Live(ChainInfo chain, double price, double change) =>
-        new(chain.Symbol, chain.Name, price, change, chain.Support == ChainSupportLevel.Supported, price > 0);
-
-    /// <summary>A market-only coin (priced + charted, held via the token/EVM balance paths, not a
-    /// separate wallet chain). Marked supported since its balance already surfaces in Holdings.</summary>
-    public static MarketRowViewModel PendingCoin(string symbol, string name, bool holdable) =>
-        new(symbol, name, 0, 0, holdable, false);
-
-    public static MarketRowViewModel LiveCoin(string symbol, string name, double price, double change, bool holdable) =>
-        new(symbol, name, price, change, holdable, price > 0);
-
-    public string PriceLabel => HasPrice ? Fx.Price(Price) : "—";
-
-    public string ChangeLabel => HasPrice
-        ? $"{(Change24h > 0 ? "▲" : Change24h < 0 ? "▼" : "·")} {Math.Abs(Change24h):0.00}%"
-        : "";
-
-    public string ChangeColor =>
-        !HasPrice ? "#8A9099" : Change24h > 0 ? "#8FCB9B" : Change24h < 0 ? "#E09A9A" : "#8A9099";
-
-    public string Accepts => IsSupported ? "Accepted · address ready" : "Not yet · adapter pending";
-    public string AcceptsColor => IsSupported ? "#8FCB9B" : "#8A9099";
-
-    /// <summary>Inline sparkline drawn in every row, so no coin is left without a chart.</summary>
-    public System.Collections.Generic.List<Avalonia.Point> Spark { get; init; } = new();
-
-    public bool HasSpark => Spark.Count > 1;
-
-    /// <summary>The chain this coin settles on — same wording as Holdings and Receive.</summary>
-    public string NetworkLabel => CoinNetworks.For(Symbol, Name);
-}

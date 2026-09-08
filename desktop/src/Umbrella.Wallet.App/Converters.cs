@@ -30,6 +30,27 @@ public sealed class ToastBorderConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>
+/// Turns a change-colour hex string (e.g. "#8FCB9B") into a faint translucent fill, so a % change can
+/// sit in a tinted pill badge — green wash when up, red wash when down — the way the reference apps
+/// show it. One converter serves every change indicator, since they all expose the colour as a string.
+/// </summary>
+public sealed class ChangeWashConverter : IValueConverter
+{
+    public static readonly ChangeWashConverter Instance = new();
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var hex = value?.ToString();
+        var colour = string.IsNullOrWhiteSpace(hex)
+            ? Avalonia.Media.Colors.Gray
+            : Avalonia.Media.Color.Parse(hex);
+        // ~14% alpha reads as a soft tint on any of the dark theme bases without muddying the text.
+        return new Avalonia.Media.SolidColorBrush(colour) { Opacity = 0.14 };
+    }
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>Toast glyph — a warning triangle for errors, a check for notices.</summary>
 public sealed class ToastGlyphConverter : IValueConverter
 {

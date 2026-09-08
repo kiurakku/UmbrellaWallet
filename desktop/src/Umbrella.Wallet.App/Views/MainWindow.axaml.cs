@@ -35,6 +35,16 @@ public partial class MainWindow : Window
         PointerPressed += OnUserActivity;
         KeyDown += OnUserActivity;
         Opened += (_, _) => ResetAutoLock();
+        // Privacy: lock the vault the instant the window is minimized, if the user opted in.
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property == WindowStateProperty
+                && (WindowState)e.NewValue! == WindowState.Minimized
+                && DataContext is MainViewModel { IsUnlocked: true, LockOnMinimize: true } vm)
+            {
+                vm.LockVault();
+            }
+        };
         // NOTE: the file dialogs are wired in OnDataContextChanged, NOT here — the window is created
         // with `new MainWindow { DataContext = vm }`, so DataContext is still null in the constructor.
 
@@ -84,7 +94,51 @@ public partial class MainWindow : Window
         {
             _observed.PropertyChanged += OnViewModelPropertyChanged;
             UpdateCaptureProtection();
+            ApplyMobileMode();
             WirePickers(_observed);
+        }
+    }
+
+    /// <summary>Resizes the window to a phone shape (and back) when the mobile-layout setting flips.
+    /// The layout itself — bottom tab bar and narrow column — is driven by the view-model.</summary>
+    private void ApplyMobileMode()
+    {
+        if (_observed is null) return;
+        if (_observed.MobileMode)
+        {
+            WindowState = WindowState.Normal;
+            MinWidth = 360;
+            MinHeight = 640;
+            Width = 430;
+            Height = 900;
+        }
+        else
+        {
+            MinWidth = 1000;
+            MinHeight = 700;
+            Width = 1240;
+            Height = 820;
+        }
+        CenterOnScreen();
+    }
+
+    private void CenterOnScreen()
+    {
+        try
+        {
+            var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+            if (screen is null) return;
+            var area = screen.WorkingArea;
+            var scale = screen.Scaling <= 0 ? 1 : screen.Scaling;
+            var w = Width * scale;
+            var h = Height * scale;
+            Position = new Avalonia.PixelPoint(
+                area.X + (int)Math.Max(0, (area.Width - w) / 2),
+                area.Y + (int)Math.Max(0, (area.Height - h) / 2));
+        }
+        catch
+        {
+            // Positioning is cosmetic — never let it throw.
         }
     }
 
@@ -149,6 +203,37 @@ public partial class MainWindow : Window
         {
             ResetAutoLock();
         }
+
+        // Reshape the window when the mobile-layout setting is toggled.
+        if (e.PropertyName is nameof(MainViewModel.MobileMode))
+        {
+            ApplyMobileMode();
+        }
+
+        // Focus the command-palette search the instant it opens, so the user just starts typing.
+        // Posted so it runs after the overlay becomes visible and is laid out.
+        if (e.PropertyName is nameof(MainViewModel.IsCommandPaletteOpen) && _observed?.IsCommandPaletteOpen == true)
+        {
+            Dispatcher.UIThread.Post(() => this.FindControl<TextBox>("PaletteSearch")?.Focus());
+        }
+
+        // Keep the ↑/↓ highlight visible: the results list scrolls, so walking past the fold has to
+        // bring the highlighted row along or the keyboard selection disappears off-screen.
+        if (e.PropertyName is nameof(MainViewModel.PaletteSelectedIndex))
+        {
+            Dispatcher.UIThread.Post(BringPaletteSelectionIntoView);
+        }
+    }
+
+    private void BringPaletteSelectionIntoView()
+    {
+        if (_observed is null || !_observed.IsCommandPaletteOpen) return;
+
+        var list = this.FindControl<ItemsControl>("PaletteList");
+        var index = _observed.PaletteSelectedIndex;
+        if (list is null || index < 0 || index >= list.ItemCount) return;
+
+        (list.ContainerFromIndex(index) as Control)?.BringIntoView();
     }
 
     private void UpdateCaptureProtection()

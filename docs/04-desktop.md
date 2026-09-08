@@ -69,11 +69,16 @@ password; the cleared phrase is wiped when leaving the Settings section.
 | DOGE | `m/44'/3'/0'/0/0` | base58 (`D…`) |
 | TRON | `m/44'/195'/0'/0/0` | secp256k1 → keccak → base58check (`T…`) |
 | SOL | `m/44'/501'/0'/0'` | SLIP-0010 ed25519 → base58 |
+| TON | `m/44'/607'/0'` | SLIP-0010 ed25519 → wallet v4R2 (`UQ…`) |
+| ADA | `m/1852'/1815'/0'/0/0` | Icarus CIP-1852 (BIP32-Ed25519) → Shelley base (`addr1…`) |
 | XMR | custom (see below) | Monero base58, 95 chars |
 
-Every derivation is verified in tests against the canonical test mnemonic's known addresses. **TON
-and Cardano are intentionally not derived** — their standards (Ed25519-BIP32, cell hashing, bech32)
-haven't been verified against published vectors here, and a wrong address loses funds.
+Every derivation is verified in tests against the canonical test mnemonic's known addresses; the TON
+v4R2 and Cardano CIP-1852 pipelines are pinned byte-for-byte against the reference `@ton` /
+cardano-serialization-lib vectors, so the same phrase recovers the funds in those wallets. What each
+chain can actually *do* — receive, balance, send, history, swap, tokens, maturity — is declared once
+in `ChainCatalog` / `ChainInfo` (roadmap §5.1), so "derives an address" is never confused with
+"everything works" (that conflation is what let the app briefly offer sends it couldn't make).
 
 ### Monero keys (`MoneroKeys.cs`)
 

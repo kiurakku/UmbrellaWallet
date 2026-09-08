@@ -11,10 +11,13 @@ namespace Umbrella.Wallet.App;
 /// </summary>
 public sealed class UiSettings
 {
-    public string Theme { get; set; } = "purple";
+    public string Theme { get; set; } = "umbrella";
     public string Language { get; set; } = "en";
     public string Currency { get; set; } = "USD";
     public string SidebarPosition { get; set; } = "Left";
+    /// <summary>Phone-style compact layout on the desktop: a narrow centred column and a bottom
+    /// tab bar, in a phone-sized window. Off = the normal wide desktop layout.</summary>
+    public bool MobileMode { get; set; } = false;
     public bool AnimationsEnabled { get; set; } = true;
     /// <summary>Individual motion toggles (gated by the master AnimationsEnabled above).</summary>
     public bool RainEnabled { get; set; } = true;
@@ -22,9 +25,38 @@ public sealed class UiSettings
     /// <summary>Soft drifting "aurora" glow behind the content. Opt-in (off by default) so the default
     /// look stays clean.</summary>
     public bool AuroraEnabled { get; set; } = false;
+    /// <summary>Animated rain footage on the portfolio balance card. On by default; when off the card
+    /// shows a still photo instead — for people who don't want motion. Gated by AnimationsEnabled.</summary>
+    public bool PortfolioVideo { get; set; } = true;
 
     /// <summary>Idle minutes before the vault auto-locks; 0 disables auto-lock entirely.</summary>
     public int AutoLockMinutes { get; set; } = 5;
+
+    /// <summary>Tor-only kill-switch: when on, the wallet refuses any request that would go to clearnet
+    /// (fail-closed), so a dropped or disabled Tor can never silently de-anonymise you.</summary>
+    public bool TorOnlyMode { get; set; } = false;
+
+    /// <summary>Route all traffic through a user-supplied SOCKS5 proxy instead of the bundled Tor.</summary>
+    public bool CustomProxyEnabled { get; set; } = false;
+    /// <summary>The user's SOCKS5 proxy, e.g. "socks5://127.0.0.1:9050" (host:port also accepted).</summary>
+    public string CustomProxyUri { get; set; } = "";
+    /// <summary>IP family for direct connections: "auto", "ipv4" or "ipv6".</summary>
+    public string IpMode { get; set; } = "auto";
+    /// <summary>Seconds after which a copied address is auto-wiped from the clipboard; 0 = never.</summary>
+    public int ClipboardAutoClearSeconds { get; set; } = 45;
+    /// <summary>Lock the vault immediately whenever the window is minimized, so a shoulder-surfer or
+    /// screen-share never catches an unlocked wallet left in the background.</summary>
+    public bool LockOnMinimize { get; set; } = false;
+    /// <summary>Start every unlock with balances hidden (••••), so amounts aren't shown until you
+    /// choose to reveal them — good for use in public.</summary>
+    public bool HideBalancesDefault { get; set; } = false;
+    /// <summary>Opt-in market-data connector (CoinGecko): adds market cap / FDV / volume to token
+    /// pages. Off by default so the privacy-first wallet never contacts a third party you didn't enable.</summary>
+    public bool RichMarketData { get; set; } = false;
+
+    /// <summary>Watchlisted tickers, comma-separated. Purely local — a list of coin symbols never
+    /// leaves this device and is not tied to any account.</summary>
+    public string Watchlist { get; set; } = "";
 
     /// <summary>A user-chosen label for this wallet, shown in the top bar; blank uses the brand only.</summary>
     public string WalletName { get; set; } = "";
@@ -59,18 +91,10 @@ public sealed class UiSettings
     }
 
     /// <summary>The OS UI language if Umbrella ships a translation for it, otherwise English.</summary>
-    private static string DefaultLanguage()
-    {
-        try
-        {
-            var os = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant();
-            return Loc.Languages.Any(l => l.Code == os) ? os : "en";
-        }
-        catch
-        {
-            return "en";
-        }
-    }
+    // A fresh install always starts in English; the user can switch language in Settings, and that
+    // choice is then persisted. (Previously this followed the OS locale, which surprised users on a
+    // non-English Windows by opening in a language they hadn't chosen.)
+    private static string DefaultLanguage() => "en";
 
     public void Save()
     {
@@ -92,6 +116,7 @@ public sealed class UiSettings
         if (Theming.IsKnown(settings.Theme)) Theming.Apply(settings.Theme);
         else Theming.ApplyDefaults();
         Loc.Instance.CurrentCode = settings.Language;
+        Fx.SetLanguage(settings.Language); // fiat amounts follow the UI language's number format
         return settings;
     }
 }

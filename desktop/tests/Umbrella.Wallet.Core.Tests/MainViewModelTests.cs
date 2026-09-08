@@ -105,6 +105,30 @@ public sealed class MainViewModelTests : IDisposable
         Assert.False(vm.IsSettings);
     }
 
+    /// <summary>
+    /// The Send picker must offer EXACTLY the symbols the send path can actually broadcast — the bug
+    /// where ADA and the EVM side-chains were offered but rejected by the guard, and TON worked but
+    /// was hidden. Both now read one capability set, pinned here so they can never drift.
+    /// </summary>
+    [Fact]
+    public void SendableAssets_exactly_match_the_sendable_capability_set()
+    {
+        var vm = NewViewModel();
+        var offered = vm.SendableAssets.Select(a => a.Symbol).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.True(offered.SetEquals(MainViewModel.SendableSymbols),
+            $"picker=[{string.Join(",", offered.OrderBy(s => s))}] " +
+            $"capability=[{string.Join(",", MainViewModel.SendableSymbols.OrderBy(s => s))}]");
+
+        // DOGE derives an address and syncs a balance but isn't surfaced in the Send picker.
+        Assert.DoesNotContain("DOGE", offered);
+        // The exact assets the roadmap called out as broken must now be offered AND declared sendable.
+        // ARB/BASE/OP are the Ethereum L2 rollups (native ETH, same 0x address, EIP-155 with the L2 id).
+        // BCH is a real UTXO spend (SIGHASH_FORKID, Haskoin UTXOs/broadcast).
+        foreach (var sym in new[] { "ADA", "BNB", "MATIC", "AVAX", "FTM", "CRO", "TON", "ARB", "BASE", "OP", "BCH" })
+            Assert.Contains(sym, offered);
+    }
+
     /// <summary>With no vault, the app shows the full-screen Welcome, not the workspace.</summary>
     [Fact]
     public void NoVault_ShowsWelcome_NotWorkspace()
@@ -197,9 +221,10 @@ public sealed class MainViewModelTests : IDisposable
         Assert.Contains("Monero wallet service", vm.SendError);
         Assert.False(vm.HasSendQuote);
 
-        // A receive-only chain without a send path yet (ADA) is refused outright.
-        vm.SendChain = "ADA";
-        vm.SendTo = "addr1qxy2lpan99fcnhhybr2c5t8lmv2y2v0nq2f5s0j3d9jz2sv0";
+        // A coin with a real address but no send path (DOGE) is refused outright — the send picker
+        // never offers it, and the guard rejects it if it is reached programmatically.
+        vm.SendChain = "DOGE";
+        vm.SendTo = "D6MiH8HdqpNuGPXRn6JXjk4z2Mt3dN3VFy5";
         await vm.PrepareSendCommand.ExecuteAsync(null);
         Assert.Contains("not available", vm.SendError);
         Assert.False(vm.HasSendQuote);

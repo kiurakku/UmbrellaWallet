@@ -4,6 +4,577 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [Unreleased] — Bitcoin Cash (full), Zcash receive, Ethereum L2 sends, more swap pairs
+
+New coins are added one at a time, receive + balance first; a coin's **send** is enabled only once its
+signing path is proven by tests (the fund-safety rule). Every path here is covered by offline tests
+(≈385 green); newly-enabled live send paths should still be checked with a small amount first.
+
+### New coins
+
+- **Bitcoin Cash (BCH) — send + receive + balance.** Real BIP44 CashAddr address (`m/44'/145'`), pinned
+  to the standard test vector. **Sending is live**: a real UTXO spend over Haskoin (UTXOs, fee, broadcast)
+  signed by the same proven spender as BTC/LTC/DOGE with NBitcoin's **SIGHASH_FORKID** — the FORKID
+  signature and change path are pinned offline. Balance/UTXOs go through Haskoin (Blockchair's keyless
+  tier IP-blacklists a busy caller). Verify a first BCH send with a small amount.
+- **Zcash (ZEC) — transparent receive + balance.** Real transparent `t1…` address (`m/44'/133'`,
+  Zcash's `0x1CB8` prefix). Honestly labelled the **public/transparent** side of Zcash — this is **not**
+  a shielded z-address, and the privacy note says so. Pinned to a vector plus a non-circular proof that
+  the t-addr encodes the same key-hash NBitcoin computes for that key. Balance is best-effort (Trezor
+  Blockbook, Blockchair fallback). Send stays off (transparent spend path not yet wired).
+
+### Sending
+
+- **Ethereum L2 sends: Arbitrum, Base, Optimism.** Native **ETH** on the three major rollups is now
+  sendable from the same 0x address as mainnet — same EIP-155 signing, only the chain id differs
+  (pinned by tests, including that each chain id yields a distinct signature so a tx can't be replayed
+  across chains). Balances on these networks already displayed; now they can be spent too.
+
+### Swaps
+
+- **More non-custodial swap targets (THORChain).** You can now receive **BCH, AVAX, BNB, and the
+  stablecoins USDC/USDT** as swap outputs (delivered to your own address), on top of BTC/ETH/LTC/DOGE —
+  paying from BTC/LTC/DOGE/ETH. Every asset id and address format was checked against the live THORChain
+  API first (e.g. BCH must be the CashAddr *body*, and USDC/USDT arrive as ERC-20 on your Ethereum
+  address). Still fully keyless and non-custodial; parsers pinned to real captured quotes.
+
+## [4.5.0] — 2026-09-03 — DOGE send, more swaps, Security Center, asset pages
+
+Real new sending and swapping, on-chain history for three more chains, privacy hardening, and three
+new screens (Security Center, asset details, market overview). Every send/sign path is covered by offline tests (332 green); the live send and
+swap paths on newly-enabled chains should still be checked with a small amount first.
+
+### Sending & swaps
+
+- **Dogecoin send.** DOGE is now spendable (it was receive-only). Real UTXO spend over BlockCypher —
+  UTXO discovery, fee, and broadcast — signed by the same proven spender as BTC/LTC, then wired into
+  the send flow. Offline signing is pinned in tests.
+- **More cross-chain swaps.** The THORChain swap now works **from BTC, LTC, DOGE and ETH** (was
+  BTC/LTC only) to any of BTC, ETH, LTC, DOGE — **12 pairs**. UTXO chains carry the swap memo as an
+  OP_RETURN; **ETH** carries it as calldata of a `router.depositWithExpiry` call (the encoding is
+  pinned to the router selector offline). Coins with no THORChain pool (SOL/TON/ADA/TRX/XMR) are
+  honestly not offered — use an external venue under Discover.
+
+### On-chain history
+
+- **Transaction history for TON, ADA and SOL** (previously balance-only). TON via toncenter, ADA via
+  Koios, SOL via the public Solana RPC (best-effort — the free RPC rate-limits). All read-only through
+  the Tor-aware client; each parser is unit-tested against captured payloads.
+
+### Scam control
+
+- **Address-poisoning defence.** Before a send, the destination is checked against the addresses this
+  wallet already knows — its own receive addresses, the address book and everyone it has paid. A
+  destination that looks almost identical to one of them (same first and last characters, different
+  middle) raises a red warning: that is the fingerprint of an address-poisoning scam, where the
+  attacker seeds your history with a lookalike hoping you copy the wrong one. Sending to one of your
+  own addresses is flagged too. It only ever warns — it never blocks a send and never touches the
+  network. (`AddressSafetyInspector` in Core, 15 offline tests.)
+- **Ethereum address checksum (EIP-55).** A mixed-case `0x…` address whose casing doesn't match its
+  checksum has almost certainly been mistyped or swapped — a single altered character breaks it. Send now
+  warns before it can be signed. All-lowercase / all-uppercase addresses carry no checksum and are accepted.
+  (`EvmAddress` in Core, pinned to the standard's vectors, 14 offline tests.)
+- **First-time recipient note.** Sending to an address you have never used before shows a quiet reminder to
+  double-check it — only when the address is well-formed and you actually have contacts/history to be “new”
+  against, so a brand-new wallet isn't nagged on every send.
+- **Anonymity reminder on send.** If Tor is off (and the kill-switch isn't forcing it), the review step notes
+  that the node you broadcast to would see your IP — with a nudge to turn Tor on.
+- **Fix:** the auto-lock interval now shows in your language (“5 хв”) instead of English “5 minutes”.
+- **Trusted-contact badge.** When the destination is a saved contact or an address you've paid before, Send
+  shows a green confirmation (naming the contact) — so a trusted address reads as safe and the warnings stand
+  out by contrast. Together the send screen now covers wrong-network, EIP-55, poisoning, own-address,
+  first-time and trusted destinations.
+
+### Fixed — amount fields (important)
+
+- **A comma decimal could be read as ten times the amount.** Typing `0,5` in Send or Swap — normal in
+  most of the languages this wallet ships in — was parsed as **5**, because .NET reads the comma as a
+  group separator and never checks group sizes. The two-step review still showed the real figure
+  before anything was signed, so nothing could be sent without it being on screen, but the field was
+  wrong. All amount input now goes through one parser (`AmountInput`) whose rules are pinned by tests:
+  a lone `.` or `,` is always the decimal point (so `1,234` is 1.234, never 1234 — ambiguity always
+  errs towards the smaller amount), grouping has to actually look like grouping, spaces (including the
+  non-breaking ones locale formatting uses) are ignored, and anything it cannot read confidently is
+  refused instead of guessed at.
+- **The wrong-network warning is now tested.** The shape check that warns when a destination does not
+  look like an address on the selected chain moved into Core with a full matrix — every chain accepts
+  its own address forms, rejects foreign ones, and stays silent where there is no rule.
+
+### Privacy & security
+
+- **Monero is now fail-closed like the clearnet kill-switch.** When Tor-only mode is on but Tor isn’t
+  connected, the Monero node connection is refused rather than falling back to a direct connection that
+  would expose your IP to the node.
+- **Receive warns before you reuse an address.** When the address on screen already has on-chain
+  history, Receive says so and offers a fresh one — handing the same address to two people lets anyone
+  reading the ledger tie them together. The verdict is evidence-only: the wallet’s own scan state can
+  prove an unused index offline, and if the explorer cannot be reached the screen says nothing rather
+  than calling a used address “fresh”.
+- **Activity feed is real events only.** UI-preference changes (theme, currency, layout…) are no longer
+  logged, and legacy “Theme changed” rows are purged; repeated “Vault unlocked” rows collapse into one.
+
+### Under the hood
+
+- **A journey smoke suite** drives the wallet end to end through the same commands the buttons use:
+  create → back up → lock → unlock → receive a real address → refuse a bad send → verify a backup.
+  It is the safety net for the ongoing refactor below.
+- **MainViewModel is being split up.** Send (with coin control), Swap, Activity/history, the market
+  chart, the market overview, the asset page, the Security Center and the command palette now live in
+  their own partial-class files — 6 100 lines down to 4 500 in the main file, with no behaviour change
+  (it is still one type; only the files moved). All 332 offline tests stay green across the move.
+
+### Interface — Kraken-style refresh
+
+- **Dashboard widgets, tidied.** The four look-alike stat tiles became two distinct, useful modules — a live
+  Top-movers list and an allocation bar — beside the balance card. Scrollbars are hidden everywhere (wheel still
+  scrolls), the selected asset row is properly rounded, and the no-animation balance card is a clean gradient
+  instead of a photo with bright edges.
+- **Curated themes.** Trimmed 24 palettes to 14 visibly distinct ones (dropped near-duplicate blues, reds, golds
+  and violets); kept Umbrella, the fear noir, signal red, OLED black, sunset, Uniswap, ocean, Binance gold,
+  Telegram, WhiteBit lime, Bitcoin orange, Kraken, Nord and Dracula.
+- **Settings, brought current.** Removed the avatar and banner pickers (nothing displayed them) and the static
+  security bullet list (the live Security Center replaces it, reachable now from a shortcut in Settings); back
+  buttons are plain text; the balance-card video hint no longer mentions a photo.
+- **News** items are single clean cards; **market range** switches (1H…) refresh only the open coin, instantly.
+
+- **Branded, scannable receive QR.** The QR now renders with rounded modules, styled finder eyes and the
+  Umbrella mark in the centre (error-correction H, so the mark never breaks a scan — verified by decoding
+  the rendered image). The developer “Advanced” path toggle was removed from the receive popup.
+- **Fuller portfolio.** Live stat tiles (assets, 24h change, top mover, networks) sit beside the balance
+  card so the dashboard reads full and balanced instead of a lone card over a list.
+- **Uniswap-style Market chart.** The coin chart now opens as a clean line over a soft gradient area by
+  default (candlesticks are one tap away), with 24h High/Low/Volume tiles beneath.
+- **DEX-style Swap.** A stacked “You pay → You receive” widget with a circular flip button, replacing the
+  two plain dropdowns.
+- **Crisper coin icons** (real round logos, no redundant colour disc, no cropping) and **icons on the
+  Discover hub cards**.
+- **The “the fear” wordmark is now gold**, matching the gold-ghost mark; the app defaults to **English**
+  on a fresh install (it used to follow the OS locale).
+
+- **New the fear maker's mark:** the gold ghost, background removed, now sits beside “the fear” on the welcome screen.
+
+- **Quick actions are now round, labelled keys.** Receive / Send / Swap / Buy / Market sit as accent
+  discs with a word under each (they were unlabelled squares), so the primary things you do read at a
+  glance and light up on hover.
+- **Holdings are clean rows, not a spreadsheet.** The column-header table is gone; each coin is a card
+  row — mark, name and ticker with a tinted 24h pill on the left, fiat value over the coin amount on
+  the right — and the whole row opens that coin’s asset page.
+- **Balance typography tightened** so the currency symbol, figure and cents sit on one clean baseline.
+- **Every icon-only control has a spoken name** (roadmap §8.2): the sidebar rail, the lock button and
+  the quick actions now carry an accessibility name, not just a tooltip — screen readers can address
+  them, and so can UI tests.
+
+### Interface
+
+- **Icon-only sidebar.** A slim rail of grouped section icons (labels on hover), the launch logo as the
+  top button, and a lock icon at the foot — no more text nav or footer blurb. The active section, the
+  balance card, and the action icons all follow the **active theme’s** colour now (they used to be a
+  fixed blue/violet that clashed with other themes).
+- **Balance as a credit-card-sized card** (not stretched full width), with animated rain behind it by
+  default and a toggle in Settings to swap in a still photo. The % change sits in a tinted pill.
+- **Compact, icon-only quick actions**, a condensed scrollable assets list, and **click a coin** (the
+  `›`) to open its chart.
+- **Themes trimmed** to a tighter curated set (the noisy/duplicate ones were removed); the sidebar
+  background is now just the theme colour, not a photo.
+- **Security Center.** A new section that answers “what is actually protecting this wallet right
+  now?” — Tor routing, the Tor-only kill-switch, your proxy, idle auto-lock, lock-on-minimize,
+  clipboard auto-wipe, screen-capture blocking, address rotation, telemetry, backup and release
+  verification. Every line is read from live settings, a protection that is off says so and offers the
+  fix on the spot, and the “X of Y protections active” score counts only things you can switch on —
+  it is never padded with facts.
+- **Asset details page.** Click a coin in your holdings to get one screen for it: what you hold and
+  what it is worth, the live price and 24h move, the address on this device, what this build can
+  really do with that coin (read from the chain catalogue, so it cannot over-promise), the chain’s
+  privacy note, and the movements that touched it. Receive / Send / Swap / chart are one click away,
+  and an action only appears where there is a real derived address behind it.
+- **Market overview and watchlist.** Top gainers, top losers and your starred coins sit above the
+  market list. Both are computed from prices the wallet has already fetched — no new endpoint and no
+  extra requests — and a coin with no live price is left out rather than shown as a flat 0%. The
+  watchlist is a local list of tickers that never leaves the device.
+- **The command palette is keyboard-complete.** Ctrl+K, then ↑/↓ to walk the results (they wrap) and
+  Enter to run the highlighted one; the highlight follows the list as it scrolls.
+- **The send and backup screens speak your language.** Every error and status message in the money
+  flow — “unlock first”, “balance isn’t fully synced”, coin-control refusals, “prepare the transfer
+  first”, and every backup verdict — is now translated in all six languages instead of being English
+  only. A test scans the source so a hardcoded sentence cannot creep back into a money screen.
+- The unlock screen’s “Advanced” passphrase field was removed (hidden-wallet passphrase entry is gone
+  from unlock); the app/taskbar icon and in-app logos are unchanged.
+
+## [4.4.0] — 2026-08-18 — premium redesign, hidden wallets, Tor kill-switch
+
+A new look and two headline privacy features, on top of everything in 4.3.0 (which never shipped
+publicly — its notes are kept below).
+
+### Premium redesign
+
+- **A whole new visual system.** Deep navy/graphite glass instead of flat black, big rounded cards
+  (26px), the cyan→blue→violet Umbrella signature gradient on the primary actions, taller inputs,
+  and a soft-glowing capsule for the active sidebar item. The default theme is now **Umbrella ·
+  premium**; all 27 palettes inherit the new rounded-glass structure.
+- **Animated intro.** A small centred splash window — the umbrella mark scaling and fading in over a
+  breathing blue glow — plays first, then the wallet opens.
+- **Dashboard.** The balance card carries the signature sweep; the quick actions get brand-coloured
+  icons (receive violet · send blue · swap cyan · market green).
+- The app/taskbar icon and the in-app logos are unchanged.
+
+### Hidden wallets (BIP39 passphrase)
+
+- **A passphrase field on unlock (behind “Advanced”).** Empty opens your normal wallet; any value
+  opens a wholly separate **hidden wallet** from the same recovery phrase + vault password — for
+  plausible deniability. The passphrase is never stored (that *is* the deniability), and a different
+  passphrase simply opens a different wallet, so there's no “wrong” one.
+- Built on an ambient-passphrase deriver shared by scanning and signing, so the shown, scanned and
+  spent addresses can never disagree. Cardano (whose Icarus scheme can't honour a passphrase) is
+  hidden in a passphrase wallet rather than leaking the base address. Pinned by tests including the
+  canonical BIP39 “TREZOR” seed vector and a shown-address == signing-key check.
+
+### Privacy
+
+- **Tor-only kill-switch.** Settings → Privacy: fail closed — if Tor is off, still connecting or
+  drops, the wallet refuses to touch clearnet instead of leaking your IP. Applies to every request.
+- **Verify Tor.** A one-click check (via check.torproject.org, same route as balances) that proves
+  your traffic really exits through Tor — or, with the kill-switch on and Tor off, that clearnet is
+  blocked.
+
+### Also
+
+- Every remaining screen is now translated across all six languages; fiat amounts and dates follow
+  the interface language's locale. Keyboard focus ring + Enter-to-submit; the Portfolio recent list
+  shows real on-chain transactions.
+
+## [4.3.0] — 2026-08-15 — full HD wallet, verifiable releases, honest support
+
+The big one: Bitcoin & Litecoin are now a **real HD wallet**, releases are
+**verifiable end-to-end**, and the app stops claiming what it can't do.
+
+### Wallet core (BTC/LTC)
+
+- **Multi-address HD wallet.** Balance and history are aggregated across *every*
+  derived address (external + internal change), discovered by a gap-limit scan
+  (20) — not just receive #0. A transient explorer error now shows "not fully
+  synced" instead of a wrong, lower balance.
+- **Spends across all addresses.** A transfer selects UTXOs from any owned
+  address and signs each input with its own key; change returns to a **fresh
+  internal address**, never a reused public one. The old key-#0-only signing
+  path is gone.
+- **"Generate new address" is back — safely.** Receiving on a rotated address is
+  now sound because the wallet finds and spends it. Indices are persisted before
+  an address is shown (fail-closed) so a crash can never lose a published one.
+- Proven by an offline receive → sum → spend → change → restore integration
+  test, plus a live smoke against the real explorer API.
+
+### Trust & verification
+
+- **Verify a backup (§6.5).** Settings → Backup → "Verify backup" decrypts a
+  backup with your password and confirms it holds a valid recovery phrase — so
+  you know it's restorable *before* you need it — without ever revealing the seed.
+- **Verifiable releases.** CI asserts the release has exactly the expected
+  artifacts and self-checks `SHA256SUMS.txt`; a version-consistency gate keeps
+  VERSION, the installer, README and this changelog in lockstep.
+- **Pinned, hash-verified Tor & Monero.** The bundled binaries are pinned to a
+  version and verified against the projects' official signed hashes, failing the
+  build on any mismatch. Recorded in `THIRD_PARTY_NOTICES.md`.
+
+### Honesty
+
+- **No coin is shown "Ready" unless it can actually send.** Dogecoin derives an
+  address and syncs a balance but has no send path, so it is now shown as
+  "Receive only" rather than as spendable.
+- **Docs tell the truth.** The stale web-product docs (React/NestJS/Prisma) are
+  archived; the desktop README no longer claims "version 1.7.0", a backend, or
+  macOS.
+- **Send offers only what it can send.** ADA and the EVM side-chains (BNB, MATIC,
+  AVAX, FTM, CRO) were offered in the picker but rejected before signing; TON
+  worked but was hidden. One capability set now drives both the picker and the
+  guard, pinned by a test. A full per-network capability matrix (receive /
+  balance / send / history / swap / tokens / maturity) is the single source of
+  truth (`ChainCatalog`).
+
+### Look & feel
+
+- **New app icon** and **real round coin logos** for 21 assets (with a coloured
+  glyph fallback).
+- **Five-item navigation** — Wallet · Activity · Swap · Discover · Settings.
+  Buy / P2P / Market / News moved into a **Discover** hub (external services
+  labelled honestly); Receive/Send live under Wallet.
+- **Connection status is always visible** in the sidebar (Tor / Direct /
+  proxy), with a note that the blockchain is public either way.
+- Quieter default motion, aligned button heights, a much fainter rain layer, and
+  more of the UI localized across all six languages.
+
+### Send — financial transparency (§4)
+
+- **The review shows the full destination**, never truncated — you can verify
+  every character, including long Monero addresses that were previously shortened
+  and impossible to check.
+- **Amount carries a live fiat estimate** (from the latest fetched prices), shown
+  as you type and again in the review.
+- **Total debit reads as its own line**, kept separate from the network fee, so
+  what actually leaves your wallet is unambiguous.
+- **Network-check-on-paste** — an advisory warning if a destination doesn't look
+  like the selected network, before any funds move.
+- **Local address book** — save, label and reuse destinations per asset. Stored
+  on this device only; public addresses only, never keys.
+
+### Receive — less technical noise (§5)
+
+- **Previous addresses** stay listed and copyable, so funds sent to an earlier
+  address are never orphaned.
+- **Requested amount** folds into a standard BIP21 payment URI (BTC/LTC/DOGE) so
+  the sender's wallet pre-fills it.
+- **Explicit token-network warning** on USDT/USDC: only the shown network is safe.
+- The derivation path moved behind an **Advanced** toggle.
+
+### Activity — one merged feed (§6)
+
+- **Transactions and Activity are now one screen.** Real on-chain history for your
+  own addresses is merged with local events, deduped by explorer link.
+- **Confirmation status per movement** — Confirmed / Pending / Failed. A broadcast
+  send shows *Pending* until it settles; a failed broadcast shows *Failed* with a
+  **Retry** that re-opens a pre-filled Send (never auto-broadcasts, so nothing can
+  be sent twice).
+- **Filters** by type, asset, status and date range, plus a **last-synced** stamp
+  and an on-demand **Refresh**.
+
+### Privacy & anonymity
+
+- **Tor-only kill-switch (block clearnet).** A new Settings → Privacy toggle makes
+  the wallet **fail closed**: with it on, any request that would go to clearnet is
+  refused at the transport layer, so a Tor that is off, still connecting or dropped
+  can never silently de-anonymise you. It covers every request the wallet makes
+  (balances, prices, history, swap quotes, broadcasts) and is applied at startup
+  before the first call. Turning it on also switches Tor on.
+- **Clipboard auto-clear** already wipes a copied address after a delay you choose.
+- Reminder of what was already true and stays true: bundled Tor, native Monero,
+  screenshot-capture protection, read-only exchange links, and **zero telemetry**.
+
+### Full localization & polish
+
+- **Every screen is now translated** across all six languages (en/uk/ru/zh/es/de) —
+  Discover/Buy, P2P & DEX, News, Market, NFT, Staking, the Portfolio overview and
+  the onboarding/Swap/Watch/Exchange flows that were still partly English.
+- **Fiat amounts and dates follow the interface language's locale** (e.g. `1 234,56`
+  for uk/ru/de); crypto amounts stay in the universal `.` form.
+- Keyboard focus ring + Enter-to-submit on unlock; screen-reader labels on icon-only
+  buttons; the Swap review now matches Send's structured layout; the Portfolio
+  "recent activity" rail includes real on-chain transactions.
+
+> A small real-amount BTC/LTC send is still recommended as a smoke test before
+> relying on rotated addresses. Authenticode code-signing awaits a certificate.
+
+## [4.2.1] — 2026-08-15 (test build) — honesty fixes
+
+- **Pulled the "Generate new address" button (#1).** It derived the next HD receive index, but the send
+  path still signs only with key #0 — so any coins received on a rotated address would have been
+  **unspendable**. Rather than ship a privacy feature that can strand funds, the button is removed until
+  the wallet can scan and spend across every issued index (balance scan, per-address UTXO signing,
+  internal change addresses, gap-limit restore). The derivation building blocks (`HdAddressDeriver`
+  index support, `AddressIndexStore`) stay in the tree, tested, for that work.
+- **Release checksums are now produced by the pipeline (#2).** `.github/workflows/release.yml` gained a
+  `checksums` job that runs after the Windows + Linux builds, pulls every attached artifact and writes
+  one `SHA256SUMS.txt` back onto the release — so verification isn't a manual afterthought. README now
+  documents how to check it. (Authenticode code-signing still needs a certificate you provide.)
+
+## [4.2.0] — 2026-08-15 (test build, superseded by 4.2.1)
+
+- Address-privacy and release-checksum work that 4.2.1 corrects — see above. This build's
+  "Generate new address" button could strand funds and its checksum file was attached by hand, not by
+  the pipeline; do not use it.
+
+## [4.1.0] — 2026-08-15 (test build) — honest self-custody cut
+
+- **Removed Staking (#4)** and **NFT (#3)** from navigation — an APR list with no real staking action,
+  and a preview-less NFT list, were misleading placeholders. Gone until they are genuinely useful.
+- **Removed the desktop "Mobile mode" toggle (#2)** — it was a phone-shaped desktop, not a real mobile
+  platform; a real mobile-first build comes before any Android claim. Previously-saved state is forced off.
+- **Simplified the assets table (#1)** — dropped the Price column (it lives on the coins Market page)
+  and made name/value more legible: Name · Amount · Value · 24h.
+- 33/33 VM/registry/flow tests pass; full crypto suite green in chunks.
+
+## [4.0.4] — 2026-08-15 (test build)
+
+- **Selected-coin / single-coin wallets (#7)** — Settings → Wallets: choose which coins a wallet
+  shows (tap coin chips; none = all). A wallet limited to one coin derives/shows only that coin.
+- 141/141 tests pass across chunks (0 failures).
+
+## [4.0.3] — 2026-08-15 (test build)
+
+- **Staking is now dynamic (#3)** — personalised to what you hold: coins you own show first with an
+  estimated yearly reward from their live value; coin badges added. Rebuilt on every balance refresh.
+- 147/147 tests.
+
+## [4.0.2] — 2026-08-15 (test build)
+
+- **Connect removed from the menu (#5)** — the quick-action tile is now Swap; watch-address markup
+  stays in code but is no longer in navigation.
+- **More Ukrainian/RU/ZH/ES/DE coverage (#15/#2)** — Receive / Send / Buy / NFT / Staking descriptions
+  now follow your language instead of staying English.
+- **Toasts in more places (#8)** — opening an external venue/link now shows a top-centre toast.
+- 147/147 tests.
+
+## [4.0.1] — 2026-08-15 (test build)
+
+- **Coin logos** — brand-coloured coin badges now show on **Market** and **Receive** rows too (matching
+  Holdings), so every coin is recognisable at a glance. No external icon assets bundled.
+- **Developer fee → your dedicated TRON/USDT wallet** (`TNvxWSh…`). Note: TRON send-path fee routing
+  isn't enabled yet, so nothing is deducted on TRON until that's implemented and tested on-chain —
+  the address is in place for when it is.
+- 147/147 tests.
+
+## [4.0.0] — 2026-08-15
+
+### On-chain transaction history (new)
+- The Transactions section now shows **real on-chain history for your own addresses** — including
+  transactions made **before** you ever opened the wallet. Covers **TRX (native + USDT/TRC-20),
+  Bitcoin, Ethereum and Litecoin**, via keyless public explorers, routed through Tor / your proxy
+  like everything else. Merged with local activity and de-duplicated.
+
+### Richer token pages
+- Opening a coin shows a **24h High / Low / Volume** row (from the same Binance feed).
+- **Optional market-data connector (CoinGecko)** — **off by default** so the privacy-first wallet
+  contacts no third party unless you enable it (Settings → Privacy). When on, token pages also show
+  **Market Cap, FDV and Volume**.
+
+### Wallets
+- **Colour-tag your wallets** — a colour ring on each wallet's badge + a swatch picker
+  (Settings → Wallets), persisted.
+
+### Stickers (yours) — all toggle with the other animations
+- Welcome: greeting sticker beside the umbrella, **GhostPepe** (Anonymous), **encryption** (Your keys).
+- **67** in NFT, **Recieve** on Receive, **Sending** on the send animation, **up/down** on the market chart.
+
+### Security & privacy
+- **Lock on minimize**, **hide balances by default**, custom SOCKS5 proxy, IPv4/IPv6 control,
+  clipboard auto-clear (Settings → Security / Privacy). Re-verified vault (Argon2id + AES-256-GCM),
+  screenshot blackout, KDF-parameter guard.
+
+### Fixes
+- Nav bar reappears on Top/Bottom layouts (regression) · green chart no longer draws a red line ·
+  unlock screen vertically centred · quick-action tiles no longer clip · Activity events are separate
+  cards · shorter top-centre toasts, now shown across all sections · new Telegram news logo ·
+  removed the umbrella-logo glow.
+
+### Still ahead (honest — each its own piece of work)
+Full in-page swap widget + swap between **all** pairs (needs an aggregator), per-wallet single-coin
+support, Telegram-gift NFTs (TON NFT API), SOL/DOGE history, real per-coin logos, and the
+developer-fee routing decision. Being done deliberately, with your testing, not a blind mass rewrite.
+
+### Verified
+146/146 tests pass; smoke-launches clean (desktop + mobile). Updates never touch your data.
+
+## [3.5.1] — 2026-08-15
+
+### Market / token detail (toward the Uniswap token page)
+- Opening a coin now shows a **24h stats row — High · Low · Volume** — beneath the chart, pulled
+  from the same Binance feed the prices use (no new data source, no extra tracking, same Tor/proxy
+  route). Converted to your display currency; volume shown compact (e.g. 4.6B).
+
+> Market cap / FDV / TVL / 52-week range and an in-page swap widget need an external market-data
+> service (e.g. CoinGecko/DeFiLlama) — that will land as an **optional, off-by-default** connector so
+> the privacy-first default never calls a third party you didn't enable.
+
+### Verified
+139/139 tests pass; smoke-launch clean.
+
+## [3.5.0] — 2026-08-15
+
+### Mobile layout (toward a Uniswap-style phone UI)
+- **Floating pill bottom nav** with five fixed slots (Portfolio · Receive · Send · Market · More) —
+  no more horizontal scrolling. Overflow sections open in a **"More" bottom sheet**.
+- The 330px side rail is **hidden on the phone layout**, so the content is a clean single column
+  instead of a cramped, crooked split.
+
+### UI fixes (from screenshots)
+- **the fear logo** now sits beside the umbrella on the welcome screen (replacing the sticker).
+- **Quick-action tiles no longer clip** long labels — icon + a bounded, ellipsised text column.
+- **Activity events are separate rounded cards** with gaps, not rows crammed into one field.
+- **Toasts are shorter** (≈2.2s notices / 3.5s errors), still top-centre.
+
+### Security
+- **Hide balances by default** (Settings → Security): every unlock starts with amounts hidden.
+
+### P2P & DEX
+- Added **SushiSwap** and **Raydium** (Solana) — both non-custodial. (We deliberately don't list
+  sites we can't verify as safe/non-custodial.)
+
+### Coin support (audit)
+- Sending is wired for BTC, ETH (+BNB/Polygon/Avalanche/Fantom/Cronos & L2s), LTC, SOL, XMR, TRON,
+  USDT-TRC20 and ADA, plus ERC-20/TRC-20 tokens; TON sending for imported TON wallets. DOGE and a
+  few others are receive/balance-only for now.
+
+### Verified
+139/139 tests pass; smoke-launches clean in desktop and mobile layouts.
+
+## [3.4.2] — 2026-08-15
+
+### Desktop
+- **Real phone-style mobile layout.** Mobile mode now shows a proper bottom **icon tab bar**
+  (icons + labels, horizontally scrollable so every section stays reachable) instead of a narrowed
+  desktop menu, and the quick actions wrap to 2×2. A soft themed **glow** now sits behind the
+  the-fear logo on the welcome screen.
+- **Clearer backup.** The recovery phrase and the (optional) Monero keys are now one card with a
+  plain-language intro explaining that the 24-word phrase is the real backup and the Monero keys are
+  an advanced extra most people never need.
+- **Fixed the Activity spam.** The feed no longer records a "Sync · Public RPC · OK" row every 60
+  seconds; the live status line already shows the last-updated time.
+
+### Security & privacy
+- **Lock on minimize** (Settings → Privacy): the vault locks the instant the window is minimized.
+- Builds on 3.3's custom SOCKS5 proxy, IPv4/IPv6 control and clipboard auto-clear.
+
+### P2P & DEX
+- **More vetted non-custodial venues:** CoW Swap (MEV-protected), Matcha, Curve, Osmosis, plus
+  Haveno (Monero P2P), Vexl (no-KYC BTC P2P) and LocalCoinSwap.
+
+### Localization
+- The welcome screen (buttons, trust cards, blurb) and several section headers now follow your
+  language in all six locales. (Translation coverage continues to expand each release.)
+
+### Verified
+139/139 tests pass; app smoke-launches clean in both desktop and mobile layouts.
+
+## [3.4.0] — 2026-08-14
+
+### Desktop
+- **Mobile layout on your PC.** Settings → Appearance → *Mobile layout*: the wallet renders as a
+  phone-style app — a narrow centred column, a bottom tab bar, and a phone-sized window (430×900) —
+  and switches straight back to the wide desktop layout when you turn it off. Your saved menu
+  position is preserved across the switch (mobile mode force-docks the nav to the bottom without
+  overwriting your preference).
+- **Responsive quick actions.** The dashboard's action tiles now wrap to a 2×2 grid in the mobile
+  layout instead of clipping four across, and "Prices & charts" is now localized in all six languages.
+
+### Verified
+139/139 tests pass; app smoke-launches clean. Anonymity/security model unchanged; updates preserve data.
+
+## [3.3.0] — 2026-08-14
+
+### Security & privacy
+- **Security review + vault hardening.** A full pass over the crypto/storage layer. `UnlockAsync`
+  now rejects out-of-range Argon2 parameters (memory 8 MiB–1 GiB, t 1–64, p 1–16) up front, so a
+  tampered or foreign vault file can no longer stall/OOM the app on unlock. Re-verified: on-device
+  Argon2id + AES-256-GCM vault, sign-then-`ZeroMemory` key handling, `SetWindowDisplayAffinity`
+  screenshot/screen-share blackout while a seed or Monero key is on screen, and the `https://`-only
+  external-link guard.
+- **Custom SOCKS5 proxy.** Settings → Privacy routes every request through your own proxy (VPN,
+  SSH tunnel, another Tor) instead of the bundled Tor. `host:port` or `socks5://host:port`; Tor and
+  the custom proxy are mutually exclusive.
+- **IPv4 / IPv6 control.** Force outbound (direct) connections onto one family, or leave it automatic.
+- **Clipboard auto-clear.** Copied addresses are wiped from the clipboard after a chosen delay
+  (off / 30s / 45s / 1m / 2m), and only if the clipboard still holds what the app put there.
+
+### Localization
+- Onboarding (create / import / unlock / restore / back-up), section titles and the holdings/market
+  column headers are now localized across all six languages instead of hardcoded English.
+
+### Installer
+- Setup shows the licence, carries publisher/version metadata and support/update URLs, and on
+  uninstall tells the user where their encrypted data is kept (and that it's deliberately preserved).
+
+### Verified
+139/139 tests pass (added a KDF-parameter-rejection test). Anonymity/security model unchanged;
+updates still preserve all wallet data.
+
 ## [3.2.0] — 2026-08-09
 
 ### Desktop

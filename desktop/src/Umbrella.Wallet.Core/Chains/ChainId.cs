@@ -14,4 +14,6 @@ public enum ChainId
     Ton,
     Ada,
     Xmr,
+    Bch,
+    Zec,
 }

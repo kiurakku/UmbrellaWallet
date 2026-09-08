@@ -16,8 +16,11 @@ public sealed class ActivityStore
     public ActivityStore(string? path = null) =>
         _path = path ?? Path.Combine(AppPaths.DataRoot, "activity.json");
 
-    /// <summary>A stored activity row (the view-model's core fields, without the computed display bits).</summary>
-    public sealed record Entry(string Kind, string Asset, string Amount, string Counterparty, string When, string? Explorer);
+    /// <summary>A stored activity row (the view-model's core fields, without the computed display bits).
+    /// <c>Status</c> is optional so history written by older versions still deserializes (defaults to
+    /// "Confirmed"). Retry context is deliberately not persisted — a stale destination must not be resent.</summary>
+    public sealed record Entry(string Kind, string Asset, string Amount, string Counterparty, string When,
+        string? Explorer, string Status = "Confirmed");
 
     public IReadOnlyList<Entry> Load()
     {

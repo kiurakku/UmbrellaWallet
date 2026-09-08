@@ -81,3 +81,60 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: UmbrellaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz
+
+  checksums:
+    name: checksums
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: v
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      # Both build jobs have finished and attached their artifacts to the release; pull them all
+      # back and produce ONE SHA256SUMS.txt so downloaders can verify every file.
+      - name: Download all release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir assets
+          gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
+            --pattern "UmbrellaWallet-*" --dir assets
+
+      # Fail closed if the release is incomplete: every platform artifact for THIS version must be
+      # present and version-stamped before we publish a checksum manifest — a partial release must
+      # never yield a SHA256SUMS.txt that silently omits (or misnames) a file.
+      - name: Verify the expected artifacts are all present
+        run: |
+          V="${{ steps.v.outputs.version }}"
+          expected=(
+            "UmbrellaWallet-Setup-${V}.exe"
+            "UmbrellaWallet-Portable-${V}.zip"
+            "UmbrellaWallet-${V}-linux-x64.tar.gz"
+          )
+          missing=0
+          for f in "${expected[@]}"; do
+            if [ ! -f "assets/$f" ]; then echo "::error::missing release artifact: $f"; missing=1; fi
+          done
+          # Reject any stray or wrong-version UmbrellaWallet-* asset so the manifest is exactly the set.
+          for f in assets/UmbrellaWallet-*; do
+            base="$(basename "$f")"
+            keep=0
+            for e in "${expected[@]}"; do [ "$base" = "$e" ] && keep=1; done
+            if [ "$keep" -eq 0 ]; then echo "::error::unexpected artifact: $base"; missing=1; fi
+          done
+          [ "$missing" -eq 0 ] || { echo "Release artifact set is incomplete or unexpected."; exit 1; }
+
+      - name: Generate and self-verify SHA256SUMS.txt
+        run: |
+          ( cd assets && sha256sum UmbrellaWallet-* ) > SHA256SUMS.txt
+          echo "----- SHA256SUMS.txt -----"; cat SHA256SUMS.txt
+          # Prove every line matches the attached file byte-for-byte before we publish it.
+          ( cd assets && sha256sum -c ../SHA256SUMS.txt )
+
+      - name: Attach checksums to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: SHA256SUMS.txt

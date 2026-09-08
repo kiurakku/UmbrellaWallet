@@ -12,8 +12,11 @@ public class ChainCatalogTests
     [Fact]
     public void Catalog_marks_supported_and_planned_chains_explicitly()
     {
+        // BCH and ZEC are Supported for receive + balance only (real BIP44 address + live Blockchair
+        // balance); their send paths are intentionally still gated behind CanSend:false. ZEC is
+        // transparent-only (t-addr) — the public side of Zcash, not shielded.
         Assert.Equal(
-            [ChainId.Btc, ChainId.Eth, ChainId.Ltc, ChainId.Doge, ChainId.Tron, ChainId.Sol, ChainId.Ton, ChainId.Ada],
+            [ChainId.Btc, ChainId.Eth, ChainId.Ltc, ChainId.Doge, ChainId.Tron, ChainId.Sol, ChainId.Ton, ChainId.Ada, ChainId.Bch, ChainId.Zec],
             ChainCatalog.Supported.Select(c => c.Id).ToArray());
 
         // Every chain now derives a real address; nothing is left "planned".

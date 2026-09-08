@@ -16,6 +16,29 @@ public static class Fx
     /// <summary>The selected currency's symbol (e.g. "$", "€", "₴").</summary>
     public static string Symbol { get; set; } = "$";
 
+    /// <summary>Locale used to format FIAT amounts (digit grouping + decimal separator), so a
+    /// German/Ukrainian user sees "1.234,56" / "1 234,56" rather than the US "1,234.56". Crypto amounts
+    /// are deliberately left in the universal "." form elsewhere. Display only — never re-parsed.</summary>
+    public static CultureInfo Culture { get; private set; } = CultureInfo.GetCultureInfo("en-US");
+
+    /// <summary>Point the fiat formatter at the locale for the given UI-language code. Falls back to
+    /// en-US if the OS lacks that culture, so formatting can never throw.</summary>
+    public static void SetLanguage(string code)
+    {
+        try { Culture = CultureInfo.GetCultureInfo(CultureName(code)); }
+        catch { Culture = CultureInfo.GetCultureInfo("en-US"); }
+    }
+
+    private static string CultureName(string code) => (code ?? "").Trim().ToLowerInvariant() switch
+    {
+        "uk" => "uk-UA",
+        "ru" => "ru-RU",
+        "de" => "de-DE",
+        "es" => "es-ES",
+        "zh" => "zh-CN",
+        _ => "en-US",
+    };
+
     public sealed record Currency(string Code, string Symbol, string Name);
 
     /// <summary>The fiat currencies the wallet can display balances in.</summary>
@@ -50,14 +73,15 @@ public static class Fx
     public static string SymbolFor(string code) =>
         Currencies.FirstOrDefault(c => c.Code == code)?.Symbol ?? "$";
 
-    /// <summary>A converted money amount with the current symbol, e.g. "₴1,234.56".</summary>
+    /// <summary>A converted money amount with the current symbol, formatted for the user's locale,
+    /// e.g. "₴1 234,56" (uk) or "$1,234.56" (en).</summary>
     public static string Money(double usd) =>
-        Symbol + ((decimal)usd * Rate).ToString("N2", CultureInfo.InvariantCulture);
+        Symbol + ((decimal)usd * Rate).ToString("N2", Culture);
 
     /// <summary>A converted price: 2 decimals at/above 1 unit, 6 below, so sub-cent coins still read.</summary>
     public static string Price(double usd)
     {
         var v = (decimal)usd * Rate;
-        return Symbol + v.ToString(v >= 1 ? "N2" : "N6", CultureInfo.InvariantCulture);
+        return Symbol + v.ToString(v >= 1 ? "N2" : "N6", Culture);
     }
 }

@@ -60,15 +60,49 @@ public sealed class ThorchainSwapClient
         ["LTC"] = "LTC.LTC",
         ["DOGE"] = "DOGE.DOGE",
         ["BCH"] = "BCH.BCH",
+        // Native L1 gas coins THORChain delivers to a 0x address (the wallet's own ETH key/address).
+        // BNB is the BSC (BNB Smart Chain) coin — THORChain's old Beacon-Chain BNB.BNB is dead.
+        ["AVAX"] = "AVAX.AVAX",
+        ["BNB"] = "BSC.BNB",
+        // ERC-20 stablecoins on Ethereum — the asset id carries the token contract. THORChain delivers
+        // these to the same 0x address; the wallet already shows ERC-20 balances there. NOTE: this "USDT"
+        // is ETHEREUM (ERC-20) USDT — distinct from the wallet's TRON (TRC-20) USDT send path.
+        ["USDC"] = "ETH.USDC-0XA0B86991C6218B36C1D19D4A2E9EB0CE3606EB48",
+        ["USDT"] = "ETH.USDT-0XDAC17F958D2EE523A2206206994597C13D831EC7",
     };
 
-    /// <summary>Assets the wallet can send AND attach a memo to today (UTXO chains with OP_RETURN).</summary>
-    public static readonly IReadOnlyList<string> SendableFrom = ["BTC", "LTC"];
+    /// <summary>Assets the wallet can send AND attach a memo to today. UTXO chains (BTC/LTC/DOGE/BCH) carry
+    /// the THORChain memo as an OP_RETURN; ETH carries it as calldata of a router.depositWithExpiry call.
+    /// BCH joined once its SIGHASH_FORKID send path landed — it now swaps both ways.</summary>
+    public static readonly IReadOnlyList<string> SendableFrom = ["BTC", "LTC", "DOGE", "ETH", "BCH"];
 
-    /// <summary>Assets the wallet holds a receive address for, so THORChain can deliver the output.</summary>
-    public static readonly IReadOnlyList<string> ReceivableTo = ["BTC", "ETH", "LTC", "DOGE"];
+    /// <summary>Assets the wallet holds a receive address for, so THORChain can deliver the output.
+    /// BCH/AVAX/BNB are swap TARGETS the wallet can't (yet) swap FROM: BCH's send path is gated, and the
+    /// EVM L1s (AVAX, BNB-on-BSC) would each need their own THORChain router-deposit path to be a source.
+    /// As targets they're safe — THORChain delivers them to the user's own address (a CashAddr for BCH,
+    /// the shared ETH 0x address for AVAX, BNB and the ERC-20 stablecoins USDC/USDT), which the wallet
+    /// already derives and shows a balance for.</summary>
+    public static readonly IReadOnlyList<string> ReceivableTo =
+        ["BTC", "ETH", "LTC", "DOGE", "BCH", "AVAX", "BNB", "USDC", "USDT"];
 
     public static bool Supports(string symbol) => AssetIds.ContainsKey(symbol);
+
+    /// <summary>
+    /// The destination address in the exact form THORChain expects for a given asset. Verified against
+    /// the live quote API: BCH must be the CashAddr BODY (e.g. <c>qqyx…</c>) — the wallet displays and
+    /// stores it with the <c>bitcoincash:</c> URI scheme, but THORChain rejects that prefixed form and
+    /// returns an empty quote, so it is stripped here. Every other asset passes through unchanged.
+    /// </summary>
+    public static string NormalizeDestination(string toSymbol, string destination)
+    {
+        if (string.IsNullOrEmpty(destination)) return destination;
+        if (string.Equals(toSymbol, "BCH", StringComparison.OrdinalIgnoreCase) &&
+            destination.StartsWith("bitcoincash:", StringComparison.OrdinalIgnoreCase))
+        {
+            return destination["bitcoincash:".Length..];
+        }
+        return destination;
+    }
 
     /// <summary>
     /// Fetches a live swap quote. <paramref name="destination"/> must be the user's own receive
@@ -88,6 +122,9 @@ public sealed class ThorchainSwapClient
         if (amountIn <= 0) return (null, "Amount must be positive.");
         if (string.IsNullOrWhiteSpace(destination))
             return (null, "No destination address for the target asset.");
+
+        // THORChain wants the asset's canonical address form (e.g. BCH without the bitcoincash: scheme).
+        destination = NormalizeDestination(toSymbol, destination);
 
         // THORChain amounts are always 1e8, independent of the asset's native decimals.
         var amount1e8 = (long)decimal.Truncate(amountIn * 100_000_000m);

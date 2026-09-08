@@ -12,7 +12,7 @@
 
 **Do not** open a public GitHub issue for security bugs.
 
-1. Use [GitHub Private Vulnerability Reporting](https://github.com/kiurakku/umbrella-wallet/security/advisories/new) on this repository, **or**
+1. Use [GitHub Private Vulnerability Reporting](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new) on this repository, **or**
 2. Contact the maintainer through GitHub (profile → contact).
 
 Include:
