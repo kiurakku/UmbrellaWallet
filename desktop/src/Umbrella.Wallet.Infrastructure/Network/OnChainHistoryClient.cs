@@ -90,6 +90,31 @@ public sealed class OnChainHistoryClient
     public Task<IReadOnlyList<ChainTx>> GetLitecoinAsync(string address, CancellationToken ct = default) =>
         GetEsploraAsync("https://litecoinspace.org/api", address, "LTC", "https://litecoinspace.org/tx/", ct);
 
+    /// <summary>
+    /// Bitcoin Cash transactions, via Haskoin's keyless <c>transactions/full</c> API — the same explorer
+    /// the wallet already uses for BCH balances and UTXOs (Blockchair's free tier IP-blacklists a busy
+    /// caller). Haskoin takes the bare CashAddr, so the "bitcoincash:" scheme is stripped from the query;
+    /// addresses in the response carry the scheme, and the parser compares on the scheme-stripped form.
+    /// </summary>
+    public async Task<IReadOnlyList<ChainTx>> GetBitcoinCashAsync(
+        string address, int limit = 50, CancellationToken ct = default)
+    {
+        try
+        {
+            var bare = StripCashScheme(address);
+            var url = $"https://api.haskoin.com/bch/address/{Uri.EscapeDataString(bare)}" +
+                      $"/transactions/full?limit={limit}";
+            using var res = await Http.GetAsync(url, ct);
+            if (!res.IsSuccessStatusCode) return [];
+            var json = await res.Content.ReadAsStringAsync(ct);
+            return ParseHaskoinFull(json, address, "BCH", "https://blockchair.com/bitcoin-cash/transaction/");
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
     /// <summary>Native ETH transfers, via Blockscout's keyless API (Etherscan-compatible shape).</summary>
     public async Task<IReadOnlyList<ChainTx>> GetEthereumAsync(string address, CancellationToken ct = default)
     {
@@ -444,6 +469,60 @@ public sealed class OnChainHistoryClient
         }
         return outList;
     }
+
+    /// <summary>
+    /// Parses a Haskoin <c>transactions/full</c> payload into normalized rows, using the same net-effect
+    /// logic as Bitcoin: sum the address's own inputs vs outputs (satoshis, 1e8) to tell a send from a
+    /// receive, and for a send show the amount that actually left to others (change back to us and the fee
+    /// excluded). CashAddr comparison ignores the "bitcoincash:" scheme so a scheme-carrying "me" — the
+    /// form the wallet derives — still matches Haskoin's scheme-carrying addresses. A coinbase input has
+    /// no address, which reads as empty and simply never matches "me".
+    /// </summary>
+    public static List<ChainTx> ParseHaskoinFull(string json, string me, string symbol, string explorerTxBase)
+    {
+        var outList = new List<ChainTx>();
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.ValueKind != JsonValueKind.Array) return outList;
+
+        var meBare = StripCashScheme(me);
+        foreach (var tx in doc.RootElement.EnumerateArray())
+        {
+            var hash = Str(tx, "txid");
+
+            long inMine = 0, outMine = 0, outTotalToOthers = 0;
+            string firstOtherOut = "";
+            if (tx.TryGetProperty("inputs", out var ins) && ins.ValueKind == JsonValueKind.Array)
+                foreach (var i in ins.EnumerateArray())
+                    if (string.Equals(StripCashScheme(Str(i, "address")), meBare, StringComparison.Ordinal))
+                        inMine += Long(i, "value");
+
+            if (tx.TryGetProperty("outputs", out var outs) && outs.ValueKind == JsonValueKind.Array)
+                foreach (var o in outs.EnumerateArray())
+                {
+                    var addr = Str(o, "address");
+                    var val = Long(o, "value");
+                    if (string.Equals(StripCashScheme(addr), meBare, StringComparison.Ordinal)) outMine += val;
+                    else { outTotalToOthers += val; if (firstOtherOut.Length == 0) firstOtherOut = addr; }
+                }
+
+            var ts = Long(tx, "time") * 1000; // Haskoin's "time" is unix seconds (mempool: first-seen)
+            var net = outMine - inMine; // sats
+            bool incoming = net >= 0;
+            long shownSats = incoming ? outMine : (inMine - outMine); // received-to-us, or sent-out incl. fee
+            if (!incoming && outTotalToOthers > 0) shownSats = outTotalToOthers; // prefer the recipient amount
+            var amount = ScaleDown(shownSats.ToString(CultureInfo.InvariantCulture), 8);
+            if (amount == "0") continue;
+            var counter = incoming ? "" : firstOtherOut;
+            outList.Add(new ChainTx(
+                incoming ? "Received" : "Sent", symbol, amount, counter, ts,
+                explorerTxBase + hash, hash));
+        }
+        return outList;
+    }
+
+    /// <summary>Drops the "bitcoincash:" scheme from a CashAddr; leaves other strings unchanged.</summary>
+    private static string StripCashScheme(string a) =>
+        a.StartsWith("bitcoincash:", StringComparison.OrdinalIgnoreCase) ? a["bitcoincash:".Length..] : a;
 
     /// <summary>Decodes a TRON base58check (T…) address to its 21-byte hex form (41 + 20 bytes),
     /// as used inside raw transaction data. Throws on an invalid address.</summary>

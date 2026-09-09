@@ -140,6 +140,60 @@ public sealed class OnChainHistoryTests
     }
 
     [Fact]
+    public void ParseHaskoinFull_classifiesBchReceiveAndSpend()
+    {
+        const string me = "bitcoincash:qqmeexampleaddr";
+        // Haskoin transactions/full: inputs[]/outputs[] each carry address + value (satoshis, 1e8), plus
+        // block + time (unix seconds). Same net-effect logic as Bitcoin. A coinbase input has no address,
+        // which must not crash the parse or count toward "mine".
+        var json = """
+        [
+          {"txid":"rx","time":1723600000,"block":{"height":800001},
+           "inputs":[{"coinbase":false,"address":"bitcoincash:qqsomeoneelse","value":500000},
+                     {"coinbase":true,"value":0}],
+           "outputs":[{"address":"bitcoincash:qqmeexampleaddr","value":300000},
+                      {"address":"bitcoincash:qqsomeoneelse","value":200000}]},
+          {"txid":"sx","time":1723700000,"block":{"height":800002},
+           "inputs":[{"address":"bitcoincash:qqmeexampleaddr","value":1000000}],
+           "outputs":[{"address":"bitcoincash:qqmerchant","value":700000},
+                      {"address":"bitcoincash:qqmeexampleaddr","value":250000}]}
+        ]
+        """;
+        var rows = OnChainHistoryClient.ParseHaskoinFull(
+            json, me, "BCH", "https://blockchair.com/bitcoin-cash/transaction/");
+        Assert.Equal(2, rows.Count);
+
+        Assert.Equal("Received", rows[0].Kind);
+        Assert.Equal("BCH", rows[0].Asset);
+        Assert.Equal("0.003", rows[0].Amount);            // 300000 sats to us
+        Assert.Equal(1723600000000, rows[0].UnixMs);      // seconds → ms
+        Assert.StartsWith("https://blockchair.com/bitcoin-cash/transaction/rx", rows[0].Explorer);
+
+        Assert.Equal("Sent", rows[1].Kind);
+        Assert.Equal("bitcoincash:qqmerchant", rows[1].Counterparty);
+        Assert.Equal("0.007", rows[1].Amount);            // 700000 sats to others (change + fee excluded)
+    }
+
+    [Fact]
+    public void ParseHaskoinFull_matchesRegardlessOfCashAddrScheme()
+    {
+        // The wallet derives "me" WITH the "bitcoincash:" scheme and Haskoin returns addresses WITH it
+        // too, but the comparison must survive either side dropping the scheme — so a bare "me" still
+        // matches a scheme-carrying output.
+        const string bareMe = "qqmeexampleaddr";
+        var json = """
+        [{"txid":"rx","time":1723600000,"block":{"height":800001},
+          "inputs":[{"address":"bitcoincash:qqsomeoneelse","value":500000}],
+          "outputs":[{"address":"bitcoincash:qqmeexampleaddr","value":300000}]}]
+        """;
+        var rows = OnChainHistoryClient.ParseHaskoinFull(
+            json, bareMe, "BCH", "https://blockchair.com/bitcoin-cash/transaction/");
+        Assert.Single(rows);
+        Assert.Equal("Received", rows[0].Kind);
+        Assert.Equal("0.003", rows[0].Amount);
+    }
+
+    [Fact]
     public void ParseTon_classifiesReceiveAndSend()
     {
         const string me = "EQMe0000000000000000000000000000000000000000";
