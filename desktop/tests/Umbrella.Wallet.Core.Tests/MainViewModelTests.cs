@@ -120,12 +120,11 @@ public sealed class MainViewModelTests : IDisposable
             $"picker=[{string.Join(",", offered.OrderBy(s => s))}] " +
             $"capability=[{string.Join(",", MainViewModel.SendableSymbols.OrderBy(s => s))}]");
 
-        // DOGE derives an address and syncs a balance but isn't surfaced in the Send picker.
-        Assert.DoesNotContain("DOGE", offered);
         // The exact assets the roadmap called out as broken must now be offered AND declared sendable.
         // ARB/BASE/OP are the Ethereum L2 rollups (native ETH, same 0x address, EIP-155 with the L2 id).
-        // BCH is a real UTXO spend (SIGHASH_FORKID, Haskoin UTXOs/broadcast).
-        foreach (var sym in new[] { "ADA", "BNB", "MATIC", "AVAX", "FTM", "CRO", "TON", "ARB", "BASE", "OP", "BCH" })
+        // BCH is a real UTXO spend (SIGHASH_FORKID, Haskoin UTXOs/broadcast). DOGE is the UTXO spend the
+        // 4.5.0 changelog announced ("DOGE is now spendable") — now actually reachable in the picker.
+        foreach (var sym in new[] { "ADA", "BNB", "MATIC", "AVAX", "FTM", "CRO", "TON", "ARB", "BASE", "OP", "BCH", "DOGE" })
             Assert.Contains(sym, offered);
     }
 
@@ -221,10 +220,10 @@ public sealed class MainViewModelTests : IDisposable
         Assert.Contains("Monero wallet service", vm.SendError);
         Assert.False(vm.HasSendQuote);
 
-        // A coin with a real address but no send path (DOGE) is refused outright — the send picker
-        // never offers it, and the guard rejects it if it is reached programmatically.
-        vm.SendChain = "DOGE";
-        vm.SendTo = "D6MiH8HdqpNuGPXRn6JXjk4z2Mt3dN3VFy5";
+        // A coin with a real address but no send path (ZEC — transparent receive only) is refused
+        // outright — the send picker never offers it, and the guard rejects it if reached programmatically.
+        vm.SendChain = "ZEC";
+        vm.SendTo = "t1XVXWCvpMgBvUaed4XDqWtgQgJSu1Ghz7F";
         await vm.PrepareSendCommand.ExecuteAsync(null);
         Assert.Contains("not available", vm.SendError);
         Assert.False(vm.HasSendQuote);
