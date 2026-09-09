@@ -175,6 +175,7 @@ public partial class MainViewModel
         SendError = string.Empty;
         SendSuccess = string.Empty;
         HasSendQuote = false;
+        HasSendPrivacy = false;
         _sendQuote = null;
         _tonQuote = null;
 
@@ -402,6 +403,9 @@ public partial class MainViewModel
                         : $"Network fee ≈ {Fmt(quote.FeeAmount)} {chain} · {quote.InputCount} input(s) · change returns to a fresh internal address";
                     if (CoinControlOn && _coinControlChain == chain)
                         SendQuoteFee += $" · coin control: funded from {plan.Inputs.Count} of your selected coin(s)";
+
+                    // Privacy Radar (local): the plan's inputs are the addresses this spend links on-chain.
+                    ApplySendPrivacy(plan.Inputs.Select(i => i.Address));
                     break;
                 }
 

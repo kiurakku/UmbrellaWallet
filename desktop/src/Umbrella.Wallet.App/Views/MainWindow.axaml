@@ -1031,6 +1031,36 @@
                       </StackPanel>
                     </Border>
 
+                    <!-- Privacy Radar (local, offline): how this send affects YOUR on-chain privacy —
+                         chain analysis FOR the user. Shown for UTXO chains, where linking inputs matters. -->
+                    <Border IsVisible="{Binding HasSendPrivacy}" CornerRadius="8" Padding="12,10"
+                            Background="#22000000" BorderThickness="1" BorderBrush="{Binding SendPrivacyColor}">
+                      <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="🛡" FontSize="13" VerticalAlignment="Center"/>
+                          <TextBlock Text="Privacy Radar" Classes="eyebrow" VerticalAlignment="Center"
+                                     Foreground="{Binding SendPrivacyColor}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding SendPrivacyHeadline}" Foreground="{Binding SendPrivacyColor}"
+                                   FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <ItemsControl ItemsSource="{Binding SendPrivacyFindings}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SendPrivacyFindingVm">
+                              <Grid ColumnDefinitions="Auto,*" Margin="0,3,0,0">
+                                <TextBlock Text="{Binding Glyph}" VerticalAlignment="Top" Margin="0,0,8,0"/>
+                                <StackPanel Grid.Column="1" Spacing="1">
+                                  <TextBlock Text="{Binding Title}" Foreground="{Binding Color}"
+                                             FontSize="11.5" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                  <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource UmTextDim}"
+                                             FontSize="11" TextWrapping="Wrap"/>
+                                </StackPanel>
+                              </Grid>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </Border>
+
                     <TextBlock Foreground="#BBAF91" FontSize="12" TextWrapping="Wrap"
                                Text="{Binding [send.step2warn], Source={x:Static app:Loc.Instance}}"/>
 

@@ -1745,6 +1745,45 @@ public partial class MainViewModel : ViewModelBase
     /// from the network fee above it.</summary>
     [ObservableProperty] private string _sendReviewDebit = string.Empty;
 
+    // --- Privacy Radar (local): a per-send privacy read, chain-analysis FOR the user. Shown on the
+    // review for UTXO chains, where spending from several addresses at once links them on-chain. ---
+    /// <summary>True when a privacy assessment is available for the pending send (UTXO chains).</summary>
+    [ObservableProperty] private bool _hasSendPrivacy;
+    /// <summary>One-line privacy verdict (e.g. "Strong privacy — …").</summary>
+    [ObservableProperty] private string _sendPrivacyHeadline = string.Empty;
+    /// <summary>Accent colour for the verdict: green (strong), amber (moderate), red (weak).</summary>
+    [ObservableProperty] private string _sendPrivacyColor = "#8FCB9B";
+    /// <summary>The findings behind the verdict, worst-case first, each explaining what it means.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<SendPrivacyFindingVm> SendPrivacyFindings { get; } = new();
+
+    private const string PrivGood = "#8FCB9B";
+    private const string PrivWarn = "#E7CA83";
+    private const string PrivBad = "#E09A9A";
+
+    /// <summary>
+    /// Runs the local <see cref="Umbrella.Wallet.Core.Safety.SendPrivacyInspector"/> over the addresses
+    /// funding a pending send and surfaces the result on the review. Pure/offline — no network.
+    /// </summary>
+    private void ApplySendPrivacy(IEnumerable<string> inputAddresses)
+    {
+        var report = Umbrella.Wallet.Core.Safety.SendPrivacyInspector.Inspect(
+            inputAddresses.ToList(), TorEnabled);
+
+        SendPrivacyFindings.Clear();
+        foreach (var f in report.Findings)
+            SendPrivacyFindings.Add(new SendPrivacyFindingVm(
+                f.Glyph, f.Title, f.Detail, f.IsWeakness ? PrivWarn : PrivGood));
+
+        SendPrivacyHeadline = report.Headline;
+        SendPrivacyColor = report.Level switch
+        {
+            Umbrella.Wallet.Core.Safety.SendPrivacyLevel.Strong => PrivGood,
+            Umbrella.Wallet.Core.Safety.SendPrivacyLevel.Moderate => PrivWarn,
+            _ => PrivBad,
+        };
+        HasSendPrivacy = true;
+    }
+
     /// <summary>Live fiat estimate for the amount being typed, shown under the amount field.</summary>
     public string SendAmountFiat
     {
