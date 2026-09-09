@@ -15,11 +15,11 @@ mirror or a local copy.
 | | |
 |---|---|
 | Component | `tor.exe` + GeoIP databases (Windows x86_64 expert bundle) |
-| Version | 15.0.19 |
-| Archive | `tor-expert-bundle-windows-x86_64-15.0.19.tar.gz` |
-| Source URL | https://dist.torproject.org/torbrowser/15.0.19/tor-expert-bundle-windows-x86_64-15.0.19.tar.gz |
-| SHA-256 | `6ac067402c7b4a3dc37887ed3754b3914b67fdc220c966190683e9ccf91abf0f` |
-| Hash source | https://dist.torproject.org/torbrowser/15.0.19/sha256sums-unsigned-build.txt |
+| Version | 15.0.22 |
+| Archive | `tor-expert-bundle-windows-x86_64-15.0.22.tar.gz` |
+| Source URL | https://dist.torproject.org/torbrowser/15.0.22/tor-expert-bundle-windows-x86_64-15.0.22.tar.gz |
+| SHA-256 | `231dad6b9cb401a54c260db7046965ef04e4f72ff071b140d423fb5da281ab1e` |
+| Hash source | https://dist.torproject.org/torbrowser/15.0.22/sha256sums-unsigned-build.txt |
 | License | BSD 3-Clause (see the Tor Project's upstream `LICENSE`) |
 
 ## Monero CLI (monero-wallet-rpc)
@@ -39,7 +39,7 @@ mirror or a local copy.
 The fetch scripts verify automatically, but to check a download yourself:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\tor-expert-bundle-windows-x86_64-15.0.19.tar.gz
+Get-FileHash -Algorithm SHA256 .\tor-expert-bundle-windows-x86_64-15.0.22.tar.gz
 Get-FileHash -Algorithm SHA256 .\monero-win-x64-v0.18.5.1.zip
 ```
 

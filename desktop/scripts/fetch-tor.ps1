@@ -12,8 +12,8 @@
 param(
     # Pinned version + SHA-256 of the expert bundle, from
     # https://dist.torproject.org/torbrowser/<Version>/sha256sums-unsigned-build.txt (see THIRD_PARTY_NOTICES.md).
-    [string]$Version = '15.0.19',
-    [string]$ExpectedSha256 = '6ac067402c7b4a3dc37887ed3754b3914b67fdc220c966190683e9ccf91abf0f',
+    [string]$Version = '15.0.22',
+    [string]$ExpectedSha256 = '231dad6b9cb401a54c260db7046965ef04e4f72ff071b140d423fb5da281ab1e',
     [string]$Destination = (Join-Path $PSScriptRoot '..\src\Umbrella.Wallet.App\tor'),
     # Escape hatch for staging an unpinned version locally; never use it for a release build.
     [switch]$AllowUnverified
