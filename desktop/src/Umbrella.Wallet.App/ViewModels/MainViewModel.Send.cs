@@ -54,6 +54,49 @@ public partial class MainViewModel
 
     private static bool IsUtxoSendChain(string s) => s is "BTC" or "LTC" or "DOGE";
 
+    // ---- Fee level (network speed) ----------------------------------------------------------------
+    // A slow/standard/fast selector for the UTXO chains (BTC/LTC/DOGE/BCH). Standard is exactly the
+    // economical rate the wallet has always used, so an untouched selector never changes the fee. Only
+    // the sat/vB handed to PlanSpend changes — the signing/broadcast path is completely unaffected, and
+    // every level stays inside the chain's safe fee band (never below the relay floor). See FeeLevels.
+
+    /// <summary>True only while the send picker is on a UTXO chain — drives the fee selector's visibility.</summary>
+    [ObservableProperty] private bool _feeLevelAvailable;
+
+    /// <summary>0 = Economy, 1 = Standard, 2 = Priority. Standard by default, which equals today's fee.</summary>
+    [ObservableProperty] private int _feeLevelIndex = 1;
+
+    private static bool IsUtxoFeeChain(string s) => s is "BTC" or "LTC" or "DOGE" or "BCH";
+
+    private FeeLevel SelectedFeeLevel => FeeLevelIndex switch
+    {
+        0 => FeeLevel.Economy,
+        2 => FeeLevel.Priority,
+        _ => FeeLevel.Standard,
+    };
+
+    /// <summary>Which fee tier is selected — for the segmented selector's checked state.</summary>
+    public bool IsFeeEconomy => FeeLevelIndex == 0;
+    public bool IsFeeStandard => FeeLevelIndex == 1;
+    public bool IsFeePriority => FeeLevelIndex == 2;
+
+    /// <summary>Sets the fee tier from the segmented selector ("0"/"1"/"2").</summary>
+    [RelayCommand]
+    private void SetFeeLevel(string? index)
+    {
+        if (int.TryParse(index, out var i) && i is >= 0 and <= 2) FeeLevelIndex = i;
+    }
+
+    partial void OnFeeLevelIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsFeeEconomy));
+        OnPropertyChanged(nameof(IsFeeStandard));
+        OnPropertyChanged(nameof(IsFeePriority));
+        // Re-quote only when a quote is already on screen, so touching the selector before Review just
+        // sets the level for the next quote (and never fires a "fill in the fields" error on its own).
+        if (HasSendQuote) _ = PrepareSendAsync();
+    }
+
     partial void OnCoinControlOnChanged(bool value)
     {
         if (value) _ = LoadCoinControlAsync();
@@ -71,7 +114,9 @@ public partial class MainViewModel
     /// <summary>Reset coin control whenever the send asset changes (called from the picker hook).</summary>
     private void ResetCoinControl()
     {
-        CoinControlAvailable = IsUtxoSendChain(SendChain.Trim().ToUpperInvariant());
+        var sym = SendChain.Trim().ToUpperInvariant();
+        CoinControlAvailable = IsUtxoSendChain(sym);
+        FeeLevelAvailable = IsUtxoFeeChain(sym);
         if (CoinControlOn) CoinControlOn = false; // OnCoinControlOnChanged clears the list
         else ClearCoinControl();
     }
@@ -384,7 +429,8 @@ public partial class MainViewModel
 
                     var devFee = _devFee.QuoteFee(chain, amount);
                     var (quote, plan, request, error) = await _btcSender.PrepareHdAsync(
-                        chain, spendable, from.Address, SendTo.Trim(), amount, devFee?.Address, devFee?.Amount ?? 0m);
+                        chain, spendable, from.Address, SendTo.Trim(), amount, devFee?.Address, devFee?.Amount ?? 0m,
+                        feeLevel: SelectedFeeLevel);
                     if (quote is null || plan is null || request is null)
                     {
                         SendError = error ?? Loc.Instance["send.errPrepareFailed"]; return;
