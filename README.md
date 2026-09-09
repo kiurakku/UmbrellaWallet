@@ -38,7 +38,7 @@ No account. No email. No phone number. No KYC. Just a wallet — the way it was 
 ![Tor](https://img.shields.io/badge/Tor-built--in-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
-![Coins](https://img.shields.io/badge/send-BTC·ETH·LTC·DOGE·SOL·TON·TRON·USDT·XMR-7DCF8F)
+![Coins](https://img.shields.io/badge/send-BTC·ETH·LTC·BCH·DOGE·SOL·TON·TRON·USDT·XMR-7DCF8F)
 ![Import](https://img.shields.io/badge/import-BIP39%20+%20TON%20(Telegram)-5AC8B4)
 ![Themes](https://img.shields.io/badge/themes-27-E7CA83)
 ![Languages](https://img.shields.io/badge/languages-6-5AC8B4)
@@ -67,7 +67,8 @@ Umbrella flips that model:
 - 🔑 **You hold the keys.** Your 24-word recovery phrase is created on *your* computer and never leaves it. Not to us, not to anyone. We literally *cannot* touch your funds — that's the point.
 - 🧅 **Tor built in — with a kill-switch.** Flip one switch and the wallet's traffic goes through the Tor network — no separate install, no configuration. Turn on **Tor-only** and it **fails closed**: if Tor is off, still connecting or drops, the wallet *refuses* to touch the clearnet instead of leaking your IP. Your IP stays out of your finances, guaranteed.
 - 🥷 **Secrets that can't be screenshotted.** While your recovery phrase is on screen, the window renders black to screen-capture and remote-viewing software.
-- 💸 **Real money movement.** Send and receive Bitcoin, Ethereum, Litecoin, Solana, **TON**, TRON, USDT and Monero — to any wallet or exchange in the world. Transactions are signed on your machine; only the signed result ever goes out. TON transfers are pinned byte-for-byte against the reference `@ton` library, so a wrong byte can never strand funds.
+- 💸 **Real money movement.** Send and receive Bitcoin, Ethereum, Litecoin, **Bitcoin Cash**, Solana, **TON**, TRON, USDT and Monero — to any wallet or exchange in the world. Transactions are signed on your machine; only the signed result ever goes out. TON transfers are pinned byte-for-byte against the reference `@ton` library, so a wrong byte can never strand funds.
+- 🔄 **Non-custodial cross-chain swaps.** Swap between chains through THORChain — no account, no API key, no KYC. Your coin goes to a decentralised vault and the network delivers the swapped coin straight to *your own* address; nobody ever holds it. Pay from BTC / LTC / DOGE / ETH / BCH and receive any of BTC / ETH / LTC / DOGE / BCH / AVAX / BNB, or USDC/USDT — each pair verified against the live network.
 - ₿ **A real Bitcoin/Litecoin HD wallet.** Balance, history and spending work across *every* address you've ever used — plus fresh receive addresses on request, with change returned privately to an internal address. What the wallet shows you is exactly what it can find and spend.
 - ✅ **Backups you can trust.** Verify a backup actually decrypts and holds a valid phrase *before* you rely on it — without exposing the seed. Every release ships a checksum file the build itself verifies.
 - 📈 **Live market, real candles.** A built-in market with **real OHLC candlestick charts** (Binance klines) and live prices (CoinGecko) — timeframes from 1H to 1Y. No mock data anywhere.
@@ -113,6 +114,8 @@ Umbrella flips that model:
 | 💵 **USDT (TRC-20)** | ✅ | ✅ | Tether on TRON — fee paid in TRX |
 | 🕶️ **Monero (XMR)** | ✅ | ✅ | full private wallet, powered by Monero's own engine |
 | ⚪ Litecoin (LTC) | ✅ | ✅ | native SegWit |
+| 🟢 **Bitcoin Cash (BCH)** | ✅ | ✅ | CashAddr · SIGHASH_FORKID · swaps both ways |
+| 🛡️ **Zcash (ZEC)** | ✅ | ➖ | transparent (t-addr) — the **public** side of Zcash, honestly labelled (not a shielded z-address) |
 | 🟣 Solana (SOL) | ✅ | ✅ | |
 | 🔺 TRON (TRX) | ✅ | ✅ | |
 | 🐕 Dogecoin (DOGE) | ✅ | ✅ | UTXO spend (BlockCypher) |
@@ -204,6 +207,7 @@ Yes — and thank you. Umbrella is independent, ad-free and funded only by its a
 
 ## 🗺️ Roadmap
 
+- 🛡 **Privacy Radar** — a local, offline privacy read of every send (no server, no external call): it warns when a spend would *link* several of your addresses on-chain, and whether the broadcast leaks your IP. Chain-analysis **for** you, not against you. *(in review)*
 - 📱 Android build
 - 🔔 Price alerts
 - 🌐 More exchange integrations on request
@@ -221,7 +225,7 @@ Yes — and thank you. Umbrella is independent, ad-free and funded only by its a
 ```bash
 cd desktop
 dotnet run --project src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj   # run
-dotnet test                                                               # 138 tests, crypto pinned to published vectors
+dotnet test                                                               # 390+ tests, crypto pinned to published vectors
 ```
 
 Windows release: `./scripts/fetch-tor.ps1`, `./scripts/fetch-monero.ps1`, then `dotnet publish -r win-x64`
