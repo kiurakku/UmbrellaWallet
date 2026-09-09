@@ -1769,12 +1769,27 @@ public partial class MainViewModel : ViewModelBase
         var report = Umbrella.Wallet.Core.Safety.SendPrivacyInspector.Inspect(
             inputAddresses.ToList(), TorEnabled);
 
+        var L = Loc.Instance;
         SendPrivacyFindings.Clear();
         foreach (var f in report.Findings)
+        {
+            // The finding carries a language-neutral code; the wording lives in the translation table
+            // (§8.2 — no hardcoded English in the send flow). Only "linkMany" needs the address count.
+            var title = L[$"priv.{f.Code}.title"];
+            var detail = f.Code == "linkMany"
+                ? string.Format(L["priv.linkMany.detail"], f.Count)
+                : L[$"priv.{f.Code}.detail"];
             SendPrivacyFindings.Add(new SendPrivacyFindingVm(
-                f.Glyph, f.Title, f.Detail, f.IsWeakness ? PrivWarn : PrivGood));
+                f.Glyph, title, detail, f.IsWeakness ? PrivWarn : PrivGood));
+        }
 
-        SendPrivacyHeadline = report.Headline;
+        var levelKey = report.Level switch
+        {
+            Umbrella.Wallet.Core.Safety.SendPrivacyLevel.Strong => "strong",
+            Umbrella.Wallet.Core.Safety.SendPrivacyLevel.Moderate => "moderate",
+            _ => "weak",
+        };
+        SendPrivacyHeadline = L[$"priv.headline.{levelKey}"];
         SendPrivacyColor = report.Level switch
         {
             Umbrella.Wallet.Core.Safety.SendPrivacyLevel.Strong => PrivGood,

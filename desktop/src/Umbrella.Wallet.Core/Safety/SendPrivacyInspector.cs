@@ -13,12 +13,18 @@ public enum SendPrivacyLevel
     Weak = 2,
 }
 
-/// <summary>One privacy observation about a pending send. A weakness is something the user can act on.</summary>
-public sealed record SendPrivacyFinding(string Glyph, string Title, string Detail, bool IsWeakness);
+/// <summary>
+/// One privacy observation about a pending send. Language-neutral: <see cref="Code"/> identifies the
+/// finding ("linkOne", "linkTwo", "linkMany", "torOn", "torOff") and the presentation layer turns it
+/// into localised text (substituting <see cref="Count"/> for the "linkMany" case). A weakness is
+/// something the user can act on. Keeping the wording out of Core honours §8.2 — no hardcoded English
+/// in the financial flow.
+/// </summary>
+public sealed record SendPrivacyFinding(string Glyph, string Code, bool IsWeakness, int Count = 0);
 
-/// <summary>The full local privacy assessment of a pending send: an overall level, a one-line headline,
-/// and the individual findings behind it.</summary>
-public sealed record SendPrivacyReport(SendPrivacyLevel Level, string Headline, IReadOnlyList<SendPrivacyFinding> Findings)
+/// <summary>The full local privacy assessment of a pending send: an overall level and the findings
+/// behind it. The one-line headline is derived from <see cref="Level"/> by the presentation layer.</summary>
+public sealed record SendPrivacyReport(SendPrivacyLevel Level, IReadOnlyList<SendPrivacyFinding> Findings)
 {
     public bool HasWeakness => Level != SendPrivacyLevel.Strong;
 }
@@ -63,37 +69,16 @@ public static class SendPrivacyInspector
 
         // --- Input linkage (UTXO chains) ---
         if (distinct >= StrongLinkAddressCount)
-        {
-            findings.Add(new SendPrivacyFinding("🔗",
-                "Links several of your addresses",
-                $"This spend draws coins from {distinct} of your addresses. Spending them together publicly " +
-                "ties them to one owner — chain analysis can now group that history. Turn on coin control " +
-                "and fund the send from a single address when privacy matters.",
-                IsWeakness: true));
-        }
+            findings.Add(new SendPrivacyFinding("🔗", "linkMany", IsWeakness: true, Count: distinct));
         else if (distinct == 2)
-        {
-            findings.Add(new SendPrivacyFinding("🔗",
-                "Combines two of your addresses",
-                "This spend draws coins from two of your addresses, which links them on-chain. If that " +
-                "matters, use coin control to spend from just one.",
-                IsWeakness: true));
-        }
+            findings.Add(new SendPrivacyFinding("🔗", "linkTwo", IsWeakness: true));
         else
-        {
-            findings.Add(new SendPrivacyFinding("🔗",
-                "One source address",
-                "The spend is funded from a single address, so it links none of your other addresses.",
-                IsWeakness: false));
-        }
+            findings.Add(new SendPrivacyFinding("🔗", "linkOne", IsWeakness: false));
 
         // --- Network privacy ---
         findings.Add(torEnabled
-            ? new SendPrivacyFinding("🧅", "Broadcast over Tor",
-                "Your IP stays hidden from the node that first relays this transaction.", IsWeakness: false)
-            : new SendPrivacyFinding("🌐", "Tor is off",
-                "The broadcast node can associate this transaction with your IP address. Turn on Tor in " +
-                "Settings to hide it.", IsWeakness: true));
+            ? new SendPrivacyFinding("🧅", "torOn", IsWeakness: false)
+            : new SendPrivacyFinding("🌐", "torOff", IsWeakness: true));
 
         // --- Overall level ---
         var level =
@@ -101,13 +86,6 @@ public static class SendPrivacyInspector
             : findings.Any(f => f.IsWeakness) ? SendPrivacyLevel.Moderate
             : SendPrivacyLevel.Strong;
 
-        var headline = level switch
-        {
-            SendPrivacyLevel.Strong => "Strong privacy — nothing here links your addresses or leaks your IP.",
-            SendPrivacyLevel.Moderate => "Moderate privacy — one thing below could reduce it.",
-            _ => "Weak privacy — this transaction links several of your addresses.",
-        };
-
-        return new SendPrivacyReport(level, headline, findings);
+        return new SendPrivacyReport(level, findings);
     }
 }

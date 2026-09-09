@@ -25,7 +25,7 @@ public sealed class SendPrivacyInspectorTests
         var r = SendPrivacyInspector.Inspect(new[] { "bc1qsingle" }, torEnabled: false);
 
         Assert.Equal(SendPrivacyLevel.Moderate, r.Level);
-        Assert.Contains(r.Findings, f => f.IsWeakness && f.Title.Contains("Tor"));
+        Assert.Contains(r.Findings, f => f.IsWeakness && f.Code == "torOff");
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public sealed class SendPrivacyInspectorTests
         var r = SendPrivacyInspector.Inspect(new[] { "bc1qa", "bc1qb" }, torEnabled: true);
 
         Assert.Equal(SendPrivacyLevel.Moderate, r.Level);
-        Assert.Contains(r.Findings, f => f.IsWeakness && f.Glyph == "🔗");
+        Assert.Contains(r.Findings, f => f.IsWeakness && f.Code == "linkTwo");
     }
 
     [Fact]
@@ -43,8 +43,8 @@ public sealed class SendPrivacyInspectorTests
         var r = SendPrivacyInspector.Inspect(new[] { "a", "b", "c" }, torEnabled: true);
 
         Assert.Equal(SendPrivacyLevel.Weak, r.Level);
-        // The linkage detail names how many addresses got tied together.
-        Assert.Contains(r.Findings, f => f.IsWeakness && f.Detail.Contains("3 of your addresses"));
+        // The linkage finding carries how many addresses got tied together (for the localised text).
+        Assert.Contains(r.Findings, f => f.IsWeakness && f.Code == "linkMany" && f.Count == 3);
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public sealed class SendPrivacyInspectorTests
         var r = SendPrivacyInspector.Inspect(new[] { "BC1QA", "bc1qa", " bc1qa " }, torEnabled: true);
 
         Assert.Equal(SendPrivacyLevel.Strong, r.Level);
-        Assert.Contains(r.Findings, f => !f.IsWeakness && f.Title.Contains("One source"));
+        Assert.Contains(r.Findings, f => !f.IsWeakness && f.Code == "linkOne");
     }
 
     [Fact]
@@ -62,6 +62,6 @@ public sealed class SendPrivacyInspectorTests
     {
         var r = SendPrivacyInspector.Inspect(null, torEnabled: true);
         Assert.Equal(SendPrivacyLevel.Strong, r.Level);
-        Assert.DoesNotContain(r.Findings, f => f.IsWeakness && f.Glyph == "🔗");
+        Assert.DoesNotContain(r.Findings, f => f.IsWeakness && f.Code.StartsWith("link"));
     }
 }

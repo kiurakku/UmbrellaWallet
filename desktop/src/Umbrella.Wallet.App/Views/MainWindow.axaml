@@ -1038,7 +1038,8 @@
                       <StackPanel Spacing="8">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                           <TextBlock Text="🛡" FontSize="13" VerticalAlignment="Center"/>
-                          <TextBlock Text="Privacy Radar" Classes="eyebrow" VerticalAlignment="Center"
+                          <TextBlock Text="{Binding [priv.title], Source={x:Static app:Loc.Instance}}"
+                                     Classes="eyebrow" VerticalAlignment="Center"
                                      Foreground="{Binding SendPrivacyColor}"/>
                         </StackPanel>
                         <TextBlock Text="{Binding SendPrivacyHeadline}" Foreground="{Binding SendPrivacyColor}"
