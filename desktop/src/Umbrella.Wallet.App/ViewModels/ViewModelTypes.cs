@@ -395,8 +395,16 @@ public sealed record ActivityRowViewModel(
     long UnixMs = 0,
     string? RetryTo = null,
     string? RetryAmount = null,
-    string? RetryChain = null)
+    string? RetryChain = null,
+    string? TxId = null,
+    string? Note = null)
 {
+    /// <summary>This row is a real on-chain transaction the user can attach a private note to.</summary>
+    public bool CanHaveNote => !string.IsNullOrWhiteSpace(TxId) && IsTransaction;
+
+    /// <summary>A private note has been saved for this transaction.</summary>
+    public bool HasNote => !string.IsNullOrWhiteSpace(Note);
+
     /// <summary>A block-explorer link exists, so the row is actionable (copy the URL).</summary>
     public bool HasLink => !string.IsNullOrWhiteSpace(Explorer);
 

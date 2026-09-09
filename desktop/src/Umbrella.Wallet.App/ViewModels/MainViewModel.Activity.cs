@@ -198,6 +198,8 @@ public partial class MainViewModel
     private async Task LoadOnChainHistoryAsync()
     {
         if (string.IsNullOrEmpty(_unlockedMnemonic)) return;
+        // Decrypt this wallet's private transaction notes first, so each row is built with its note.
+        await LoadTxNotesAsync();
         HistoryLoading = true;
         OnPropertyChanged(nameof(HasFilteredActivity)); // let the "loading" state show immediately
         try
@@ -317,7 +319,7 @@ public partial class MainViewModel
         StatusMessage = "Retry — review the pre-filled transfer, then send again";
     }
 
-    private static ActivityRowViewModel ToActivityRow(ChainTx t)
+    private ActivityRowViewModel ToActivityRow(ChainTx t)
     {
         var when = t.UnixMs > 0
             ? DateTimeOffset.FromUnixTimeMilliseconds(t.UnixMs).LocalDateTime.ToString("MMM d, HH:mm", Fx.Culture)
@@ -328,7 +330,9 @@ public partial class MainViewModel
         // Signed number only; the asset shows in its own column now that Activity is merged.
         var amount = t.Kind == "Sent" ? $"-{t.Amount}" : $"+{t.Amount}";
         // Explorer history is fetched with only_confirmed, so these are settled — Status "Confirmed".
-        return new ActivityRowViewModel(t.Kind, t.Asset, amount, counter, when, t.Explorer, "Confirmed", t.UnixMs);
+        // TxId carries the transaction hash so a private (encrypted) note can be attached to this row.
+        return new ActivityRowViewModel(t.Kind, t.Asset, amount, counter, when, t.Explorer, "Confirmed", t.UnixMs,
+            TxId: t.Hash, Note: TxNoteFor(t.Hash));
     }
 
     /// <summary>Copy a transaction's explorer link to the clipboard — deliberately not opened in

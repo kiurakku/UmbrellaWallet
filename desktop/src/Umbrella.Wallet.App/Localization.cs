@@ -85,6 +85,11 @@ public sealed class Loc : INotifyPropertyChanged
             ["footer.lock"] = "Lock vault  ·  Ctrl+L",
             ["send.step2"] = "STEP 2 · REVIEW — THIS CANNOT BE UNDONE",
             ["send.step2warn"] = "Check the address and amount once more. A blockchain transfer is final — a wrong address means the funds are gone.",
+            // Private, encrypted transaction notes (Activity feed).
+            ["notes.add"] = "Add a private note",
+            ["notes.title"] = "PRIVATE NOTE · ENCRYPTED, ONLY YOU CAN READ IT",
+            ["notes.placeholder"] = "e.g. salary from Acme, sold the bike — kept encrypted on this device only",
+            ["notes.save"] = "Save note",
             ["discover.sub"] = "The market and external services, gathered in one place.",
             ["discover.market"] = "Coin prices and real candlestick charts",
             ["discover.buy"] = "Buy crypto · external providers (opens a list)",
@@ -630,6 +635,11 @@ public sealed class Loc : INotifyPropertyChanged
             ["footer.lock"] = "Заблокувати  ·  Ctrl+L",
             ["send.step2"] = "КРОК 2 · ПЕРЕВІРКА — ЦЕ НЕ МОЖНА СКАСУВАТИ",
             ["send.step2warn"] = "Ще раз перевірте адресу й суму. Переказ у блокчейні незворотний — хибна адреса означає, що кошти втрачено.",
+            // Приватні, зашифровані нотатки до транзакцій (стрічка активності).
+            ["notes.add"] = "Додати приватну нотатку",
+            ["notes.title"] = "ПРИВАТНА НОТАТКА · ЗАШИФРОВАНА, ЧИТАЄТЕ ЛИШЕ ВИ",
+            ["notes.placeholder"] = "напр. зарплата від Acme, продав велосипед — зберігається зашифрованою лише на цьому пристрої",
+            ["notes.save"] = "Зберегти нотатку",
             ["discover.sub"] = "Ринок і зовнішні сервіси, зібрані в одному місці.",
             ["discover.market"] = "Ціни монет і реальні свічкові графіки",
             ["discover.buy"] = "Купити крипту · зовнішні провайдери (відкриється список)",
