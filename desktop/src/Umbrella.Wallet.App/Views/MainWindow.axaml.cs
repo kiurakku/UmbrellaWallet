@@ -146,17 +146,22 @@ public partial class MainWindow : Window
     /// the DataContext is actually set, because the window is built with an object initializer.</summary>
     private void WirePickers(MainViewModel vm)
     {
-        vm.PickFileAsync = async (suggested, save) =>
+        vm.PickFileAsync = async (suggested, save, kind) =>
         {
             var storage = StorageProvider;
+            var isCsv = string.Equals(kind, "csv", StringComparison.OrdinalIgnoreCase);
+            var (ext, typeName) = isCsv
+                ? ("csv", "CSV spreadsheet")
+                : ("json", "Umbrella backup");
+
             if (save)
             {
                 var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
                 {
-                    Title = "Save Umbrella backup",
+                    Title = isCsv ? "Export transaction history" : "Save Umbrella backup",
                     SuggestedFileName = suggested,
-                    DefaultExtension = "json",
-                    FileTypeChoices = [new FilePickerFileType("Umbrella backup") { Patterns = ["*.json"] }],
+                    DefaultExtension = ext,
+                    FileTypeChoices = [new FilePickerFileType(typeName) { Patterns = [$"*.{ext}"] }],
                 });
                 return file?.TryGetLocalPath();
             }
@@ -165,7 +170,7 @@ public partial class MainWindow : Window
             {
                 Title = "Restore Umbrella backup",
                 AllowMultiple = false,
-                FileTypeFilter = [new FilePickerFileType("Umbrella backup") { Patterns = ["*.json"] }],
+                FileTypeFilter = [new FilePickerFileType(typeName) { Patterns = [$"*.{ext}"] }],
             });
             return opened.Count > 0 ? opened[0].TryGetLocalPath() : null;
         };

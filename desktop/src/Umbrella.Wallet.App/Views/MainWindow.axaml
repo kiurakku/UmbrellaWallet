@@ -2134,9 +2134,14 @@
                       <TextBlock Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
                                  Text="{Binding LastHistorySync}" VerticalAlignment="Center"/>
                     </StackPanel>
-                    <Button Grid.Column="1" Classes="ghost" Padding="12,5" MinHeight="0"
-                            Content="{Binding [activity.refresh], Source={x:Static app:Loc.Instance}}"
-                            Command="{Binding RefreshHistoryCommand}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                      <Button Classes="ghost" Padding="12,5" MinHeight="0"
+                              Content="{Binding [activity.export], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding ExportHistoryCsvCommand}"/>
+                      <Button Classes="ghost" Padding="12,5" MinHeight="0"
+                              Content="{Binding [activity.refresh], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding RefreshHistoryCommand}"/>
+                    </StackPanel>
                   </Grid>
                 </Border>
 
