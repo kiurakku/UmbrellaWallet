@@ -56,6 +56,8 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _portfolioBestColor = "#8A9099";
     [ObservableProperty] private string _searchQuery = string.Empty;
     [ObservableProperty] private string _chainFilter = "All";
+    /// <summary>How the Holdings list is ordered: "Default" (catalog), "Value", "Change" or "Name".</summary>
+    [ObservableProperty] private string _holdingsSort = "Default";
     [ObservableProperty] private string _walletLabel = "Umbrella Wallet";
     [ObservableProperty] private string _shortAddress = "—";
     [ObservableProperty] private string _totalBalanceMain = "0";
@@ -3409,6 +3411,16 @@ public partial class MainViewModel : ViewModelBase
         RefreshHoldings();
     }
 
+    /// <summary>Sets how Holdings are ordered. Picking the active sort again toggles back to the catalog
+    /// order, so the chips double as an on/off.</summary>
+    [RelayCommand]
+    private void SetHoldingsSort(string sort)
+    {
+        HoldingsSort = string.Equals(HoldingsSort, sort, StringComparison.OrdinalIgnoreCase)
+            ? HoldingsSorter.Default : sort;
+        RefreshHoldings();
+    }
+
     private string ActiveWalletCacheKey => _registry.Active?.Id ?? "main";
 
     /// <summary>Apply the last-seen balances/prices for the active wallet so the total is right the
@@ -4412,12 +4424,11 @@ public partial class MainViewModel : ViewModelBase
                 a.Address.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase));
         }
 
-        foreach (var a in rows)
-        {
-            Holdings.Add(new HoldingRowViewModel(
-                a.Symbol, a.Name, a.Chain, a.Price, a.Amount,
-                a.Price * a.Amount, a.Change24h, a.Address, a.SupportStatus));
-        }
+        var built = rows.Select(a => new HoldingRowViewModel(
+            a.Symbol, a.Name, a.Chain, a.Price, a.Amount,
+            a.Price * a.Amount, a.Change24h, a.Address, a.SupportStatus));
+        foreach (var h in HoldingsSorter.Order(built, HoldingsSort))
+            Holdings.Add(h);
 
         RebuildStaking(); // keep the staking list driven by what the user actually holds
     }
