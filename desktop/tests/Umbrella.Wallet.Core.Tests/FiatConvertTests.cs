@@ -39,4 +39,49 @@ public sealed class FiatConvertTests
         // 0.5 of the coin — a naive parse would send ten times too much.
         Assert.Equal("0.5", FiatConvert.FiatToCoinAmount("0,5", 1m));
     }
+
+    // --- The reverse direction, used for the "≈ $42.10" hint beside a coin amount (Receive screen). ---
+
+    [Fact]
+    public void Multiplies_coin_by_price_at_cent_precision()
+    {
+        Assert.Equal("42.10", FiatConvert.CoinToFiatText("0.001", 42_100m));
+        Assert.Equal("1.00", FiatConvert.CoinToFiatText("1", 1m));
+    }
+
+    [Fact]
+    public void A_sub_cent_value_keeps_precision_instead_of_showing_zero()
+    {
+        // Rounding to "0.00" would tell the user their requested amount is worth nothing. A real value is
+        // never displayed as zero.
+        Assert.Equal("0.005", FiatConvert.CoinToFiatText("0.005", 1m));
+        Assert.Equal("0.0001", FiatConvert.CoinToFiatText("0.0001", 1m));
+    }
+
+    [Fact]
+    public void Reverse_conversion_guards_missing_price_and_bad_input()
+    {
+        Assert.Equal(string.Empty, FiatConvert.CoinToFiatText("1", 0m));
+        Assert.Equal(string.Empty, FiatConvert.CoinToFiatText("1", -5m));
+        Assert.Equal(string.Empty, FiatConvert.CoinToFiatText("", 100m));
+        Assert.Equal(string.Empty, FiatConvert.CoinToFiatText("abc", 100m));
+        Assert.Equal(string.Empty, FiatConvert.CoinToFiatText("0", 100m));
+        Assert.Equal(string.Empty, FiatConvert.CoinToFiatText(null, 100m));
+    }
+
+    [Fact]
+    public void Reverse_conversion_is_locale_safe_too()
+    {
+        // "0,5" of a $100 coin is $50 — a naive parse would claim $500.
+        Assert.Equal("50.00", FiatConvert.CoinToFiatText("0,5", 100m));
+    }
+
+    [Fact]
+    public void Round_trips_back_to_the_typed_fiat_amount()
+    {
+        // What the Receive screen does: USD in → coin field → USD hint. The user must see the number back.
+        var coin = FiatConvert.FiatToCoinAmount("25", 2_000m);
+        Assert.Equal("0.0125", coin);
+        Assert.Equal("25.00", FiatConvert.CoinToFiatText(coin, 2_000m));
+    }
 }

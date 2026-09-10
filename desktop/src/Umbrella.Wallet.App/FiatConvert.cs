@@ -24,4 +24,21 @@ public static class FiatConvert
         if (coin <= 0) return string.Empty;
         return coin.ToString("0.########", CultureInfo.InvariantCulture);
     }
+
+    /// <summary>
+    /// The reverse of <see cref="FiatToCoinAmount"/>: what a typed coin amount is worth in USD, for the
+    /// "≈ $42.10" hint next to an amount field. Returns "" when there is no positive amount or no usable
+    /// price. Amounts under a cent keep full precision instead of rounding to "0.00", so a real value is
+    /// never displayed as zero (no-silent-zero rule).
+    /// </summary>
+    public static string CoinToFiatText(string? coinText, decimal priceUsd)
+    {
+        if (priceUsd <= 0) return string.Empty;
+        if (!AmountInput.TryParsePositive(coinText ?? string.Empty, out var coin)) return string.Empty;
+        var fiat = coin * priceUsd;
+        if (fiat <= 0) return string.Empty;
+        return fiat >= 0.01m
+            ? fiat.ToString("0.00", CultureInfo.InvariantCulture)
+            : fiat.ToString("0.########", CultureInfo.InvariantCulture);
+    }
 }

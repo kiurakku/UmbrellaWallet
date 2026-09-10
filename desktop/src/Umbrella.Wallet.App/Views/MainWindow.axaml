@@ -3766,7 +3766,19 @@
             <StackPanel Spacing="5" IsVisible="{Binding CanRequestAmount}">
               <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
                          Text="{Binding [receive.requestAmount], Source={x:Static app:Loc.Instance}}"/>
+              <!-- USD quick-entry, mirroring Send: typing here fills the coin field below, and only the
+                   coin amount is ever encoded into the BIP21 URI the sender scans. -->
+              <StackPanel Spacing="3" IsVisible="{Binding ReceiveFiatAvailable}">
+                <TextBox Text="{Binding ReceiveFiatAmount}"
+                         Watermark="{Binding [receive.fiatPlaceholder], Source={x:Static app:Loc.Instance}}"/>
+                <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" Margin="2,0,0,0"
+                           IsVisible="{Binding ReceiveFiatCoinEquiv, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           Text="{Binding ReceiveFiatCoinEquiv}"/>
+              </StackPanel>
               <TextBox Text="{Binding ReceiveAmount}" Watermark="0.0"/>
+              <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" Margin="2,0,0,0"
+                         IsVisible="{Binding ReceiveAmountFiat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                         Text="{Binding ReceiveAmountFiat}"/>
             </StackPanel>
 
             <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"

@@ -3579,6 +3579,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(SendAmountFiat));
             OnPropertyChanged(nameof(FiatInputAvailable)); // the fiat quick-entry appears once priced
             OnPropertyChanged(nameof(SendFiatCoinEquiv));
+            NotifyReceiveFiat();                           // same for the Receive screen's USD field
 
             // Fetch every account's balance CONCURRENTLY, then apply on the UI thread. Sequential
             // awaits here were the main reason the total took many seconds to appear after unlock /
@@ -4063,8 +4064,9 @@ public partial class MainViewModel : ViewModelBase
     private bool SetReceiveTarget(WalletAccountViewModel? account)
     {
         if (account is null || !IsRealAddress(account.Address)) return false;
-        ReceiveAmount = string.Empty; // a fresh target starts with no requested amount
-        ShowReceiveAdvanced = false;  // collapse developer detail on every new target
+        ReceiveAmount = string.Empty;     // a fresh target starts with no requested amount
+        ReceiveFiatAmount = string.Empty; // ...and no carried-over USD entry from the previous asset
+        ShowReceiveAdvanced = false;      // collapse developer detail on every new target
         SelectedReceiveAddress = account.Address;
         SelectedReceiveSymbol = account.Symbol;
         SelectedReceiveNetwork = $"{account.Symbol} · {account.NetworkLabel}";
@@ -4141,6 +4143,8 @@ public partial class MainViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(IsTokenReceive));
         OnPropertyChanged(nameof(CanRequestAmount));
+        ReceiveFiatAmount = string.Empty; // a different asset means a different price; don't carry the old USD over
+        NotifyReceiveFiat();
     }
 
     // Re-render the QR the moment the requested amount changes so what's on screen always matches the field.
@@ -4148,6 +4152,62 @@ public partial class MainViewModel : ViewModelBase
     {
         if (!string.IsNullOrEmpty(SelectedReceiveAddress))
             ReceiveQr = BuildQr(BuildReceivePayload(SelectedReceiveAddress));
+        OnPropertyChanged(nameof(ReceiveAmountFiat));
+    }
+
+    // --- Fiat quick-entry on Receive: the mirror of the Send screen's USD field. Type a USD amount and
+    // the coin amount fills in, which is what actually goes into the BIP21 payment URI. The coin field
+    // stays the single value encoded in the QR — this only writes into it, so a scan can never carry a
+    // fiat number the sender's wallet would misread. ---
+    [ObservableProperty] private string _receiveFiatAmount = string.Empty;
+
+    /// <summary>USD price of one unit of the asset being received, or 0 when unknown.</summary>
+    private decimal PriceForReceive()
+    {
+        var sym = SelectedReceiveSymbol;
+        if (string.IsNullOrEmpty(sym)) return 0m;
+        if (sym is "USDT" or "USDC") return 1m;
+        return _priceUsd.TryGetValue(sym, out var p) && p.Usd > 0 ? p.Usd : 0m;
+    }
+
+    /// <summary>Offer the USD field only on the chains that can carry a requested amount at all, and only
+    /// once a price exists to convert with — otherwise typing in it would silently do nothing.</summary>
+    public bool ReceiveFiatAvailable => CanRequestAmount && PriceForReceive() > 0m;
+
+    /// <summary>"= 0.00063 BTC" under the USD field: the coin amount the typed USD converts to.</summary>
+    public string ReceiveFiatCoinEquiv
+    {
+        get
+        {
+            var coin = FiatConvert.FiatToCoinAmount(ReceiveFiatAmount, PriceForReceive());
+            return coin.Length == 0 ? string.Empty : $"= {coin} {SelectedReceiveSymbol}";
+        }
+    }
+
+    /// <summary>"≈ $42.10" under the coin field, so a requested amount typed in coin is also readable in USD.</summary>
+    public string ReceiveAmountFiat
+    {
+        get
+        {
+            var fiat = FiatConvert.CoinToFiatText(ReceiveAmount, PriceForReceive());
+            return fiat.Length == 0 ? string.Empty : $"≈ ${fiat}";
+        }
+    }
+
+    partial void OnReceiveFiatAmountChanged(string value)
+    {
+        // Fiat only fills the coin field; an empty/invalid fiat value leaves the requested amount untouched,
+        // so it can never silently wipe an amount the user typed directly in coin.
+        var coin = FiatConvert.FiatToCoinAmount(value, PriceForReceive());
+        if (coin.Length > 0) ReceiveAmount = coin;
+        OnPropertyChanged(nameof(ReceiveFiatCoinEquiv));
+    }
+
+    private void NotifyReceiveFiat()
+    {
+        OnPropertyChanged(nameof(ReceiveFiatAvailable));
+        OnPropertyChanged(nameof(ReceiveFiatCoinEquiv));
+        OnPropertyChanged(nameof(ReceiveAmountFiat));
     }
 
     /// <summary>Encodes the receive target as a wallet payment URI. With a valid requested amount on a
