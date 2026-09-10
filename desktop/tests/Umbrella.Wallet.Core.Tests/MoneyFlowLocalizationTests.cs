@@ -41,6 +41,67 @@ public sealed class MoneyFlowLocalizationTests
         Assert.Empty(offenders);
     }
 
+    /// <summary>
+    /// Literals that are deliberately the same in every language, so a translation table entry would add
+    /// nothing: the brand, chain proper nouns, chart range codes, and a technical address placeholder.
+    /// </summary>
+    private static readonly HashSet<string> AllowedLiterals = new(StringComparer.Ordinal)
+    {
+        "UMBRELLA WALLET", "the fear",          // brand
+        "Bitcoin", "Ethereum", "Solana",        // chain names — proper nouns
+        "1H", "7D", "24H", "30D", "1Y",         // chart ranges
+        "socks5://127.0.0.1:9050",              // proxy address placeholder
+    };
+
+    /// <summary>
+    /// The companion to the view-model check above, for the XAML. The strings the user actually reads are
+    /// mostly in the views, and the view-model scan could never see them — which is exactly how "Coin
+    /// control", "All", "None" and "Loading coins…" sat hardcoded in the SEND screen while this suite
+    /// stayed green. Any new literal must either come from <c>Loc</c> or be justified in
+    /// <see cref="AllowedLiterals"/>.
+    /// </summary>
+    [Fact]
+    public void The_views_have_no_hardcoded_user_facing_strings()
+    {
+        var views = FindViewsDirectory();
+        if (views is null) return; // not run from a source checkout — nothing to scan
+
+        // Text/Content/Watermark/ToolTip assigned a literal (a binding starts with '{', so it is excluded
+        // by the character class) containing at least one letter.
+        var literal = new System.Text.RegularExpressions.Regex(
+            "(?:Text|Content|Watermark|ToolTip\\.Tip)=\"([^\"{}]*[A-Za-z][^\"{}]*)\"");
+
+        var offenders = new List<string>();
+        foreach (var file in Directory.GetFiles(views, "*.axaml"))
+        {
+            var lines = File.ReadAllLines(file);
+            for (var i = 0; i < lines.Length; i++)
+            {
+                foreach (System.Text.RegularExpressions.Match m in literal.Matches(lines[i]))
+                {
+                    var value = m.Groups[1].Value.Trim();
+                    if (AllowedLiterals.Contains(value)) continue;
+                    offenders.Add($"{Path.GetFileName(file)}:{i + 1}: \"{value}\"");
+                }
+            }
+        }
+
+        Assert.Empty(offenders);
+    }
+
+    private static string? FindViewsDirectory()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            var candidate = Path.Combine(dir.FullName, "src", "Umbrella.Wallet.App", "Views");
+            if (Directory.Exists(candidate)) return candidate;
+            dir = dir.Parent;
+        }
+
+        return null;
+    }
+
     private static string? FindViewModelsDirectory()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

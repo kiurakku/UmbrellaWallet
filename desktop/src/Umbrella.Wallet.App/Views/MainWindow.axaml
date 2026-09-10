@@ -69,7 +69,7 @@
                 </Border>
                 <TextBlock Text="{Binding SelectedNews.Date}" FontSize="12" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"/>
               </StackPanel>
-              <Button Grid.Column="1" Classes="ghost" Content="✕  Close" FontSize="12" Command="{Binding CloseNewsCommand}"/>
+              <Button Grid.Column="1" Classes="ghost" Content="{Binding [common.close], Source={x:Static app:Loc.Instance}}" FontSize="12" Command="{Binding CloseNewsCommand}"/>
             </Grid>
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
               <StackPanel Spacing="12">
@@ -603,12 +603,10 @@
                   <!-- Widget 1 · Top movers (a market list) -->
                   <Border Classes="card" Padding="16,13">
                     <StackPanel Spacing="9">
-                      <Grid ColumnDefinitions="Auto,*">
-                        <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"
-                                   Text="{Binding [market.gainers], Source={x:Static app:Loc.Instance}}"/>
-                        <TextBlock Grid.Column="1" Text="24H" FontSize="9.5" Foreground="{DynamicResource UmTextMuted}"
-                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                      </Grid>
+                      <!-- The localized title already names the period ("Top gainers (24h)"); the old
+                           right-aligned "24H" badge repeated it, and in hardcoded English at that. -->
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"
+                                 Text="{Binding [market.gainers], Source={x:Static app:Loc.Instance}}"/>
                       <ItemsControl ItemsSource="{Binding MarketGainers}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:MarketRowViewModel">
@@ -1013,9 +1011,10 @@
                       <StackPanel Spacing="8">
                         <Grid ColumnDefinitions="*,Auto">
                           <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
-                            <TextBlock Text="Coin control" FontSize="12.5" FontWeight="SemiBold"/>
-                            <TextBlock Text="Choose which coins fund this send" FontSize="11"
-                                       Foreground="{DynamicResource UmTextDim}"/>
+                            <TextBlock FontSize="12.5" FontWeight="SemiBold"
+                                       Text="{Binding [send.coinControl], Source={x:Static app:Loc.Instance}}"/>
+                            <TextBlock FontSize="11" Foreground="{DynamicResource UmTextDim}"
+                                       Text="{Binding [send.coinControlHint], Source={x:Static app:Loc.Instance}}"/>
                           </StackPanel>
                           <ToggleSwitch Grid.Column="1" VerticalAlignment="Center" OnContent="" OffContent=""
                                         IsChecked="{Binding CoinControlOn}"/>
@@ -1026,12 +1025,15 @@
                             <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11" TextWrapping="Wrap"
                                        Foreground="{DynamicResource UmTextDim}" Text="{Binding CoinControlSummary}"/>
                             <Button Grid.Column="1" Classes="ghost" MinHeight="0" Padding="10,5" FontSize="11"
-                                    Content="All" Command="{Binding CoinControlSelectAllCommand}"/>
+                                    Content="{Binding [send.coinAll], Source={x:Static app:Loc.Instance}}"
+                                    Command="{Binding CoinControlSelectAllCommand}"/>
                             <Button Grid.Column="2" Classes="ghost" MinHeight="0" Padding="10,5" FontSize="11"
-                                    Content="None" Command="{Binding CoinControlSelectNoneCommand}"/>
+                                    Content="{Binding [send.coinNone], Source={x:Static app:Loc.Instance}}"
+                                    Command="{Binding CoinControlSelectNoneCommand}"/>
                           </Grid>
 
-                          <TextBlock Text="Loading coins…" FontSize="11" Foreground="{DynamicResource UmTextDim}"
+                          <TextBlock Text="{Binding [send.coinLoading], Source={x:Static app:Loc.Instance}}"
+                                     FontSize="11" Foreground="{DynamicResource UmTextDim}"
                                      IsVisible="{Binding CoinControlLoading}"/>
 
                           <ScrollViewer MaxHeight="188" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
@@ -1567,7 +1569,7 @@
                           </StackPanel>
                           <StackPanel Grid.Column="2" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Apr}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UmPos}" HorizontalAlignment="Right"/>
-                            <TextBlock Text="est. / year" FontSize="10" Foreground="{DynamicResource UmTextMuted}" HorizontalAlignment="Right"/>
+                            <TextBlock Text="{Binding [stake.perYear], Source={x:Static app:Loc.Instance}}" FontSize="10" Foreground="{DynamicResource UmTextMuted}" HorizontalAlignment="Right"/>
                           </StackPanel>
                         </Grid>
                       </Border>
@@ -1699,7 +1701,7 @@
                                      RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
                       <TextBlock Grid.Column="3" Text="{Binding SelectedMarketPriceLabel}" Classes="mono" FontSize="15"
                                  VerticalAlignment="Center" Margin="0,0,12,0"/>
-                      <Button Grid.Column="4" Classes="chip" Content="✕ close" Command="{Binding CloseChartCommand}"/>
+                      <Button Grid.Column="4" Classes="chip" Content="{Binding [common.close], Source={x:Static app:Loc.Instance}}" Command="{Binding CloseChartCommand}"/>
                     </Grid>
                     <Grid ColumnDefinitions="Auto,Auto,*,Auto">
                       <TextBlock Text="{Binding ChartRange, StringFormat='{}{0} PRICE · USD'}" Classes="eyebrow" VerticalAlignment="Center"/>
@@ -1971,7 +1973,7 @@
                               IsVisible="{Binding MarketQuery, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     </Grid>
                   </Border>
-                  <Button Grid.Column="1" Classes="chip" Content="↻ Refresh" Margin="10,0,0,0" VerticalAlignment="Center"
+                  <Button Grid.Column="1" Classes="chip" Content="{Binding [common.refresh], Source={x:Static app:Loc.Instance}}" Margin="10,0,0,0" VerticalAlignment="Center"
                           Command="{Binding RefreshMarketCommand}"/>
                 </Grid>
 
@@ -2217,7 +2219,7 @@
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                       <TextBlock Text="{Binding [sec.tgChannel], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="14"/>
-                      <TextBlock Text="t.me/UmbrellaWallet · news, releases &amp; contact — the only official channel"
+                      <TextBlock Text="{Binding [about.channel], Source={x:Static app:Loc.Instance}}"
                                  FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Button Grid.Column="2" Classes="primary" Content="{Binding [common.open], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
@@ -3652,7 +3654,7 @@
               <TextBlock Text="⌕" FontSize="18" Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"/>
               <TextBox Grid.Column="1" x:Name="PaletteSearch" Margin="10,0,0,0" BorderThickness="0" MinHeight="0"
                        Background="Transparent" Text="{Binding CommandQuery}"
-                       Watermark="Search actions or a coin…">
+                       Watermark="{Binding [palette.search], Source={x:Static app:Loc.Instance}}">
                 <!-- Keyboard-only operation: ↑/↓ walk the results (they wrap), Enter runs the
                      highlighted one. Bound on the search box because focus stays there while typing. -->
                 <TextBox.KeyBindings>
