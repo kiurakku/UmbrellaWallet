@@ -302,6 +302,44 @@ public partial class MainViewModel
         ShowToast(Loc.Instance["activity.synced"], isError: false);
     }
 
+    /// <summary>Exports the transaction history to a CSV at a location the user picks — for taxes, records
+    /// or a spreadsheet. Read-only and fully local: nothing is uploaded; the wallet writes only the file
+    /// the user chose. Covers the merged money movements (local + on-chain, deduped), newest first.
+    /// Best-effort — a cancelled dialog or a write error just shows a toast, never disrupts the wallet.</summary>
+    [RelayCommand]
+    private async Task ExportHistoryCsvAsync()
+    {
+        if (PickFileAsync is null) return;
+
+        var rows = MergedActivity()
+            .Where(r => r.IsTransaction)
+            .Select(r => new HistoryCsvRow(
+                r.When, r.Kind, r.Asset, r.Amount, r.Counterparty, r.Status, r.Explorer ?? string.Empty))
+            .ToList();
+
+        if (rows.Count == 0)
+        {
+            ShowToast(Loc.Instance["activity.exportEmpty"], isError: true);
+            return;
+        }
+
+        var path = await PickFileAsync(HistoryCsv.SuggestedFileName(), true, "csv");
+        if (string.IsNullOrWhiteSpace(path)) return; // the user cancelled the dialog
+
+        try
+        {
+            var csv = HistoryCsv.Build(rows);
+            // UTF-8 with BOM so a spreadsheet (Excel especially) reads non-ASCII labels correctly.
+            await System.IO.File.WriteAllTextAsync(path, csv, new System.Text.UTF8Encoding(true));
+            ShowToast(Loc.Instance["activity.exportOk"], isError: false);
+            StatusMessage = string.Format(Loc.Instance["activity.exportDone"], rows.Count);
+        }
+        catch
+        {
+            ShowToast(Loc.Instance["activity.exportFail"], isError: true);
+        }
+    }
+
     /// <summary>Re-attempts a failed send. The broadcast never left the device, so this only re-opens the
     /// Send screen pre-filled with the original destination and amount — it deliberately does NOT
     /// auto-broadcast, so a transaction that actually went through can never be sent twice.</summary>

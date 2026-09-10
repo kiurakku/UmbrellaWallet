@@ -3696,8 +3696,10 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _backupStatus = string.Empty;
     [ObservableProperty] private string _backupError = string.Empty;
 
-    /// <summary>Set by the view so the view-model can raise a file dialog without knowing about windows.</summary>
-    public Func<string, bool, Task<string?>>? PickFileAsync { get; set; }
+    /// <summary>Set by the view so the view-model can raise a file dialog without knowing about windows.
+    /// Args: suggested file name, save (true) vs open (false), and a kind ("json" backup, "csv" history)
+    /// so the dialog offers the right extension/filter. Returns the chosen local path, or null.</summary>
+    public Func<string, bool, string, Task<string?>>? PickFileAsync { get; set; }
 
     /// <summary>Raised by the view to pick an image file (avatar/banner/background) to open.</summary>
     public Func<Task<string?>>? PickImageAsync { get; set; }
@@ -3821,7 +3823,7 @@ public partial class MainViewModel : ViewModelBase
         var pw = BackupVerifyPassword ?? string.Empty;
         if (pw.Length == 0) { BackupError = Loc.Instance["backup.errPassword"]; return; }
 
-        var path = await PickFileAsync(string.Empty, false);
+        var path = await PickFileAsync(string.Empty, false, "json");
         if (string.IsNullOrWhiteSpace(path)) return;
 
         var result = await VaultBackup.VerifyAsync(path, pw);
@@ -3861,7 +3863,7 @@ public partial class MainViewModel : ViewModelBase
         BackupStatus = BackupError = string.Empty;
         if (PickFileAsync is null) return;
 
-        var path = await PickFileAsync(VaultBackup.SuggestedFileName(), true);
+        var path = await PickFileAsync(VaultBackup.SuggestedFileName(), true, "json");
         if (string.IsNullOrWhiteSpace(path)) return;
 
         var (ok, message) = await VaultBackup.ExportAsync(path);
@@ -3874,7 +3876,7 @@ public partial class MainViewModel : ViewModelBase
         BackupStatus = BackupError = string.Empty;
         if (PickFileAsync is null) return;
 
-        var path = await PickFileAsync(string.Empty, false);
+        var path = await PickFileAsync(string.Empty, false, "json");
         if (string.IsNullOrWhiteSpace(path)) return;
 
         var (ok, message) = await VaultBackup.RestoreAsync(path);
