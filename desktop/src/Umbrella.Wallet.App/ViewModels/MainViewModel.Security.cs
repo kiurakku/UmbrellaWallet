@@ -14,6 +14,7 @@ using CommunityToolkit.Mvvm.Input;
 using QRCoder;
 using Umbrella.Wallet.Core.Chains;
 using Umbrella.Wallet.Core.Derivation;
+using Umbrella.Wallet.Core.Safety;
 using Umbrella.Wallet.Core.Seed;
 using Umbrella.Wallet.Core.Utxo;
 using Umbrella.Wallet.Infrastructure;
@@ -41,6 +42,15 @@ public partial class MainViewModel
     [ObservableProperty] private string _securityScoreColor = "#8FCB9B";
     [ObservableProperty] private int _securityScoreDone;
     [ObservableProperty] private int _securityScoreTotal;
+
+    // --- Privacy Radar: a privacy-WEIGHTED headline over the wallet's live network/metadata settings
+    // (Tor is the single biggest lever, not one row among many). Distinct from the protection COUNT above
+    // — it answers "how anonymous am I?", the flagship differentiator, and names the single biggest win. ---
+    [ObservableProperty] private int _privacyScoreValue;
+    [ObservableProperty] private string _privacyScoreLabel = string.Empty; // "35 / 100"
+    [ObservableProperty] private string _privacyGradeLabel = string.Empty; // Strong / Moderate / Exposed
+    [ObservableProperty] private string _privacyGradeColor = "#8FCB9B";
+    [ObservableProperty] private string _privacyTopFix = string.Empty;
 
     private const string SecGood = "#8FCB9B";
     private const string SecWarn = "#E7CA83";
@@ -129,6 +139,20 @@ public partial class MainViewModel
         SecurityScoreTotal = scored;
         SecurityScoreLabel = string.Format(L["sec.scoreFmt"], good, scored);
         SecurityScoreColor = good == scored ? SecGood : good * 2 >= scored ? SecWarn : "#E09A9A";
+
+        // Privacy Radar headline: grade the network/metadata posture (Tor-weighted), from the same live
+        // settings, and name the single biggest win. Pure inspector — this screen stays a mirror.
+        var privacy = PrivacyScoreInspector.Evaluate(new PrivacySignals(TorEnabled, TorOnly, RichMarketData));
+        PrivacyScoreValue = privacy.Value;
+        PrivacyScoreLabel = string.Format(L["pscore.of100"], privacy.Value);
+        PrivacyGradeLabel = L["pscore.grade." + privacy.Grade];
+        PrivacyGradeColor = privacy.Grade switch
+        {
+            PrivacyGrade.Strong => SecGood,
+            PrivacyGrade.Moderate => SecWarn,
+            _ => "#E09A9A",
+        };
+        PrivacyTopFix = privacy.TopFixCode is { } fix ? L["pscore.fix." + fix] : L["pscore.allGood"];
     }
 
     /// <summary>Follows a Security Center row: a section name navigates, an https link opens outside.</summary>
