@@ -14,6 +14,13 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <!-- The app icon ALSO lands on disk next to the exe. Assets are embedded Avalonia resources, so
+         `{app}\Assets\umbrella.ico` would otherwise not exist — and a shortcut whose IconLocation points
+         there renders blank. Shipping the real file makes any such shortcut resolve. -->
+    <Content Include="Assets\umbrella.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
     <!-- Bundled Tor client. These must land on disk next to the exe (not embedded as
          Avalonia resources) because tor.exe is launched as a real child process. -->
     <Content Include="tor\**">
