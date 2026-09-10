@@ -4372,6 +4372,9 @@ public partial class MainViewModel : ViewModelBase
         // read once the wallet is unlocked.
         _ = LoadExchangesAsync(mnemonic);
         DeriveAccounts(mnemonic);
+        OnPropertyChanged(nameof(SignMsgAddress)); // the Ethereum address the sign-message tool uses
+        SignMsgSignature = string.Empty;
+        SignMsgInput = string.Empty;
         RestoreCachedBalances(); // show last-known totals instantly; the live refresh corrects them
         SelectFirstReceive();
         LoadActivity(); // restore the saved history before logging this unlock on top
