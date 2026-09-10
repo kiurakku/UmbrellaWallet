@@ -4,6 +4,46 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.6.0] — history, privacy tools, safer backups & a friendlier Send
+
+Rolls up the Bitcoin Cash / Zcash / L2 / swap work below, plus a wave of wallet, privacy and safety
+features. Every path is covered by offline tests (**453 green**); newly-enabled live send paths should
+still be checked with a small amount first.
+
+### Wallet & Send
+
+- **Bitcoin Cash transaction history** in the Activity feed (Haskoin), so BCH is now fully complete
+  (receive + balance + send + swap + history).
+- **Network-fee speed selector** on UTXO sends — Economy / Standard / Priority. Standard is byte-for-byte
+  the old rate; every level stays inside the chain's safe fee band.
+- **Enter send amounts in USD** — type a fiat amount and the coin amount fills in; the coin field stays
+  the value that is actually signed.
+- **Quick amount presets** — 25% / 50% beside the fee-aware Max.
+- **Export transaction history to CSV** — local, read-only, RFC-4180 with a CSV-injection guard.
+- **Sort the Holdings list** — by value, 24h change or name.
+
+### Privacy & safety
+
+- **Privacy Radar (per-send)** — a local, offline read of a spend's address-linkage and network privacy.
+- **Privacy Radar (wallet-wide score)** at the top of the Security Center — a Tor-weighted grade with the
+  single biggest privacy win named.
+- **Address checker** (Settings → Privacy & Tor) — paste any address to see its network and whether the
+  checksum is valid; fully local.
+- **Sign & verify message** (Settings → Security) — prove control of your Ethereum address (EIP-191);
+  a signature can never move funds.
+- **Encrypted transaction notes** — private per-tx bookkeeping, encrypted at rest with a seed-derived key.
+
+### Backups
+
+- **Recovery-phrase backup confirmation** — after showing the 24 words, the wallet asks for three of them
+  back (at random positions) before entering the workspace.
+- **Tap-to-copy the recovery phrase** on both the create screen and Settings → Reveal phrase (clipboard
+  auto-clears; the note still says paper is safest).
+
+### Reliability
+
+- **CI Tor bundle fix** — the pinned Tor was pruned upstream; bumped so the Windows release job builds.
+
 ## [Unreleased] — Bitcoin Cash (full), Zcash receive, Ethereum L2 sends, more swap pairs
 
 New coins are added one at a time, receive + balance first; a coin's **send** is enabled only once its
