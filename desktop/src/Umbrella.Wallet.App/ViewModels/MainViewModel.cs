@@ -2206,12 +2206,77 @@ public partial class MainViewModel : ViewModelBase
         });
     }
 
+    // --- Recovery-phrase backup verification: after showing the words, confirm the user actually wrote
+    // them down by asking for three of them back at random positions (fund-safety onboarding). ---
+    [ObservableProperty] private bool _phraseVerifyStage;
+    [ObservableProperty] private string _verifyWord1 = string.Empty;
+    [ObservableProperty] private string _verifyWord2 = string.Empty;
+    [ObservableProperty] private string _verifyWord3 = string.Empty;
+    [ObservableProperty] private string _verifyLabel1 = string.Empty;
+    [ObservableProperty] private string _verifyLabel2 = string.Empty;
+    [ObservableProperty] private string _verifyLabel3 = string.Empty;
+    [ObservableProperty] private string _verifyError = string.Empty;
+    private int[] _verifyPositions = Array.Empty<int>();
+    private static readonly Random _verifyRng = new();
+
+    /// <summary>Copies the recovery phrase to the clipboard (auto-cleared like every other copy). The
+    /// on-screen note still says an offline paper copy is safest — the clipboard can be read by other apps.</summary>
+    [RelayCommand]
+    private async Task CopyRecoveryPhrase()
+    {
+        if (string.IsNullOrWhiteSpace(RecoveryPhrase)) return;
+        await CopyTextAsync(RecoveryPhrase);
+        ShowToast(Loc.Instance["backup.copied"], isError: false);
+    }
+
+    /// <summary>Moves from "here is your phrase" to the three-word confirmation, choosing which words to
+    /// ask for at random each time so it can't be passed by rote.</summary>
+    [RelayCommand]
+    private void BeginPhraseVerify()
+    {
+        var count = RecoveryPhrase.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+        _verifyPositions = SeedVerification.PickPositions(count, 3, _verifyRng).ToArray();
+        var fmt = Loc.Instance["backup.wordN"];
+        VerifyLabel1 = _verifyPositions.Length > 0 ? string.Format(fmt, _verifyPositions[0]) : string.Empty;
+        VerifyLabel2 = _verifyPositions.Length > 1 ? string.Format(fmt, _verifyPositions[1]) : string.Empty;
+        VerifyLabel3 = _verifyPositions.Length > 2 ? string.Format(fmt, _verifyPositions[2]) : string.Empty;
+        VerifyWord1 = VerifyWord2 = VerifyWord3 = string.Empty;
+        VerifyError = string.Empty;
+        PhraseVerifyStage = true;
+    }
+
+    /// <summary>Back to reading the phrase (the entered words are dropped).</summary>
+    [RelayCommand]
+    private void BackToPhrase()
+    {
+        VerifyError = string.Empty;
+        PhraseVerifyStage = false;
+    }
+
+    /// <summary>Checks the three typed words; on success finishes the backup and enters the workspace,
+    /// otherwise shows a "words don't match" note so the user can look at their backup again.</summary>
+    [RelayCommand]
+    private void VerifyPhraseBackup()
+    {
+        var words = new[] { VerifyWord1, VerifyWord2, VerifyWord3 }.Take(_verifyPositions.Length).ToArray();
+        if (!SeedVerification.Check(RecoveryPhrase, _verifyPositions, words))
+        {
+            VerifyError = Loc.Instance["backup.verifyFail"];
+            return;
+        }
+        ConfirmPhraseBackup();
+    }
+
     /// <summary>Leaves the post-create backup page and enters the workspace.</summary>
     [RelayCommand]
     private void ConfirmPhraseBackup()
     {
         RecoveryPhrase = string.Empty;
         PendingPhraseBackup = false;
+        PhraseVerifyStage = false;
+        VerifyWord1 = VerifyWord2 = VerifyWord3 = string.Empty;
+        VerifyError = string.Empty;
+        _verifyPositions = Array.Empty<int>();
         StatusMessage = "Wallet ready · keep your offline backup safe";
     }
 
@@ -2460,6 +2525,16 @@ public partial class MainViewModel : ViewModelBase
         SettingsRevealedPhrase = string.Empty;
         IsSettingsPhraseVisible = false;
         StatusMessage = "Recovery phrase hidden";
+    }
+
+    /// <summary>Copies the revealed recovery phrase to the clipboard (auto-cleared like every other copy).
+    /// The on-screen note still says an offline paper copy is safest.</summary>
+    [RelayCommand]
+    private async Task CopySettingsPhrase()
+    {
+        if (string.IsNullOrWhiteSpace(SettingsRevealedPhrase)) return;
+        await CopyTextAsync(SettingsRevealedPhrase);
+        ShowToast(Loc.Instance["backup.copied"], isError: false);
     }
 
     /// <summary>
