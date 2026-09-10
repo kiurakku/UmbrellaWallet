@@ -1717,9 +1717,12 @@ public partial class MainViewModel : ViewModelBase
             SendError = string.Empty;
             HasSendQuote = false;
         }
+        SendFiatAmount = string.Empty; // a fresh asset starts the fiat quick-entry empty
         OnPropertyChanged(nameof(SelectedSendBalance));
         OnPropertyChanged(nameof(SelectedSendBalanceLabel));
         OnPropertyChanged(nameof(SendAmountFiat));
+        OnPropertyChanged(nameof(FiatInputAvailable));
+        OnPropertyChanged(nameof(SendFiatCoinEquiv));
         RebuildSendAddressBook();
         ValidateSendAddress();
         ResetCoinControl();
@@ -1821,6 +1824,43 @@ public partial class MainViewModel : ViewModelBase
         else if (_priceUsd.TryGetValue(symbol, out var p) && p.Usd > 0) usdEach = p.Usd;
         else return string.Empty;
         return "≈ " + Fx.Money((double)(amount * usdEach));
+    }
+
+    // --- Fiat quick-entry (§6.3 convenience): type a USD amount and the coin amount fills in below.
+    // The coin field (SendAmount) stays the SINGLE authoritative value the send path signs — this only
+    // writes into it, so the fund path is unchanged and the user always sees the coin amount to confirm. ---
+    [ObservableProperty] private string _sendFiatAmount = string.Empty;
+
+    /// <summary>The USD price of one unit of the selected asset (stablecoins = $1), or 0 when unknown.</summary>
+    private decimal PriceForSelected()
+    {
+        var sym = SelectedSendAsset?.Symbol;
+        if (sym is null) return 0m;
+        if (sym is "USDT" or "USDC") return 1m;
+        return _priceUsd.TryGetValue(sym, out var p) && p.Usd > 0 ? p.Usd : 0m;
+    }
+
+    /// <summary>Offer the fiat quick-entry only when we have a price to convert with — otherwise the field
+    /// would silently do nothing.</summary>
+    public bool FiatInputAvailable => PriceForSelected() > 0m;
+
+    /// <summary>"= 0.00063 BTC" under the fiat field: the coin amount the typed USD converts to.</summary>
+    public string SendFiatCoinEquiv
+    {
+        get
+        {
+            var coin = FiatConvert.FiatToCoinAmount(SendFiatAmount, PriceForSelected());
+            return coin.Length == 0 ? string.Empty : $"= {coin} {SelectedSendAsset?.Symbol}";
+        }
+    }
+
+    partial void OnSendFiatAmountChanged(string value)
+    {
+        // Fiat only fills the coin field; an empty/invalid fiat value leaves the coin amount untouched, so
+        // it can never silently wipe a coin amount the user typed directly.
+        var coin = FiatConvert.FiatToCoinAmount(value, PriceForSelected());
+        if (coin.Length > 0) SendAmount = coin;
+        OnPropertyChanged(nameof(SendFiatCoinEquiv));
     }
 
     // --- Network-check-on-paste (§4): a non-blocking sanity check that the destination matches the
@@ -3410,6 +3450,8 @@ public partial class MainViewModel : ViewModelBase
             var prices = await _rates.GetUsdPricesAsync(symbols, ct);
             _priceUsd = prices; // snapshot for the Send fiat estimate
             OnPropertyChanged(nameof(SendAmountFiat));
+            OnPropertyChanged(nameof(FiatInputAvailable)); // the fiat quick-entry appears once priced
+            OnPropertyChanged(nameof(SendFiatCoinEquiv));
 
             // Fetch every account's balance CONCURRENTLY, then apply on the UI thread. Sequential
             // awaits here were the main reason the total took many seconds to appear after unlock /
