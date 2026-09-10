@@ -2822,6 +2822,46 @@
                   </Grid>
                 </Border>
 
+                <!-- Prove address ownership: sign a message with the Ethereum key (never moves funds —
+                     EIP-191 personal_sign), or verify anyone's signed message. -->
+                <Border Classes="card" IsVisible="{Binding IsTabSecurity}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="{Binding [signmsg.title], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="{Binding [signmsg.hint], Source={x:Static app:Loc.Instance}}"/>
+
+                    <TextBlock Classes="eyebrow" Margin="0,4,0,0" Text="{Binding [signmsg.yourAddress], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextSoft}" TextWrapping="Wrap"
+                               Text="{Binding SignMsgAddress}"/>
+                    <TextBox Text="{Binding SignMsgInput}" AcceptsReturn="True" MinHeight="60" TextWrapping="Wrap"
+                             Watermark="{Binding [signmsg.messagePh], Source={x:Static app:Loc.Instance}}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <Button Classes="ghost" Content="{Binding [signmsg.signBtn], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding SignMessageCommand}"/>
+                      <Button Classes="ghost" IsVisible="{Binding SignMsgSignature, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                              Content="{Binding [signmsg.copySig], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding CopySignatureCommand}"/>
+                    </StackPanel>
+                    <Border IsVisible="{Binding SignMsgSignature, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Background="{DynamicResource UmBg}" BorderBrush="{DynamicResource UmBorder}" BorderThickness="1" CornerRadius="8" Padding="12,10">
+                      <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap" Text="{Binding SignMsgSignature}"/>
+                    </Border>
+
+                    <Border Height="1" Background="{DynamicResource UmBorder}" Margin="0,6,0,6"/>
+
+                    <TextBlock Classes="eyebrow" Text="{Binding [signmsg.verifyTitle], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBox Text="{Binding VerifyMsgAddress}" Watermark="{Binding [signmsg.addrPh], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBox Text="{Binding VerifyMsgText}" AcceptsReturn="True" MinHeight="50" TextWrapping="Wrap"
+                             Watermark="{Binding [signmsg.messagePh], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBox Text="{Binding VerifyMsgSignature}" Watermark="{Binding [signmsg.sigPh], Source={x:Static app:Loc.Instance}}"/>
+                    <Button Classes="ghost" HorizontalAlignment="Left"
+                            Content="{Binding [signmsg.verifyBtn], Source={x:Static app:Loc.Instance}}"
+                            Command="{Binding VerifyMessageCommand}"/>
+                    <TextBlock IsVisible="{Binding VerifyMsgResult, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               Text="{Binding VerifyMsgResult}" Foreground="{Binding VerifyMsgColor}" FontWeight="SemiBold" FontSize="12.5"/>
+                  </StackPanel>
+                </Border>
+
                 <Border Classes="card" IsVisible="{Binding IsTabPrivacy}">
                   <StackPanel Spacing="10">
                     <TextBlock Classes="eyebrow" Text="{Binding [settings.privacyNet], Source={x:Static app:Loc.Instance}}"/>
