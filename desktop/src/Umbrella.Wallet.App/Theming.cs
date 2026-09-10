@@ -17,23 +17,33 @@ public static class Theming
 {
     public sealed record ThemeOption(string Id, string Name);
 
+    /// <summary>
+    /// Every theme is meant to be its OWN place, not the same app with the accent swapped. Each one
+    /// therefore sets its own base hue (warm charcoal, abyssal indigo, phosphor black…) and its own
+    /// "positive" green rather than sharing one generic mint — brand themes use the real up-colour
+    /// their exchange uses, so a Binance user sees Binance's green.
+    /// </summary>
     public static IReadOnlyList<ThemeOption> Themes { get; } =
     [
-        new("umbrella", "Umbrella · premium"),
-        new("purple", "The fear · noir"),
-        // One expressive accent on near-black — the editorial / crypto-app direction.
-        new("signal", "Signal · red"),
-        new("black", "Void · OLED black"),
-        new("sunset", "Sunset · gradient"),
-        new("uniswap", "Uniswap · hot pink"),
-        new("ocean", "Ocean · teal"),
-        new("binance", "Binance · gold"),
-        new("telegram", "Telegram · sky blue"),
-        new("whitebit", "WhiteBit · lime green"),
-        new("bitcoin", "Bitcoin · signal orange"),
-        new("kraken", "Kraken · royal violet"),
+        new("umbrella", "Umbrella · signature navy"),
+        new("purple", "The fear · monochrome noir"),
+        new("signal", "Ember · crimson editorial"),
+        new("black", "Void · electric OLED"),
+        new("sunset", "Sunset · dusk gradient"),
+        new("matrix", "Matrix · phosphor terminal"),
+        new("ocean", "Abyss · deep sea"),
+        new("kraken", "Kraken · abyssal violet"),
         new("nord", "Nord · arctic frost"),
-        new("dracula", "Dracula · dev purple"),
+        new("dracula", "Dracula · midnight dev"),
+        new("solarized", "Solarized · warm slate"),
+        new("bitcoin", "Bitcoin · signal orange"),
+        new("ethereum", "Ethereum · periwinkle"),
+        new("solana", "Solana · neon gradient"),
+        new("monero", "Monero · furnace orange"),
+        new("uniswap", "Uniswap · hot pink"),
+        new("binance", "Binance · gold"),
+        new("telegram", "Telegram · sky"),
+        new("whitebit", "WhiteBit · lime"),
     ];
 
     /// <summary>Order matters only for readability; every theme must define every key.</summary>
@@ -55,8 +65,8 @@ public static class Theming
         [
             "#080D16", "#0B1220", "#111927", "#0F1826", "#151E2D", "#1B2740",
             "#1E2A3D", "#26344A", "#33455F",
-            "#3478FF", "#3B82F6", "#4D8BFF", "#16233C", "#1E3A6B",
-            "#F7F9FC", "#C7D0DE", "#8994A7", "#566174", "#45E6A5",
+            "#3478FF", "#2563EB", "#3B82F6", "#16233C", "#1E3A6B",
+            "#F7F9FC", "#C7D0DE", "#8994A7", "#626D80", "#45E6A5",
             "#F7F9FC", "#FFFFFF", "#080D16",
         ],
         // bg       bgAlt    card     input    cardAlt  hover    bd       bd2      bd3      accent   accentBr accentHv accentSel accentDim text    textSoft textDim  textMut  pos
@@ -68,28 +78,40 @@ public static class Theming
             "#050506", "#0C0D0F", "#131417", "#101114", "#1C1E22", "#24272C",
             "#1E2024", "#2A2D33", "#373B42",
             "#AEB6C2", "#EDF1F6", "#FFFFFF", "#2A2E36", "#22262C",
-            "#F4F6F9", "#C4CBD4", "#8A929C", "#6C737C", "#7DCF8F",
+            "#F4F6F9", "#C4CBD4", "#8A929C", "#6C737C", "#7FD69A",
             "#F4F6F9", "#FFFFFF", "#050506",
         ],
-        // Signal / red — one bold crimson-red on true near-black (the Nixtio look). Green stays for
-        // positive numbers; the accent is the app's identity colour, not the up/down colour.
+        // Ember — crimson editorial on a WARM charcoal (the base carries a red undertone, so the theme
+        // reads as one warm room rather than a red accent dropped on neutral grey).
         // bg        bgAlt      card       input      cardAlt    hover      bd         bd2        bd3        accent     accentBr   accentHv   accentSel  accentDim  text       textSoft   textDim    textMut    pos        inverse    inverseHv  inverseTx
         ["signal"] =
         [
-            "#0A0A0B", "#101011", "#161617", "#121213", "#1E1E20", "#28282B",
-            "#1F1F21", "#2B2B2E", "#3A3A3E",
-            "#C42230", "#EE3244", "#FF4B5B", "#2E1013", "#260C0F",
-            "#F5F5F6", "#CBCBCE", "#8C8C92", "#6A6A70", "#45D48A",
-            "#F5F5F6", "#FFFFFF", "#0A0A0B",
+            "#0A0708", "#120C0E", "#181012", "#140D0F", "#221618", "#2E1D20",
+            "#201417", "#2E1E21", "#40292D",
+            "#C42230", "#DE1F33", "#EE3244", "#2E1013", "#260C0F",
+            "#F7F3F4", "#D6C9CB", "#9A8A8D", "#746668", "#3FD98A",
+            "#F7F3F4", "#FFFFFF", "#0A0708",
         ],
-        // Electric-cyan glass on near-black — the neon-glass wallet mood.
+        // Void — a true OLED black (#000000 really is off pixels) with the electric-cyan glass accent
+        // the theme always promised. It used to be flat grey on grey, which made it the least
+        // distinctive theme in the list despite the boldest name.
         ["black"] =
         [
-            "#000000", "#070707", "#0D0D0D", "#0A0A0A", "#141414", "#1E1E1E",
-            "#1A1A1A", "#262626", "#333333",
-            "#3A3A3A", "#8A8A8A", "#4A4A4A", "#2A2A2A", "#222222",
-            "#FFFFFF", "#CFCFCF", "#9A9A9A", "#7A7A7A", "#7DCF8F",
-            "#FFFFFF", "#E8E8E8", "#000000",
+            "#000000", "#050607", "#0B0D0E", "#08090A", "#121517", "#1A1F22",
+            "#16191B", "#232829", "#333A3C",
+            "#0FA8BF", "#22D3EE", "#4AE3F7", "#072A31", "#052126",
+            "#FFFFFF", "#C9D2D4", "#93A0A3", "#6E7A7D", "#34D399",
+            "#FFFFFF", "#E8F6F8", "#000000",
+        ],
+        // Matrix — phosphor green on dead black, the terminal/CRT mood. The accent IS the text colour
+        // family here, which is what makes it feel like a screen rather than an app.
+        ["matrix"] =
+        [
+            "#000000", "#030603", "#061006", "#040B04", "#0A1A0A", "#0F2810",
+            "#0B1A0B", "#143214", "#1D4A1E",
+            "#16A34A", "#00FF41", "#5CFF7A", "#062A0E", "#04200A",
+            "#D6FFD9", "#9FE8A8", "#6FB877", "#528A58", "#00FF41",
+            "#D6FFD9", "#FFFFFF", "#000000",
         ],
         ["sunset"] =
         [
@@ -109,44 +131,42 @@ public static class Theming
             "#F5F6F7", "#CBD0D4", "#8D9499", "#727980", "#21C77A",
             "#F5F6F7", "#FFFFFF", "#0D0E0E",
         ],
-        // Deep-ocean teal/cyan on midnight blue.
+        // Abyss — sunless-zone water: the base goes almost black-blue, and the positive is a
+        // bioluminescent aqua rather than a leaf green.
         ["ocean"] =
         [
-            "#04090E", "#071119", "#0B1B26", "#08151F", "#102A3A", "#153A4F",
-            "#0F2432", "#1B3B50", "#265069",
-            "#1E7FA8", "#38C6E0", "#2AA6C0", "#123A4C", "#0F3040",
+            "#02070C", "#051019", "#091A26", "#06141E", "#0F2A3A", "#14394E",
+            "#0D2331", "#193A4F", "#245069",
+            "#1E7FA8", "#38C6E0", "#57DAF2", "#0E3547", "#0B2B3A",
             "#E6F4FA", "#B6D0DC", "#7C96A2", "#647C86", "#43F5C0",
-            "#E6F4FA", "#FFFFFF", "#04090E",
+            "#E6F4FA", "#FFFFFF", "#02070C",
         ],
-        // Binance — signature black + gold (#F0B90B).
+        // Binance — signature black + gold (#F0B90B), with Binance's OWN up-green (#0ECB81) rather
+        // than a generic mint, so gains look the way they do on the exchange itself.
         ["binance"] =
         [
             "#0B0E11", "#12161B", "#181D24", "#141920", "#20262F", "#2A323C",
             "#1C222A", "#2A323C", "#38424F",
             "#B88A08", "#F0B90B", "#F5C838", "#3A2F0A", "#2E2608",
-            "#EAECEF", "#C7CDD4", "#848E9C", "#6A7482", "#7DCF8F",
+            "#EAECEF", "#C7CDD4", "#848E9C", "#6A7482", "#0ECB81",
             "#EAECEF", "#FFFFFF", "#0B0E11",
         ],
-        // Bybit — gold-amber (#F7A600) on black.
-        // OKX — stark monochrome, white on true black.
-        // Telegram — its own blue (#2AABEE) on the Telegram-dark surface.
+        // Telegram — its own blue (#2AABEE) on the Telegram-dark surface, and Telegram's own green.
         ["telegram"] =
         [
             "#0E1621", "#17212B", "#1C2733", "#182430", "#22303C", "#2B3B47",
             "#1E2A36", "#2A3947", "#38495A",
             "#1E88C8", "#2AABEE", "#3FBEFF", "#123449", "#0F2A3A",
-            "#EAF3FA", "#B9CFDD", "#7E96A6", "#647B8A", "#7DCF8F",
+            "#EAF3FA", "#B9CFDD", "#7E96A6", "#647B8A", "#4DCD5E",
             "#EAF3FA", "#FFFFFF", "#0E1621",
         ],
-        // TON / Gram — the Open Network blue (#0098EA).
-        // TRON — the TRX red (#FF3B4E) on near-black.
         // WhiteBit — its bright green (#22C55E).
         ["whitebit"] =
         [
             "#08100C", "#0C1712", "#101F17", "#0D1B14", "#163021", "#1E402B",
             "#153024", "#22452F", "#2E5C3E",
             "#159550", "#22C55E", "#3BE07A", "#0F3A24", "#0C2E1D",
-            "#EBFBF1", "#C0DECB", "#86A692", "#6E8677", "#22C55E",
+            "#EBFBF1", "#C0DECB", "#86A692", "#6E8677", "#5BF0A0",
             "#EBFBF1", "#FFFFFF", "#08100C",
         ],
         // Bitcoin — the orange (#F7931A) on warm near-black.
@@ -155,20 +175,58 @@ public static class Theming
             "#0D0A06", "#16110A", "#1D160D", "#18120A", "#2A2012", "#3A2C18",
             "#241C12", "#3A2D1D", "#4E3C27",
             "#C0700A", "#F7931A", "#FFAE42", "#3A2A0C", "#2E2109",
-            "#FBF3EA", "#E2CFB8", "#AD9578", "#8E7C64", "#7DCF8F",
+            "#FBF3EA", "#E2CFB8", "#AD9578", "#8E7C64", "#6FD08C",
             "#FBF3EA", "#FFFFFF", "#0D0A06",
         ],
-        // Solana — the purple→green gradient brand: violet accent, mint positives.
-        // Ethereum — the #627EEA periwinkle on cool near-black.
-        // Monero — the #FF6600 orange on warm near-black.
-        // Kraken — the #7132F5 violet on deep indigo.
+        // Kraken — the brand violet (#7132F5), but the theme is built to earn the NAME: an abyssal
+        // indigo base, as if lit from below, with a bioluminescent teal for gains. Previously it was
+        // the brand violet on a generic dark card, which is where "just a purple theme" came from.
         ["kraken"] =
         [
-            "#08060F", "#0D0A18", "#120D20", "#0F0A1C", "#201634", "#2C1F48",
-            "#1D1636", "#2E2352", "#41306F",
-            "#5A28D0", "#7132F5", "#9256FF", "#221542", "#190F31",
-            "#EFEBFB", "#CFC6EC", "#978BBC", "#7B70A0", "#7CD0A0",
-            "#EFEBFB", "#FFFFFF", "#08060F",
+            "#06050D", "#0B0916", "#100C1E", "#0D091A", "#1D1531", "#291D45",
+            "#1B1533", "#2C224F", "#3F2F6B",
+            "#5A28D0", "#7132F5", "#9256FF", "#201441", "#180E30",
+            "#EFEBFB", "#CFC6EC", "#978BBC", "#7B70A0", "#2DE0A6",
+            "#EFEBFB", "#FFFFFF", "#06050D",
+        ],
+        // Solana — the brand IS a gradient, so this theme paints the page as one (see
+        // GradientBackground) and uses Solana's own #14F195 green for gains.
+        ["solana"] =
+        [
+            "#07060A", "#0C0A12", "#121019", "#0E0C15", "#1C1826", "#262034",
+            "#1A1626", "#282236", "#3A3250",
+            "#7C3AED", "#9945FF", "#B06BFF", "#241546", "#1B1035",
+            "#F4F1FA", "#D2CCE4", "#9B93B0", "#7A7291", "#14F195",
+            "#F4F1FA", "#FFFFFF", "#07060A",
+        ],
+        // Ethereum — the #627EEA periwinkle on a cool blue-grey near-black.
+        ["ethereum"] =
+        [
+            "#06070C", "#0B0D15", "#10131D", "#0D1018", "#1A1E2B", "#232839",
+            "#181C28", "#262B3B", "#363D52",
+            "#4C63C7", "#627EEA", "#8098FF", "#182046", "#121936",
+            "#F2F4FB", "#CBD1E4", "#939BB4", "#737B94", "#5BD6A0",
+            "#F2F4FB", "#FFFFFF", "#06070C",
+        ],
+        // Monero — the #FF6600 furnace orange on a warm smoke-grey base, the darkest and most
+        // "industrial" of the warm themes (deliberately grittier than Bitcoin's polished orange).
+        ["monero"] =
+        [
+            "#0B0908", "#14100D", "#1A1512", "#16110E", "#261E18", "#332821",
+            "#221A15", "#33281F", "#46372B",
+            "#CC5200", "#FF6600", "#FF8533", "#3A1A06", "#2D1405",
+            "#F7F2ED", "#DCCFC2", "#A89887", "#86786A", "#5FD08A",
+            "#F7F2ED", "#FFFFFF", "#0B0908",
+        ],
+        // Solarized Dark — the real base03/base02 teal-slate with the #268BD2 blue and #859900 olive
+        // green. The only theme whose base is a colour rather than a near-black, which is the point.
+        ["solarized"] =
+        [
+            "#002028", "#002B36", "#073642", "#05303B", "#0C4351", "#10505F",
+            "#0A3B48", "#0F4C5B", "#16606F",
+            "#1F6FA8", "#268BD2", "#4BA3E3", "#052F42", "#042634",
+            "#FDF6E3", "#C3CDCB", "#93A1A1", "#7A8A8A", "#859900",
+            "#FDF6E3", "#FFFFFF", "#002028",
         ],
         // Nord — the arctic palette: cool slate greys, frost-blue accent.
         ["nord"] =
@@ -190,12 +248,17 @@ public static class Theming
         ],
     };
 
+    /// <summary>The themes whose page background is a sweep rather than a flat fill. Solana is here
+    /// because its brand identity IS a gradient; Sunset because dusk has no single colour.</summary>
+    private static readonly HashSet<string> GradientThemes = new(StringComparer.Ordinal) { "sunset", "solana" };
+
     /// <summary>Gradient themes paint the page as a sweep instead of a flat fill.</summary>
     private static IBrush GradientBackground(string id)
     {
         var stops = id == "sunset"
             ? [("#2A0F1B", 0.0), ("#1C1020", 0.5), ("#120C18", 1.0)]
-            : new[] { ("#160B2E", 0.0), ("#0D1230", 0.55), ("#08202B", 1.0) };
+            // Solana's purple → teal sweep, darkened to stay a background rather than a poster.
+            : new[] { ("#1A0B33", 0.0), ("#120C28", 0.5), ("#07211D", 1.0) };
 
         var brush = new LinearGradientBrush
         {
@@ -212,10 +275,66 @@ public static class Theming
 
     public static string Current { get; private set; } = "umbrella";
 
-    /// <summary>Light themes need dark artwork; the solid-white logo would vanish.</summary>
-    public static bool IsLightTheme(string id) => id == "white";
+    /// <summary>Light themes need dark artwork; the solid-white logo would vanish. Decided from the
+    /// palette's own background rather than a hardcoded id — the id this used to compare against
+    /// ("white") named a theme that no longer exists, so it silently answered false for everything.</summary>
+    public static bool IsLightTheme(string id) =>
+        Palettes.TryGetValue(id, out var palette)
+        && Luminance(Color.Parse(palette[Array.IndexOf(Keys, "UmBg")])) > 0.5;
 
     public static bool IsKnown(string id) => Palettes.ContainsKey(id);
+
+    /// <summary>
+    /// A theme's raw colours keyed by resource name, or null for an unknown id. Exposed so the palettes
+    /// can be checked offline — contrast, distinctness, completeness — without standing up an Avalonia
+    /// Application just to read <c>Application.Current.Resources</c>.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string>? PaletteOf(string id) =>
+        Palettes.TryGetValue(id, out var palette)
+            ? Keys.Select((k, i) => (k, palette[i])).ToDictionary(x => x.k, x => x.Item2, StringComparer.Ordinal)
+            : null;
+
+    /// <summary>Near-black, the dark option for a label sitting on an accent fill.</summary>
+    private static readonly Color AccentTextDark = Color.Parse("#0A0A0B");
+
+    /// <summary>
+    /// The label colour an accent-filled button uses: whichever of near-black or white actually reads
+    /// better ON that accent, measured with the WCAG contrast formula.
+    ///
+    /// This used to be a brightness threshold ("brighter than 0.62 → dark text"). A mid-bright accent
+    /// such as Sunset's coral fell just under the line and got white text at 2.9:1, when dark text on
+    /// the same colour gives 6.8:1. Comparing the two candidates directly removes the guess, and keeps
+    /// working for any accent added later. Shared with the palette tests so the rule is verified where
+    /// it is defined.
+    /// </summary>
+    public static Color AccentTextFor(Color accent) =>
+        WcagContrast(AccentTextDark, accent) >= WcagContrast(Colors.White, accent)
+            ? AccentTextDark
+            : Colors.White;
+
+    /// <summary>WCAG 2.x relative luminance (gamma-corrected), for contrast ratios.</summary>
+    private static double RelativeLuminance(Color c)
+    {
+        static double Channel(byte v)
+        {
+            var s = v / 255.0;
+            return s <= 0.03928 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4);
+        }
+
+        return (0.2126 * Channel(c.R)) + (0.7152 * Channel(c.G)) + (0.0722 * Channel(c.B));
+    }
+
+    /// <summary>WCAG contrast ratio between two colours, 1:1 (identical) to 21:1 (black on white).</summary>
+    private static double WcagContrast(Color a, Color b)
+    {
+        var la = RelativeLuminance(a);
+        var lb = RelativeLuminance(b);
+        var (hi, lo) = la > lb ? (la, lb) : (lb, la);
+        return (hi + 0.05) / (lo + 0.05);
+    }
+
+    /// <summary>True when this theme paints its page as a gradient rather than a flat colour.</summary>
+    public static bool IsGradientTheme(string id) => GradientThemes.Contains(id);
 
     public static void Apply(string id)
     {
@@ -228,19 +347,20 @@ public static class Theming
             resources[Keys[i]] = new SolidColorBrush(Color.Parse(palette[i]));
         }
 
-        if (id is "gradient" or "sunset") resources["UmBg"] = GradientBackground(id);
+        if (GradientThemes.Contains(id)) resources["UmBg"] = GradientBackground(id);
 
         // Card sheen: a GradientStop binds a Color, not a Brush, so these are published separately.
-        // Derived from the card colour so every theme keeps the same subtle top-down lift.
+        // Derived from the card colour so every theme keeps the same subtle top-down lift. A light
+        // theme has to lift DOWNWARD (darken) or the sheen would blow out to white.
+        var light = IsLightTheme(id);
         var card = Color.Parse(palette[Array.IndexOf(Keys, "UmCard")]);
-        resources["UmCardTop"] = Lighten(card, id == "white" ? 1.0 : 1.10);
-        resources["UmCardBottom"] = Lighten(card, id == "white" ? 0.985 : 0.90);
+        resources["UmCardTop"] = Lighten(card, light ? 1.0 : 1.10);
+        resources["UmCardBottom"] = Lighten(card, light ? 0.985 : 0.90);
 
         // Readable text colour ON the accent, chosen by the accent's brightness — so accent-filled
         // buttons stay legible whether the theme accent is dark (red/violet) or light (mint/cyan).
         var accent = Color.Parse(palette[Array.IndexOf(Keys, "UmAccentBright")]);
-        resources["UmAccentText"] = new SolidColorBrush(
-            Luminance(accent) > 0.62 ? Color.Parse("#0A0A0B") : Colors.White);
+        resources["UmAccentText"] = new SolidColorBrush(AccentTextFor(accent));
         // A soft translucent wash of the accent, for hover fills and glows that follow the theme.
         resources["UmAccentWash"] = new SolidColorBrush(accent) { Opacity = 0.16 };
 
