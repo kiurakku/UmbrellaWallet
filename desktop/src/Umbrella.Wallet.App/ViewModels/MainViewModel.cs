@@ -1730,7 +1730,10 @@ public partial class MainViewModel : ViewModelBase
         "Public RPC / explorers, no API keys: cloudflare-eth.com, blockstream.info, " +
         "litecoinspace.org, blockcypher.com, tronscanapi.com";
     public string BalanceDisplayMain => IsBalanceHidden ? "•••••••" : TotalBalanceMain;
-    public string BalanceDisplayCents => IsBalanceHidden ? "" : $".{TotalBalanceCents}";
+    /// <summary>The cents, with the locale's own decimal separator — a hardcoded "." put a US point in
+    /// front of a comma-decimal total.</summary>
+    public string BalanceDisplayCents =>
+        IsBalanceHidden ? "" : Fx.Culture.NumberFormat.NumberDecimalSeparator + TotalBalanceCents;
     public string HideBalanceLabel =>
         Loc.Instance[IsBalanceHidden ? "common.show" : "common.hide"];
     /// <summary>False while the balance is hidden — used to blank every money figure, not just the total.</summary>
@@ -4653,12 +4656,6 @@ public partial class MainViewModel : ViewModelBase
         Holdings.Clear();
         var rows = Accounts.Where(a => a.SupportStatus is "Ready" or "Watch" or "Exchange" or "Receive only");
 
-        // Unsolicited airdrop tokens are folded away by default. They are never removed — the count
-        // below is always shown and one click brings them back — because a wallet must not decide on
-        // its own that something you hold does not exist.
-        SpamTokenCount = Accounts.Count(a => a.IsSuspectedSpam);
-        if (!ShowSpamTokens) rows = rows.Where(a => !a.IsSuspectedSpam);
-
         if (!string.Equals(ChainFilter, "All", StringComparison.OrdinalIgnoreCase))
         {
             rows = rows.Where(a =>
@@ -4675,7 +4672,18 @@ public partial class MainViewModel : ViewModelBase
                 a.Address.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase));
         }
 
-        var built = rows.Select(a => new HoldingRowViewModel(
+        // Unsolicited airdrop tokens are folded away, never removed — the count stays on screen and one
+        // click brings them back, because a wallet must not decide on its own that something you hold
+        // does not exist.
+        //
+        // Counted AFTER the chain and search filters, on the same rows the list is about to show: a
+        // count taken from every account would claim "3 hidden" while looking at a Bitcoin-only view
+        // that never contained those TRC-20 tokens in the first place.
+        var visible = rows.ToList();
+        SpamTokenCount = visible.Count(a => a.IsSuspectedSpam);
+        if (!ShowSpamTokens) visible = visible.Where(a => !a.IsSuspectedSpam).ToList();
+
+        var built = visible.Select(a => new HoldingRowViewModel(
             a.Symbol, a.Name, a.Chain, a.Price, a.Amount,
             a.Price * a.Amount, a.Change24h, a.Address, a.SupportStatus));
         foreach (var h in HoldingsSorter.Order(built, HoldingsSort))
@@ -4688,9 +4696,18 @@ public partial class MainViewModel : ViewModelBase
     {
         var total = Holdings.Sum(h => h.Value);                 // USD
         var displayTotal = total * (double)Fx.Rate;             // in the chosen currency
-        var parts = displayTotal.ToString("N2", CultureInfo.InvariantCulture).Split('.');
-        TotalBalanceMain = parts[0];
-        TotalBalanceCents = parts.Length > 1 ? parts[1] : "00";
+
+        // Formatted in the SAME locale as every other fiat figure (Fx.Money). This used to be
+        // InvariantCulture, so the hero read "₴16,161.25" while the holdings row right under it read
+        // "₴15 590,68" — one wallet showing money two different ways.
+        //
+        // The split has to be on the locale's own decimal separator, not a literal '.', or a Ukrainian
+        // total would never split at all and the cents would read "00".
+        var text = displayTotal.ToString("N2", Fx.Culture);
+        var separator = Fx.Culture.NumberFormat.NumberDecimalSeparator;
+        var cut = text.LastIndexOf(separator, StringComparison.Ordinal);
+        TotalBalanceMain = cut >= 0 ? text[..cut] : text;
+        TotalBalanceCents = cut >= 0 ? text[(cut + separator.Length)..] : "00";
         double weighted = 0;
         double weight = 0;
         foreach (var h in Holdings)

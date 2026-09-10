@@ -311,11 +311,14 @@ public partial class MainViewModel
         };
     }
 
+    /// <summary>Price-axis labels, in the same locale as every other money figure. They were
+    /// InvariantCulture, so the axis read "3 519 010.80" while the 24h-high card directly beneath it
+    /// read "₴3 519 010,80".</summary>
     private static string FormatPrice(double value) => value switch
     {
-        >= 1000 => value.ToString("N0", CultureInfo.InvariantCulture),
-        >= 1 => value.ToString("N2", CultureInfo.InvariantCulture),
-        _ => value.ToString("N6", CultureInfo.InvariantCulture),
+        >= 1000 => value.ToString("N0", Fx.Culture),
+        >= 1 => value.ToString("N2", Fx.Culture),
+        _ => value.ToString("N6", Fx.Culture),
     };
 
     /// <summary>Evenly spaced ticks labelled for the selected window, oldest on the left.</summary>
