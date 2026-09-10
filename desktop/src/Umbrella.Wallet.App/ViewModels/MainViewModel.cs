@@ -1545,7 +1545,7 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     public static readonly IReadOnlySet<string> SendableSymbols = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        "BTC", "LTC", "BCH",                         // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
+        "BTC", "LTC", "BCH", "DOGE",                 // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
         "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
         "ARB", "BASE", "OP",                         // Ethereum L2 rollups — native ETH, same 0x address
         "SOL", "TON", "ADA",                         // account-based
@@ -1564,6 +1564,7 @@ public partial class MainViewModel : ViewModelBase
         new("BTC", "Bitcoin", "Bitcoin network · native SegWit"),
         new("LTC", "Litecoin", "Litecoin network · native SegWit"),
         new("BCH", "Bitcoin Cash", "Bitcoin Cash network · CashAddr"),
+        new("DOGE", "Dogecoin", "Dogecoin network · UTXO spend (BlockCypher)"),
         new("SOL", "Solana", "Solana network"),
         new("TON", "Toncoin", "TON network · wallet v4R2"),
         new("XMR", "Monero", "Monero network · needs the Monero service on"),
