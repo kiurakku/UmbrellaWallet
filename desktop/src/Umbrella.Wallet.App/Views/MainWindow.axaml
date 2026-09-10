@@ -2216,17 +2216,37 @@
                   </StackPanel>
                 </Border>
 
+                <!-- Private note editor (encrypted at rest). Opens when 📝 is tapped on a transaction. -->
+                <Border IsVisible="{Binding IsEditingNote}" Background="{DynamicResource UmCard}"
+                        BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="10"
+                        Padding="12" Margin="0,0,0,10">
+                  <StackPanel Spacing="8">
+                    <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                               Text="{Binding [notes.title], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBox Text="{Binding NoteDraft}" AcceptsReturn="True" MaxLength="280" MinHeight="54"
+                             TextWrapping="Wrap"
+                             Watermark="{Binding [notes.placeholder], Source={x:Static app:Loc.Instance}}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Button Content="{Binding [notes.save], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding SaveNoteCommand}"/>
+                      <Button Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding CancelEditNoteCommand}"/>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+
                 <ItemsControl ItemsSource="{Binding FilteredActivity}" IsVisible="{Binding HasFilteredActivity}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ActivityRowViewModel">
                       <!-- Each event is its own rounded card. The card itself copies the explorer link
-                           (a no-op when there is none); the Retry button lives inside it and stays
+                           (a no-op when there is none); the Retry / note buttons live inside it and stay
                            independently clickable. -->
                       <Button Classes="ghost" Padding="0" Margin="0,0,0,8" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                               Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).CopyActivityLinkCommand}"
                               CommandParameter="{Binding}">
                         <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
                                 BorderThickness="1" CornerRadius="12" MinHeight="54" Padding="16,8">
+                          <StackPanel Spacing="5">
                           <Grid ColumnDefinitions="96,58,*,Auto,Auto,Auto" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Kind}" Foreground="{Binding KindColor}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="1" FontWeight="SemiBold" FontSize="12" Text="{Binding Asset}"
@@ -2249,10 +2269,20 @@
                                       CommandParameter="{Binding}"/>
                             </StackPanel>
                             <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center">
-                              <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11" Text="{Binding When}"/>
-                              <TextBlock Foreground="{DynamicResource UmAccent}" FontSize="11" Text="↗" IsVisible="{Binding HasLink}"/>
+                              <!-- Add / edit a private (encrypted) note on this transaction. -->
+                              <Button Classes="ghost" Padding="6,2" MinHeight="0" VerticalAlignment="Center"
+                                      IsVisible="{Binding CanHaveNote}" Content="📝"
+                                      ToolTip.Tip="{Binding [notes.add], Source={x:Static app:Loc.Instance}}"
+                                      Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).BeginEditNoteCommand}"
+                                      CommandParameter="{Binding}"/>
+                              <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11" Text="{Binding When}" VerticalAlignment="Center"/>
+                              <TextBlock Foreground="{DynamicResource UmAccent}" FontSize="11" Text="↗" IsVisible="{Binding HasLink}" VerticalAlignment="Center"/>
                             </StackPanel>
                           </Grid>
+                          <!-- The saved private note, shown under the row when present. -->
+                          <TextBlock IsVisible="{Binding HasNote}" Text="{Binding Note}" Margin="96,0,0,0"
+                                     FontSize="11.5" Foreground="{DynamicResource UmTextSoft}" TextWrapping="Wrap"/>
+                          </StackPanel>
                         </Border>
                       </Button>
                     </DataTemplate>

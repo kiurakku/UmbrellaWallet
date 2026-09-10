@@ -100,6 +100,11 @@ public sealed class Loc : INotifyPropertyChanged
             ["priv.torOn.detail"] = "Your IP stays hidden from the node that first relays this transaction.",
             ["priv.torOff.title"] = "Tor is off",
             ["priv.torOff.detail"] = "The broadcast node can associate this transaction with your IP address. Turn on Tor in Settings to hide it.",
+            // Private, encrypted transaction notes (Activity feed).
+            ["notes.add"] = "Add a private note",
+            ["notes.title"] = "PRIVATE NOTE · ENCRYPTED, ONLY YOU CAN READ IT",
+            ["notes.placeholder"] = "e.g. salary from Acme, sold the bike — kept encrypted on this device only",
+            ["notes.save"] = "Save note",
             ["discover.sub"] = "The market and external services, gathered in one place.",
             ["discover.market"] = "Coin prices and real candlestick charts",
             ["discover.buy"] = "Buy crypto · external providers (opens a list)",
@@ -660,6 +665,11 @@ public sealed class Loc : INotifyPropertyChanged
             ["priv.torOn.detail"] = "Ваша IP залишається прихованою від вузла, який першим ретранслює цю транзакцію.",
             ["priv.torOff.title"] = "Tor вимкнено",
             ["priv.torOff.detail"] = "Вузол розсилання може пов'язати цю транзакцію з вашою IP-адресою. Увімкніть Tor у Налаштуваннях, щоб приховати її.",
+            // Приватні, зашифровані нотатки до транзакцій (стрічка активності).
+            ["notes.add"] = "Додати приватну нотатку",
+            ["notes.title"] = "ПРИВАТНА НОТАТКА · ЗАШИФРОВАНА, ЧИТАЄТЕ ЛИШЕ ВИ",
+            ["notes.placeholder"] = "напр. зарплата від Acme, продав велосипед — зберігається зашифрованою лише на цьому пристрої",
+            ["notes.save"] = "Зберегти нотатку",
             ["discover.sub"] = "Ринок і зовнішні сервіси, зібрані в одному місці.",
             ["discover.market"] = "Ціни монет і реальні свічкові графіки",
             ["discover.buy"] = "Купити крипту · зовнішні провайдери (відкриється список)",
