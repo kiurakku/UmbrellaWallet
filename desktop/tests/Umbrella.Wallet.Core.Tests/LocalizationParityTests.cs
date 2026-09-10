@@ -134,3 +134,49 @@ public sealed class LocalizationParityTests
         }
     }
 }
+
+/// <summary>
+/// The in-app guide is written per language rather than through <see cref="Loc"/>, so it needs its own
+/// parity check: a section added to English and forgotten in Ukrainian would leave a Ukrainian reader
+/// silently missing a chapter, with no fallback to reveal it.
+/// </summary>
+public sealed class GuideContentTests
+{
+    [Fact]
+    public void English_and_Ukrainian_guides_have_the_same_number_of_sections()
+    {
+        Assert.Equal(GuideContent.En.Count, GuideContent.Uk.Count);
+    }
+
+    [Fact]
+    public void Sections_are_numbered_consecutively_from_one_in_both_languages()
+    {
+        foreach (var (name, guide) in new[] { ("en", GuideContent.En), ("uk", GuideContent.Uk) })
+        {
+            for (var i = 0; i < guide.Count; i++)
+            {
+                Assert.StartsWith($"{i + 1} · ", guide[i].Title, StringComparison.Ordinal);
+            }
+        }
+    }
+
+    [Fact]
+    public void No_guide_section_is_empty()
+    {
+        foreach (var (name, guide) in new[] { ("en", GuideContent.En), ("uk", GuideContent.Uk) })
+        {
+            foreach (var section in guide)
+            {
+                Assert.False(string.IsNullOrWhiteSpace(section.Title), $"{name}: empty title");
+                Assert.False(string.IsNullOrWhiteSpace(section.Body), $"{name}: {section.Title} has no body");
+            }
+        }
+    }
+
+    [Fact]
+    public void An_unknown_language_falls_back_to_the_english_guide()
+    {
+        Assert.Same(GuideContent.En, GuideContent.For("zz"));
+        Assert.Same(GuideContent.Uk, GuideContent.For("uk"));
+    }
+}
