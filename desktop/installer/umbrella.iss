@@ -3,7 +3,6 @@
 ; create a desktop / Start-menu shortcut, and uninstall cleanly.
 
 #define AppName "Umbrella Wallet"
-#define AppVersion "4.5.0"
 #define AppPublisher "the fear"
 #define AppExe "Umbrella.exe"
 
@@ -15,6 +14,17 @@
 #endif
 #ifndef DistDir
   #define DistDir "D:\umbrella-dist"
+#endif
+
+; The version is PASSED IN by release-windows.ps1 (ISCC /DAppVersion=...), which reads it from the
+; .csproj — the single source of truth. It used to be a literal here that had to be kept in sync by
+; hand, and it drifted: the 4.6.0 build produced an installer still named "Setup-4.5.0".
+;
+; The fallback reads it out of the published exe, so compiling the .iss directly still names the
+; installer after the binary it actually contains rather than after a stale literal. Defined AFTER
+; SourceDir because it reads the exe from there.
+#ifndef AppVersion
+  #define AppVersion GetVersionNumbersString(SourceDir + "\" + AppExe)
 #endif
 
 #define AppUrl "https://t.me/UmbrellaWallet"

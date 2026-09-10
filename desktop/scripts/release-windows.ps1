@@ -66,8 +66,14 @@ if ($SkipInstaller) {
 } elseif (-not (Test-Path $Iscc)) {
   Write-Warning "ISCC.exe not found at '$Iscc' — skipping installer. Install Inno Setup 6 or pass -Iscc <path>."
 } else {
-  & $Iscc $iss
-  Write-Host "Installer: $(Join-Path $OutRoot ("UmbrellaWallet-Setup-{0}.exe" -f $version))" -ForegroundColor Green
+  # Pass the version the build actually produced. The .iss used to carry its own literal that had to
+  # be updated by hand, and it drifted — a 4.6.0 build shipped as "UmbrellaWallet-Setup-4.5.0.exe".
+  & $Iscc "/DAppVersion=$version" $iss
+  $setup = Join-Path $OutRoot ("UmbrellaWallet-Setup-{0}.exe" -f $version)
+  if (-not (Test-Path $setup)) {
+    throw "Installer was expected at '$setup' but is not there — the .iss version and the build disagree."
+  }
+  Write-Host "Installer: $setup" -ForegroundColor Green
 }
 
 Write-Host "Done. Verify by launching the portable exe, then unlock and open Settings -> Developer." -ForegroundColor Cyan
