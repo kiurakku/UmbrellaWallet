@@ -2414,6 +2414,16 @@ public partial class MainViewModel : ViewModelBase
         StatusMessage = "Recovery phrase hidden";
     }
 
+    /// <summary>Copies the revealed recovery phrase to the clipboard (auto-cleared like every other copy).
+    /// The on-screen note still says an offline paper copy is safest.</summary>
+    [RelayCommand]
+    private async Task CopySettingsPhrase()
+    {
+        if (string.IsNullOrWhiteSpace(SettingsRevealedPhrase)) return;
+        await CopyTextAsync(SettingsRevealedPhrase);
+        ShowToast(Loc.Instance["backup.copied"], isError: false);
+    }
+
     /// <summary>
     /// Starts/stops the Tor client that ships with the app and routes ALL public traffic
     /// (balances, prices, broadcasts) through it. Nothing external needs to be installed.

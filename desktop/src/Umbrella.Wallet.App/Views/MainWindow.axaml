@@ -3081,15 +3081,25 @@
                     <Button Classes="ghost" Content="{Binding [settings.revealPhrase], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left"
                             IsEnabled="{Binding !IsBusy}" Command="{Binding RevealPhraseCommand}"/>
 
-                    <Border IsVisible="{Binding IsSettingsPhraseVisible}" Background="{DynamicResource UmBg}"
-                            BorderBrush="#7A6230" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,4,0,0">
-                      <StackPanel Spacing="10">
+                    <StackPanel IsVisible="{Binding IsSettingsPhraseVisible}" Spacing="6" Margin="0,4,0,0">
+                      <!-- Tap the phrase box to copy it (same as the create screen). -->
+                      <Button Command="{Binding CopySettingsPhraseCommand}" Cursor="Hand"
+                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="16"
+                              Background="{DynamicResource UmBg}" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="10">
+                        <Button.Styles>
+                          <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource UmBg}"/>
+                            <Setter Property="BorderBrush" Value="#9A7E3E"/>
+                          </Style>
+                        </Button.Styles>
                         <TextBlock Classes="mono" FontSize="14" LineHeight="26" TextWrapping="Wrap"
                                    Text="{Binding SettingsRevealedPhrase}"/>
-                        <Button Classes="ghost" Content="{Binding [settings.hidePhrase], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left"
-                                Command="{Binding HideSettingsPhraseCommand}"/>
-                      </StackPanel>
-                    </Border>
+                      </Button>
+                      <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap"
+                                 Text="{Binding [backup.copyHint], Source={x:Static app:Loc.Instance}}"/>
+                      <Button Classes="ghost" Content="{Binding [settings.hidePhrase], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left"
+                              Command="{Binding HideSettingsPhraseCommand}"/>
+                    </StackPanel>
 
                     <!-- Secondary, clearly-optional: Monero keys, folded into the same card. -->
                     <Border Background="#22FFFFFF" Height="1" Margin="0,12,0,4"/>
