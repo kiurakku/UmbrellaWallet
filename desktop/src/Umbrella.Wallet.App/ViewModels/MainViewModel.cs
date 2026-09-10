@@ -1290,6 +1290,30 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("4.6", "Version 4.6 — history, privacy tools, safer backups & a friendlier Send",
+            "The biggest update yet:\n\n" +
+            "• Bitcoin Cash now has transaction history — BCH is fully complete (receive, balance, send, swap and history).\n" +
+            "• Pick your network-fee speed on sends — Economy / Standard / Priority.\n" +
+            "• Enter send amounts in USD — type a dollar figure and the coin amount fills in.\n" +
+            "• Quick amount presets — 25% / 50% beside the fee-aware Max.\n" +
+            "• Export your transaction history to CSV — for taxes or a spreadsheet, entirely on this device.\n" +
+            "• Sort your Holdings — by value, 24h change or name.\n" +
+            "• Privacy Radar — a per-send privacy read, plus a wallet-wide privacy score at the top of the Security Center.\n" +
+            "• Address checker (Settings → Privacy & Tor) — paste any address to see its network and whether it's well-formed.\n" +
+            "• Sign & verify a message (Settings → Security) — prove you control your Ethereum address, without moving funds.\n" +
+            "• Encrypted private notes on your transactions — readable only by you, on this device.\n" +
+            "• Safer backups — after showing your 24 words the wallet asks for three of them back, and you can tap the phrase to copy it.\n\n" +
+            "Every path is covered by offline tests — 453 green.",
+            "2026-09-10"),
+        new("4.5", "Version 4.5 — DOGE send, more swaps, Security Center",
+            "• Dogecoin send is live (it was receive-only) — a real UTXO spend signed on your PC.\n" +
+            "• More cross-chain swaps — pay from BTC / LTC / DOGE / ETH across 12 pairs, non-custodial via THORChain.\n" +
+            "• On-chain transaction history for TON, ADA and SOL.\n" +
+            "• Security Center — a live report of what is actually protecting your wallet, plus per-asset detail pages and a market overview.\n" +
+            "• Scam control — address-poisoning defence, an Ethereum checksum (EIP-55) warning, a first-time-recipient note and a trusted-contact badge.\n" +
+            "• Important fix — a comma decimal like \"0,5\" could be read as ten times the amount; all amount fields now go through one safe parser.\n\n" +
+            "332 offline tests pass.",
+            "2026-09-03"),
         new("4.0", "Version 4.0 — on-chain history, richer token pages, more",
             "A big update:\n\n" +
             "• On-chain transaction history. The Transactions tab now pulls your real history straight from the chain for your own addresses — including transactions from before you first opened the wallet. Covers TRX (native + USDT/TRC-20), Bitcoin, Ethereum and Litecoin, keyless and through Tor/your proxy.\n" +

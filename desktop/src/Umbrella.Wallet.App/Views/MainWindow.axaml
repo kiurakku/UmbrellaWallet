@@ -16,7 +16,7 @@
         x:CompileBindings="True"
         x:Name="RootWindow"
         Title="Umbrella Wallet"
-        Icon="/Assets/umbrella.ico"
+        Icon="/Assets/umbrella-appicon.png"
         Width="1240"
         Height="820"
         MinWidth="1000"
