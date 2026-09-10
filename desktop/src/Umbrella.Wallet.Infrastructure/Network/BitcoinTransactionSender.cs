@@ -82,6 +82,7 @@ public sealed class BitcoinTransactionSender
             string? devFeeAddress = null,
             decimal devFeeAmount = 0m,
             string? memo = null,
+            FeeLevel feeLevel = FeeLevel.Standard,
             CancellationToken ct = default)
     {
         ChainId chain;
@@ -98,7 +99,7 @@ public sealed class BitcoinTransactionSender
 
         if (amount <= 0) return (null, null, null, "Amount must be positive.");
 
-        var feeRate = await FetchFeeRateAsync(symbol.ToUpperInvariant(), explorer, ct);
+        var feeRate = await FetchFeeRateAsync(symbol.ToUpperInvariant(), explorer, feeLevel, ct);
         var amountSat = (long)(amount * 100_000_000m);
         var devFeeSat = devFeeAmount > 0 ? (long)(devFeeAmount * 100_000_000m) : 0;
 
@@ -195,24 +196,26 @@ public sealed class BitcoinTransactionSender
     }
 
     /// <summary>
-    /// Economical sat/vB. Esplora returns a target→rate map; we take the 6-block (~1 hour)
-    /// estimate rather than the 3-block one, which is materially cheaper and still confirms
-    /// promptly, and fall back through longer targets if the node omits one. Clamped to the
-    /// 1 sat/vB relay minimum so a transaction can never be built below the floor.
+    /// Economical sat/vB for the chosen <paramref name="level"/>. The network gives one "standard"
+    /// estimate (Esplora's 6-block ~1h target, BlockCypher's medium rate, or a safe fixed rate for BCH);
+    /// <see cref="FeeLevels.Adjust"/> scales it to Economy/Priority within the SAME safe band that clamps
+    /// the standard rate for that chain, so no level can drop below the relay floor (which would strand
+    /// the tx) or overpay past the cap. Standard is exactly the rate the wallet used before this selector.
     /// </summary>
-    private static async Task<double> FetchFeeRateAsync(string symbol, string explorer, CancellationToken ct)
+    private static async Task<double> FetchFeeRateAsync(string symbol, string explorer, FeeLevel level, CancellationToken ct)
     {
         // Bitcoin Cash blocks are rarely full, so a low fixed rate confirms reliably and cheaply — no fee
         // API needed. 2 sat/vB sits safely above the 1 sat/byte relay minimum. A too-low fee only ever
         // gets a tx stuck (recoverable), never lost.
-        if (IsHaskoin(symbol)) return 2.0;
+        if (IsHaskoin(symbol)) return FeeLevels.Adjust(2.0, level, 1.0, 20.0);
 
         if (IsBlockCypher(symbol))
         {
             // BlockCypher returns fee-per-kB in satoshi. Convert to sat/vB and clamp to a safe Dogecoin
             // band: ~0.01 DOGE/kB (1000 sat/vB) is the floor today's nodes reliably accept; cap at
             // ~0.1 DOGE/kB so a spiky estimate can't overpay wildly. A too-low fee only gets the tx
-            // stuck (recoverable), never lost.
+            // stuck (recoverable), never lost. Levels scale within that same band.
+            double doge = 1000.0; // 0.01 DOGE/kB default
             try
             {
                 using var res = await Http.GetAsync(explorer, ct);
@@ -220,16 +223,17 @@ public sealed class BitcoinTransactionSender
                 {
                     using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
                     if (doc.RootElement.TryGetProperty("medium_fee_per_kb", out var f))
-                        return Math.Clamp(f.GetDouble() / 1000.0, 1000.0, 10000.0);
+                        doge = Math.Clamp(f.GetDouble() / 1000.0, 1000.0, 10000.0);
                 }
             }
             catch
             {
                 // fall through to the safe default
             }
-            return 1000.0; // 0.01 DOGE/kB
+            return FeeLevels.Adjust(doge, level, 1000.0, 10000.0);
         }
 
+        double standard = 2.0; // safe Esplora default
         try
         {
             using var res = await Http.GetAsync($"{explorer}/fee-estimates", ct);
@@ -240,7 +244,8 @@ public sealed class BitcoinTransactionSender
                 {
                     if (doc.RootElement.TryGetProperty(target, out var rate))
                     {
-                        return Math.Clamp(rate.GetDouble(), 1.0, 200.0);
+                        standard = Math.Clamp(rate.GetDouble(), 1.0, 200.0);
+                        break;
                     }
                 }
             }
@@ -250,6 +255,6 @@ public sealed class BitcoinTransactionSender
             // fall through to the default
         }
 
-        return 2.0;
+        return FeeLevels.Adjust(standard, level, 1.0, 200.0);
     }
 }

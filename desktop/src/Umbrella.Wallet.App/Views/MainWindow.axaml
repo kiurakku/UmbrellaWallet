@@ -982,6 +982,35 @@
                       </StackPanel>
                     </Border>
 
+                    <!-- Network fee speed (UTXO chains): Economy / Standard / Priority. Standard is the
+                         economical rate the wallet has always used, so an untouched selector never changes
+                         the fee; only the sat/vB fed to the planner changes, and every level stays inside
+                         the chain's safe fee band (never below the relay floor). The signing path is
+                         unaffected. Changing it after a quote is shown re-prices it. -->
+                    <Border IsVisible="{Binding FeeLevelAvailable}"
+                            Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmBorder}"
+                            BorderThickness="1" CornerRadius="10" Padding="12,10">
+                      <StackPanel Spacing="8">
+                        <StackPanel Spacing="1">
+                          <TextBlock Text="{Binding [fee.title], Source={x:Static app:Loc.Instance}}"
+                                     FontSize="12.5" FontWeight="SemiBold"/>
+                          <TextBlock Text="{Binding [fee.hint], Source={x:Static app:Loc.Instance}}"
+                                     FontSize="11" Foreground="{DynamicResource UmTextDim}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="18">
+                          <RadioButton GroupName="feeLevel" IsChecked="{Binding IsFeeEconomy, Mode=OneWay}"
+                                       Command="{Binding SetFeeLevelCommand}" CommandParameter="0"
+                                       Content="{Binding [fee.economy], Source={x:Static app:Loc.Instance}}"/>
+                          <RadioButton GroupName="feeLevel" IsChecked="{Binding IsFeeStandard, Mode=OneWay}"
+                                       Command="{Binding SetFeeLevelCommand}" CommandParameter="1"
+                                       Content="{Binding [fee.standard], Source={x:Static app:Loc.Instance}}"/>
+                          <RadioButton GroupName="feeLevel" IsChecked="{Binding IsFeePriority, Mode=OneWay}"
+                                       Command="{Binding SetFeeLevelCommand}" CommandParameter="2"
+                                       Content="{Binding [fee.priority], Source={x:Static app:Loc.Instance}}"/>
+                        </StackPanel>
+                      </StackPanel>
+                    </Border>
+
                     <Border IsVisible="{Binding SendError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                             Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="6" Padding="12,9">
                       <TextBlock Text="{Binding SendError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
