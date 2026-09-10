@@ -191,7 +191,7 @@ public partial class MainViewModel
     }
 
     /// <summary>Fetches real on-chain transaction history for the user's own addresses, so transactions
-    /// made before the wallet was opened still appear. Covers BTC and LTC across EVERY issued receive
+    /// made before the wallet was opened still appear. Covers BTC, LTC and BCH across EVERY issued receive
     /// address (not just #0, so funds received on a rotated address still show), plus ETH and TRON
     /// (TRC-20 incl. USDT). Best-effort and keyless; runs through the same Tor/proxy route as balances,
     /// and is deduped by explorer link so a tx seen on two of the user's addresses appears once.</summary>
@@ -207,9 +207,9 @@ public partial class MainViewModel
             var rows = new List<(long Ts, ActivityRowViewModel Row)>();
             var walletId = _registry.Active?.Id ?? "default";
 
-            // BTC / LTC: every issued external address (0..last issued), so a rotated-address history
-            // is not lost. Capped defensively so a huge index never fans out to hundreds of calls.
-            foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc) })
+            // BTC / LTC / BCH: every issued external address (0..last issued), so a rotated-address
+            // history is not lost. Capped defensively so a huge index never fans out to hundreds of calls.
+            foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc), ("BCH", ChainId.Bch) })
             {
                 uint lastIssued = 0;
                 try { lastIssued = _addrIndex.GetState(walletId, sym).LastIssuedExternalIndex ?? 0; } catch { }
@@ -219,9 +219,12 @@ public partial class MainViewModel
                     string addr;
                     try { addr = _deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, chain, 0, i).Address; }
                     catch { continue; }
-                    var txs = sym == "BTC"
-                        ? await _history.GetBitcoinAsync(addr)
-                        : await _history.GetLitecoinAsync(addr);
+                    var txs = sym switch
+                    {
+                        "BTC" => await _history.GetBitcoinAsync(addr),
+                        "LTC" => await _history.GetLitecoinAsync(addr),
+                        _ => await _history.GetBitcoinCashAsync(addr),
+                    };
                     foreach (var t in txs) rows.Add((t.UnixMs, ToActivityRow(t)));
                 }
             }

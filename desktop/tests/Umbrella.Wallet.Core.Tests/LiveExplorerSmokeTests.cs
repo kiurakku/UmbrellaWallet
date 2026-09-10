@@ -38,4 +38,23 @@ public sealed class LiveExplorerSmokeTests
         Assert.True(u.ValueSat > 0);
         Assert.True(u.Vout >= 0);
     }
+
+    // A long-lived, high-activity Bitcoin Cash address, for the Haskoin history path.
+    private const string ActiveBchAddress = "bitcoincash:qqm04dymqgx3j4kav9xmfvh6ew3jfnagdyn58nq7hl";
+
+    [Fact]
+    public async Task Bch_history_parses_real_haskoin_responses()
+    {
+        // Haskoin's transactions/full is a different shape from Esplora, so its parse can only be proven
+        // against a real response. Confirms the live payload yields normalized BCH rows.
+        var rows = await new OnChainHistoryClient().GetBitcoinCashAsync(ActiveBchAddress);
+
+        Assert.NotEmpty(rows);
+        var t = rows[0];
+        Assert.Equal("BCH", t.Asset);
+        Assert.True(t.Kind is "Sent" or "Received");
+        Assert.Equal(64, t.Hash.Length);                       // a real 32-byte txid, hex-encoded
+        Assert.Contains("blockchair.com/bitcoin-cash", t.Explorer);
+        Assert.True(t.UnixMs > 0);
+    }
 }
