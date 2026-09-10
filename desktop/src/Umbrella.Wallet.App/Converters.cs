@@ -82,3 +82,36 @@ public sealed class MarketFilterConverter : IMultiValueConverter
             || name.Contains(query, StringComparison.OrdinalIgnoreCase);
     }
 }
+
+/// <summary>
+/// Shows a localized label for an Activity filter value while the bound item stays the English key.
+///
+/// The filter collections are plain strings that double as the comparison key ("All", "Confirmed",
+/// "Last 7 days"), so translating the collections themselves would break every filter comparison and
+/// any persisted selection. Converting only at DISPLAY time keeps the logic untouched.
+///
+/// A value with no matching key — an asset ticker like "BTC", which the asset filter builds from the
+/// feed — falls through unchanged, which is exactly right for a ticker.
+/// </summary>
+public sealed class ActivityLabelConverter : IValueConverter
+{
+    public static readonly ActivityLabelConverter Instance = new();
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var key = value?.ToString();
+        if (string.IsNullOrEmpty(key)) return string.Empty;
+
+        var slug = "activity.opt." + key.ToLowerInvariant()
+            .Replace(' ', '-')
+            .Replace(".", string.Empty);
+
+        var translated = Loc.Instance[slug];
+        // Loc returns the key itself when it has no entry — that is the "not a translatable option"
+        // case (a ticker), so show the original value rather than a slug.
+        return translated == slug ? key : translated;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

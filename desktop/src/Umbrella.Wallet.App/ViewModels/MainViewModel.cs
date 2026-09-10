@@ -198,8 +198,12 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>The chosen fiat's symbol, bound where the UI shows a "$" prefix.</summary>
     public string CurrencySymbol => Fx.Symbol;
 
-    /// <summary>"TOTAL BALANCE · &lt;currency&gt;" caption above the balance.</summary>
-    public string TotalBalanceCaption => $"TOTAL BALANCE · {_uiSettings.Currency}";
+    /// <summary>"&lt;total balance&gt; · &lt;currency&gt;" caption above the balance. The wording comes from the
+    /// translation table and the currency is appended live — the caption used to be hardcoded English,
+    /// so the very first line of the wallet stayed in English no matter the language, and the
+    /// translated values had "· USD" baked in, which was simply wrong once the display currency was
+    /// anything else.</summary>
+    public string TotalBalanceCaption => $"{Loc.Instance["common.total"]} · {_uiSettings.Currency}";
 
     /// <summary>Fiat to show balances in. Prices stay USD internally; <see cref="Fx"/> converts.</summary>
     public string CurrencyCode
@@ -1290,21 +1294,29 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
-        new("4.6", "Version 4.6 — history, privacy tools, safer backups & a friendlier Send",
-            "The biggest update yet:\n\n" +
+        new("4.6", "Version 4.6 — faster balances, 19 themes, history & privacy tools",
+            "The biggest update yet.\n\n" +
+            "FASTER\n" +
+            "• Balances appear far sooner. Address discovery used to make one request per address, one after another — a fresh wallet paid 21+ round-trips per chain before showing anything. Addresses are now checked in parallel, without asking the block explorer about a single address more than before.\n" +
+            "• Prices and balances load together instead of one waiting for the other, and Bitcoin and Litecoin scan at the same time.\n\n" +
+            "LOOK\n" +
+            "• 19 colour themes, each with its own character rather than one accent swapped around: Kraken's abyss, a true OLED Void, Ember, Matrix phosphor, Solana, Ethereum, Monero, Solarized and more.\n" +
+            "• Exchange themes use that exchange's own colour for gains.\n\n" +
+            "MONEY\n" +
             "• Bitcoin Cash now has transaction history — BCH is fully complete (receive, balance, send, swap and history).\n" +
             "• Pick your network-fee speed on sends — Economy / Standard / Priority.\n" +
-            "• Enter send amounts in USD — type a dollar figure and the coin amount fills in.\n" +
+            "• Enter amounts in USD on both Send and Receive — type a dollar figure and the coin amount fills in.\n" +
             "• Quick amount presets — 25% / 50% beside the fee-aware Max.\n" +
             "• Export your transaction history to CSV — for taxes or a spreadsheet, entirely on this device.\n" +
-            "• Sort your Holdings — by value, 24h change or name.\n" +
+            "• Sort your Holdings — by value, 24h change or name.\n\n" +
+            "PRIVACY & SAFETY\n" +
             "• Privacy Radar — a per-send privacy read, plus a wallet-wide privacy score at the top of the Security Center.\n" +
             "• Address checker (Settings → Privacy & Tor) — paste any address to see its network and whether it's well-formed.\n" +
             "• Sign & verify a message (Settings → Security) — prove you control your Ethereum address, without moving funds.\n" +
             "• Encrypted private notes on your transactions — readable only by you, on this device.\n" +
             "• Safer backups — after showing your 24 words the wallet asks for three of them back, and you can tap the phrase to copy it.\n\n" +
-            "Every path is covered by offline tests — 453 green.",
-            "2026-09-10"),
+            "Every path is covered by offline tests.",
+            "2026-09-10", "v46"),
         new("4.5", "Version 4.5 — DOGE send, more swaps, Security Center",
             "• Dogecoin send is live (it was receive-only) — a real UTXO spend signed on your PC.\n" +
             "• More cross-chain swaps — pay from BTC / LTC / DOGE / ETH across 12 pairs, non-custodial via THORChain.\n" +
@@ -1313,7 +1325,7 @@ public partial class MainViewModel : ViewModelBase
             "• Scam control — address-poisoning defence, an Ethereum checksum (EIP-55) warning, a first-time-recipient note and a trusted-contact badge.\n" +
             "• Important fix — a comma decimal like \"0,5\" could be read as ten times the amount; all amount fields now go through one safe parser.\n\n" +
             "332 offline tests pass.",
-            "2026-09-03"),
+            "2026-09-03", "v45"),
         new("4.0", "Version 4.0 — on-chain history, richer token pages, more",
             "A big update:\n\n" +
             "• On-chain transaction history. The Transactions tab now pulls your real history straight from the chain for your own addresses — including transactions from before you first opened the wallet. Covers TRX (native + USDT/TRC-20), Bitcoin, Ethereum and Litecoin, keyless and through Tor/your proxy.\n" +
@@ -1688,7 +1700,8 @@ public partial class MainViewModel : ViewModelBase
         "litecoinspace.org, blockcypher.com, tronscanapi.com";
     public string BalanceDisplayMain => IsBalanceHidden ? "•••••••" : TotalBalanceMain;
     public string BalanceDisplayCents => IsBalanceHidden ? "" : $".{TotalBalanceCents}";
-    public string HideBalanceLabel => IsBalanceHidden ? "Show" : "Hide";
+    public string HideBalanceLabel =>
+        Loc.Instance[IsBalanceHidden ? "common.show" : "common.hide"];
     /// <summary>False while the balance is hidden — used to blank every money figure, not just the total.</summary>
     public bool AreValuesVisible => !IsBalanceHidden;
 
@@ -3451,19 +3464,24 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Compact money in the display currency: 4.6B, 1.5T, 32.4K…</summary>
+    /// <summary>Compact money in the display currency: 4.6B, 1.5T, 32.4K… The magnitude suffix is
+    /// translated — it used to be a hardcoded English letter, so a Ukrainian user read "₴1,36B" where
+    /// the abbreviation for a billion is "млрд".</summary>
     private static string FormatCompactMoney(double usd)
     {
         var v = usd * (double)Fx.Rate;
-        var (num, suffix) = v switch
+        var (num, suffixKey) = v switch
         {
-            >= 1e12 => (v / 1e12, "T"),
-            >= 1e9 => (v / 1e9, "B"),
-            >= 1e6 => (v / 1e6, "M"),
-            >= 1e3 => (v / 1e3, "K"),
+            >= 1e12 => (v / 1e12, "num.trillion"),
+            >= 1e9 => (v / 1e9, "num.billion"),
+            >= 1e6 => (v / 1e6, "num.million"),
+            >= 1e3 => (v / 1e3, "num.thousand"),
             _ => (v, ""),
         };
-        return $"{Fx.Symbol}{num:0.##}{suffix}";
+        var suffix = suffixKey.Length == 0 ? string.Empty : Loc.Instance[suffixKey];
+        // A word-style suffix ("млрд") needs the space an initial ("B") does not.
+        var gap = suffix.Length > 1 ? " " : string.Empty;
+        return $"{Fx.Symbol}{num:0.##}{gap}{suffix}";
     }
 
     /// <summary>

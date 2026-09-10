@@ -460,8 +460,29 @@ public sealed record ActivityRowViewModel(
 }
 
 /// <summary>One entry in the News section: a tagged, dated product note.</summary>
-public sealed record NewsItemViewModel(string Tag, string Title, string Body, string Date)
+/// <summary>
+/// One product-news entry. <paramref name="Key"/> makes an entry translatable: when
+/// <c>news.&lt;key&gt;.title</c> / <c>.body</c> exist in the translation table they are shown, otherwise
+/// the English text passed in is used as-is.
+///
+/// The fallback is deliberate. Release notes are long, and copying English into all six language
+/// tables just to satisfy a lookup would bloat the file without helping anyone — historical entries
+/// stay English until someone translates them, while the current release reads in the user's language.
+/// </summary>
+public sealed record NewsItemViewModel(string Tag, string TitleText, string BodyText, string Date, string? Key = null)
 {
+    public string Title => Translated("title", TitleText);
+    public string Body => Translated("body", BodyText);
+
+    private string Translated(string part, string fallback)
+    {
+        if (string.IsNullOrEmpty(Key)) return fallback;
+        var slug = $"news.{Key}.{part}";
+        var value = Umbrella.Wallet.App.Loc.Instance[slug];
+        // Loc echoes the key back when it has no entry in any language.
+        return value == slug ? fallback : value;
+    }
+
     /// <summary>Tag accent colour, so update/security/guide read at a glance.</summary>
     public string TagColor => Tag switch
     {
