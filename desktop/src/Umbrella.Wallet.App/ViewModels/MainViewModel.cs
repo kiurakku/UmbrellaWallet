@@ -3574,12 +3574,11 @@ public partial class MainViewModel : ViewModelBase
                 .Concat(["USDT", "BNB", "MATIC", "AVAX", "FTM", "CRO"])
                 .Distinct()
                 .ToList();
-            var prices = await _rates.GetUsdPricesAsync(symbols, ct);
-            _priceUsd = prices; // snapshot for the Send fiat estimate
-            OnPropertyChanged(nameof(SendAmountFiat));
-            OnPropertyChanged(nameof(FiatInputAvailable)); // the fiat quick-entry appears once priced
-            OnPropertyChanged(nameof(SendFiatCoinEquiv));
-            NotifyReceiveFiat();                           // same for the Receive screen's USD field
+            // Prices and balances are INDEPENDENT network calls — only the display joins them back up.
+            // Awaiting prices first made every balance wait behind a price round-trip (up to the 20s
+            // client timeout, more over Tor). Started together, the wait is the SLOWER of the two
+            // instead of their sum.
+            var pricesTask = _rates.GetUsdPricesAsync(symbols, ct);
 
             // Fetch every account's balance CONCURRENTLY, then apply on the UI thread. Sequential
             // awaits here were the main reason the total took many seconds to appear after unlock /
@@ -3592,8 +3591,18 @@ public partial class MainViewModel : ViewModelBase
                 .Where(a => a.SupportStatus is "Ready" or "Receive only" && ParseChain(a.Symbol) is not null
                             && a.Symbol is not ("BTC" or "LTC"))
                 .ToList();
-            var balanceResults = await Task.WhenAll(
+            var balancesTask = Task.WhenAll(
                 balanceTargets.Select(a => _balances.GetBalanceAsync(ParseChain(a.Symbol)!.Value, a.Address, ct)));
+
+            await Task.WhenAll(pricesTask, balancesTask);
+            var prices = await pricesTask;
+            var balanceResults = await balancesTask;
+
+            _priceUsd = prices; // snapshot for the Send fiat estimate
+            OnPropertyChanged(nameof(SendAmountFiat));
+            OnPropertyChanged(nameof(FiatInputAvailable)); // the fiat quick-entry appears once priced
+            OnPropertyChanged(nameof(SendFiatCoinEquiv));
+            NotifyReceiveFiat();                           // same for the Receive screen's USD field
 
             for (var k = 0; k < balanceTargets.Count; k++)
             {
@@ -3635,17 +3644,26 @@ public partial class MainViewModel : ViewModelBase
             {
                 await AddEthTokenRowsAsync(ethAccount.Address, "Ready", prices, ct);
                 await AddEvmSideRowsAsync(ethAccount.Address, prices, ct);
-                await RefreshNftsAsync(ethAccount.Address, ct);
             }
 
-            // Watch-only
-            foreach (var watch in WatchAddresses.ToList())
+            // Watch-only. The balance calls run CONCURRENTLY — awaiting them one address at a time made
+            // the wait grow with the number of watched addresses (each up to the 20s client timeout).
+            // Only the network phase is parallel; the rows are still applied one at a time on the UI
+            // thread, so Accounts is never mutated from two places at once.
+            var watchTargets = WatchAddresses.ToList()
+                .Select(w => (Watch: w, Chain: ParseChain(w.Chain)))
+                .Where(x => x.Chain is not null)
+                .ToList();
+            var watchBalances = await Task.WhenAll(
+                watchTargets.Select(x => _balances.GetBalanceAsync(x.Chain!.Value, x.Watch.Address, ct)));
+
+            for (var w = 0; w < watchTargets.Count; w++)
             {
-                var chain = ParseChain(watch.Chain);
-                if (chain is null) continue;
+                var watch = watchTargets[w].Watch;
+                var chain = watchTargets[w].Chain;
                 // Canonical ticker, never the raw user input — see SymbolFor.
-                var nativeSymbol = SymbolFor(chain.Value);
-                var bal = await _balances.GetBalanceAsync(chain.Value, watch.Address, ct);
+                var nativeSymbol = SymbolFor(chain!.Value);
+                var bal = watchBalances[w];
                 var (usd, change) = prices.GetValueOrDefault(nativeSymbol);
                 var existing = Accounts.FirstOrDefault(a =>
                     a.Address.Equals(watch.Address, StringComparison.OrdinalIgnoreCase) &&
@@ -3683,6 +3701,13 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();
             RecalcBalance();
             SaveBalanceCache(); // remember these totals so the next unlock/switch is instant
+
+            // NFTs last, and deliberately AFTER the balance total is final and cached: they are display
+            // detail, not money, so they must never delay the number the user actually came to see.
+            if (ethAccount is not null && IsRealAddress(ethAccount.Address))
+            {
+                await RefreshNftsAsync(ethAccount.Address, ct);
+            }
             // NOTE: deliberately no "Sync" activity entry here. This runs every 60s on a timer, and
             // logging it flooded the Activity feed with identical "Sync · OK" rows. The live status
             // line below already shows the last-updated time; the Activity feed is for real events.

@@ -509,6 +509,11 @@ public partial class MainViewModel
         if (_unlockedMnemonic is null) return;
         var walletId = _registry.Active?.Id ?? "default";
 
+        // BTC and LTC are independent chains behind different explorers, so their scans run CONCURRENTLY —
+        // one after the other meant the user waited for the sum of two full gap-limit walks. Only the
+        // network phase overlaps; results are applied one at a time below, so Accounts and the address
+        // index are never mutated from two places at once.
+        var targets = new List<(string Symbol, WalletAccountViewModel Account, ChainId Chain)>();
         foreach (var symbol in new[] { "BTC", "LTC" })
         {
             var account = Accounts.FirstOrDefault(a =>
@@ -518,6 +523,11 @@ public partial class MainViewModel
             var chain = ParseChain(symbol);
             if (chain is null) continue;
 
+            targets.Add((symbol, account, chain.Value));
+        }
+
+        async Task<UtxoScanResult?> ScanOrNullAsync(string symbol, ChainId chain)
+        {
             try
             {
                 var state = _addrIndex.GetState(walletId, symbol);
@@ -525,33 +535,43 @@ public partial class MainViewModel
                     state.LastIssuedExternalIndex, state.LastSeenUsedExternalIndex,
                     state.LastIssuedInternalIndex, state.LastSeenUsedInternalIndex);
 
-                var scan = await _utxoScanner.ScanAsync(
-                    _unlockedMnemonic!, chain.Value, UtxoExplorerFor(symbol), floors, ct: ct);
-
-                // A partial (network-degraded) scan must not lower a balance we already trust.
-                if (scan.Partial && _utxoScans.ContainsKey(symbol)) continue;
-
-                _utxoScans[symbol] = scan;
-                if (scan.HighestUsedExternalIndex is { } he) _addrIndex.RecordSeenUsed(walletId, symbol, 0, he);
-                if (scan.HighestUsedInternalIndex is { } hi) _addrIndex.RecordSeenUsed(walletId, symbol, 1, hi);
-
-                var amount = scan.TotalSat / 100_000_000m;
-                var (usd, change) = prices.GetValueOrDefault(symbol);
-                var idx = Accounts.IndexOf(account);
-                if (idx >= 0)
-                {
-                    Accounts[idx] = account with
-                    {
-                        Amount = (double)amount,
-                        Price = (double)usd,
-                        Change24h = (double)change,
-                    };
-                }
+                return await _utxoScanner.ScanAsync(
+                    _unlockedMnemonic!, chain, UtxoExplorerFor(symbol), floors, ct: ct);
             }
             catch (OperationCanceledException) { throw; }
             catch
             {
                 // Leave the prior amount in place; the next refresh retries.
+                return null;
+            }
+        }
+
+        var scans = await Task.WhenAll(targets.Select(t => ScanOrNullAsync(t.Symbol, t.Chain)));
+
+        for (var i = 0; i < targets.Count; i++)
+        {
+            var (symbol, account, _) = targets[i];
+            var scan = scans[i];
+            if (scan is null) continue;
+
+            // A partial (network-degraded) scan must not lower a balance we already trust.
+            if (scan.Partial && _utxoScans.ContainsKey(symbol)) continue;
+
+            _utxoScans[symbol] = scan;
+            if (scan.HighestUsedExternalIndex is { } he) _addrIndex.RecordSeenUsed(walletId, symbol, 0, he);
+            if (scan.HighestUsedInternalIndex is { } hi) _addrIndex.RecordSeenUsed(walletId, symbol, 1, hi);
+
+            var amount = scan.TotalSat / 100_000_000m;
+            var (usd, change) = prices.GetValueOrDefault(symbol);
+            var idx = Accounts.IndexOf(account);
+            if (idx >= 0)
+            {
+                Accounts[idx] = account with
+                {
+                    Amount = (double)amount,
+                    Price = (double)usd,
+                    Change24h = (double)change,
+                };
             }
         }
 
