@@ -3507,7 +3507,19 @@
                   BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" Padding="18,0"
                   BoxShadow="0 14 38 -12 #90000000, inset 0 1 0 0 #16FFFFFF">
             <Grid ColumnDefinitions="*,Auto">
-              <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" ClipToBounds="True">
+              <!-- The ticker is wider than its column, so it gets clipped. Without a gap it was cut off
+                   flush against the status block on the right, chopping the last price mid-number and
+                   reading as two overlapping labels. A margin separates the two zones, and the mask
+                   fades the ticker out at its edge so the cut looks deliberate instead of broken. -->
+              <ScrollViewer Grid.Column="0" Margin="0,0,18,0"
+                            HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" ClipToBounds="True">
+                <ScrollViewer.OpacityMask>
+                  <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                    <GradientStop Offset="0.0" Color="#FFFFFFFF"/>
+                    <GradientStop Offset="0.90" Color="#FFFFFFFF"/>
+                    <GradientStop Offset="1.0" Color="#00FFFFFF"/>
+                  </LinearGradientBrush>
+                </ScrollViewer.OpacityMask>
                 <ItemsControl ItemsSource="{Binding Market}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="18"/></ItemsPanelTemplate>
