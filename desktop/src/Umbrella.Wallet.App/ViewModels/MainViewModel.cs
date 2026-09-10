@@ -2072,6 +2072,22 @@ public partial class MainViewModel : ViewModelBase
         SendError = string.Empty;
     }
 
+    /// <summary>Quick amount presets (25% / 50%): a share of the balance, always below the fee-aware Max,
+    /// written into the coin field the user still confirms. Leaves the field untouched if there's nothing
+    /// to send.</summary>
+    [RelayCommand]
+    private void SetAmountPercent(string? percent)
+    {
+        if (SelectedSendAsset is null) return;
+        if (!int.TryParse(percent, NumberStyles.Integer, CultureInfo.InvariantCulture, out var pct)) return;
+        var bal = SelectedSendBalance;
+        if (bal <= 0) { SendError = Loc.Instance["send.nothingToSend"]; return; }
+        var amount = AmountPresets.Of(bal, pct);
+        if (amount.Length == 0) return;
+        SendAmount = amount;
+        SendError = string.Empty;
+    }
+
     partial void OnSelectedWatchNetworkChanged(SendOption? value)
     {
         if (value is not null) WatchChain = value.Symbol;
