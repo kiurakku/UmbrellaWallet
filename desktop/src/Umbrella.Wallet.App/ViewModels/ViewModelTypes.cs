@@ -70,7 +70,11 @@ public sealed record WalletAccountViewModel(
     double Price,
     double Amount,
     string Chain,
-    double Change24h)
+    double Change24h,
+    /// <summary>True when this row is an unsolicited airdrop token rather than an asset the user
+    /// chose to hold — see <see cref="Umbrella.Wallet.Core.Safety.SpamTokenInspector"/>. The row is
+    /// kept, never deleted; Holdings simply folds it away behind a count the user can open.</summary>
+    bool IsSuspectedSpam = false)
 {
     /// <summary>Colour hint for the Receive list so status reads at a glance.</summary>
     public string StatusColor => SupportStatus switch

@@ -105,6 +105,17 @@ public partial class MainViewModel
     private double _chartMin;
     private double _chartMax;
 
+    /// <summary>Bridges the provider's candle type to the pure aggregator in Core and back.</summary>
+    private static IReadOnlyList<PriceCandle> Downsample(IReadOnlyList<PriceCandle> candles)
+    {
+        var thinned = Umbrella.Wallet.Core.Chart.CandleAggregator.Downsample(
+            candles.Select(c => new Umbrella.Wallet.Core.Chart.Ohlc(c.Open, c.High, c.Low, c.Close, c.Volume)).ToList());
+
+        return thinned.Count == candles.Count
+            ? candles // untouched — avoid rebuilding an identical list
+            : thinned.Select(o => new PriceCandle(o.Open, o.High, o.Low, o.Close, o.Volume)).ToList();
+    }
+
     /// <summary>
     /// Turns a price series into a plotted chart: gridlines with price labels, time labels along
     /// the bottom, a stroked line and the filled area beneath it.
@@ -118,6 +129,13 @@ public partial class MainViewModel
         ChartVolumeBars = [];
         ChartHigh = ChartLow = string.Empty;
         CrosshairVisible = false;
+
+        // A 24h window arrives as a few hundred fine-grained candles. Across a ~950px plot each body
+        // came out about two pixels wide, so "Candles" drew a jagged line and the mode looked broken.
+        // Merging adjacent candles is what a longer timeframe IS, so no price is invented or lost —
+        // every source candle still sits inside the bar that represents it.
+        candles = Downsample(candles);
+
         _detailCandles = candles;
         if (candles.Count < 2) return;
 

@@ -761,6 +761,24 @@
                           Classes.active="{Binding HoldingsSort, Converter={StaticResource StringEquals}, ConverterParameter=Name}"/>
                 </StackPanel>
 
+                <!-- Suspected spam airdrops. They are folded away, never deleted, and the count is
+                     always visible — a wallet must not quietly decide that something you hold does not
+                     exist. The warning explains WHY they are hidden, because the name is the attack. -->
+                <Border IsVisible="{Binding HasSpamTokens}" Margin="0,2,0,0"
+                        Background="{DynamicResource UmCardAlt}" BorderBrush="#7A6230" BorderThickness="1"
+                        CornerRadius="10" Padding="12,9">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                      <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding SpamTokenNotice}"/>
+                      <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource UmTextDim}"
+                                 Text="{Binding [spam.warn], Source={x:Static app:Loc.Instance}}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="ghost" MinHeight="0" Padding="10,5" FontSize="11"
+                            VerticalAlignment="Center"
+                            Content="{Binding SpamToggleLabel}" Command="{Binding ToggleSpamTokensCommand}"/>
+                  </Grid>
+                </Border>
+
                 <!-- Holdings as clean rows (no column-header table): coin mark + name/ticker on the left,
                      fiat value over the coin amount on the right, and a tinted 24h pill. The whole row
                      opens that coin's asset page. Rows scroll inside a fixed height so the list never
@@ -2391,12 +2409,12 @@
                                 BorderThickness="1" CornerRadius="12" MinHeight="54" Padding="16,8">
                           <StackPanel Spacing="5">
                           <Grid ColumnDefinitions="96,58,*,Auto,Auto,Auto" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Kind}" Foreground="{Binding KindColor}" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" FontWeight="SemiBold" FontSize="12" Text="{Binding Asset}"
+                            <TextBlock Text="{Binding Kind, Converter={StaticResource ActivityLabel}}" Foreground="{Binding KindColor}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" FontWeight="SemiBold" FontSize="12" Text="{Binding Asset, Converter={StaticResource ActivityLabel}}"
                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                             <TextBlock Grid.Column="2" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
-                                       Text="{Binding Counterparty}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Grid.Column="3" Classes="mono" Text="{Binding Amount}" Foreground="{Binding KindColor}"
+                                       Text="{Binding Counterparty, Converter={StaticResource ActivityLabel}}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Grid.Column="3" Classes="mono" Text="{Binding Amount, Converter={StaticResource ActivityLabel}}" Foreground="{Binding KindColor}"
                                        Margin="12,0" VerticalAlignment="Center"/>
                             <!-- Confirmation-status pill (money movements only) + Retry on a failed send. -->
                             <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6" Margin="0,0,8,0" VerticalAlignment="Center">
@@ -2418,7 +2436,7 @@
                                       ToolTip.Tip="{Binding [notes.add], Source={x:Static app:Loc.Instance}}"
                                       Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).BeginEditNoteCommand}"
                                       CommandParameter="{Binding}"/>
-                              <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11" Text="{Binding When}" VerticalAlignment="Center"/>
+                              <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11" Text="{Binding When, Converter={StaticResource ActivityLabel}}" VerticalAlignment="Center"/>
                               <TextBlock Foreground="{DynamicResource UmAccent}" FontSize="11" Text="↗" IsVisible="{Binding HasLink}" VerticalAlignment="Center"/>
                             </StackPanel>
                           </Grid>
@@ -2553,13 +2571,13 @@
                       <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
                               BorderThickness="1" CornerRadius="12" Padding="16,10" Margin="0,0,0,8">
                         <Grid ColumnDefinitions="96,*,Auto,Auto">
-                          <TextBlock Text="{Binding Kind}" Foreground="{Binding KindColor}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                          <TextBlock Text="{Binding Kind, Converter={StaticResource ActivityLabel}}" Foreground="{Binding KindColor}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
-                                     Text="{Binding Counterparty}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                          <TextBlock Grid.Column="2" Classes="mono" Text="{Binding Amount}" Foreground="{Binding KindColor}"
+                                     Text="{Binding Counterparty, Converter={StaticResource ActivityLabel}}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                          <TextBlock Grid.Column="2" Classes="mono" Text="{Binding Amount, Converter={StaticResource ActivityLabel}}" Foreground="{Binding KindColor}"
                                      Margin="12,0" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="3" Foreground="{DynamicResource UmTextDim}" FontSize="11"
-                                     Text="{Binding When}" VerticalAlignment="Center"/>
+                                     Text="{Binding When, Converter={StaticResource ActivityLabel}}" VerticalAlignment="Center"/>
                         </Grid>
                       </Border>
                     </DataTemplate>

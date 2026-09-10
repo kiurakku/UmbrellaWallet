@@ -56,6 +56,37 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _portfolioBestColor = "#8A9099";
     [ObservableProperty] private string _searchQuery = string.Empty;
     [ObservableProperty] private string _chainFilter = "All";
+
+    // --- Suspected spam airdrops (scam control) ------------------------------------------------
+    /// <summary>How many rows the spam heuristic flagged, shown even when they are folded away so the
+    /// user always knows something was hidden from them.</summary>
+    [ObservableProperty] private int _spamTokenCount;
+    /// <summary>False by default: flagged rows are folded away until the user asks to see them.</summary>
+    [ObservableProperty] private bool _showSpamTokens;
+
+    public bool HasSpamTokens => SpamTokenCount > 0;
+
+    /// <summary>"3 suspected spam tokens hidden" / "…shown" — the count is never silent.</summary>
+    public string SpamTokenNotice =>
+        $"{SpamTokenCount} {Loc.Instance[ShowSpamTokens ? "spam.shown" : "spam.hidden"]}";
+
+    public string SpamToggleLabel => Loc.Instance[ShowSpamTokens ? "spam.hide" : "spam.show"];
+
+    partial void OnSpamTokenCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasSpamTokens));
+        OnPropertyChanged(nameof(SpamTokenNotice));
+    }
+
+    partial void OnShowSpamTokensChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SpamTokenNotice));
+        OnPropertyChanged(nameof(SpamToggleLabel));
+        RefreshHoldings();
+    }
+
+    [RelayCommand]
+    private void ToggleSpamTokens() => ShowSpamTokens = !ShowSpamTokens;
     /// <summary>How the Holdings list is ordered: "Default" (catalog), "Value", "Change" or "Name".</summary>
     [ObservableProperty] private string _holdingsSort = "Default";
     [ObservableProperty] private string _walletLabel = "Umbrella Wallet";
@@ -3813,9 +3844,17 @@ public partial class MainViewModel : ViewModelBase
             var usd = prices.TryGetValue(tok.Symbol, out var pr)
                 ? (double)pr.Usd
                 : tok.Symbol is "USDT" or "USDC" or "DAI" or "TUSD" or "USDD" ? 1.0 : 0.0;
+
+            // Unsolicited airdrop tokens arrive in every TRON/Ethereum account and their NAME is the
+            // attack — a lure to a site that asks for a seed phrase. Flag them so Holdings can fold
+            // them away; a priced token is never flagged, so this can't hide a real asset.
+            var spam = Umbrella.Wallet.Core.Safety.SpamTokenInspector
+                .Inspect(tok.Name, tok.Symbol, hasMarketPrice: usd > 0);
+
             Accounts.Add(new WalletAccountViewModel(
                 tok.Symbol, $"{tok.Name} · {suffix}", status,
-                address, marker, usd, (double)tok.Amount, chain, 0));
+                address, marker, usd, (double)tok.Amount, chain, 0,
+                IsSuspectedSpam: spam.IsSuspected));
         }
     }
 
@@ -4613,6 +4652,13 @@ public partial class MainViewModel : ViewModelBase
     {
         Holdings.Clear();
         var rows = Accounts.Where(a => a.SupportStatus is "Ready" or "Watch" or "Exchange" or "Receive only");
+
+        // Unsolicited airdrop tokens are folded away by default. They are never removed — the count
+        // below is always shown and one click brings them back — because a wallet must not decide on
+        // its own that something you hold does not exist.
+        SpamTokenCount = Accounts.Count(a => a.IsSuspectedSpam);
+        if (!ShowSpamTokens) rows = rows.Where(a => !a.IsSuspectedSpam);
+
         if (!string.Equals(ChainFilter, "All", StringComparison.OrdinalIgnoreCase))
         {
             rows = rows.Where(a =>
