@@ -146,6 +146,10 @@ public sealed record SecurityCheckVm(
     string ActionLabel = "",
     string ActionTarget = "");
 
+/// <summary>One row of the Send review's Privacy Radar: a glyph, a short title, the plain-language
+/// explanation, and an accent colour (green for a strength, amber/red for a leak).</summary>
+public sealed record SendPrivacyFindingVm(string Glyph, string Title, string Detail, string Color);
+
 /// <summary>One row in the Ctrl+K command palette: a glyph, a label, a hint, and a target the
 /// view model resolves (a section name, "lock", or "coin:SYMBOL").</summary>
 /// <summary>
