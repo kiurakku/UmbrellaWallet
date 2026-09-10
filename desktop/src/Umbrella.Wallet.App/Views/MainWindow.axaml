@@ -698,6 +698,22 @@
                   </Border>
                 </Grid>
 
+                <!-- Sort the holdings: biggest value, best 24h mover, or by ticker. Clicking the active
+                     chip returns the list to its catalog order. -->
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="2,2,0,0">
+                  <TextBlock Classes="eyebrow" VerticalAlignment="Center" Margin="0,0,4,0"
+                             Text="{Binding [sort.label], Source={x:Static app:Loc.Instance}}"/>
+                  <Button Classes="chip" Content="{Binding [sort.value], Source={x:Static app:Loc.Instance}}"
+                          Command="{Binding SetHoldingsSortCommand}" CommandParameter="Value"
+                          Classes.active="{Binding HoldingsSort, Converter={StaticResource StringEquals}, ConverterParameter=Value}"/>
+                  <Button Classes="chip" Content="{Binding [sort.change], Source={x:Static app:Loc.Instance}}"
+                          Command="{Binding SetHoldingsSortCommand}" CommandParameter="Change"
+                          Classes.active="{Binding HoldingsSort, Converter={StaticResource StringEquals}, ConverterParameter=Change}"/>
+                  <Button Classes="chip" Content="{Binding [sort.name], Source={x:Static app:Loc.Instance}}"
+                          Command="{Binding SetHoldingsSortCommand}" CommandParameter="Name"
+                          Classes.active="{Binding HoldingsSort, Converter={StaticResource StringEquals}, ConverterParameter=Name}"/>
+                </StackPanel>
+
                 <!-- Holdings as clean rows (no column-header table): coin mark + name/ticker on the left,
                      fiat value over the coin amount on the right, and a tinted 24h pill. The whole row
                      opens that coin's asset page. Rows scroll inside a fixed height so the list never
