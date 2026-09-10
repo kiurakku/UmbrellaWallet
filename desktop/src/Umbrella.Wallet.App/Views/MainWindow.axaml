@@ -3206,6 +3206,20 @@
                   </StackPanel>
                 </Border>
 
+                <!-- Address checker: paste any address to see which network it is for and whether it is
+                     well-formed. Local and read-only — a "verify, don't trust" convenience. -->
+                <Border Classes="card" IsVisible="{Binding IsTabPrivacy}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="{Binding [addrchk.title], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="{Binding [addrchk.hint], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBox Text="{Binding AddrCheckInput}" TextWrapping="Wrap"
+                             Watermark="{Binding [addrchk.placeholder], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock IsVisible="{Binding HasAddrCheck}" Text="{Binding AddrCheckResult}"
+                               Foreground="{Binding AddrCheckColor}" FontWeight="SemiBold" FontSize="12.5" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
+
                 <!-- Documentation -->
                 <Border Classes="card" IsVisible="{Binding IsTabGuide}">
                   <StackPanel Spacing="10">
