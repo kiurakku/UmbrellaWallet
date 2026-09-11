@@ -42,6 +42,11 @@ public sealed class UiSettings
     public string CustomProxyUri { get; set; } = "";
     /// <summary>IP family for direct connections: "auto", "ipv4" or "ipv6".</summary>
     public string IpMode { get; set; } = "auto";
+
+    /// <summary>The Monero remote node this wallet asks about the chain, as host:port. Empty means
+    /// the catalog default. It is a node address only - never a credential - so it is stored in the
+    /// plain settings file like every other preference.</summary>
+    public string MoneroNode { get; set; } = "";
     /// <summary>Seconds after which a copied address is auto-wiped from the clipboard; 0 = never.</summary>
     public int ClipboardAutoClearSeconds { get; set; } = 45;
     /// <summary>Lock the vault immediately whenever the window is minimized, so a shoulder-surfer or

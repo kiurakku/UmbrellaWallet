@@ -150,7 +150,11 @@ public partial class MainViewModel : ViewModelBase
     /// would see your IP, linking it to the transaction.</summary>
     public bool ShowSendClearnetNote => !TorEnabled && !TorOnly;
 
-    partial void OnTorEnabledChanged(bool value) => OnPropertyChanged(nameof(ShowSendClearnetNote));
+    partial void OnTorEnabledChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowSendClearnetNote));
+        RefreshMoneroNodeStatus();   // an .onion node becomes usable (or not) with Tor
+    }
 
     // In-app documentation panel toggle.
     [ObservableProperty] private bool _isDocsVisible;
@@ -206,6 +210,7 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();     // re-render money labels (Fx.Money/Price) in the new locale
             RecalcBalance();
             BuildGuide(); // the guide reads in the wallet's language
+            RefreshMoneroNodeStatus(); // its wording is prose, not a code
             if (IsUnlocked)
                 PushActivity("Settings", "Language",
                     Loc.Languages.FirstOrDefault(l => l.Code == value)?.Name ?? value, "changed", "now");
@@ -481,6 +486,7 @@ public partial class MainViewModel : ViewModelBase
                 value ? "clearnet blocked" : "clearnet allowed", "now");
             // Turning it on with Tor still off means everything is blocked until Tor connects — nudge.
             if (value && !TorEnabled) TorEnabled = true;
+            RefreshMoneroNodeStatus();
             _ = RefreshMarketAsync();
         }
     }
@@ -1210,6 +1216,9 @@ public partial class MainViewModel : ViewModelBase
         // Tor-only kill-switch first: if it was left on, clearnet stays blocked until Tor connects, so
         // no startup request can leak before the proxy is up.
         PublicHttp.SetRequireProxy(_uiSettings.TorOnlyMode);
+        // Which machine Monero asks about the chain. Read before anything can start the daemon.
+        _monero.NodeAddress = ActiveMoneroNode;
+        LoadMoneroNodeChoice();
         if (EffectiveCustomProxy() is { } startupProxy)
         {
             PublicHttp.SetProxy(startupProxy);
@@ -2632,6 +2641,9 @@ public partial class MainViewModel : ViewModelBase
         var filePassword = Convert.ToHexString(
             System.Security.Cryptography.SHA256.HashData(
                 System.Text.Encoding.UTF8.GetBytes("umbrella-monero-file:" + wallet.SecretViewKeyHex)))[..32];
+
+        // Re-read rather than trusting a field set long ago: the user may have changed the node since.
+        _monero.NodeAddress = ActiveMoneroNode;
 
         var (ok, message) = await _monero.StartAsync(
             wallet.Address, wallet.SecretSpendKeyHex, wallet.SecretViewKeyHex, filePassword, progress);

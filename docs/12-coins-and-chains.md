@@ -251,6 +251,31 @@ Every transaction hides:
 
 No one, not even blockchain analysis companies, can see your balance or transactions without your ViewKey. This is why Monero is used by privacy-conscious individuals worldwide.
 
+**The part most wallets do not tell you: the node.**
+
+A Monero wallet cannot read the chain by itself — it has to ask some machine, and unless you run
+your own, that machine belongs to somebody else. Umbrella used to pick one for you silently. It no
+longer does: **Settings → Privacy → Monero node** shows exactly which machine is being asked, lets
+you choose a different one, and lets you point at your own.
+
+What the node can see:
+
+- The IP that connected to it — an exit node instead of your home address when Tor is on
+- That the IP belongs to a Monero wallet
+- Roughly which range of blocks that wallet asked for
+- When you are online
+- When you send, that this connection is where the transaction entered the network
+
+What the node cannot see:
+
+- Your keys — they never leave your machine
+- Your balance, your addresses, or the amounts — Monero encrypts those on the chain itself
+
+A `.onion` node can be pasted into the custom field and will **only** ever be used with Tor on; with
+Tor off it cannot resolve at all, and the wallet says so rather than falling back to somebody else.
+Likewise, if the Tor-only kill-switch is armed and Tor is down, no node is used at all — connecting
+to a clearnet node in that state would hand out the very IP the kill-switch exists to hide.
+
 ### 🟡 Bitcoin with Tor — medium privacy
 Bitcoin is a public ledger — every transaction is visible. However:
 - Umbrella routes Bitcoin queries through Tor → your IP is not linked to your address
@@ -296,6 +321,10 @@ Your coins are safe. They live on the blockchain, not in any app. Import your 24
 
 ### "My Monero balance is 0 but I know I received XMR"
 Monero requires scanning the blockchain with your ViewKey to find incoming transactions. Make sure the bundled monero-wallet-rpc is running (you'll see a status indicator in the app). Initial sync can take 10-60 minutes depending on how many blocks need scanning.
+
+If it never starts scanning at all, check the node under **Settings → Privacy → Monero node** — the
+status line there names the machine actually being asked, and says plainly when none is being used
+(a `.onion` node with Tor off, or any node while the Tor-only kill-switch is armed and Tor is down).
 
 ---
 

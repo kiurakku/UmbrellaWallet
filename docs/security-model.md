@@ -95,6 +95,32 @@ than the others.
 The Monero **spend key** is as sensitive as your seed phrase. Settings → Monero → Reveal keys is
 capture-protected for the same reason the seed screen is.
 
+### The remote node
+
+A Monero wallet cannot read the chain on its own — it asks a node, and unless you run one, that node
+is somebody else's machine. This is the most consequential setting on Monero and the easiest one for
+a wallet to make silently. Umbrella did exactly that until this was added; now **Settings → Privacy →
+Monero node** names the machine being asked, offers alternatives, and takes a custom `host:port`
+including a `.onion`.
+
+What the node observes: the connecting IP (an exit node when Tor is on), that it belongs to a Monero
+wallet, roughly which block range it requested, when it is online, and which connection a submitted
+transaction entered the network through.
+
+What it does not observe: the keys, the balance, the addresses, or the amounts. Those stay local, and
+Monero encrypts amounts on the chain itself.
+
+Two refusals are enforced rather than warned about, both fail-closed:
+
+- A `.onion` node with Tor off is **not** attempted, and is **not** silently swapped for a clearnet
+  one. Substituting a different operator behind the user's back is the behaviour this feature exists
+  to end.
+- Any node while the Tor-only kill-switch is armed and Tor is down is refused outright, because
+  connecting would hand out the exact IP the kill-switch exists to hide.
+
+`MoneroNodeTests` pins both refusals, along with the address parser — a mistyped node is not merely a
+wallet that never syncs, it is a stranger answering for the chain.
+
 ## What this does not protect you from
 
 Being direct about this is the point.
