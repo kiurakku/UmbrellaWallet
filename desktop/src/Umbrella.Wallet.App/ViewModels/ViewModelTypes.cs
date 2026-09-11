@@ -70,7 +70,11 @@ public sealed record WalletAccountViewModel(
     double Price,
     double Amount,
     string Chain,
-    double Change24h)
+    double Change24h,
+    /// <summary>True when this row is an unsolicited airdrop token rather than an asset the user
+    /// chose to hold — see <see cref="Umbrella.Wallet.Core.Safety.SpamTokenInspector"/>. The row is
+    /// kept, never deleted; Holdings simply folds it away behind a count the user can open.</summary>
+    bool IsSuspectedSpam = false)
 {
     /// <summary>Colour hint for the Receive list so status reads at a glance.</summary>
     public string StatusColor => SupportStatus switch
@@ -106,20 +110,19 @@ public sealed record WalletAccountViewModel(
 /// </summary>
 public static class CoinNetworks
 {
-    public static string For(string symbol, string fallback) => symbol.ToUpperInvariant() switch
+    /// <summary>
+    /// The network line under a coin, translated. It sits on the Receive screen, where sending on the
+    /// wrong network is the most common way people lose funds — so it has to be readable in the
+    /// user's own language. The chain names and the standards (BIP84, ERC-20, TRC-20, SPL) stay as
+    /// they are: those are identifiers the user matches against an exchange’s withdrawal screen.
+    /// </summary>
+    public static string For(string symbol, string fallback)
     {
-        "BTC" => "Bitcoin network · BIP84 native SegWit",
-        "ETH" => "Ethereum network (ERC-20 compatible)",
-        "LTC" => "Litecoin network · BIP84 native SegWit",
-        "DOGE" => "Dogecoin network",
-        "TRX" => "TRON network (TRC-20 compatible)",
-        "SOL" => "Solana network (SPL compatible)",
-        "USDT" => "TRC-20 · Tether on the TRON network",
-        "XMR" => "Monero network · private by default",
-        "TON" => "TON network",
-        "ADA" => "Cardano network",
-        _ => fallback,
-    };
+        var key = "net." + symbol.ToUpperInvariant();
+        var value = Umbrella.Wallet.App.Loc.Instance[key];
+        // Loc echoes the key back when nothing matches — the "coin we have no line for" case.
+        return value == key ? fallback : value;
+    }
 }
 
 /// <summary>One candlestick, pre-computed to pixel coordinates: the container sits at (ItemX,ItemY)
@@ -145,6 +148,10 @@ public sealed record SecurityCheckVm(
     bool IsGood,
     string ActionLabel = "",
     string ActionTarget = "");
+
+/// <summary>One row of the Send review's Privacy Radar: a glyph, a short title, the plain-language
+/// explanation, and an accent colour (green for a strength, amber/red for a leak).</summary>
+public sealed record SendPrivacyFindingVm(string Glyph, string Title, string Detail, string Color);
 
 /// <summary>One row in the Ctrl+K command palette: a glyph, a label, a hint, and a target the
 /// view model resolves (a section name, "lock", or "coin:SYMBOL").</summary>
@@ -395,8 +402,16 @@ public sealed record ActivityRowViewModel(
     long UnixMs = 0,
     string? RetryTo = null,
     string? RetryAmount = null,
-    string? RetryChain = null)
+    string? RetryChain = null,
+    string? TxId = null,
+    string? Note = null)
 {
+    /// <summary>This row is a real on-chain transaction the user can attach a private note to.</summary>
+    public bool CanHaveNote => !string.IsNullOrWhiteSpace(TxId) && IsTransaction;
+
+    /// <summary>A private note has been saved for this transaction.</summary>
+    public bool HasNote => !string.IsNullOrWhiteSpace(Note);
+
     /// <summary>A block-explorer link exists, so the row is actionable (copy the URL).</summary>
     public bool HasLink => !string.IsNullOrWhiteSpace(Explorer);
 
@@ -448,8 +463,29 @@ public sealed record ActivityRowViewModel(
 }
 
 /// <summary>One entry in the News section: a tagged, dated product note.</summary>
-public sealed record NewsItemViewModel(string Tag, string Title, string Body, string Date)
+/// <summary>
+/// One product-news entry. <paramref name="Key"/> makes an entry translatable: when
+/// <c>news.&lt;key&gt;.title</c> / <c>.body</c> exist in the translation table they are shown, otherwise
+/// the English text passed in is used as-is.
+///
+/// The fallback is deliberate. Release notes are long, and copying English into all six language
+/// tables just to satisfy a lookup would bloat the file without helping anyone — historical entries
+/// stay English until someone translates them, while the current release reads in the user's language.
+/// </summary>
+public sealed record NewsItemViewModel(string Tag, string TitleText, string BodyText, string Date, string? Key = null)
 {
+    public string Title => Translated("title", TitleText);
+    public string Body => Translated("body", BodyText);
+
+    private string Translated(string part, string fallback)
+    {
+        if (string.IsNullOrEmpty(Key)) return fallback;
+        var slug = $"news.{Key}.{part}";
+        var value = Umbrella.Wallet.App.Loc.Instance[slug];
+        // Loc echoes the key back when it has no entry in any language.
+        return value == slug ? fallback : value;
+    }
+
     /// <summary>Tag accent colour, so update/security/guide read at a glance.</summary>
     public string TagColor => Tag switch
     {

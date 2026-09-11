@@ -54,6 +54,49 @@ public partial class MainViewModel
 
     private static bool IsUtxoSendChain(string s) => s is "BTC" or "LTC" or "DOGE";
 
+    // ---- Fee level (network speed) ----------------------------------------------------------------
+    // A slow/standard/fast selector for the UTXO chains (BTC/LTC/DOGE/BCH). Standard is exactly the
+    // economical rate the wallet has always used, so an untouched selector never changes the fee. Only
+    // the sat/vB handed to PlanSpend changes — the signing/broadcast path is completely unaffected, and
+    // every level stays inside the chain's safe fee band (never below the relay floor). See FeeLevels.
+
+    /// <summary>True only while the send picker is on a UTXO chain — drives the fee selector's visibility.</summary>
+    [ObservableProperty] private bool _feeLevelAvailable;
+
+    /// <summary>0 = Economy, 1 = Standard, 2 = Priority. Standard by default, which equals today's fee.</summary>
+    [ObservableProperty] private int _feeLevelIndex = 1;
+
+    private static bool IsUtxoFeeChain(string s) => s is "BTC" or "LTC" or "DOGE" or "BCH";
+
+    private FeeLevel SelectedFeeLevel => FeeLevelIndex switch
+    {
+        0 => FeeLevel.Economy,
+        2 => FeeLevel.Priority,
+        _ => FeeLevel.Standard,
+    };
+
+    /// <summary>Which fee tier is selected — for the segmented selector's checked state.</summary>
+    public bool IsFeeEconomy => FeeLevelIndex == 0;
+    public bool IsFeeStandard => FeeLevelIndex == 1;
+    public bool IsFeePriority => FeeLevelIndex == 2;
+
+    /// <summary>Sets the fee tier from the segmented selector ("0"/"1"/"2").</summary>
+    [RelayCommand]
+    private void SetFeeLevel(string? index)
+    {
+        if (int.TryParse(index, out var i) && i is >= 0 and <= 2) FeeLevelIndex = i;
+    }
+
+    partial void OnFeeLevelIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsFeeEconomy));
+        OnPropertyChanged(nameof(IsFeeStandard));
+        OnPropertyChanged(nameof(IsFeePriority));
+        // Re-quote only when a quote is already on screen, so touching the selector before Review just
+        // sets the level for the next quote (and never fires a "fill in the fields" error on its own).
+        if (HasSendQuote) _ = PrepareSendAsync();
+    }
+
     partial void OnCoinControlOnChanged(bool value)
     {
         if (value) _ = LoadCoinControlAsync();
@@ -71,7 +114,9 @@ public partial class MainViewModel
     /// <summary>Reset coin control whenever the send asset changes (called from the picker hook).</summary>
     private void ResetCoinControl()
     {
-        CoinControlAvailable = IsUtxoSendChain(SendChain.Trim().ToUpperInvariant());
+        var sym = SendChain.Trim().ToUpperInvariant();
+        CoinControlAvailable = IsUtxoSendChain(sym);
+        FeeLevelAvailable = IsUtxoFeeChain(sym);
         if (CoinControlOn) CoinControlOn = false; // OnCoinControlOnChanged clears the list
         else ClearCoinControl();
     }
@@ -175,6 +220,7 @@ public partial class MainViewModel
         SendError = string.Empty;
         SendSuccess = string.Empty;
         HasSendQuote = false;
+        HasSendPrivacy = false;
         _sendQuote = null;
         _tonQuote = null;
 
@@ -256,7 +302,7 @@ public partial class MainViewModel
                 ? $"Network fee is set by Monero at broadcast · service fee {_devFee.FeePercent:0.##}% ≈ " +
                   $"{Fmt(_moneroFeeAmount)} XMR to the developer (same transaction)."
                 : "Fee is set by the Monero network at broadcast (priority: normal).";
-            StatusMessage = "Review the transfer, then confirm to broadcast";
+            StatusMessage = Loc.Instance["status.reviewTransfer"];
             return;
         }
 
@@ -273,7 +319,7 @@ public partial class MainViewModel
             _sendSymbol = symbol;
             await RunBusyAsync(async () =>
             {
-                StatusMessage = "Building the TRON transaction…";
+                StatusMessage = Loc.Instance["status.buildingTron"];
                 var (quote, error) = await _tronSender.PrepareAsync(
                     symbol, tronAccount.Address, SendTo.Trim(), amount);
                 if (quote is null) { SendError = error ?? Loc.Instance["send.errPrepareFailed"]; return; }
@@ -284,7 +330,7 @@ public partial class MainViewModel
                 SendQuoteFee = symbol == "USDT"
                     ? "USDT moves on the TRON network — the fee is paid in TRX (energy/bandwidth). Keep a little TRX on this address."
                     : "Fee is paid in TRX bandwidth.";
-                StatusMessage = "Review the transfer, then confirm to broadcast";
+                StatusMessage = Loc.Instance["status.reviewTransfer"];
             });
             return;
         }
@@ -312,7 +358,7 @@ public partial class MainViewModel
         _sendSymbol = chain;
         await RunBusyAsync(async () =>
         {
-            StatusMessage = "Fetching balance and network fees…";
+            StatusMessage = Loc.Instance["status.fetchingFees"];
             switch (chain)
             {
                 case "ETH":
@@ -384,7 +430,8 @@ public partial class MainViewModel
 
                     var devFee = _devFee.QuoteFee(chain, amount);
                     var (quote, plan, request, error) = await _btcSender.PrepareHdAsync(
-                        chain, spendable, from.Address, SendTo.Trim(), amount, devFee?.Address, devFee?.Amount ?? 0m);
+                        chain, spendable, from.Address, SendTo.Trim(), amount, devFee?.Address, devFee?.Amount ?? 0m,
+                        feeLevel: SelectedFeeLevel);
                     if (quote is null || plan is null || request is null)
                     {
                         SendError = error ?? Loc.Instance["send.errPrepareFailed"]; return;
@@ -402,6 +449,9 @@ public partial class MainViewModel
                         : $"Network fee ≈ {Fmt(quote.FeeAmount)} {chain} · {quote.InputCount} input(s) · change returns to a fresh internal address";
                     if (CoinControlOn && _coinControlChain == chain)
                         SendQuoteFee += $" · coin control: funded from {plan.Inputs.Count} of your selected coin(s)";
+
+                    // Privacy Radar (local): the plan's inputs are the addresses this spend links on-chain.
+                    ApplySendPrivacy(plan.Inputs.Select(i => i.Address));
                     break;
                 }
 
@@ -444,7 +494,7 @@ public partial class MainViewModel
             }
 
             HasSendQuote = true;
-            StatusMessage = "Review the transfer, then confirm to broadcast";
+            StatusMessage = Loc.Instance["status.reviewTransfer"];
         });
     }
 
@@ -459,6 +509,11 @@ public partial class MainViewModel
         if (_unlockedMnemonic is null) return;
         var walletId = _registry.Active?.Id ?? "default";
 
+        // BTC and LTC are independent chains behind different explorers, so their scans run CONCURRENTLY —
+        // one after the other meant the user waited for the sum of two full gap-limit walks. Only the
+        // network phase overlaps; results are applied one at a time below, so Accounts and the address
+        // index are never mutated from two places at once.
+        var targets = new List<(string Symbol, WalletAccountViewModel Account, ChainId Chain)>();
         foreach (var symbol in new[] { "BTC", "LTC" })
         {
             var account = Accounts.FirstOrDefault(a =>
@@ -468,6 +523,11 @@ public partial class MainViewModel
             var chain = ParseChain(symbol);
             if (chain is null) continue;
 
+            targets.Add((symbol, account, chain.Value));
+        }
+
+        async Task<UtxoScanResult?> ScanOrNullAsync(string symbol, ChainId chain)
+        {
             try
             {
                 var state = _addrIndex.GetState(walletId, symbol);
@@ -475,33 +535,43 @@ public partial class MainViewModel
                     state.LastIssuedExternalIndex, state.LastSeenUsedExternalIndex,
                     state.LastIssuedInternalIndex, state.LastSeenUsedInternalIndex);
 
-                var scan = await _utxoScanner.ScanAsync(
-                    _unlockedMnemonic!, chain.Value, UtxoExplorerFor(symbol), floors, ct: ct);
-
-                // A partial (network-degraded) scan must not lower a balance we already trust.
-                if (scan.Partial && _utxoScans.ContainsKey(symbol)) continue;
-
-                _utxoScans[symbol] = scan;
-                if (scan.HighestUsedExternalIndex is { } he) _addrIndex.RecordSeenUsed(walletId, symbol, 0, he);
-                if (scan.HighestUsedInternalIndex is { } hi) _addrIndex.RecordSeenUsed(walletId, symbol, 1, hi);
-
-                var amount = scan.TotalSat / 100_000_000m;
-                var (usd, change) = prices.GetValueOrDefault(symbol);
-                var idx = Accounts.IndexOf(account);
-                if (idx >= 0)
-                {
-                    Accounts[idx] = account with
-                    {
-                        Amount = (double)amount,
-                        Price = (double)usd,
-                        Change24h = (double)change,
-                    };
-                }
+                return await _utxoScanner.ScanAsync(
+                    _unlockedMnemonic!, chain, UtxoExplorerFor(symbol), floors, ct: ct);
             }
             catch (OperationCanceledException) { throw; }
             catch
             {
                 // Leave the prior amount in place; the next refresh retries.
+                return null;
+            }
+        }
+
+        var scans = await Task.WhenAll(targets.Select(t => ScanOrNullAsync(t.Symbol, t.Chain)));
+
+        for (var i = 0; i < targets.Count; i++)
+        {
+            var (symbol, account, _) = targets[i];
+            var scan = scans[i];
+            if (scan is null) continue;
+
+            // A partial (network-degraded) scan must not lower a balance we already trust.
+            if (scan.Partial && _utxoScans.ContainsKey(symbol)) continue;
+
+            _utxoScans[symbol] = scan;
+            if (scan.HighestUsedExternalIndex is { } he) _addrIndex.RecordSeenUsed(walletId, symbol, 0, he);
+            if (scan.HighestUsedInternalIndex is { } hi) _addrIndex.RecordSeenUsed(walletId, symbol, 1, hi);
+
+            var amount = scan.TotalSat / 100_000_000m;
+            var (usd, change) = prices.GetValueOrDefault(symbol);
+            var idx = Accounts.IndexOf(account);
+            if (idx >= 0)
+            {
+                Accounts[idx] = account with
+                {
+                    Amount = (double)amount,
+                    Price = (double)usd,
+                    Change24h = (double)change,
+                };
             }
         }
 
@@ -529,7 +599,7 @@ public partial class MainViewModel
 
         await RunBusyAsync(async () =>
         {
-            StatusMessage = "Signing locally and broadcasting…";
+            StatusMessage = Loc.Instance["status.signingBroadcast"];
             switch (_sendSymbol)
             {
                 case "ETH" or "BNB" or "MATIC" or "AVAX" or "FTM" or "CRO"
@@ -682,7 +752,7 @@ public partial class MainViewModel
             SendTo = string.Empty;
             SendAmount = string.Empty;
             SendSuccess = $"Broadcast ✓  {reference}\nTrack it: {explorer}";
-            StatusMessage = "Transaction broadcast · it will confirm shortly";
+            StatusMessage = Loc.Instance["status.txBroadcast"];
             var link = string.IsNullOrWhiteSpace(explorer) ? null
                 : explorer.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? explorer : $"https://{explorer}";
             // Just broadcast, not yet mined — mark it Pending so the feed is honest until it confirms.
@@ -692,7 +762,7 @@ public partial class MainViewModel
         else
         {
             SendError = error ?? Loc.Instance["send.errBroadcast"];
-            StatusMessage = "Broadcast failed — nothing was sent";
+            StatusMessage = Loc.Instance["status.broadcastFailed"];
             // A failed broadcast never left this device, so record it as retryable (full destination and
             // amount kept in retry context, not shown, so Retry can safely re-open a pre-filled send).
             PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", null, "Failed",
@@ -716,6 +786,6 @@ public partial class MainViewModel
     {
         ClearSendQuotes();
         SendError = string.Empty;
-        StatusMessage = "Transfer cancelled — nothing was signed";
+        StatusMessage = Loc.Instance["status.transferCancelled"];
     }
 }

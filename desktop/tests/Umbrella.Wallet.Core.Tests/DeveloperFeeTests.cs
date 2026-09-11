@@ -3,7 +3,9 @@ using Umbrella.Wallet.Infrastructure;
 namespace Umbrella.Wallet.Core.Tests;
 
 /// <summary>
-/// Pins the baked platform-fee configuration. The recipient address is obfuscated in the binary,
+/// Pins the baked platform-fee configuration. The fee itself is OFF (see NoPlatformFeeTests); these
+/// still check the obfuscated recipient addresses decode correctly, so the blobs cannot rot while the
+/// feature is dormant. The recipient address is obfuscated in the binary,
 /// so this asserts it de-obfuscates to exactly the intended Solana address — a wrong blob would
 /// silently send fees to the wrong (or an unspendable) address.
 /// </summary>
@@ -30,16 +32,14 @@ public sealed class DeveloperFeeTests
     }
 
     [Fact]
-    public void Fee_is_half_a_percent_and_quotes_on_sol()
+    public void The_fee_is_switched_off_so_nothing_is_quoted_even_where_an_address_exists()
     {
+        // Solana has a baked address AND is a routed chain, so it is the case most likely to still
+        // charge if the rate were ever put back. It must quote nothing.
         var cfg = DeveloperFeeConfig.Load();
-        Assert.Equal(50, cfg.EffectiveBps);
-        Assert.Equal(0.5m, cfg.FeePercent);
-
-        var quote = cfg.QuoteFee("SOL", 10m);
-        Assert.NotNull(quote);
-        Assert.Equal(SolFeeAddress, quote!.Value.Address);
-        Assert.Equal(0.05m, quote.Value.Amount); // 0.5% of 10
+        Assert.Equal(0, cfg.EffectiveBps);
+        Assert.Equal(0m, cfg.FeePercent);
+        Assert.Null(cfg.QuoteFee("SOL", 10m));
     }
 
     [Fact]

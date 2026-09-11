@@ -56,6 +56,39 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _portfolioBestColor = "#8A9099";
     [ObservableProperty] private string _searchQuery = string.Empty;
     [ObservableProperty] private string _chainFilter = "All";
+
+    // --- Suspected spam airdrops (scam control) ------------------------------------------------
+    /// <summary>How many rows the spam heuristic flagged, shown even when they are folded away so the
+    /// user always knows something was hidden from them.</summary>
+    [ObservableProperty] private int _spamTokenCount;
+    /// <summary>False by default: flagged rows are folded away until the user asks to see them.</summary>
+    [ObservableProperty] private bool _showSpamTokens;
+
+    public bool HasSpamTokens => SpamTokenCount > 0;
+
+    /// <summary>"3 suspected spam tokens hidden" / "…shown" — the count is never silent.</summary>
+    public string SpamTokenNotice =>
+        $"{SpamTokenCount} {Loc.Instance[ShowSpamTokens ? "spam.shown" : "spam.hidden"]}";
+
+    public string SpamToggleLabel => Loc.Instance[ShowSpamTokens ? "spam.hide" : "spam.show"];
+
+    partial void OnSpamTokenCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasSpamTokens));
+        OnPropertyChanged(nameof(SpamTokenNotice));
+    }
+
+    partial void OnShowSpamTokensChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SpamTokenNotice));
+        OnPropertyChanged(nameof(SpamToggleLabel));
+        RefreshHoldings();
+    }
+
+    [RelayCommand]
+    private void ToggleSpamTokens() => ShowSpamTokens = !ShowSpamTokens;
+    /// <summary>How the Holdings list is ordered: "Default" (catalog), "Value", "Change" or "Name".</summary>
+    [ObservableProperty] private string _holdingsSort = "Default";
     [ObservableProperty] private string _walletLabel = "Umbrella Wallet";
     [ObservableProperty] private string _shortAddress = "—";
     [ObservableProperty] private string _totalBalanceMain = "0";
@@ -196,8 +229,12 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>The chosen fiat's symbol, bound where the UI shows a "$" prefix.</summary>
     public string CurrencySymbol => Fx.Symbol;
 
-    /// <summary>"TOTAL BALANCE · &lt;currency&gt;" caption above the balance.</summary>
-    public string TotalBalanceCaption => $"TOTAL BALANCE · {_uiSettings.Currency}";
+    /// <summary>"&lt;total balance&gt; · &lt;currency&gt;" caption above the balance. The wording comes from the
+    /// translation table and the currency is appended live — the caption used to be hardcoded English,
+    /// so the very first line of the wallet stayed in English no matter the language, and the
+    /// translated values had "· USD" baked in, which was simply wrong once the display currency was
+    /// anything else.</summary>
+    public string TotalBalanceCaption => $"{Loc.Instance["common.total"]} · {_uiSettings.Currency}";
 
     /// <summary>Fiat to show balances in. Prices stay USD internally; <see cref="Fx"/> converts.</summary>
     public string CurrencyCode
@@ -877,7 +914,7 @@ public partial class MainViewModel : ViewModelBase
     private async Task CopyReleasesLink()
     {
         await CopyTextAsync(UpdateChecker.ReleasesUrl);
-        StatusMessage = "Download link copied — open it in your browser (or Tor Browser) to get the new build.";
+        StatusMessage = Loc.Instance["status.downloadLinkCopied"];
     }
 
     // ETH send flow: quote → explicit confirm → broadcast result.
@@ -1288,6 +1325,38 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("4.6", "Version 4.6 — faster balances, 19 themes, history & privacy tools",
+            "The biggest update yet.\n\n" +
+            "FASTER\n" +
+            "• Balances appear far sooner. Address discovery used to make one request per address, one after another — a fresh wallet paid 21+ round-trips per chain before showing anything. Addresses are now checked in parallel, without asking the block explorer about a single address more than before.\n" +
+            "• Prices and balances load together instead of one waiting for the other, and Bitcoin and Litecoin scan at the same time.\n\n" +
+            "LOOK\n" +
+            "• 19 colour themes, each with its own character rather than one accent swapped around: Kraken's abyss, a true OLED Void, Ember, Matrix phosphor, Solana, Ethereum, Monero, Solarized and more.\n" +
+            "• Exchange themes use that exchange's own colour for gains.\n\n" +
+            "MONEY\n" +
+            "• Bitcoin Cash now has transaction history — BCH is fully complete (receive, balance, send, swap and history).\n" +
+            "• Pick your network-fee speed on sends — Economy / Standard / Priority.\n" +
+            "• Enter amounts in USD on both Send and Receive — type a dollar figure and the coin amount fills in.\n" +
+            "• Quick amount presets — 25% / 50% beside the fee-aware Max.\n" +
+            "• Export your transaction history to CSV — for taxes or a spreadsheet, entirely on this device.\n" +
+            "• Sort your Holdings — by value, 24h change or name.\n\n" +
+            "PRIVACY & SAFETY\n" +
+            "• Privacy Radar — a per-send privacy read, plus a wallet-wide privacy score at the top of the Security Center.\n" +
+            "• Address checker (Settings → Privacy & Tor) — paste any address to see its network and whether it's well-formed.\n" +
+            "• Sign & verify a message (Settings → Security) — prove you control your Ethereum address, without moving funds.\n" +
+            "• Encrypted private notes on your transactions — readable only by you, on this device.\n" +
+            "• Safer backups — after showing your 24 words the wallet asks for three of them back, and you can tap the phrase to copy it.\n\n" +
+            "Every path is covered by offline tests.",
+            "2026-09-10", "v46"),
+        new("4.5", "Version 4.5 — DOGE send, more swaps, Security Center",
+            "• Dogecoin send is live (it was receive-only) — a real UTXO spend signed on your PC.\n" +
+            "• More cross-chain swaps — pay from BTC / LTC / DOGE / ETH across 12 pairs, non-custodial via THORChain.\n" +
+            "• On-chain transaction history for TON, ADA and SOL.\n" +
+            "• Security Center — a live report of what is actually protecting your wallet, plus per-asset detail pages and a market overview.\n" +
+            "• Scam control — address-poisoning defence, an Ethereum checksum (EIP-55) warning, a first-time-recipient note and a trusted-contact badge.\n" +
+            "• Important fix — a comma decimal like \"0,5\" could be read as ten times the amount; all amount fields now go through one safe parser.\n\n" +
+            "332 offline tests pass.",
+            "2026-09-03", "v45"),
         new("4.0", "Version 4.0 — on-chain history, richer token pages, more",
             "A big update:\n\n" +
             "• On-chain transaction history. The Transactions tab now pulls your real history straight from the chain for your own addresses — including transactions from before you first opened the wallet. Covers TRX (native + USDT/TRC-20), Bitcoin, Ethereum and Litecoin, keyless and through Tor/your proxy.\n" +
@@ -1545,7 +1614,7 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     public static readonly IReadOnlySet<string> SendableSymbols = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        "BTC", "LTC", "BCH",                         // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
+        "BTC", "LTC", "BCH", "DOGE",                 // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
         "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
         "ARB", "BASE", "OP",                         // Ethereum L2 rollups — native ETH, same 0x address
         "SOL", "TON", "ADA",                         // account-based
@@ -1564,6 +1633,7 @@ public partial class MainViewModel : ViewModelBase
         new("BTC", "Bitcoin", "Bitcoin network · native SegWit"),
         new("LTC", "Litecoin", "Litecoin network · native SegWit"),
         new("BCH", "Bitcoin Cash", "Bitcoin Cash network · CashAddr"),
+        new("DOGE", "Dogecoin", "Dogecoin network · UTXO spend (BlockCypher)"),
         new("SOL", "Solana", "Solana network"),
         new("TON", "Toncoin", "TON network · wallet v4R2"),
         new("XMR", "Monero", "Monero network · needs the Monero service on"),
@@ -1660,8 +1730,12 @@ public partial class MainViewModel : ViewModelBase
         "Public RPC / explorers, no API keys: cloudflare-eth.com, blockstream.info, " +
         "litecoinspace.org, blockcypher.com, tronscanapi.com";
     public string BalanceDisplayMain => IsBalanceHidden ? "•••••••" : TotalBalanceMain;
-    public string BalanceDisplayCents => IsBalanceHidden ? "" : $".{TotalBalanceCents}";
-    public string HideBalanceLabel => IsBalanceHidden ? "Show" : "Hide";
+    /// <summary>The cents, with the locale's own decimal separator — a hardcoded "." put a US point in
+    /// front of a comma-decimal total.</summary>
+    public string BalanceDisplayCents =>
+        IsBalanceHidden ? "" : Fx.Culture.NumberFormat.NumberDecimalSeparator + TotalBalanceCents;
+    public string HideBalanceLabel =>
+        Loc.Instance[IsBalanceHidden ? "common.show" : "common.hide"];
     /// <summary>False while the balance is hidden — used to blank every money figure, not just the total.</summary>
     public bool AreValuesVisible => !IsBalanceHidden;
 
@@ -1716,9 +1790,12 @@ public partial class MainViewModel : ViewModelBase
             SendError = string.Empty;
             HasSendQuote = false;
         }
+        SendFiatAmount = string.Empty; // a fresh asset starts the fiat quick-entry empty
         OnPropertyChanged(nameof(SelectedSendBalance));
         OnPropertyChanged(nameof(SelectedSendBalanceLabel));
         OnPropertyChanged(nameof(SendAmountFiat));
+        OnPropertyChanged(nameof(FiatInputAvailable));
+        OnPropertyChanged(nameof(SendFiatCoinEquiv));
         RebuildSendAddressBook();
         ValidateSendAddress();
         ResetCoinControl();
@@ -1745,6 +1822,60 @@ public partial class MainViewModel : ViewModelBase
     /// from the network fee above it.</summary>
     [ObservableProperty] private string _sendReviewDebit = string.Empty;
 
+    // --- Privacy Radar (local): a per-send privacy read, chain-analysis FOR the user. Shown on the
+    // review for UTXO chains, where spending from several addresses at once links them on-chain. ---
+    /// <summary>True when a privacy assessment is available for the pending send (UTXO chains).</summary>
+    [ObservableProperty] private bool _hasSendPrivacy;
+    /// <summary>One-line privacy verdict (e.g. "Strong privacy — …").</summary>
+    [ObservableProperty] private string _sendPrivacyHeadline = string.Empty;
+    /// <summary>Accent colour for the verdict: green (strong), amber (moderate), red (weak).</summary>
+    [ObservableProperty] private string _sendPrivacyColor = "#8FCB9B";
+    /// <summary>The findings behind the verdict, worst-case first, each explaining what it means.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<SendPrivacyFindingVm> SendPrivacyFindings { get; } = new();
+
+    private const string PrivGood = "#8FCB9B";
+    private const string PrivWarn = "#E7CA83";
+    private const string PrivBad = "#E09A9A";
+
+    /// <summary>
+    /// Runs the local <see cref="Umbrella.Wallet.Core.Safety.SendPrivacyInspector"/> over the addresses
+    /// funding a pending send and surfaces the result on the review. Pure/offline — no network.
+    /// </summary>
+    private void ApplySendPrivacy(IEnumerable<string> inputAddresses)
+    {
+        var report = Umbrella.Wallet.Core.Safety.SendPrivacyInspector.Inspect(
+            inputAddresses.ToList(), TorEnabled);
+
+        var L = Loc.Instance;
+        SendPrivacyFindings.Clear();
+        foreach (var f in report.Findings)
+        {
+            // The finding carries a language-neutral code; the wording lives in the translation table
+            // (§8.2 — no hardcoded English in the send flow). Only "linkMany" needs the address count.
+            var title = L[$"priv.{f.Code}.title"];
+            var detail = f.Code == "linkMany"
+                ? string.Format(L["priv.linkMany.detail"], f.Count)
+                : L[$"priv.{f.Code}.detail"];
+            SendPrivacyFindings.Add(new SendPrivacyFindingVm(
+                f.Glyph, title, detail, f.IsWeakness ? PrivWarn : PrivGood));
+        }
+
+        var levelKey = report.Level switch
+        {
+            Umbrella.Wallet.Core.Safety.SendPrivacyLevel.Strong => "strong",
+            Umbrella.Wallet.Core.Safety.SendPrivacyLevel.Moderate => "moderate",
+            _ => "weak",
+        };
+        SendPrivacyHeadline = L[$"priv.headline.{levelKey}"];
+        SendPrivacyColor = report.Level switch
+        {
+            Umbrella.Wallet.Core.Safety.SendPrivacyLevel.Strong => PrivGood,
+            Umbrella.Wallet.Core.Safety.SendPrivacyLevel.Moderate => PrivWarn,
+            _ => PrivBad,
+        };
+        HasSendPrivacy = true;
+    }
+
     /// <summary>Live fiat estimate for the amount being typed, shown under the amount field.</summary>
     public string SendAmountFiat
     {
@@ -1766,6 +1897,43 @@ public partial class MainViewModel : ViewModelBase
         else if (_priceUsd.TryGetValue(symbol, out var p) && p.Usd > 0) usdEach = p.Usd;
         else return string.Empty;
         return "≈ " + Fx.Money((double)(amount * usdEach));
+    }
+
+    // --- Fiat quick-entry (§6.3 convenience): type a USD amount and the coin amount fills in below.
+    // The coin field (SendAmount) stays the SINGLE authoritative value the send path signs — this only
+    // writes into it, so the fund path is unchanged and the user always sees the coin amount to confirm. ---
+    [ObservableProperty] private string _sendFiatAmount = string.Empty;
+
+    /// <summary>The USD price of one unit of the selected asset (stablecoins = $1), or 0 when unknown.</summary>
+    private decimal PriceForSelected()
+    {
+        var sym = SelectedSendAsset?.Symbol;
+        if (sym is null) return 0m;
+        if (sym is "USDT" or "USDC") return 1m;
+        return _priceUsd.TryGetValue(sym, out var p) && p.Usd > 0 ? p.Usd : 0m;
+    }
+
+    /// <summary>Offer the fiat quick-entry only when we have a price to convert with — otherwise the field
+    /// would silently do nothing.</summary>
+    public bool FiatInputAvailable => PriceForSelected() > 0m;
+
+    /// <summary>"= 0.00063 BTC" under the fiat field: the coin amount the typed USD converts to.</summary>
+    public string SendFiatCoinEquiv
+    {
+        get
+        {
+            var coin = FiatConvert.FiatToCoinAmount(SendFiatAmount, PriceForSelected());
+            return coin.Length == 0 ? string.Empty : $"= {coin} {SelectedSendAsset?.Symbol}";
+        }
+    }
+
+    partial void OnSendFiatAmountChanged(string value)
+    {
+        // Fiat only fills the coin field; an empty/invalid fiat value leaves the coin amount untouched, so
+        // it can never silently wipe a coin amount the user typed directly.
+        var coin = FiatConvert.FiatToCoinAmount(value, PriceForSelected());
+        if (coin.Length > 0) SendAmount = coin;
+        OnPropertyChanged(nameof(SendFiatCoinEquiv));
     }
 
     // --- Network-check-on-paste (§4): a non-blocking sanity check that the destination matches the
@@ -1977,6 +2145,22 @@ public partial class MainViewModel : ViewModelBase
         SendError = string.Empty;
     }
 
+    /// <summary>Quick amount presets (25% / 50%): a share of the balance, always below the fee-aware Max,
+    /// written into the coin field the user still confirms. Leaves the field untouched if there's nothing
+    /// to send.</summary>
+    [RelayCommand]
+    private void SetAmountPercent(string? percent)
+    {
+        if (SelectedSendAsset is null) return;
+        if (!int.TryParse(percent, NumberStyles.Integer, CultureInfo.InvariantCulture, out var pct)) return;
+        var bal = SelectedSendBalance;
+        if (bal <= 0) { SendError = Loc.Instance["send.nothingToSend"]; return; }
+        var amount = AmountPresets.Of(bal, pct);
+        if (amount.Length == 0) return;
+        SendAmount = amount;
+        SendError = string.Empty;
+    }
+
     partial void OnSelectedWatchNetworkChanged(SendOption? value)
     {
         if (value is not null) WatchChain = value.Symbol;
@@ -2088,9 +2272,70 @@ public partial class MainViewModel : ViewModelBase
             PendingPhraseBackup = true;
             ClearPasswordFields();
             ActiveSection = "Portfolio";
-            StatusMessage = "Write down all 24 words offline, then continue";
+            StatusMessage = Loc.Instance["status.writeDownWords"];
             await RefreshLiveDataAsync();
         });
+    }
+
+    // --- Recovery-phrase backup verification: after showing the words, confirm the user actually wrote
+    // them down by asking for three of them back at random positions (fund-safety onboarding). ---
+    [ObservableProperty] private bool _phraseVerifyStage;
+    [ObservableProperty] private string _verifyWord1 = string.Empty;
+    [ObservableProperty] private string _verifyWord2 = string.Empty;
+    [ObservableProperty] private string _verifyWord3 = string.Empty;
+    [ObservableProperty] private string _verifyLabel1 = string.Empty;
+    [ObservableProperty] private string _verifyLabel2 = string.Empty;
+    [ObservableProperty] private string _verifyLabel3 = string.Empty;
+    [ObservableProperty] private string _verifyError = string.Empty;
+    private int[] _verifyPositions = Array.Empty<int>();
+    private static readonly Random _verifyRng = new();
+
+    /// <summary>Copies the recovery phrase to the clipboard (auto-cleared like every other copy). The
+    /// on-screen note still says an offline paper copy is safest — the clipboard can be read by other apps.</summary>
+    [RelayCommand]
+    private async Task CopyRecoveryPhrase()
+    {
+        if (string.IsNullOrWhiteSpace(RecoveryPhrase)) return;
+        await CopyTextAsync(RecoveryPhrase);
+        ShowToast(Loc.Instance["backup.copied"], isError: false);
+    }
+
+    /// <summary>Moves from "here is your phrase" to the three-word confirmation, choosing which words to
+    /// ask for at random each time so it can't be passed by rote.</summary>
+    [RelayCommand]
+    private void BeginPhraseVerify()
+    {
+        var count = RecoveryPhrase.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+        _verifyPositions = SeedVerification.PickPositions(count, 3, _verifyRng).ToArray();
+        var fmt = Loc.Instance["backup.wordN"];
+        VerifyLabel1 = _verifyPositions.Length > 0 ? string.Format(fmt, _verifyPositions[0]) : string.Empty;
+        VerifyLabel2 = _verifyPositions.Length > 1 ? string.Format(fmt, _verifyPositions[1]) : string.Empty;
+        VerifyLabel3 = _verifyPositions.Length > 2 ? string.Format(fmt, _verifyPositions[2]) : string.Empty;
+        VerifyWord1 = VerifyWord2 = VerifyWord3 = string.Empty;
+        VerifyError = string.Empty;
+        PhraseVerifyStage = true;
+    }
+
+    /// <summary>Back to reading the phrase (the entered words are dropped).</summary>
+    [RelayCommand]
+    private void BackToPhrase()
+    {
+        VerifyError = string.Empty;
+        PhraseVerifyStage = false;
+    }
+
+    /// <summary>Checks the three typed words; on success finishes the backup and enters the workspace,
+    /// otherwise shows a "words don't match" note so the user can look at their backup again.</summary>
+    [RelayCommand]
+    private void VerifyPhraseBackup()
+    {
+        var words = new[] { VerifyWord1, VerifyWord2, VerifyWord3 }.Take(_verifyPositions.Length).ToArray();
+        if (!SeedVerification.Check(RecoveryPhrase, _verifyPositions, words))
+        {
+            VerifyError = Loc.Instance["backup.verifyFail"];
+            return;
+        }
+        ConfirmPhraseBackup();
     }
 
     /// <summary>Leaves the post-create backup page and enters the workspace.</summary>
@@ -2099,7 +2344,11 @@ public partial class MainViewModel : ViewModelBase
     {
         RecoveryPhrase = string.Empty;
         PendingPhraseBackup = false;
-        StatusMessage = "Wallet ready · keep your offline backup safe";
+        PhraseVerifyStage = false;
+        VerifyWord1 = VerifyWord2 = VerifyWord3 = string.Empty;
+        VerifyError = string.Empty;
+        _verifyPositions = Array.Empty<int>();
+        StatusMessage = Loc.Instance["status.walletReady"];
     }
 
     [RelayCommand]
@@ -2200,7 +2449,7 @@ public partial class MainViewModel : ViewModelBase
             SettingsPassword = string.Empty;
             SettingsRevealedPhrase = mnemonic;
             IsSettingsPhraseVisible = true;
-            StatusMessage = "Phrase revealed · hide it as soon as you have written it down";
+            StatusMessage = Loc.Instance["status.phraseRevealed"];
         });
     }
 
@@ -2233,7 +2482,7 @@ public partial class MainViewModel : ViewModelBase
             MoneroSpendKey = monero.SecretSpendKeyHex;
             MoneroViewKey = monero.SecretViewKeyHex;
             IsMoneroKeysVisible = true;
-            StatusMessage = "Monero keys revealed · treat the spend key like your seed phrase";
+            StatusMessage = Loc.Instance["status.moneroKeysRevealed"];
         });
     }
 
@@ -2338,7 +2587,7 @@ public partial class MainViewModel : ViewModelBase
         MoneroSpendKey = string.Empty;
         MoneroViewKey = string.Empty;
         IsMoneroKeysVisible = false;
-        StatusMessage = "Monero keys hidden";
+        StatusMessage = Loc.Instance["status.moneroKeysHidden"];
     }
 
     [RelayCommand]
@@ -2346,7 +2595,17 @@ public partial class MainViewModel : ViewModelBase
     {
         SettingsRevealedPhrase = string.Empty;
         IsSettingsPhraseVisible = false;
-        StatusMessage = "Recovery phrase hidden";
+        StatusMessage = Loc.Instance["status.phraseHidden"];
+    }
+
+    /// <summary>Copies the revealed recovery phrase to the clipboard (auto-cleared like every other copy).
+    /// The on-screen note still says an offline paper copy is safest.</summary>
+    [RelayCommand]
+    private async Task CopySettingsPhrase()
+    {
+        if (string.IsNullOrWhiteSpace(SettingsRevealedPhrase)) return;
+        await CopyTextAsync(SettingsRevealedPhrase);
+        ShowToast(Loc.Instance["backup.copied"], isError: false);
     }
 
     /// <summary>
@@ -2428,7 +2687,7 @@ public partial class MainViewModel : ViewModelBase
                 FileName = dir,
                 UseShellExecute = true,
             });
-            StatusMessage = $"Opened {dir}";
+            StatusMessage = string.Format(Loc.Instance["status.opened"], dir);
         }
         catch (Exception ex)
         {
@@ -2462,7 +2721,7 @@ public partial class MainViewModel : ViewModelBase
         RebuildFilteredActivity();
         RebuildTransactions();
         OnPropertyChanged(nameof(HasActivity));
-        StatusMessage = "Activity & transaction history cleared from this device";
+        StatusMessage = Loc.Instance["status.historyCleared"];
     }
 
     /// <summary>Danger zone: remove every linked watch-only address and connected exchange (keeps the vault).</summary>
@@ -2474,7 +2733,7 @@ public partial class MainViewModel : ViewModelBase
         await _watchStore.SaveAsync(WatchAddresses);
         Exchanges.Clear();
         if (_unlockedMnemonic is not null) await _exchangeStore.SaveAsync(Exchanges, _unlockedMnemonic);
-        StatusMessage = $"Disconnected {count} linked address(es) / exchange(s)";
+        StatusMessage = string.Format(Loc.Instance["status.disconnected"], count);
         if (IsUnlocked) await RefreshLiveDataAsync();
     }
 
@@ -2554,7 +2813,7 @@ public partial class MainViewModel : ViewModelBase
         SettingsPassword = string.Empty;
         ReceiveQr = null;
         SelectedReceiveAddress = string.Empty;
-        StatusMessage = "Vault locked";
+        StatusMessage = Loc.Instance["status.vaultLocked"];
         ResetAddresses();
         RecalcBalance();
     }
@@ -2708,7 +2967,7 @@ public partial class MainViewModel : ViewModelBase
                 SetSessionPassword(pw);
                 SetUnlocked(mnemonic);
                 ActiveSection = "Portfolio";
-                StatusMessage = $"Switched to “{ActiveWalletLabel}”";
+                StatusMessage = string.Format(Loc.Instance["status.switchedTo"], ActiveWalletLabel);
                 await RefreshLiveDataAsync();
                 return;
             }
@@ -2743,7 +3002,7 @@ public partial class MainViewModel : ViewModelBase
         NewWalletLabel = string.Empty;
         SetupStage = "Welcome";
         RefreshWalletList();
-        StatusMessage = $"New wallet “{label}” · create or import its seed";
+        StatusMessage = string.Format(Loc.Instance["status.newWallet"], label);
     }
 
     /// <summary>Abort an in-progress add-wallet: de-registers the pending wallet and returns to the
@@ -2773,14 +3032,14 @@ public partial class MainViewModel : ViewModelBase
                 SetSessionPassword(pw);
                 SetUnlocked(mnemonic);
                 ActiveSection = "Portfolio";
-                StatusMessage = $"Back to “{ActiveWalletLabel}”";
+                StatusMessage = string.Format(Loc.Instance["status.backTo"], ActiveWalletLabel);
                 await RefreshLiveDataAsync();
                 return;
             }
             catch { /* fall back to the unlock screen */ }
         }
 
-        StatusMessage = $"Back to “{ActiveWalletLabel}”";
+        StatusMessage = string.Format(Loc.Instance["status.backTo"], ActiveWalletLabel);
     }
 
     [RelayCommand]
@@ -2791,7 +3050,7 @@ public partial class MainViewModel : ViewModelBase
         _registry.Rename(active.Id, RenameWalletLabel.Trim());
         RenameWalletLabel = string.Empty;
         RefreshWalletList();
-        StatusMessage = $"Renamed to “{ActiveWalletLabel}”";
+        StatusMessage = string.Format(Loc.Instance["status.renamedTo"], ActiveWalletLabel);
     }
 
     /// <summary>Remove another (non-active) wallet, deleting only its own encrypted vault. The active
@@ -2804,7 +3063,7 @@ public partial class MainViewModel : ViewModelBase
         {
             _registry.Remove(id);
             RefreshWalletList();
-            StatusMessage = "Wallet removed from this device.";
+            StatusMessage = Loc.Instance["status.walletRemoved"];
         }
         catch (Exception ex)
         {
@@ -2905,7 +3164,7 @@ public partial class MainViewModel : ViewModelBase
             ImportPhrase = string.Empty;
             ClearPasswordFields();
             ActiveSection = "Portfolio";
-            StatusMessage = "Wallet restored from your recovery phrase with a new password.";
+            StatusMessage = Loc.Instance["status.walletRestored"];
             await RefreshLiveDataAsync();
         });
     }
@@ -2931,7 +3190,7 @@ public partial class MainViewModel : ViewModelBase
     {
         RecoveryPhrase = string.Empty;
         IsRecoveryPhraseVisible = false;
-        StatusMessage = "Recovery phrase hidden · keep your offline backup safe";
+        StatusMessage = Loc.Instance["status.phraseHiddenBackup"];
     }
 
     [RelayCommand]
@@ -2951,16 +3210,18 @@ public partial class MainViewModel : ViewModelBase
         // Choosing a section from the mobile "More" sheet closes it.
         IsMoreSheetOpen = false;
 
+        // The one-line description of the section the user just opened. These were hardcoded
+        // English inside the switch, which is why the StatusMessage guard never saw them.
         ActiveSection = section;
         StatusMessage = section switch
         {
-            "Send" => "Send · ETH transfers sign locally and broadcast via public RPC",
-            "Receive" => "Receive · share a derived address or QR",
-            "Connect" => "Connect · add watch-only addresses from MetaMask / explorers",
-            "Market" => $"Market · live prices · {ChartRange} charts, click a coin for detail",
-            "Swap" => "Swap · non-custodial cross-chain swaps route through THORChain vaults",
-            "P2p" => "P2P & DEX · non-custodial venues to trade — your keys never leave this device",
-            "Buy" => "Buy · card/bank on-ramps deliver straight to your own address — nothing is held here",
+            "Send" => Loc.Instance["section.send"],
+            "Receive" => Loc.Instance["section.receive"],
+            "Connect" => Loc.Instance["section.connect"],
+            "Market" => string.Format(Loc.Instance["section.market"], ChartRange),
+            "Swap" => Loc.Instance["section.swap"],
+            "P2p" => Loc.Instance["section.p2p"],
+            "Buy" => Loc.Instance["section.buy"],
             _ => StatusMessage,
         };
 
@@ -2982,7 +3243,7 @@ public partial class MainViewModel : ViewModelBase
                 FileName = url,
                 UseShellExecute = true,
             });
-            StatusMessage = $"Opened {url} in your browser";
+            StatusMessage = string.Format(Loc.Instance["status.openedInBrowser"], url);
             ShowToast(Loc.Instance["toast.opened"], isError: false);
         }
         catch (Exception ex)
@@ -3239,19 +3500,24 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Compact money in the display currency: 4.6B, 1.5T, 32.4K…</summary>
+    /// <summary>Compact money in the display currency: 4.6B, 1.5T, 32.4K… The magnitude suffix is
+    /// translated — it used to be a hardcoded English letter, so a Ukrainian user read "₴1,36B" where
+    /// the abbreviation for a billion is "млрд".</summary>
     private static string FormatCompactMoney(double usd)
     {
         var v = usd * (double)Fx.Rate;
-        var (num, suffix) = v switch
+        var (num, suffixKey) = v switch
         {
-            >= 1e12 => (v / 1e12, "T"),
-            >= 1e9 => (v / 1e9, "B"),
-            >= 1e6 => (v / 1e6, "M"),
-            >= 1e3 => (v / 1e3, "K"),
+            >= 1e12 => (v / 1e12, "num.trillion"),
+            >= 1e9 => (v / 1e9, "num.billion"),
+            >= 1e6 => (v / 1e6, "num.million"),
+            >= 1e3 => (v / 1e3, "num.thousand"),
             _ => (v, ""),
         };
-        return $"{Fx.Symbol}{num:0.##}{suffix}";
+        var suffix = suffixKey.Length == 0 ? string.Empty : Loc.Instance[suffixKey];
+        // A word-style suffix ("млрд") needs the space an initial ("B") does not.
+        var gap = suffix.Length > 1 ? " " : string.Empty;
+        return $"{Fx.Symbol}{num:0.##}{gap}{suffix}";
     }
 
     /// <summary>
@@ -3298,6 +3564,16 @@ public partial class MainViewModel : ViewModelBase
         RefreshHoldings();
     }
 
+    /// <summary>Sets how Holdings are ordered. Picking the active sort again toggles back to the catalog
+    /// order, so the chips double as an on/off.</summary>
+    [RelayCommand]
+    private void SetHoldingsSort(string sort)
+    {
+        HoldingsSort = string.Equals(HoldingsSort, sort, StringComparison.OrdinalIgnoreCase)
+            ? HoldingsSorter.Default : sort;
+        RefreshHoldings();
+    }
+
     private string ActiveWalletCacheKey => _registry.Active?.Id ?? "main";
 
     /// <summary>Apply the last-seen balances/prices for the active wallet so the total is right the
@@ -3338,7 +3614,7 @@ public partial class MainViewModel : ViewModelBase
         _refreshCts = new CancellationTokenSource();
         var ct = _refreshCts.Token;
         IsBusy = true;
-        StatusMessage = "Refreshing live prices & balances…";
+        StatusMessage = Loc.Instance["status.refreshingLive"];
         try
         {
             // Price every symbol we will show, including the chains behind watch-only addresses.
@@ -3352,9 +3628,11 @@ public partial class MainViewModel : ViewModelBase
                 .Concat(["USDT", "BNB", "MATIC", "AVAX", "FTM", "CRO"])
                 .Distinct()
                 .ToList();
-            var prices = await _rates.GetUsdPricesAsync(symbols, ct);
-            _priceUsd = prices; // snapshot for the Send fiat estimate
-            OnPropertyChanged(nameof(SendAmountFiat));
+            // Prices and balances are INDEPENDENT network calls — only the display joins them back up.
+            // Awaiting prices first made every balance wait behind a price round-trip (up to the 20s
+            // client timeout, more over Tor). Started together, the wait is the SLOWER of the two
+            // instead of their sum.
+            var pricesTask = _rates.GetUsdPricesAsync(symbols, ct);
 
             // Fetch every account's balance CONCURRENTLY, then apply on the UI thread. Sequential
             // awaits here were the main reason the total took many seconds to appear after unlock /
@@ -3367,8 +3645,18 @@ public partial class MainViewModel : ViewModelBase
                 .Where(a => a.SupportStatus is "Ready" or "Receive only" && ParseChain(a.Symbol) is not null
                             && a.Symbol is not ("BTC" or "LTC"))
                 .ToList();
-            var balanceResults = await Task.WhenAll(
+            var balancesTask = Task.WhenAll(
                 balanceTargets.Select(a => _balances.GetBalanceAsync(ParseChain(a.Symbol)!.Value, a.Address, ct)));
+
+            await Task.WhenAll(pricesTask, balancesTask);
+            var prices = await pricesTask;
+            var balanceResults = await balancesTask;
+
+            _priceUsd = prices; // snapshot for the Send fiat estimate
+            OnPropertyChanged(nameof(SendAmountFiat));
+            OnPropertyChanged(nameof(FiatInputAvailable)); // the fiat quick-entry appears once priced
+            OnPropertyChanged(nameof(SendFiatCoinEquiv));
+            NotifyReceiveFiat();                           // same for the Receive screen's USD field
 
             for (var k = 0; k < balanceTargets.Count; k++)
             {
@@ -3410,17 +3698,26 @@ public partial class MainViewModel : ViewModelBase
             {
                 await AddEthTokenRowsAsync(ethAccount.Address, "Ready", prices, ct);
                 await AddEvmSideRowsAsync(ethAccount.Address, prices, ct);
-                await RefreshNftsAsync(ethAccount.Address, ct);
             }
 
-            // Watch-only
-            foreach (var watch in WatchAddresses.ToList())
+            // Watch-only. The balance calls run CONCURRENTLY — awaiting them one address at a time made
+            // the wait grow with the number of watched addresses (each up to the 20s client timeout).
+            // Only the network phase is parallel; the rows are still applied one at a time on the UI
+            // thread, so Accounts is never mutated from two places at once.
+            var watchTargets = WatchAddresses.ToList()
+                .Select(w => (Watch: w, Chain: ParseChain(w.Chain)))
+                .Where(x => x.Chain is not null)
+                .ToList();
+            var watchBalances = await Task.WhenAll(
+                watchTargets.Select(x => _balances.GetBalanceAsync(x.Chain!.Value, x.Watch.Address, ct)));
+
+            for (var w = 0; w < watchTargets.Count; w++)
             {
-                var chain = ParseChain(watch.Chain);
-                if (chain is null) continue;
+                var watch = watchTargets[w].Watch;
+                var chain = watchTargets[w].Chain;
                 // Canonical ticker, never the raw user input — see SymbolFor.
-                var nativeSymbol = SymbolFor(chain.Value);
-                var bal = await _balances.GetBalanceAsync(chain.Value, watch.Address, ct);
+                var nativeSymbol = SymbolFor(chain!.Value);
+                var bal = watchBalances[w];
                 var (usd, change) = prices.GetValueOrDefault(nativeSymbol);
                 var existing = Accounts.FirstOrDefault(a =>
                     a.Address.Equals(watch.Address, StringComparison.OrdinalIgnoreCase) &&
@@ -3458,10 +3755,17 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();
             RecalcBalance();
             SaveBalanceCache(); // remember these totals so the next unlock/switch is instant
+
+            // NFTs last, and deliberately AFTER the balance total is final and cached: they are display
+            // detail, not money, so they must never delay the number the user actually came to see.
+            if (ethAccount is not null && IsRealAddress(ethAccount.Address))
+            {
+                await RefreshNftsAsync(ethAccount.Address, ct);
+            }
             // NOTE: deliberately no "Sync" activity entry here. This runs every 60s on a timer, and
             // logging it flooded the Activity feed with identical "Sync · OK" rows. The live status
             // line below already shows the last-updated time; the Activity feed is for real events.
-            StatusMessage = $"Live · {Holdings.Count} assets · updated {DateTime.Now:HH:mm:ss}";
+            StatusMessage = string.Format(Loc.Instance["status.live"], Holdings.Count, DateTime.Now.ToString("HH:mm:ss"));
         }
         catch (OperationCanceledException)
         {
@@ -3469,7 +3773,7 @@ public partial class MainViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Refresh failed: {ex.Message}";
+            StatusMessage = string.Format(Loc.Instance["status.refreshFailed"], ex.Message);
         }
         finally
         {
@@ -3545,9 +3849,17 @@ public partial class MainViewModel : ViewModelBase
             var usd = prices.TryGetValue(tok.Symbol, out var pr)
                 ? (double)pr.Usd
                 : tok.Symbol is "USDT" or "USDC" or "DAI" or "TUSD" or "USDD" ? 1.0 : 0.0;
+
+            // Unsolicited airdrop tokens arrive in every TRON/Ethereum account and their NAME is the
+            // attack — a lure to a site that asks for a seed phrase. Flag them so Holdings can fold
+            // them away; a priced token is never flagged, so this can't hide a real asset.
+            var spam = Umbrella.Wallet.Core.Safety.SpamTokenInspector
+                .Inspect(tok.Name, tok.Symbol, hasMarketPrice: usd > 0);
+
             Accounts.Add(new WalletAccountViewModel(
                 tok.Symbol, $"{tok.Name} · {suffix}", status,
-                address, marker, usd, (double)tok.Amount, chain, 0));
+                address, marker, usd, (double)tok.Amount, chain, 0,
+                IsSuspectedSpam: spam.IsSuspected));
         }
     }
 
@@ -3608,12 +3920,12 @@ public partial class MainViewModel : ViewModelBase
             (a.SupportStatus is "Ready" or "Watch") && IsRealAddress(a.Address));
         if (ready is null)
         {
-            StatusMessage = "No address to copy yet";
+            StatusMessage = Loc.Instance["status.noAddressToCopy"];
             return;
         }
 
         await CopyTextAsync(ready.Address);
-        StatusMessage = $"Copied {ready.Symbol} address";
+        StatusMessage = string.Format(Loc.Instance["status.copiedSymbolAddress"], ready.Symbol);
         ShowToast($"{ready.Symbol} · {Loc.Instance["toast.copied"]}", isError: false);
     }
 
@@ -3622,7 +3934,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (string.IsNullOrWhiteSpace(address) || !IsRealAddress(address)) return;
         await CopyTextAsync(address);
-        StatusMessage = "Address copied";
+        StatusMessage = Loc.Instance["status.addressCopied"];
         ShowToast(Loc.Instance["toast.copied"], isError: false);
     }
 
@@ -3641,8 +3953,10 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _backupStatus = string.Empty;
     [ObservableProperty] private string _backupError = string.Empty;
 
-    /// <summary>Set by the view so the view-model can raise a file dialog without knowing about windows.</summary>
-    public Func<string, bool, Task<string?>>? PickFileAsync { get; set; }
+    /// <summary>Set by the view so the view-model can raise a file dialog without knowing about windows.
+    /// Args: suggested file name, save (true) vs open (false), and a kind ("json" backup, "csv" history)
+    /// so the dialog offers the right extension/filter. Returns the chosen local path, or null.</summary>
+    public Func<string, bool, string, Task<string?>>? PickFileAsync { get; set; }
 
     /// <summary>Raised by the view to pick an image file (avatar/banner/background) to open.</summary>
     public Func<Task<string?>>? PickImageAsync { get; set; }
@@ -3718,11 +4032,11 @@ public partial class MainViewModel : ViewModelBase
             setPath(dest);
             _uiSettings.Save();
             LoadProfileImages();
-            StatusMessage = "Profile image updated";
+            StatusMessage = Loc.Instance["status.profileImageUpdated"];
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Could not set the image: {ex.Message}";
+            StatusMessage = string.Format(Loc.Instance["status.imageFailed"], ex.Message);
         }
     }
 
@@ -3766,7 +4080,7 @@ public partial class MainViewModel : ViewModelBase
         var pw = BackupVerifyPassword ?? string.Empty;
         if (pw.Length == 0) { BackupError = Loc.Instance["backup.errPassword"]; return; }
 
-        var path = await PickFileAsync(string.Empty, false);
+        var path = await PickFileAsync(string.Empty, false, "json");
         if (string.IsNullOrWhiteSpace(path)) return;
 
         var result = await VaultBackup.VerifyAsync(path, pw);
@@ -3806,7 +4120,7 @@ public partial class MainViewModel : ViewModelBase
         BackupStatus = BackupError = string.Empty;
         if (PickFileAsync is null) return;
 
-        var path = await PickFileAsync(VaultBackup.SuggestedFileName(), true);
+        var path = await PickFileAsync(VaultBackup.SuggestedFileName(), true, "json");
         if (string.IsNullOrWhiteSpace(path)) return;
 
         var (ok, message) = await VaultBackup.ExportAsync(path);
@@ -3819,7 +4133,7 @@ public partial class MainViewModel : ViewModelBase
         BackupStatus = BackupError = string.Empty;
         if (PickFileAsync is null) return;
 
-        var path = await PickFileAsync(string.Empty, false);
+        var path = await PickFileAsync(string.Empty, false, "json");
         if (string.IsNullOrWhiteSpace(path)) return;
 
         var (ok, message) = await VaultBackup.RestoreAsync(path);
@@ -3837,8 +4151,9 @@ public partial class MainViewModel : ViewModelBase
     private bool SetReceiveTarget(WalletAccountViewModel? account)
     {
         if (account is null || !IsRealAddress(account.Address)) return false;
-        ReceiveAmount = string.Empty; // a fresh target starts with no requested amount
-        ShowReceiveAdvanced = false;  // collapse developer detail on every new target
+        ReceiveAmount = string.Empty;     // a fresh target starts with no requested amount
+        ReceiveFiatAmount = string.Empty; // ...and no carried-over USD entry from the previous asset
+        ShowReceiveAdvanced = false;      // collapse developer detail on every new target
         SelectedReceiveAddress = account.Address;
         SelectedReceiveSymbol = account.Symbol;
         SelectedReceiveNetwork = $"{account.Symbol} · {account.NetworkLabel}";
@@ -3915,6 +4230,8 @@ public partial class MainViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(IsTokenReceive));
         OnPropertyChanged(nameof(CanRequestAmount));
+        ReceiveFiatAmount = string.Empty; // a different asset means a different price; don't carry the old USD over
+        NotifyReceiveFiat();
     }
 
     // Re-render the QR the moment the requested amount changes so what's on screen always matches the field.
@@ -3922,6 +4239,62 @@ public partial class MainViewModel : ViewModelBase
     {
         if (!string.IsNullOrEmpty(SelectedReceiveAddress))
             ReceiveQr = BuildQr(BuildReceivePayload(SelectedReceiveAddress));
+        OnPropertyChanged(nameof(ReceiveAmountFiat));
+    }
+
+    // --- Fiat quick-entry on Receive: the mirror of the Send screen's USD field. Type a USD amount and
+    // the coin amount fills in, which is what actually goes into the BIP21 payment URI. The coin field
+    // stays the single value encoded in the QR — this only writes into it, so a scan can never carry a
+    // fiat number the sender's wallet would misread. ---
+    [ObservableProperty] private string _receiveFiatAmount = string.Empty;
+
+    /// <summary>USD price of one unit of the asset being received, or 0 when unknown.</summary>
+    private decimal PriceForReceive()
+    {
+        var sym = SelectedReceiveSymbol;
+        if (string.IsNullOrEmpty(sym)) return 0m;
+        if (sym is "USDT" or "USDC") return 1m;
+        return _priceUsd.TryGetValue(sym, out var p) && p.Usd > 0 ? p.Usd : 0m;
+    }
+
+    /// <summary>Offer the USD field only on the chains that can carry a requested amount at all, and only
+    /// once a price exists to convert with — otherwise typing in it would silently do nothing.</summary>
+    public bool ReceiveFiatAvailable => CanRequestAmount && PriceForReceive() > 0m;
+
+    /// <summary>"= 0.00063 BTC" under the USD field: the coin amount the typed USD converts to.</summary>
+    public string ReceiveFiatCoinEquiv
+    {
+        get
+        {
+            var coin = FiatConvert.FiatToCoinAmount(ReceiveFiatAmount, PriceForReceive());
+            return coin.Length == 0 ? string.Empty : $"= {coin} {SelectedReceiveSymbol}";
+        }
+    }
+
+    /// <summary>"≈ $42.10" under the coin field, so a requested amount typed in coin is also readable in USD.</summary>
+    public string ReceiveAmountFiat
+    {
+        get
+        {
+            var fiat = FiatConvert.CoinToFiatText(ReceiveAmount, PriceForReceive());
+            return fiat.Length == 0 ? string.Empty : $"≈ ${fiat}";
+        }
+    }
+
+    partial void OnReceiveFiatAmountChanged(string value)
+    {
+        // Fiat only fills the coin field; an empty/invalid fiat value leaves the requested amount untouched,
+        // so it can never silently wipe an amount the user typed directly in coin.
+        var coin = FiatConvert.FiatToCoinAmount(value, PriceForReceive());
+        if (coin.Length > 0) ReceiveAmount = coin;
+        OnPropertyChanged(nameof(ReceiveFiatCoinEquiv));
+    }
+
+    private void NotifyReceiveFiat()
+    {
+        OnPropertyChanged(nameof(ReceiveFiatAvailable));
+        OnPropertyChanged(nameof(ReceiveFiatCoinEquiv));
+        OnPropertyChanged(nameof(ReceiveAmountFiat));
     }
 
     /// <summary>Encodes the receive target as a wallet payment URI. With a valid requested amount on a
@@ -4119,13 +4492,13 @@ public partial class MainViewModel : ViewModelBase
         var chain = DetectChain(address) ?? WatchChain.Trim().ToUpperInvariant();
         if (string.IsNullOrWhiteSpace(address) || address.Length < 10)
         {
-            StatusMessage = "Paste a valid public address";
+            StatusMessage = Loc.Instance["status.pasteValidAddress"];
             return;
         }
 
         if (WatchAddresses.Any(w => w.Address.Equals(address, StringComparison.OrdinalIgnoreCase)))
         {
-            StatusMessage = "Address already linked";
+            StatusMessage = Loc.Instance["status.addressAlreadyLinked"];
             return;
         }
 
@@ -4134,7 +4507,7 @@ public partial class MainViewModel : ViewModelBase
         await _watchStore.SaveAsync(WatchAddresses);
         WatchAddress = string.Empty;
         WatchLabel = string.Empty;
-        StatusMessage = $"Linked watch-only {chain} address";
+        StatusMessage = string.Format(Loc.Instance["status.linkedWatch"], chain);
         PushActivity("Connected", chain, "watch-only", label, "now");
         if (IsUnlocked) await RefreshLiveDataAsync();
     }
@@ -4149,7 +4522,7 @@ public partial class MainViewModel : ViewModelBase
         if (match is not null) Accounts.Remove(match);
         RefreshHoldings();
         RecalcBalance();
-        StatusMessage = "Watch address removed";
+        StatusMessage = Loc.Instance["status.watchRemoved"];
     }
 
     // True when the unlocked wallet is a TON-native mnemonic (Telegram Wallet / Tonkeeper) rather than
@@ -4170,6 +4543,9 @@ public partial class MainViewModel : ViewModelBase
         // read once the wallet is unlocked.
         _ = LoadExchangesAsync(mnemonic);
         DeriveAccounts(mnemonic);
+        OnPropertyChanged(nameof(SignMsgAddress)); // the Ethereum address the sign-message tool uses
+        SignMsgSignature = string.Empty;
+        SignMsgInput = string.Empty;
         RestoreCachedBalances(); // show last-known totals instantly; the live refresh corrects them
         SelectFirstReceive();
         LoadActivity(); // restore the saved history before logging this unlock on top
@@ -4281,6 +4657,7 @@ public partial class MainViewModel : ViewModelBase
     {
         Holdings.Clear();
         var rows = Accounts.Where(a => a.SupportStatus is "Ready" or "Watch" or "Exchange" or "Receive only");
+
         if (!string.Equals(ChainFilter, "All", StringComparison.OrdinalIgnoreCase))
         {
             rows = rows.Where(a =>
@@ -4297,12 +4674,22 @@ public partial class MainViewModel : ViewModelBase
                 a.Address.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase));
         }
 
-        foreach (var a in rows)
-        {
-            Holdings.Add(new HoldingRowViewModel(
-                a.Symbol, a.Name, a.Chain, a.Price, a.Amount,
-                a.Price * a.Amount, a.Change24h, a.Address, a.SupportStatus));
-        }
+        // Unsolicited airdrop tokens are folded away, never removed — the count stays on screen and one
+        // click brings them back, because a wallet must not decide on its own that something you hold
+        // does not exist.
+        //
+        // Counted AFTER the chain and search filters, on the same rows the list is about to show: a
+        // count taken from every account would claim "3 hidden" while looking at a Bitcoin-only view
+        // that never contained those TRC-20 tokens in the first place.
+        var visible = rows.ToList();
+        SpamTokenCount = visible.Count(a => a.IsSuspectedSpam);
+        if (!ShowSpamTokens) visible = visible.Where(a => !a.IsSuspectedSpam).ToList();
+
+        var built = visible.Select(a => new HoldingRowViewModel(
+            a.Symbol, a.Name, a.Chain, a.Price, a.Amount,
+            a.Price * a.Amount, a.Change24h, a.Address, a.SupportStatus));
+        foreach (var h in HoldingsSorter.Order(built, HoldingsSort))
+            Holdings.Add(h);
 
         RebuildStaking(); // keep the staking list driven by what the user actually holds
     }
@@ -4311,9 +4698,18 @@ public partial class MainViewModel : ViewModelBase
     {
         var total = Holdings.Sum(h => h.Value);                 // USD
         var displayTotal = total * (double)Fx.Rate;             // in the chosen currency
-        var parts = displayTotal.ToString("N2", CultureInfo.InvariantCulture).Split('.');
-        TotalBalanceMain = parts[0];
-        TotalBalanceCents = parts.Length > 1 ? parts[1] : "00";
+
+        // Formatted in the SAME locale as every other fiat figure (Fx.Money). This used to be
+        // InvariantCulture, so the hero read "₴16,161.25" while the holdings row right under it read
+        // "₴15 590,68" — one wallet showing money two different ways.
+        //
+        // The split has to be on the locale's own decimal separator, not a literal '.', or a Ukrainian
+        // total would never split at all and the cents would read "00".
+        var text = displayTotal.ToString("N2", Fx.Culture);
+        var separator = Fx.Culture.NumberFormat.NumberDecimalSeparator;
+        var cut = text.LastIndexOf(separator, StringComparison.Ordinal);
+        TotalBalanceMain = cut >= 0 ? text[..cut] : text;
+        TotalBalanceCents = cut >= 0 ? text[(cut + separator.Length)..] : "00";
         double weighted = 0;
         double weight = 0;
         foreach (var h in Holdings)
@@ -4692,12 +5088,14 @@ public partial class MainViewModel : ViewModelBase
         try { await action(); }
         catch (Exception error)
         {
+            // These reach the user on the unlock screen, where an English sentence in a translated
+            // wallet reads like a crash rather than "wrong password".
             Fail(error switch
             {
-                UnauthorizedAccessException => "Incorrect password or damaged vault.",
+                UnauthorizedAccessException => Loc.Instance["err.badPassword"],
                 ArgumentException => error.Message,
-                IOException io => $"Cannot write the vault to disk: {io.Message}",
-                _ => $"Operation failed: {error.Message}",
+                IOException io => string.Format(Loc.Instance["err.vaultWrite"], io.Message),
+                _ => string.Format(Loc.Instance["err.operationFailed"], error.Message),
             });
         }
         finally { IsBusy = false; }

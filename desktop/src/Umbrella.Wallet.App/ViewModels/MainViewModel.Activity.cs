@@ -191,13 +191,15 @@ public partial class MainViewModel
     }
 
     /// <summary>Fetches real on-chain transaction history for the user's own addresses, so transactions
-    /// made before the wallet was opened still appear. Covers BTC and LTC across EVERY issued receive
+    /// made before the wallet was opened still appear. Covers BTC, LTC and BCH across EVERY issued receive
     /// address (not just #0, so funds received on a rotated address still show), plus ETH and TRON
     /// (TRC-20 incl. USDT). Best-effort and keyless; runs through the same Tor/proxy route as balances,
     /// and is deduped by explorer link so a tx seen on two of the user's addresses appears once.</summary>
     private async Task LoadOnChainHistoryAsync()
     {
         if (string.IsNullOrEmpty(_unlockedMnemonic)) return;
+        // Decrypt this wallet's private transaction notes first, so each row is built with its note.
+        await LoadTxNotesAsync();
         HistoryLoading = true;
         OnPropertyChanged(nameof(HasFilteredActivity)); // let the "loading" state show immediately
         try
@@ -205,9 +207,9 @@ public partial class MainViewModel
             var rows = new List<(long Ts, ActivityRowViewModel Row)>();
             var walletId = _registry.Active?.Id ?? "default";
 
-            // BTC / LTC: every issued external address (0..last issued), so a rotated-address history
-            // is not lost. Capped defensively so a huge index never fans out to hundreds of calls.
-            foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc) })
+            // BTC / LTC / BCH: every issued external address (0..last issued), so a rotated-address
+            // history is not lost. Capped defensively so a huge index never fans out to hundreds of calls.
+            foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc), ("BCH", ChainId.Bch) })
             {
                 uint lastIssued = 0;
                 try { lastIssued = _addrIndex.GetState(walletId, sym).LastIssuedExternalIndex ?? 0; } catch { }
@@ -217,9 +219,12 @@ public partial class MainViewModel
                     string addr;
                     try { addr = _deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, chain, 0, i).Address; }
                     catch { continue; }
-                    var txs = sym == "BTC"
-                        ? await _history.GetBitcoinAsync(addr)
-                        : await _history.GetLitecoinAsync(addr);
+                    var txs = sym switch
+                    {
+                        "BTC" => await _history.GetBitcoinAsync(addr),
+                        "LTC" => await _history.GetLitecoinAsync(addr),
+                        _ => await _history.GetBitcoinCashAsync(addr),
+                    };
                     foreach (var t in txs) rows.Add((t.UnixMs, ToActivityRow(t)));
                 }
             }
@@ -292,9 +297,47 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task RefreshHistory()
     {
-        StatusMessage = "Refreshing transaction history…";
+        StatusMessage = Loc.Instance["status.refreshingHistory"];
         await LoadOnChainHistoryAsync();
         ShowToast(Loc.Instance["activity.synced"], isError: false);
+    }
+
+    /// <summary>Exports the transaction history to a CSV at a location the user picks — for taxes, records
+    /// or a spreadsheet. Read-only and fully local: nothing is uploaded; the wallet writes only the file
+    /// the user chose. Covers the merged money movements (local + on-chain, deduped), newest first.
+    /// Best-effort — a cancelled dialog or a write error just shows a toast, never disrupts the wallet.</summary>
+    [RelayCommand]
+    private async Task ExportHistoryCsvAsync()
+    {
+        if (PickFileAsync is null) return;
+
+        var rows = MergedActivity()
+            .Where(r => r.IsTransaction)
+            .Select(r => new HistoryCsvRow(
+                r.When, r.Kind, r.Asset, r.Amount, r.Counterparty, r.Status, r.Explorer ?? string.Empty))
+            .ToList();
+
+        if (rows.Count == 0)
+        {
+            ShowToast(Loc.Instance["activity.exportEmpty"], isError: true);
+            return;
+        }
+
+        var path = await PickFileAsync(HistoryCsv.SuggestedFileName(), true, "csv");
+        if (string.IsNullOrWhiteSpace(path)) return; // the user cancelled the dialog
+
+        try
+        {
+            var csv = HistoryCsv.Build(rows);
+            // UTF-8 with BOM so a spreadsheet (Excel especially) reads non-ASCII labels correctly.
+            await System.IO.File.WriteAllTextAsync(path, csv, new System.Text.UTF8Encoding(true));
+            ShowToast(Loc.Instance["activity.exportOk"], isError: false);
+            StatusMessage = string.Format(Loc.Instance["activity.exportDone"], rows.Count);
+        }
+        catch
+        {
+            ShowToast(Loc.Instance["activity.exportFail"], isError: true);
+        }
     }
 
     /// <summary>Re-attempts a failed send. The broadcast never left the device, so this only re-opens the
@@ -314,10 +357,10 @@ public partial class MainViewModel
         SendError = string.Empty;
         HasSendQuote = false;
         SelectSection("Send");
-        StatusMessage = "Retry — review the pre-filled transfer, then send again";
+        StatusMessage = Loc.Instance["status.retryPrefilled"];
     }
 
-    private static ActivityRowViewModel ToActivityRow(ChainTx t)
+    private ActivityRowViewModel ToActivityRow(ChainTx t)
     {
         var when = t.UnixMs > 0
             ? DateTimeOffset.FromUnixTimeMilliseconds(t.UnixMs).LocalDateTime.ToString("MMM d, HH:mm", Fx.Culture)
@@ -328,7 +371,9 @@ public partial class MainViewModel
         // Signed number only; the asset shows in its own column now that Activity is merged.
         var amount = t.Kind == "Sent" ? $"-{t.Amount}" : $"+{t.Amount}";
         // Explorer history is fetched with only_confirmed, so these are settled — Status "Confirmed".
-        return new ActivityRowViewModel(t.Kind, t.Asset, amount, counter, when, t.Explorer, "Confirmed", t.UnixMs);
+        // TxId carries the transaction hash so a private (encrypted) note can be attached to this row.
+        return new ActivityRowViewModel(t.Kind, t.Asset, amount, counter, when, t.Explorer, "Confirmed", t.UnixMs,
+            TxId: t.Hash, Note: TxNoteFor(t.Hash));
     }
 
     /// <summary>Copy a transaction's explorer link to the clipboard — deliberately not opened in
@@ -338,7 +383,7 @@ public partial class MainViewModel
     {
         if (row?.Explorer is not { Length: > 0 } url) return;
         await CopyTextAsync(url);
-        StatusMessage = "Explorer link copied — paste it into your browser to view the transaction";
+        StatusMessage = Loc.Instance["status.explorerLinkCopied"];
         ShowToast(Loc.Instance["toast.linkCopied"], isError: false);
     }
 }

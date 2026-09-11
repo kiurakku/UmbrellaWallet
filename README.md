@@ -1,317 +1,443 @@
 <div align="center">
 
-<img src="docs/assets/readme-header.png" width="100%" alt="Umbrella Wallet"/>
+<img src="docs/assets/logo-umbrella.png" width="96" alt="Umbrella"/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-umbrella-text-dark.png"/>
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo-umbrella-text-light.png"/>
+  <img src="docs/assets/logo-umbrella-text-light.png" width="190" alt="Umbrella"/>
+</picture>
 
-<br/>
+# Umbrella Wallet
 
-<img src="docs/assets/umbrellaLoadlogo.png" width="120" alt="Umbrella"/>
-&nbsp;&nbsp;
-<img src="docs/assets/thefear-logo.png" width="96" alt="the fear"/>
+**A self-custody desktop crypto wallet that never asks who you are.**
 
-# ☂️ Umbrella Wallet
+No account. No email. No phone number. No KYC. No tracking. No fee on your transfers.
 
-<sub>a **the fear** app · <img src="docs/assets/tgumbrella.png" width="14" align="middle"/> [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)</sub>
-
-### Your money. Your keys. Nobody watching. 🌧️
-
-**The crypto wallet that never asks who you are.**
-No account. No email. No phone number. No KYC. Just a wallet — the way it was meant to be.
+<sub>an independent project by <b>the fear</b></sub>
 
 <br/>
 
 ![CI](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/ci.yml/badge.svg)
-![License](https://img.shields.io/badge/license-free--use%20·%20no--derivatives-E7CA83)
-![Stars](https://img.shields.io/github/stars/kiurakku/UmbrellaWallet?style=social)
+![CodeQL](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/codeql.yml/badge.svg)
+![Version](https://img.shields.io/badge/version-4.6.0-4B3F86)
+![Tests](https://img.shields.io/badge/tests-526%20offline-7DCF8F)
+![Platform fee](https://img.shields.io/badge/platform%20fee-none-7DCF8F)
 
-<br/>
-
-![Version](https://img.shields.io/badge/version-4.5.0-4B3F86)
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-ready-6E5FB8?logo=linux&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-planned-8A8A9C?logo=android&logoColor=white)
-![Desktop](https://img.shields.io/badge/desktop-Avalonia%20·%20.NET%208-8A5FD6)
-![Price](https://img.shields.io/badge/price-free-7DCF8F)
-
-![KYC](https://img.shields.io/badge/KYC-none-D14A55)
-![Accounts](https://img.shields.io/badge/accounts-zero-D14A55)
-![Custody](https://img.shields.io/badge/custody-yours%20only-E7CA83)
-![Tor](https://img.shields.io/badge/Tor-built--in-7D4698?logo=torproject&logoColor=white)
+![Tor](https://img.shields.io/badge/Tor-bundled-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
-![Coins](https://img.shields.io/badge/send-BTC·ETH·LTC·DOGE·SOL·TON·TRON·USDT·XMR-7DCF8F)
-![Import](https://img.shields.io/badge/import-BIP39%20+%20TON%20(Telegram)-5AC8B4)
-![Themes](https://img.shields.io/badge/themes-27-E7CA83)
-![Languages](https://img.shields.io/badge/languages-6-5AC8B4)
+**[⬇ Download](https://github.com/kiurakku/UmbrellaWallet/releases/latest)** ·
+[Verify your download](#verify-what-you-downloaded) ·
+[Build it yourself](docs/building.md) ·
+[Security](SECURITY.md) ·
+[Docs](docs/README.md)
 
 <br/>
 
-**[⬇️ Download latest (v4.5.0)](https://github.com/kiurakku/UmbrellaWallet/releases/latest)** · [💖 Sponsor](https://github.com/sponsors/kiurakku) · [📣 Telegram](https://t.me/UmbrellaWallet) · [All releases](https://github.com/kiurakku/UmbrellaWallet/releases)
-
-<br/>
-
-<img src="docs/assets/screenshot-portfolio.png" width="85%" alt="Umbrella Wallet — portfolio"/>
-
-<sub>© 2026 Umbrella Wallet · by **the fear**</sub>
+<img src="docs/assets/screenshot-portfolio-v46.png" width="88%" alt="Umbrella Wallet portfolio"/>
 
 </div>
 
 ---
 
-## 🌂 Why Umbrella?
+## What this is
 
-Every mainstream wallet and exchange wants your passport, your face, your phone — and then keeps your coins on **their** servers. When they freeze, get hacked, or simply decide you're "suspicious", your money stops being yours. 🧊
+Umbrella is a desktop wallet for Windows and Linux that holds your keys and nothing else of yours.
 
-Umbrella flips that model:
+Your 24-word seed is generated on your machine, encrypted into a local vault with your password
+(Argon2id → AES-256-GCM), and never leaves the device. There is no server that knows you exist. There
+is no account to create, nothing to verify, and no way for us — or anyone holding this software — to
+freeze, seize, or recover your funds.
 
-- 🕵️ **Truly anonymous.** Install and go. There is no registration screen, because there is nothing to register. Nothing in the app identifies you.
-- 🔑 **You hold the keys.** Your 24-word recovery phrase is created on *your* computer and never leaves it. Not to us, not to anyone. We literally *cannot* touch your funds — that's the point.
-- 🧅 **Tor built in — with a kill-switch.** Flip one switch and the wallet's traffic goes through the Tor network — no separate install, no configuration. Turn on **Tor-only** and it **fails closed**: if Tor is off, still connecting or drops, the wallet *refuses* to touch the clearnet instead of leaking your IP. Your IP stays out of your finances, guaranteed.
-- 🥷 **Secrets that can't be screenshotted.** While your recovery phrase is on screen, the window renders black to screen-capture and remote-viewing software.
-- 💸 **Real money movement.** Send and receive Bitcoin, Ethereum, Litecoin, Solana, **TON**, TRON, USDT and Monero — to any wallet or exchange in the world. Transactions are signed on your machine; only the signed result ever goes out. TON transfers are pinned byte-for-byte against the reference `@ton` library, so a wrong byte can never strand funds.
-- ₿ **A real Bitcoin/Litecoin HD wallet.** Balance, history and spending work across *every* address you've ever used — plus fresh receive addresses on request, with change returned privately to an internal address. What the wallet shows you is exactly what it can find and spend.
-- ✅ **Backups you can trust.** Verify a backup actually decrypts and holds a valid phrase *before* you rely on it — without exposing the seed. Every release ships a checksum file the build itself verifies.
-- 📈 **Live market, real candles.** A built-in market with **real OHLC candlestick charts** (Binance klines) and live prices (CoinGecko) — timeframes from 1H to 1Y. No mock data anywhere.
-- 🎨 **Yours to look at.** 27 colour themes, six interface languages, movable navigation, and full **profile customization** — your own avatar, banner and sidebar backgrounds, plus optional ambient motion (rain, drifting aurora, animated stickers — each toggled on its own). A private wallet doesn't have to feel like a tax form.
-- 💾 **Updates keep your data.** Installing a new version never touches your wallets, theme, linked addresses or history — they live in a separate data folder, not in the app files.
+It supports ten chains in one vault, including Monero as a **full** wallet rather than a receive-only
+stub, and ships Tor inside the binary so your balance lookups don't hand your IP address to a block
+explorer.
 
-## ⚔️ Umbrella vs. the usual suspects
+## Why it exists
 
-| | ☂️ Umbrella | 🏦 Exchange app | 👛 Typical wallet |
-|---|:---:|:---:|:---:|
-| Sign-up / KYC | ❌ none | 🪪 passport + selfie | 📧 often email |
-| Who holds the keys | 🫵 you | 🏢 them | 🫵 you |
-| Can freeze your funds | ❌ impossible | ✅ any time | ❌ |
-| Tor anonymity | ✅ one switch + kill-switch | ❌ | ⚠️ manual setup |
-| Monero support | ✅ full wallet | ⚠️ delisting it | ❌ rare |
-| Screenshot-proof seed | ✅ | — | ❌ |
-| Tracks you | ❌ zero analytics | ✅ extensively | ⚠️ usually |
-| Price | 🆓 | "free" (you're the product) | 🆓 |
+Most wallets ask you to trade privacy for convenience, and most of them don't say so plainly.
 
-## 💼 What you can do
+- Exchange wallets hold your keys and know your identity.
+- Most "private" wallets do one chain well. Feather is Monero. Sparrow is Bitcoin. If you hold both,
+  you run both.
+- Wallets with Tor support usually make you configure it. Which means most people don't.
+- Nearly every wallet takes a cut of your transfers, and many bury it.
+
+Umbrella is the wallet we wanted to exist: one vault for the coins people actually hold together,
+Tor as a switch instead of a setup guide, and no cut of your money.
+
+## What makes it different
+
+**Monero and Bitcoin and USDT in one vault.**
+Not a Monero wallet with Bitcoin bolted on, and not a Bitcoin wallet that shows XMR as "coming soon".
+Monero runs the real `monero-wallet-rpc` locally over loopback, so its balance is computed on your
+machine because no explorer can compute it for you.
+
+**Tor is bundled, not assumed.**
+One switch. The wallet starts its own Tor client on port 9250 — separate from a Tor Browser you may
+already be running — and routes every balance lookup, price fetch and broadcast through it. There is
+also a kill-switch: when it's on, a request that cannot go through Tor does not go at all.
+
+**The Security Center tells you the truth, not a promise.**
+It reads live settings and reports what is *actually* protecting the wallet right now. If Tor is off,
+it says your IP is visible to every explorer you use. It will not flatter you.
+
+<div align="center">
+<img src="docs/assets/screenshot-security-v46.png" width="80%" alt="Security Center"/>
+</div>
+
+**Privacy Radar.**
+Before you send, the wallet reads the transaction you are about to make and tells you what it would
+reveal on-chain — chiefly whether it links coins that were previously unconnected, which is how chain
+analysis de-anonymises people. The analysis runs offline, on your own data, for you.
+
+**No cut of your transfers.**
+You pay the network's miner/validator fee and nothing else. See [What this costs](#what-this-costs).
+
+## Screenshots
+
+| Receive | Settings |
+|---|---|
+| <img src="docs/assets/screenshot-receive-v46.png" alt="Receive"/> | <img src="docs/assets/screenshot-settings-v46.png" alt="Settings"/> |
+
+**19 themes**, each with its own character rather than one accent swapped around:
+
+| Kraken · abyssal violet | Void · electric OLED |
+|---|---|
+| <img src="docs/assets/theme-kraken.png" alt="Kraken theme"/> | <img src="docs/assets/theme-void.png" alt="Void theme"/> |
+| **Ember · crimson editorial** | **Matrix · phosphor terminal** |
+| <img src="docs/assets/theme-ember.png" alt="Ember theme"/> | <img src="docs/assets/theme-matrix.png" alt="Matrix theme"/> |
+
+## Coins
+
+Every row in the wallet prints the network under the coin name, because sending on the wrong network
+is the most common way people lose money.
+
+| Coin | Receive | Balance | Send | History | Swap | Notes |
+|---|:---:|:---:|:---:|:---:|:---:|---|
+| Bitcoin (BTC) | ✅ | ✅ | ✅ | ✅ | ✅ | BIP84 native SegWit, full HD scan |
+| Ethereum (ETH) | ✅ | ✅ | ✅ | ✅ | ✅ | + every ERC-20 at the same address |
+| Litecoin (LTC) | ✅ | ✅ | ✅ | ✅ | ✅ | BIP84, full HD scan |
+| Dogecoin (DOGE) | ✅ | ✅ | ✅ | ✅ | ✅ | real UTXO spend |
+| Bitcoin Cash (BCH) | ✅ | ✅ | ✅ | ✅ | — | CashAddr, SIGHASH_FORKID |
+| Monero (XMR) | ✅ | ✅ | ✅ | — | — | local `monero-wallet-rpc`, loopback only |
+| Solana (SOL) | ✅ | ✅ | ✅ | ✅ | — | SPL compatible |
+| TRON (TRX) | ✅ | ✅ | ✅ | ✅ | — | + every TRC-20 at the same address |
+| USDT (TRC-20) | ✅ | ✅ | ✅ | ✅ | — | same address as TRX; fee paid in TRX |
+| TON | ✅ | ✅ | ✅ | ✅ | — | wallet v4R2, pinned to `@ton/ton` |
+| Cardano (ADA) | ✅ | ✅ | ✅ | ✅ | — | CIP-1852, BIP32-Ed25519 |
+| Zcash (ZEC) | ✅ | ✅ | — | — | — | transparent addresses only — stated plainly |
+
+Plus the native coin of every major EVM network at the same `0x` address (BNB, MATIC, AVAX, FTM, CRO,
+and ETH on Arbitrum / Optimism / Base), and NFTs listed by name and count with **no image fetch**, so
+viewing them never leaks your IP.
+
+Swaps are non-custodial via THORChain: your coin goes to a THORChain vault with a signed memo and the
+network delivers to your own address. Nobody holds your funds in between.
+
+## Download
+
+Builds are published on the [releases page](https://github.com/kiurakku/UmbrellaWallet/releases/latest).
 
 | | |
 |---|---|
-| 📥 **Receive** | One tap shows a QR + address for any coin. Colour-coded so you never receive on the wrong network. |
-| 📤 **Send** | To any address or exchange deposit. Clear review step, economical fees by default. |
-| 👁️ **Watch** | Track any public address (your Ledger, an old MetaMask) without ever importing a key. |
-| 🏦 **Link exchanges** | See your Binance, Bybit, OKX, Kraken, KuCoin, Gate.io, MEXC, Bitget and Telegram CryptoBot balances beside your on-chain coins — via **read-only** keys that can't move funds. |
-| 📊 **Follow the market** | Real candles, five time windows (1H → 1Y), auto-refresh — for every listed coin. |
-| 💾 **Back up** | One click exports an encrypted backup file. Useless to a thief, priceless to future-you. |
-| 🔐 **Lock** | Auto-locks after idle. `Ctrl+L` locks instantly. |
+| **Windows installer** | `UmbrellaWallet-Setup-4.6.0.exe` |
+| **Windows portable** | `UmbrellaWallet-4.6.0-win-x64-portable.exe` — one file, no install, leaves nothing behind |
+| **Linux** | `UmbrellaWallet-4.6.0-linux-x64.tar.gz` |
 
-<div align="center">
-<img src="docs/assets/screenshot-market.png" width="85%" alt="Live market with exchange-style charts"/>
-<br/><sub>📈 Live market · exchange-style charts · 1H to 1Y</sub>
-</div>
+Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
+from the file you downloaded and keeps its data next to it.
 
-## 🪙 Coins
+### Verify what you downloaded
 
-| Coin | Receive | Send | Notes |
-|------|:-------:|:----:|-------|
-| 🟠 Bitcoin (BTC) | ✅ | ✅ | native SegWit |
-| 🔷 Ethereum (ETH) | ✅ | ✅ | ERC-20 compatible address |
-| 💵 **USDT (TRC-20)** | ✅ | ✅ | Tether on TRON — fee paid in TRX |
-| 🕶️ **Monero (XMR)** | ✅ | ✅ | full private wallet, powered by Monero's own engine |
-| ⚪ Litecoin (LTC) | ✅ | ✅ | native SegWit |
-| 🟣 Solana (SOL) | ✅ | ✅ | |
-| 🔺 TRON (TRX) | ✅ | ✅ | |
-| 🐕 Dogecoin (DOGE) | ✅ | ✅ | UTXO spend (BlockCypher) |
-| 💎 **TON** | ✅ | ✅ | wallet v4R2, signed on device · pinned to `@ton` |
-| 🔵 Cardano (ADA) | ✅ | ✅ | on-device signing, Koios broadcast |
-
-## 🎨 Make it yours
-
-- **27 themes** — the fear noir, brand palettes (Uniswap, Binance, TON, TRON, Solana, Ethereum, Monero, Kraken…), OLED black, Nord, Dracula, gradients, and more. Switch live, no restart.
-- **6 languages** — 🇬🇧 English · 🇺🇦 Українська · Русский · 🇨🇳 中文 · 🇪🇸 Español · 🇩🇪 Deutsch. New installs default to your OS language automatically.
-- **23 display currencies** — USD, EUR, UAH, GBP, PLN, TRY, CAD, AUD, CHF, BRL, KRW, AED, KZT and more.
-- **Movable navigation** — park the menu left, right, top or bottom.
-- **Duck stickers** 🦆 — animated Telegram stickers greet you on Welcome, Receive, Send, Connect, Activity and Settings. Serious cryptography, unserious ducks.
-
-## 📦 Download
-
-Grab the newest build from the **[latest release](https://github.com/kiurakku/UmbrellaWallet/releases/latest)** —
-the files below are attached there for the current version:
-
-| Platform | Package | Notes |
-|----------|---------|-------|
-| **Windows** | [UmbrellaWallet-Setup-4.5.0.exe](https://github.com/kiurakku/UmbrellaWallet/releases/latest) | Installer — choose install folder |
-| **Windows** | [`UmbrellaWallet-Portable-4.5.0.zip`](https://github.com/kiurakku/UmbrellaWallet/releases/latest) | Portable — unzip and run `Umbrella.exe` |
-| **Linux** | [`UmbrellaWallet-4.5.0-linux-x64.tar.gz`](https://github.com/kiurakku/UmbrellaWallet/releases/latest) | Unpack, run `./Umbrella.Wallet.App` — no install required |
-| **Android** | _planned_ | A native Android build (Avalonia) is on the roadmap |
-
-### 🔎 Verify your download
-
-Every release has a **`SHA256SUMS.txt`** attached (generated by the release workflow, not by hand). After
-downloading, check that your file's hash matches the line for it:
+Every release ships `SHA256SUMS-<version>.txt`. Check it before you run anything:
 
 ```bash
-# Linux / macOS — run in the folder with the download + SHA256SUMS.txt
-sha256sum -c SHA256SUMS.txt --ignore-missing
+# Linux / macOS — run in the folder with the download and the sums file
+sha256sum -c SHA256SUMS-4.6.0.txt
 ```
 
 ```powershell
-# Windows PowerShell — compare against the matching line in SHA256SUMS.txt
-Get-FileHash .\UmbrellaWallet-Setup-4.5.0.exe -Algorithm SHA256
+# Windows PowerShell — compare against the matching line in the sums file
+Get-FileHash .\UmbrellaWallet-Setup-4.6.0.exe -Algorithm SHA256
 ```
 
-A matching hash proves the file wasn't corrupted or tampered with in transit. (Authenticode signing of
-the Windows installer is planned — it needs a code-signing certificate — so until then Windows SmartScreen
-may still warn on first run.)
+If the hash does not match, do not run it. Better still, [build it yourself](docs/building.md) — the
+build is deterministic enough that you can compare your own binary against the published one.
 
-## 🚀 Get started
+## Get started
 
-1. ⬇️ **Windows** — download the portable zip, unzip, run `Umbrella.exe`.
-2. 🐧 **Linux** — grab the tar.gz build, unpack, run `./Umbrella.Wallet.App`.
-3. 🖊️ Create a wallet → **write the 24 words on paper** → done. You now have a bank in your pocket that answers to no one.
+1. **Create** a new wallet, or **import** any BIP39 phrase (12/15/18/21/24 words) from another wallet.
+   The derived addresses will match the original exactly.
+2. Write the 24 words on **paper**. The wallet then asks you for three of them at random — not
+   theatre, it is the only way to catch a phrase you wrote down wrong while it still costs nothing.
+3. Turn **Tor** on in Settings *before* you unlock, if you don't want your addresses queried over
+   clearnet even once.
+4. Send a **small test amount** to any new address first. A blockchain transfer is final.
 
-> 📣 **Web version paused.** The browser version is on hold for an indefinite period — development is focused entirely on the native desktop apps (Windows and Linux now, Android planned). News and contact: **[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)** (the only official channel).
+While your seed phrase or Monero keys are on screen, the window is excluded from screenshots and
+screen sharing. A camera pointed at the screen still works, so reveal them alone.
 
-> ✍️ **The 24 words ARE the wallet.** Anyone who has them has your money; if you lose them and your device, nobody in the universe can bring your coins back — including us. That is what "your keys" costs, and what it's worth.
+## Architecture
 
-## ❓ FAQ
+```mermaid
+flowchart TB
+    subgraph UI["Umbrella.Wallet.App — Avalonia UI"]
+        V["Views (XAML)"]
+        VM["MainViewModel (partial classes)"]
+        LOC["Localization · 6 languages"]
+        THEME["Theming · 19 palettes"]
+    end
 
-<details><summary><b>💰 Is it really free?</b></summary><br/>
-Yes. Download, use, send, receive — free. The license reserves the right to add a small, clearly-disclosed service fee to certain in-app transactions in the future; if that ever happens, you'll see it on the review screen before you confirm anything.
-</details>
+    subgraph CORE["Umbrella.Wallet.Core — pure, offline, testable"]
+        SEED["BIP39 seed"]
+        DERIVE["Derivation<br/>BIP32 · SLIP-0010 · BIP32-Ed25519"]
+        UTXO["UTXO scan + spend planner"]
+        SAFETY["Safety<br/>Privacy Radar · spam · address checks"]
+        AMOUNT["AmountInput<br/>locale-safe parsing"]
+    end
 
-<details><summary><b>🔍 Can you see my balance or transactions?</b></summary><br/>
-No. There is no server of ours holding your data. The app reads public blockchains directly (through Tor if you enable it), and your keys never leave your device. We can't see you, and we like it that way.
-</details>
+    subgraph INFRA["Umbrella.Wallet.Infrastructure — I/O"]
+        VAULT["Encrypted vault<br/>Argon2id → AES-256-GCM"]
+        HTTP["PublicHttp"]
+        TOR["Bundled Tor client :9250"]
+        XMRRPC["monero-wallet-rpc<br/>loopback only"]
+        SIGN["Signers<br/>NBitcoin · Nethereum · BouncyCastle"]
+    end
 
-<details><summary><b>😱 I forgot my password / lost my phrase. Can you help?</b></summary><br/>
-With the 24 words — yes, you can restore everything on any device, yourself. Without them — nobody can, and that includes us. That's not a policy, it's mathematics.
-</details>
+    EXPL["Public explorers / RPCs"]
 
-<details><summary><b>🏦 Can I move coins from Binance / another wallet here?</b></summary><br/>
-Yes. Open <i>Receive</i>, pick the coin, and withdraw from the exchange to the shown address — mind the network (e.g. USDT must come over TRON/TRC-20). Or import an existing wallet's 12/24-word phrase directly.
-</details>
+    V --> VM
+    VM --> CORE
+    VM --> INFRA
+    HTTP -->|"when Tor is on"| TOR --> EXPL
+    HTTP -.->|"direct, unless kill-switch"| EXPL
+    INFRA --> XMRRPC
+    VAULT -->|"decrypted only in memory"| SEED
+    SEED --> DERIVE --> SIGN
 
-<details><summary><b>🕶️ Why is Monero special here?</b></summary><br/>
-Most wallets show XMR at best as "receive only". Umbrella ships Monero's own wallet engine inside the app, so XMR is a full coin: real balance, real private sending, keys never leaving your machine.
-</details>
+    classDef secret fill:#2E1013,stroke:#EE3244,color:#fff
+    class SEED,VAULT,SIGN secret
+```
 
-<details><summary><b>🧅 Do I need to install Tor?</b></summary><br/>
-No — it's inside the app. One switch in <i>Settings → Privacy & Tor</i>, and the wallet's traffic goes through the Tor network on a private port that won't clash with a Tor Browser you already run.
-</details>
+**The rule the layout enforces:** `Core` never touches the network, so every piece of money logic —
+derivation, UTXO selection, fee maths, amount parsing, privacy analysis — is testable offline against
+known vectors. Anything that talks to the outside world lives in `Infrastructure` and goes through one
+Tor-aware HTTP client.
 
-<details><summary><b>🔓 The code is public — can I fork or modify it?</b></summary><br/>
-<strong>No.</strong> Umbrella is <em>source-available</em> for transparency and security audit — you can read the code and build it for yourself — but it is <strong>not</strong> open for forks, rebrands, mirrors or derivative wallets. Forking or republishing violates the <a href="LICENSE">license</a> (Section 2). If you find a bug, open an issue; do not publish your own "Umbrella fork".
-</details>
+### What leaves your device
 
-<details><summary><b>💖 Can I support the project?</b></summary><br/>
-Yes — and thank you. Umbrella is independent, ad-free and funded only by its author. If it helps you, consider <a href="https://github.com/sponsors/kiurakku"><strong>sponsoring on GitHub</strong></a> or saying hi in <a href="https://t.me/UmbrellaWallet">Telegram</a>. Sponsorship keeps development going; it does not buy influence over the roadmap or your wallet.
-</details>
+| Never leaves | Leaves (to public explorers / RPCs) |
+|---|---|
+| Your seed phrase | The addresses you look up |
+| Every private key | Transactions you broadcast |
+| Your vault password | Coin prices you fetch |
+| Your private transaction notes | *(all of it behind Tor when Tor is on)* |
 
-## 🗺️ Roadmap
+There is no account, no email, no telemetry and no analytics of any kind.
 
-- 📱 Android build
-- 🔔 Price alerts
-- 🌐 More exchange integrations on request
-- ₿ More UTXO / L2 send paths as they pass fund-safety tests
+## Repository layout
 
-## 🛠️ For builders
+```
+desktop/
+  src/
+    Umbrella.Wallet.Core/            pure logic — no network, no UI
+      Chains/                        chain catalog, address validation
+      Derivation/                    BIP32 / SLIP-0010 / Ed25519 derivation
+      Utxo/                          HD scan, spend planner, fee levels
+      Safety/                        Privacy Radar, spam detection
+      Amounts/                       locale-safe amount parsing
+      Chart/                         candle aggregation
+    Umbrella.Wallet.Infrastructure/  everything that does I/O
+      Network/                       explorers, RPC, senders, Tor
+      EncryptedFileSeedVault.cs      Argon2id → AES-256-GCM vault
+    Umbrella.Wallet.App/             Avalonia UI
+      Views/                         XAML
+      ViewModels/                    MainViewModel, split by feature
+      Localization.cs                every user-facing string, 6 languages
+      Theming.cs                     19 palettes
+      GuideContent.cs                the in-app guide
+  tests/
+    Umbrella.Wallet.Core.Tests/      526 offline tests
+  installer/                         Inno Setup script
+  scripts/                           release, Tor/Monero staging
+docs/                                everything in this README's Docs section
+```
 
-> **Audit, don't fork.** Source is published so you can verify what the binary does — not so you can ship a clone. Building locally for personal review is fine; publishing a fork, mirror or derivative is not. See [Source policy](#-source-policy) and [LICENSE](LICENSE).
+## Build it yourself
 
-<details>
-<summary>Build from source (click to expand)</summary>
-
-**Desktop** (.NET 8 + Avalonia):
+You need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). Nothing else.
 
 ```bash
-cd desktop
-dotnet run --project src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj   # run
-dotnet test                                                               # 138 tests, crypto pinned to published vectors
+git clone https://github.com/kiurakku/UmbrellaWallet.git
+cd UmbrellaWallet
+dotnet build desktop/Umbrella.Wallet.sln -c Release
 ```
 
-Windows release: `./scripts/fetch-tor.ps1`, `./scripts/fetch-monero.ps1`, then `dotnet publish -r win-x64`
-(or the one-shot `pwsh desktop/scripts/release-windows.ps1`).
-Linux release: `./scripts/publish-linux.sh` (fetches Linux Tor/Monero helpers, packs a tar.gz).
+```bash
+# run it
+dotnet run --project desktop/src/Umbrella.Wallet.App
+```
 
-> **Verify what you run.** Every release ships a `SHA256SUMS-<version>.txt`; check your download against
-> it, or rebuild from the tag and diff the deterministic managed DLLs. Full guide, with an honest account
-> of what .NET can and can't reproduce: **[docs/BUILD_VERIFY.md](docs/BUILD_VERIFY.md)**.
+```bash
+# the full offline test suite — no network required
+dotnet test desktop/Umbrella.Wallet.sln -c Release --filter 'FullyQualifiedName!~LiveExplorer'
+```
 
-> Umbrella is now a **desktop-only** project. The former web/backend was removed; a native **Android**
-> build (Avalonia) is planned. Follow **[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)** for releases.
+Producing installers, the portable build and checksums is documented in
+**[docs/building.md](docs/building.md)**.
 
-**Security internals:** 256-bit seed from the OS CSPRNG → BIP39 · vault encrypted with Argon2id (64 MiB) + AES-256-GCM · Monero keys go only to the local audited `monero-wallet-rpc` · Tor Expert Bundle on a private SOCKS port · backups exported still-encrypted.
+## Tests
 
-</details>
+526 offline tests, run on every push by [CI](.github/workflows/ci.yml). They are not there for a
+badge — several classes of them exist because the alternative is losing money:
 
-## 📖 Documentation
+- **Derivation** is pinned byte-for-byte to official test vectors and to the reference libraries
+  (`@ton/ton` for TON, `cardano-serialization-lib` for ADA). An address the wallet shows you is an
+  address the original wallet would show.
+- **Amount parsing** is pinned because `"0,5"` parsed naively reads as `5` — ten times the amount.
+- **Spend planning** is pinned so a partial network scan can never quietly lower a balance, and a fee
+  level can never drop below the relay floor and strand a transaction.
+- **Localization parity** fails if any language is missing a key, so a feature cannot silently render
+  in English inside a translated wallet.
+- **Theme contrast** fails if body text, muted text, or a button label falls below WCAG AA.
 
-Project documentation lives in **[`docs/`](docs/README.md)**. Umbrella is desktop-only; the earlier
-web product's docs have been archived and are no longer authoritative.
+The `LiveExplorer` filter excludes the handful of tests that hit real explorers, so the default run is
+fully offline and deterministic.
+
+## Diagnostics
+
+| Symptom | Where to look |
+|---|---|
+| Balance is slow or missing | Security Center → is Tor on? Tor adds latency by design |
+| Monero balance stuck at "Scanning…" | It is a real wallet syncing, not an API call — it takes time |
+| A coin shows "Not ready" | That chain's adapter is not implemented; it is never a fake address |
+| Send fails with "not synced" | A partial scan refuses to spend rather than risk a wrong balance |
+| An unknown token appeared | Suspected spam airdrops are folded away — see the notice above Holdings |
+
+More in **[docs/troubleshooting.md](docs/troubleshooting.md)**.
+
+## What this costs
+
+**Umbrella takes no cut of your transfers.** You pay the network's own miner/validator fee and nothing
+else — no platform fee, no subscription, no withdrawal fee, no account fee. A wallet that holds your
+own keys should not charge you for touching your own money.
+
+It is funded instead by:
+
+- **[GitHub Sponsors](https://github.com/sponsors/kiurakku)**
+- **Bounties** — anyone can fund a specific coin or feature
+- **A small swap spread**, later and only on swaps, which are optional in a way a send is not
+
+There is no advertising and no tracking, and there will not be. Those are the two things that would
+make everything else on this page untrue.
+
+## Security
+
+The short version:
+
+- Seed generated with the OS CSPRNG, 256-bit entropy, BIP39.
+- Vault: Argon2id (m=64 MiB, t=4, p=2) → AES-256-GCM with versioned associated data.
+- Keys are decrypted into memory only for the moment they are used, then zeroed.
+- Seed and key screens set `WDA_EXCLUDEFROMCAPTURE`, so screenshots and screen sharing see nothing.
+- Auto-lock on idle and on minimise; `Ctrl+L` locks instantly.
+- Every network call goes through one Tor-aware client; the kill-switch makes "no Tor" mean "no
+  request", not "quietly direct".
+
+The long version, including the threat model and what Umbrella explicitly does **not** protect you
+from, is in **[SECURITY.md](SECURITY.md)**.
+
+Found a vulnerability? [Report it privately](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new).
+Please don't open a public issue for anything that could put funds at risk.
+
+## Roadmap
+
+Being honest about what exists and what doesn't:
 
 | | |
 |---|---|
-| [Desktop app](desktop/README.md) · [Desktop architecture](docs/04-desktop.md) | what it does, network support, security model, structure |
-| [Network fees](docs/07-financial.md) · [Tor](docs/TOR.md) | TRC-20 costs, send review; how Tor is bundled |
-| [Roadmap](docs/CLAUDE_IMPLEMENTATION_ROADMAP_UK.md) · [Third-party binaries](THIRD_PARTY_NOTICES.md) | product direction; pinned + hash-verified Tor/Monero |
-| [Archived web docs](docs/archive/legacy-web-2026-07/README.md) | historical only — the discontinued React/NestJS web product |
+| ✅ Shipped | 11 chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, 19 themes, 6 languages |
+| 🔜 Next | **Duress password** — a second password that opens a decoy wallet · **One-switch private send** — Tor on, route chosen, sent · **Transaction simulation** — see exactly what will happen before you confirm |
+| 🗓 Planned | Android · reproducible builds with published attestations · an external security audit |
+| ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 
-## ⚠️ The honest part
-
-Umbrella is **non-custodial**. That word means: *we never hold your money, so we can never lose it, freeze it — or recover it.* You are the bank now. 🏦 Guard your phrase, check addresses before sending, start with a small test amount. Crypto transactions are final; there is no undo button anywhere in the world.
-
-Umbrella is **free, independent, experimental self-custody software** authored by **the fear** — yours to run on your own device, at your own risk. It is provided **as-is, without any warranty**, and the author accepts **no liability** whatsoever — see [LICENSE](LICENSE). Nothing here is financial, tax or legal advice.
-
-## 🔒 Source policy
-
-Umbrella is **open for inspection, closed for imitation.**
-
-| ✅ Allowed | ❌ Not allowed |
-|---|---|
-| Download official releases and use them | Fork, mirror or republish this repository |
-| Read the source to audit security | Rebrand, rename or sell a modified build |
-| Build locally to verify behaviour | Remove copyright, logos or attribution |
-| Report bugs via GitHub Issues | Pull requests that add features without prior agreement |
-
-The code is public because a **privacy wallet must be verifiable** — you should never have to trust a black box with your keys. That transparency does not grant permission to copy the project. Forks, mirrors and derivative works are **prohibited by license** and require **written permission** from the copyright holder ([LICENSE](LICENSE), Section 2).
-
-## 💖 Sponsor
-
-Umbrella has no ads, no tracking and no investors. If the wallet saves you time, stress or exchange fees — **sponsorship helps keep it alive.**
+## Documentation
 
 | | |
 |---|---|
-| **GitHub Sponsors** | [github.com/sponsors/kiurakku](https://github.com/sponsors/kiurakku) |
-| **Community** | [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet) |
+| [docs/README.md](docs/README.md) | Index of everything below |
+| [docs/architecture.md](docs/architecture.md) | How the layers fit together and why |
+| [docs/building.md](docs/building.md) | Build, run, test, package installers |
+| [docs/security-model.md](docs/security-model.md) | Threat model, crypto choices, what is not protected |
+| [docs/forking.md](docs/forking.md) | Fork it: what to change, what not to, licence limits |
+| [docs/adding-a-chain.md](docs/adding-a-chain.md) | Add a coin end to end, with the safety gates |
+| [docs/localization.md](docs/localization.md) | Add or fix a language |
+| [docs/theming.md](docs/theming.md) | Add a theme that passes the contrast tests |
+| [docs/testing.md](docs/testing.md) | What the suite covers and how to extend it |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Diagnosing a misbehaving wallet |
+| [CHANGELOG.md](CHANGELOG.md) | Every release |
 
-Sponsors fund development and infrastructure; they do **not** get access to user data (there isn't any), priority over the roadmap, or a "premium" wallet. Your keys stay yours.
+## The honest part
 
-**Not affiliated with anyone.** Umbrella is not connected to, endorsed by, or partnered with any exchange, network or brand. All third-party names, logos and trademarks — Bitcoin, Ethereum, TRON, TON, Monero, Uniswap, Binance, Bybit, OKX, WhiteBit, Telegram, MetaMask, and every coin/token name — belong to their respective owners; where a name appears (a colour-theme label, a read-only exchange connector) it identifies that style or service only and implies **no affiliation or endorsement**. You are responsible for any laws or taxes that apply to you where you live.
+- A blockchain transfer is **final**. Nobody can reverse it — not us, not a support desk.
+- If you lose the 24 words **and** the vault password, the funds are gone. That is what self-custody
+  means, and it is the trade you are making for nobody being able to freeze them.
+- Tor hides your IP from explorers. It does not make a transparent chain private: Bitcoin, Ethereum
+  and the rest are public ledgers, and Privacy Radar exists to tell you what yours reveals.
+- Zcash here is transparent addresses only. It is listed that way rather than implying shielded
+  privacy the wallet does not provide.
+- No external security audit has been done yet. 526 tests and a public CI are evidence, not a
+  substitute — and this page will say so until that changes.
 
-## ℹ️ About
+## Contributing
 
-**Umbrella Wallet** is a privacy-first, non-custodial cryptocurrency wallet for desktop with an optional web companion.
+Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md), and
+[docs/forking.md](docs/forking.md) if you are building on top of this.
 
-| | |
-|---|---|
-| **Repository** | https://github.com/kiurakku/UmbrellaWallet |
-| **Releases** | https://github.com/kiurakku/UmbrellaWallet/releases |
-| **Sponsor** | https://github.com/sponsors/kiurakku |
-| **Issues** | https://github.com/kiurakku/UmbrellaWallet/issues |
-| **License** | [LICENSE](LICENSE) — free to use, no derivatives, no forks |
+Anything touching the send path, the vault, or key derivation needs tests. That is not bureaucracy:
+those are the paths where a bug costs somebody their money.
 
-**Topics:** `#umbrella-wallet` `#crypto-wallet` `#bitcoin` `#ethereum` `#monero` `#tor` `#privacy` `#self-custody` `#non-custodial` `#avalonia` `#dotnet` `#desktop-wallet`
-## 💬 Support
+## License
 
-Questions and bug reports are welcome as GitHub issues — best-effort support, no legal obligation.
-
-## 📄 License
-
-**Free to use. Not free to take.** Source is published for audit; forks and derivatives are prohibited. See [LICENSE](LICENSE) for full terms.
+Free to use. See [LICENSE](LICENSE) and the source policy in
+[docs/forking.md](docs/forking.md). Third-party components and their licences are listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ---
 
+## Who makes this
 
+<div align="center">
 
+<img src="docs/assets/logo-thefear-ghost.png" width="128" alt="the fear"/>
 
+### the fear
 
+<sub>An independent developer. No company, no investors, no board to answer to —<br/>
+which is exactly why there is no tracking and no cut of your transfers.</sub>
 
+<br/>
 
+<a href="https://t.me/UmbrellaWallet">
+  <img src="docs/assets/logo-telegram.png" width="44" alt="Umbrella Wallet on Telegram"/>
+</a>
 
+**[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)**
 
+<sub>Releases, security notes and contact — the only official channel.<br/>
+Nobody there will ever ask you for your seed phrase.</sub>
 
+<br/>
+
+[💖 Sponsor this work](https://github.com/sponsors/kiurakku)
+
+<br/>
+<br/>
+
+<sub>© 2026 Umbrella Wallet · by <b>the fear</b></sub>
+
+</div>

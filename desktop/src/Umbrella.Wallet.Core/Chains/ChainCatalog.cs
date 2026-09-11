@@ -64,12 +64,13 @@ public static class ChainCatalog
             // Bitcoin Cash — a UTXO chain like BTC/LTC/DOGE (BIP44, P2PKH, CashAddr). Send is a real UTXO
             // spend (Haskoin UTXOs/fee/broadcast) signed by the same proven spender as BTC/LTC/DOGE with
             // NBitcoin's SIGHASH_FORKID — the FORKID signature + change path are pinned by tests. Newly
-            // enabled: verify with a small amount before trusting. HasHistory stays off until a real BCH
-            // history fetcher lands (the Activity feed has no BCH branch yet). CanSwap: BCH is a swap
-            // TARGET via THORChain (in ReceivableTo), but not a source, so this stays false.
+            // enabled: verify with a small amount before trusting. HasHistory: on — the Activity feed pulls
+            // real BCH history over Haskoin (transactions/full) across every issued address, same net-effect
+            // parse as BTC/LTC, pinned by ParseHaskoinFull tests. CanSwap: BCH is a swap TARGET via
+            // THORChain (in ReceivableTo), but not a source, so this stays false.
             new ChainInfo(
                 ChainId.Bch, "BCH", "Bitcoin Cash", ChainSupportLevel.Supported, "BIP44", "m/44'/145'/0'/0/{index}",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger — use Tor and a fresh address per receive to reduce linking."),
             // Zcash — TRANSPARENT (t-addr) receive only. A t-addr is a normal P2PKH (BIP44 coinType 133)

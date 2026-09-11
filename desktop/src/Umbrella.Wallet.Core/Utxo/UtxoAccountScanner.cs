@@ -29,6 +29,11 @@ public sealed class UtxoAccountScanner
 {
     public const int DefaultGapLimit = 20;
 
+    /// <summary>How many address probes may be in flight at once. Enough to collapse a gap-limit walk
+    /// from ~21 sequential round-trips into a handful of waves, low enough not to trip the rate limits
+    /// of public explorers (a 429 marks the scan partial, which is worse than being a little slower).</summary>
+    public const int MaxParallelProbes = 6;
+
     private readonly HdAddressDeriver _deriver;
     private readonly int _gapLimit;
 
@@ -97,68 +102,102 @@ public sealed class UtxoAccountScanner
         uint? highestUsed = null;
         var consecutiveUnused = 0;
 
-        for (uint index = 0; ; index++)
+        // A network error is "unknown", never "empty". These wrappers turn one into null so the walk
+        // below can stop extending and flag the result partial — the balance is then a floor, not the
+        // truth — while a cancel still propagates.
+        async Task<AddressActivity?> ProbeAsync(string address)
+        {
+            try { return await explorer.GetActivityAsync(address, ct); }
+            catch (OperationCanceledException) { throw; }
+            catch { return null; }
+        }
+
+        async Task<IReadOnlyList<ExplorerUtxo>?> FetchUtxosAsync(string address)
+        {
+            try { return await explorer.GetUtxosAsync(address, ct); }
+            catch (OperationCanceledException) { throw; }
+            catch { return null; }
+        }
+
+        for (uint index = 0; ; )
         {
             ct.ThrowIfCancellationRequested();
 
-            var account = _deriver.DeriveBitcoinLikeAt(mnemonic, chain, change, index);
-            collectAddresses?.Add(account.Address);
+            // How many more addresses could this walk still need? Enough to complete the gap run, and
+            // enough to cover any index the wallet is obliged to reach. Probing that many CONCURRENTLY
+            // is what makes a scan fast — the old walk did one HTTP round-trip per address, so a fresh
+            // wallet paid 21+ sequential round-trips per chain before showing a balance.
+            //
+            // The window is deliberately sized to what a strictly sequential walk would have queried
+            // anyway, so this never reveals extra addresses to the explorer — a privacy property, not
+            // just an optimisation. Concurrency is capped so a burst cannot trip explorer rate limits
+            // (a 429 would mark the scan partial and end up slower).
+            var stillNeeded = Math.Max(1L, _gapLimit - consecutiveUnused);
+            if (forcedThrough >= index) stillNeeded = Math.Max(stillNeeded, forcedThrough - index + 1);
+            var window = (int)Math.Min(stillNeeded, MaxParallelProbes);
 
-            AddressActivity activity;
-            try
-            {
-                activity = await explorer.GetActivityAsync(account.Address, ct);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch
-            {
-                // A network error is "unknown", never "empty": stop extending and flag the result
-                // partial so the balance is presented as a floor, not the truth.
-                return (highestUsed, true);
-            }
+            var batch = new List<DerivedUtxoAccount>(window);
+            for (var k = 0; k < window; k++)
+                batch.Add(_deriver.DeriveBitcoinLikeAt(mnemonic, chain, change, index + (uint)k));
 
-            onScan();
-            progress?.Report(new UtxoScanProgress(chain, change, index, progressCount(), activity.Used));
+            var activities = await Task.WhenAll(batch.Select(a => ProbeAsync(a.Address)));
 
-            if (activity.Used)
+            // Walk the batch in index order so the gap rule, progress reporting and the collected
+            // address list stay byte-for-byte what the sequential walk produced.
+            var usedInBatch = new List<(int Offset, DerivedUtxoAccount Account)>();
+            var stop = false;
+            var stopPartial = false;
+            var consumed = 0;
+
+            for (var k = 0; k < batch.Count; k++)
             {
-                highestUsed = index;
-                consecutiveUnused = 0;
+                var activity = activities[k];
+                if (activity is null) { stop = true; stopPartial = true; break; }
 
-                IReadOnlyList<ExplorerUtxo> found;
-                try
+                consumed = k + 1;
+                collectAddresses?.Add(batch[k].Address);
+                onScan();
+                progress?.Report(new UtxoScanProgress(chain, change, index + (uint)k, progressCount(), activity.Used));
+
+                if (activity.Used)
                 {
-                    found = await explorer.GetUtxosAsync(account.Address, ct);
+                    highestUsed = index + (uint)k;
+                    consecutiveUnused = 0;
+                    usedInBatch.Add((k, batch[k]));
                 }
-                catch (OperationCanceledException)
+                else
                 {
-                    throw;
-                }
-                catch
-                {
-                    return (highestUsed, true);
+                    consecutiveUnused++;
                 }
 
-                foreach (var u in found)
-                {
-                    utxos.Add(new OwnedUtxo(account.Path, account.Address, u.TxId, u.Vout, u.ValueSat, u.Confirmed));
-                    if (u.Confirmed) add(u.ValueSat, 0); else add(0, u.ValueSat);
-                }
+                if (index + (uint)k >= forcedThrough && consecutiveUnused >= _gapLimit) { stop = true; break; }
+
+                // Hard cap so a misbehaving explorer that always answers "used" cannot loop forever.
+                if (index + (uint)k >= forcedThrough + _gapLimit + 10_000) { stop = true; stopPartial = true; break; }
             }
-            else
+
+            // Pull the unspent outputs of the used addresses — also concurrently, then applied in index
+            // order so the resulting UTXO list is deterministic.
+            if (usedInBatch.Count > 0)
             {
-                consecutiveUnused++;
+                var fetched = await Task.WhenAll(usedInBatch.Select(u => FetchUtxosAsync(u.Account.Address)));
+                for (var u = 0; u < usedInBatch.Count; u++)
+                {
+                    var found = fetched[u];
+                    if (found is null) return (highestUsed, true);
+
+                    var account = usedInBatch[u].Account;
+                    foreach (var x in found)
+                    {
+                        utxos.Add(new OwnedUtxo(account.Path, account.Address, x.TxId, x.Vout, x.ValueSat, x.Confirmed));
+                        if (x.Confirmed) add(x.ValueSat, 0); else add(0, x.ValueSat);
+                    }
+                }
             }
 
-            if (index >= forcedThrough && consecutiveUnused >= _gapLimit)
-                return (highestUsed, false);
+            if (stop) return (highestUsed, stopPartial);
 
-            // Hard cap so a misbehaving explorer that always answers "used" cannot loop forever.
-            if (index >= forcedThrough + _gapLimit + 10_000)
-                return (highestUsed, true);
+            index += (uint)Math.Max(consumed, 1);
         }
     }
 }

@@ -105,6 +105,17 @@ public partial class MainViewModel
     private double _chartMin;
     private double _chartMax;
 
+    /// <summary>Bridges the provider's candle type to the pure aggregator in Core and back.</summary>
+    private static IReadOnlyList<PriceCandle> Downsample(IReadOnlyList<PriceCandle> candles)
+    {
+        var thinned = Umbrella.Wallet.Core.Chart.CandleAggregator.Downsample(
+            candles.Select(c => new Umbrella.Wallet.Core.Chart.Ohlc(c.Open, c.High, c.Low, c.Close, c.Volume)).ToList());
+
+        return thinned.Count == candles.Count
+            ? candles // untouched — avoid rebuilding an identical list
+            : thinned.Select(o => new PriceCandle(o.Open, o.High, o.Low, o.Close, o.Volume)).ToList();
+    }
+
     /// <summary>
     /// Turns a price series into a plotted chart: gridlines with price labels, time labels along
     /// the bottom, a stroked line and the filled area beneath it.
@@ -118,6 +129,13 @@ public partial class MainViewModel
         ChartVolumeBars = [];
         ChartHigh = ChartLow = string.Empty;
         CrosshairVisible = false;
+
+        // A 24h window arrives as a few hundred fine-grained candles. Across a ~950px plot each body
+        // came out about two pixels wide, so "Candles" drew a jagged line and the mode looked broken.
+        // Merging adjacent candles is what a longer timeframe IS, so no price is invented or lost —
+        // every source candle still sits inside the bar that represents it.
+        candles = Downsample(candles);
+
         _detailCandles = candles;
         if (candles.Count < 2) return;
 
@@ -285,19 +303,25 @@ public partial class MainViewModel
             _ => TimeSpan.FromDays(365),
         };
         var t = DateTime.Now - TimeSpan.FromTicks((long)(span.Ticks * (1 - frac)));
+        // Month names follow the wallet's language, like every other date it shows. On InvariantCulture
+        // the crosshair read "Sep 10" while the Activity feed right next to it said "вер. 10".
+        // "HH:mm" carries no words, so it is the same either way.
         return ChartRange switch
         {
-            "1H" or "24H" => t.ToString("HH:mm", CultureInfo.InvariantCulture),
-            "7D" or "30D" => t.ToString("MMM d · HH:mm", CultureInfo.InvariantCulture),
-            _ => t.ToString("MMM d, yyyy", CultureInfo.InvariantCulture),
+            "1H" or "24H" => t.ToString("HH:mm", Fx.Culture),
+            "7D" or "30D" => t.ToString("MMM d · HH:mm", Fx.Culture),
+            _ => t.ToString("MMM d, yyyy", Fx.Culture),
         };
     }
 
+    /// <summary>Price-axis labels, in the same locale as every other money figure. They were
+    /// InvariantCulture, so the axis read "3 519 010.80" while the 24h-high card directly beneath it
+    /// read "₴3 519 010,80".</summary>
     private static string FormatPrice(double value) => value switch
     {
-        >= 1000 => value.ToString("N0", CultureInfo.InvariantCulture),
-        >= 1 => value.ToString("N2", CultureInfo.InvariantCulture),
-        _ => value.ToString("N6", CultureInfo.InvariantCulture),
+        >= 1000 => value.ToString("N0", Fx.Culture),
+        >= 1 => value.ToString("N2", Fx.Culture),
+        _ => value.ToString("N6", Fx.Culture),
     };
 
     /// <summary>Evenly spaced ticks labelled for the selected window, oldest on the left.</summary>

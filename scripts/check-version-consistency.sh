@@ -27,10 +27,18 @@ require() {
 }
 
 require "app csproj <Version>"      "desktop/src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj" "<Version>${VERSION}</Version>"
-require "installer AppVersion"      "desktop/installer/umbrella.iss"                              "#define AppVersion \"${VERSION}\""
+# The installer no longer hardcodes a version: release-windows.ps1 passes it from the csproj and the
+# .iss falls back to reading it out of the published exe. A literal here is therefore a REGRESSION —
+# it is exactly how a 4.6.0 build once shipped as "UmbrellaWallet-Setup-4.5.0.exe".
+if grep -qE '^#define AppVersion "' desktop/installer/umbrella.iss; then
+  echo "::error::installer: umbrella.iss hardcodes a version again; it must derive it from the build"
+  fail=1
+else
+  echo "  ok  installer takes its version from the build (desktop/installer/umbrella.iss)"
+fi
 require "README version badge"      "README.md"                                                   "version-${VERSION}-"
 require "README installer link"     "README.md"                                                   "UmbrellaWallet-Setup-${VERSION}.exe"
-require "README portable link"      "README.md"                                                   "UmbrellaWallet-Portable-${VERSION}.zip"
+require "README portable link"      "README.md"                                                   "UmbrellaWallet-${VERSION}-win-x64-portable.exe"
 require "README linux link"         "README.md"                                                   "UmbrellaWallet-${VERSION}-linux-x64.tar.gz"
 require "CHANGELOG entry"           "CHANGELOG.md"                                                 "## [${VERSION}]"
 

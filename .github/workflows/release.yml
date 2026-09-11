@@ -42,8 +42,8 @@ jobs:
         shell: pwsh
         run: |
           choco install innosetup -y --no-progress
-          $iscc = "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe"
-          & $iscc "/DSourceDir=$(Resolve-Path dist/app)" "/DDistDir=$(Resolve-Path dist)" desktop/installer/umbrella.iss
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc "/DAppVersion=$(Get-Content VERSION)" "/DSourceDir=$(Resolve-Path dist/app)" "/DDistDir=$(Resolve-Path dist)" desktop/installer/umbrella.iss
           Compress-Archive -Path dist/portable/* -DestinationPath "dist/UmbrellaWallet-Portable-${{ steps.v.outputs.version }}.zip" -Force
 
       - name: Upload to release

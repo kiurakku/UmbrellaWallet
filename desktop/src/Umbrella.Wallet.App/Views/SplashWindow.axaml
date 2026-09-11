@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:Umbrella.Wallet.App"
         x:Class="Umbrella.Wallet.App.Views.SplashWindow"
         Width="480" Height="400"
         SystemDecorations="None"
@@ -22,7 +23,7 @@
                Width="132" HorizontalAlignment="Center" Classes="splashLogo"/>
         <TextBlock Text="UMBRELLA WALLET" FontSize="23" FontWeight="SemiBold" LetterSpacing="6"
                    HorizontalAlignment="Center" Foreground="#F7F9FC" Classes="splashTitle"/>
-        <TextBlock Text="Secure. Simple. Protected." FontSize="13" HorizontalAlignment="Center"
+        <TextBlock Text="{Binding [splash.tagline], Source={x:Static app:Loc.Instance}}" FontSize="13" HorizontalAlignment="Center"
                    Foreground="#8994A7" Classes="splashSub"/>
       </StackPanel>
     </Panel>
