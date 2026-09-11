@@ -1,4 +1,6 @@
 using System.Runtime.CompilerServices;
+using Umbrella.Wallet.Core.Safety;
+using Umbrella.Wallet.Infrastructure.Network;
 
 namespace Umbrella.Wallet.Core.Tests;
 
@@ -30,6 +32,9 @@ internal static class TestDataIsolation
         var directory = Path.Combine(Path.GetTempPath(), $"umbrella-tests-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         Environment.SetEnvironmentVariable("UMBRELLA_DATA_DIR", directory);
+        WriteOfflineSettings(directory);
+
+        GoOffline();
 
         // Best-effort sweep of directories left by previous runs. Skipped silently on anything still
         // locked: a stale temp folder is untidy, never a failure worth breaking a test run over.
@@ -45,6 +50,79 @@ internal static class TestDataIsolation
             {
                 // in use, or not ours to delete
             }
+        }
+    }
+
+    /// <summary>
+    /// Takes the whole suite off the network, using the wallet's own kill-switch.
+    ///
+    /// <c>SetRequireProxy(true)</c> with no proxy configured is exactly the Tor-only fail-closed state:
+    /// the shared client refuses every connection in its ConnectCallback, before DNS and before a
+    /// socket. Nothing goes out, and nothing waits for a timeout.
+    ///
+    /// Using the production switch rather than a test-only flag is deliberate — the suite exercises the
+    /// same path a user in Tor-only mode gets, and there is no special build behaviour to drift.
+    ///
+    /// Pointing the configurable chains at a closed port stays as well: it covers the same ground from
+    /// the other end and keeps working for any test that deliberately turns the kill-switch off.
+    /// </summary>
+    internal static void GoOffline()
+    {
+        PublicHttp.SetProxy(null);
+        PublicHttp.SetRequireProxy(true);
+        PointEveryChainAtNothing();
+    }
+
+    /// <summary>
+    /// Writes a settings file that leaves the kill-switch ON.
+    ///
+    /// Arming it once at start-up was not enough: MainViewModel's constructor applies the SAVED
+    /// Tor-only preference - <c>PublicHttp.SetRequireProxy(_uiSettings.TorOnlyMode)</c> - and with no
+    /// settings file that preference is false, so every view-model the suite built quietly switched
+    /// the network back on. The tests then spent fifteen seconds per connect timeout against hosts
+    /// that are not in the endpoint registry and cannot be redirected: Blockscout, CoinGecko, the EVM
+    /// side-chain RPCs. Nineteen view-model tests took five and a half minutes between them.
+    ///
+    /// Configuring the app rather than special-casing it keeps the suite on the same code path a real
+    /// Tor-only user gets, and means a view-model can be constructed as many times as a test likes
+    /// without reopening the network.
+    /// </summary>
+    private static void WriteOfflineSettings(string directory)
+    {
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(directory, "ui-settings.json"),
+                """{"TorOnlyMode":true,"Language":"en"}""");
+        }
+        catch
+        {
+            // Not worth failing a run over; the overrides above still cover the chain lookups.
+        }
+    }
+
+    /// <summary>
+    /// Sends every chain lookup to a closed port on this machine.
+    ///
+    /// These tests were never offline — they were quietly querying Blockstream, TronGrid, CoinGecko
+    /// and the rest on every wallet they created, and only LOOKED fast because those calls were
+    /// failing. The moment a Bitcoin scan started succeeding, the suite went from two and a half
+    /// minutes to eleven, because it had begun walking real gap limits over the real internet.
+    ///
+    /// That was never the deal. A unit suite must not depend on somebody else's uptime, must not put
+    /// load on free public explorers every time anybody runs it, and must not change its answer
+    /// because a server is rate-limiting today. A refused connection on loopback returns immediately,
+    /// with no DNS and no timeout, and the scanner treats it exactly as it treats any unreachable
+    /// explorer: "unknown", never "empty".
+    ///
+    /// The live tests clear this in their own constructors, which is what makes them live.
+    /// </summary>
+    internal static void PointEveryChainAtNothing()
+    {
+        foreach (var symbol in ChainEndpoints.Configurable)
+        {
+            // Port 1 is reserved and never listened on; the OS refuses instantly.
+            ChainEndpoints.SetOverride(symbol, "http://127.0.0.1:1");
         }
     }
 

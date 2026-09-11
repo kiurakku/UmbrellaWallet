@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Umbrella.Wallet.Core.Chains;
+using Umbrella.Wallet.Core.Safety;
 
 namespace Umbrella.Wallet.Infrastructure.Network;
 
@@ -189,6 +190,27 @@ public sealed class PublicChainBalanceClient
 {
     private static HttpClient Http => PublicHttp.Shared;
 
+    /// <summary>
+    /// The Ethereum RPCs to try, with the user's chosen server first when they have picked one.
+    ///
+    /// The shipped fallbacks stay BEHIND it rather than being replaced: a chosen server that stops
+    /// answering should leave the wallet reading balances, not blank. What must never happen is the
+    /// default quietly becoming first choice again, so the override is prepended and then filtered out
+    /// of the rest.
+    /// </summary>
+    private static IEnumerable<string> EffectiveEthRpcs
+    {
+        get
+        {
+            var chosen = ChainEndpoints.OverrideFor("ETH");
+            if (chosen is not null) yield return chosen;
+            foreach (var fallback in EthRpcs)
+            {
+                if (!string.Equals(fallback, chosen, StringComparison.OrdinalIgnoreCase)) yield return fallback;
+            }
+        }
+    }
+
     private static readonly string[] EthRpcs =
     [
         "https://cloudflare-eth.com",
@@ -232,11 +254,14 @@ public sealed class PublicChainBalanceClient
         }
     }
 
+    /// <summary>The TON index root: the user's chosen server, or toncenter.</summary>
+    private static string TonRoot => ChainEndpoints.Resolve("TON", "https://toncenter.com");
+
     /// <summary>TON native balance via toncenter (returns nanoTON as a string).</summary>
     private static async Task<ChainBalance?> GetTonAsync(string address, CancellationToken ct)
     {
         using var res = await Http.GetAsync(
-            $"https://toncenter.com/api/v2/getAddressBalance?address={Uri.EscapeDataString(address)}", ct);
+            $"{TonRoot}/api/v2/getAddressBalance?address={Uri.EscapeDataString(address)}", ct);
         if (!res.IsSuccessStatusCode) return null;
         using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
         if (!doc.RootElement.TryGetProperty("result", out var r)) return null;
@@ -250,7 +275,8 @@ public sealed class PublicChainBalanceClient
     {
         using var body = new StringContent(
             $"{{\"_addresses\":[\"{address}\"]}}", Encoding.UTF8, "application/json");
-        using var res = await Http.PostAsync("https://api.koios.rest/api/v1/address_info", body, ct);
+        using var res = await Http.PostAsync(
+            $"{ChainEndpoints.Resolve("ADA", "https://api.koios.rest")}/api/v1/address_info", body, ct);
         if (!res.IsSuccessStatusCode) return null;
         using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
         if (doc.RootElement.ValueKind != JsonValueKind.Array || doc.RootElement.GetArrayLength() == 0) return null;
@@ -367,7 +393,7 @@ public sealed class PublicChainBalanceClient
 
     private static async Task<ChainBalance?> GetEthAsync(string address, CancellationToken ct)
     {
-        foreach (var rpc in EthRpcs)
+        foreach (var rpc in EffectiveEthRpcs)
         {
             try
             {
@@ -493,7 +519,8 @@ public sealed class PublicChainBalanceClient
             method = "getBalance",
             @params = new object[] { address },
         };
-        using var res = await Http.PostAsJsonAsync("https://api.mainnet-beta.solana.com", payload, ct);
+        using var res = await Http.PostAsJsonAsync(
+            ChainEndpoints.Resolve("SOL", "https://api.mainnet-beta.solana.com"), payload, ct);
         if (!res.IsSuccessStatusCode) return null;
         using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
         if (!doc.RootElement.TryGetProperty("result", out var result)) return null;
@@ -727,7 +754,7 @@ public sealed class PublicChainBalanceClient
         try
         {
             using var res = await Http.GetAsync(
-                "https://toncenter.com/api/v3/jetton/wallets" +
+                $"{TonRoot}/api/v3/jetton/wallets" +
                 $"?owner_address={Uri.EscapeDataString(a)}&limit=50&offset=0",
                 cancellationToken);
             if (!res.IsSuccessStatusCode) return [];

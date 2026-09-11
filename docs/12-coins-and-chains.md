@@ -262,6 +262,11 @@ Every transaction hides:
 
 No one, not even blockchain analysis companies, can see your balance or transactions without your ViewKey. This is why Monero is used by privacy-conscious individuals worldwide.
 
+> **This is not only a Monero thing.** Every chain is read through somebody's server, and on a
+> transparent chain that server is handed your actual addresses. **Settings → Privacy → Where each
+> chain is read from** lets you pick a different company or point at your own server, for Bitcoin,
+> Litecoin, Bitcoin Cash, Dogecoin, Ethereum, Solana, TON, Tron and Cardano.
+
 **The part most wallets do not tell you: the node.**
 
 A Monero wallet cannot read the chain by itself — it has to ask some machine, and unless you run

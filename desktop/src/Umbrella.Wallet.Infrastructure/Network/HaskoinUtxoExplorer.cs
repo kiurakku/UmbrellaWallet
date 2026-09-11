@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Umbrella.Wallet.Core.Safety;
 using Umbrella.Wallet.Core.Utxo;
 
 namespace Umbrella.Wallet.Infrastructure.Network;
@@ -29,7 +30,12 @@ public sealed class HaskoinUtxoExplorer : IUtxoExplorer
 
     public static HaskoinUtxoExplorer For(string symbol) => new(CoinFor(symbol));
 
-    private string Base => $"https://api.haskoin.com/{_coin}";
+    /// <summary>What this build ships with, before any choice of the user's.</summary>
+    public const string DefaultRoot = "https://api.haskoin.com";
+
+    // The coin slug stays ours; only the server answering for it is the user's to choose. Anything
+    // speaking Haskoin's API - including an instance they run - drops straight in.
+    private string Base => $"{ChainEndpoints.Resolve(_coin.ToUpperInvariant(), DefaultRoot)}/{_coin}";
 
     /// <summary>Haskoin takes the bare CashAddr; the wallet stores it with the "bitcoincash:" scheme.</summary>
     private static string Strip(string address) =>

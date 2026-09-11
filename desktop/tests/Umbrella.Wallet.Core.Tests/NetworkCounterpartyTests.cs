@@ -106,6 +106,11 @@ public sealed class NetworkCounterpartyTests
 
         var inCode = HostsInSource(root).Select(h => h.Host).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // The endpoint picker's servers count as "in code" too. They live in Core rather than the
+        // network layer, so the source scan does not reach them — but choosing one means really
+        // contacting it, which is the whole reason they are declared.
+        foreach (var option in ChainEndpoints.Known.SelectMany(k => k.Value)) inCode.Add(option.Host);
+
         var stale = NetworkCounterpartyCatalog.All
             .Select(NetworkCounterpartyCatalog.HostOf)
             .Where(h => !inCode.Contains(h))
@@ -179,6 +184,25 @@ public sealed class NetworkCounterpartyTests
             var holdsCredentials = party.Learns.HasFlag(CounterpartyLearns.YourAccountWithThem);
             Assert.Equal(holdsCredentials, party.Contact == CounterpartyContact.OptIn);
         }
+    }
+
+    [Fact]
+    public void Every_endpoint_the_picker_offers_is_declared_here_too()
+    {
+        // The endpoint picker lives in Core rather than the network layer, so the source scan above
+        // does not reach it — but choosing one of those servers means really contacting it, and a
+        // server the wallet contacts without disclosing is exactly what this catalog exists to
+        // prevent. Read from the picker's own list rather than from the source, so the two cannot
+        // drift.
+        var undeclared = ChainEndpoints.Known
+            .SelectMany(k => k.Value)
+            .Select(o => o.Host)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(h => !NetworkCounterpartyCatalog.IsDeclared(h))
+            .OrderBy(h => h, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Empty(undeclared);
     }
 
     [Fact]

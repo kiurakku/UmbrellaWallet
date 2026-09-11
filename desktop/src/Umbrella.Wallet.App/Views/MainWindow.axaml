@@ -3373,6 +3373,67 @@
                   </StackPanel>
                 </Border>
 
+                <!-- Where each chain is read from. Same choice as the Monero node, on every other
+                     chain — and on a transparent one it is heavier, because asking for a balance means
+                     naming the address. The picker edits one chain at a time; choosing the shipped
+                     default CLEARS the override rather than pinning that URL forever. -->
+                <Border Classes="card" IsVisible="{Binding IsTabPrivacy}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="{Binding [endpoint.title], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="{Binding [endpoint.hint], Source={x:Static app:Loc.Instance}}"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <TextBlock Text="{Binding [endpoint.chain], Source={x:Static app:Loc.Instance}}"
+                                 VerticalAlignment="Center" FontSize="12"
+                                 Foreground="{DynamicResource UmTextMuted}"/>
+                      <ComboBox MinWidth="130" ItemsSource="{Binding EndpointChains}"
+                                SelectedItem="{Binding SelectedEndpointChain}"/>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding EndpointOptions}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:EndpointOptionVm">
+                          <RadioButton GroupName="chainEndpoint" Margin="0,2,0,0"
+                                       IsChecked="{Binding IsSelected, Mode=OneWay}"
+                                       Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).SelectEndpointCommand}"
+                                       CommandParameter="{Binding}">
+                            <StackPanel Spacing="1">
+                              <TextBlock Text="{Binding Label}" FontSize="12.5"/>
+                              <TextBlock Text="{Binding Host}" Classes="mono" FontSize="10.5"
+                                         Foreground="{DynamicResource UmTextMuted}"/>
+                            </StackPanel>
+                          </RadioButton>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel Spacing="4" Margin="0,6,0,0">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                 Text="{Binding [endpoint.custom], Source={x:Static app:Loc.Instance}}"/>
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBox Grid.Column="0" Classes="mono" FontSize="12"
+                                 Text="{Binding CustomEndpoint}"
+                                 Watermark="https://mempool.space/api"/>
+                        <Button Grid.Column="1" Classes="ghost" Padding="14,7" MinHeight="0"
+                                Content="{Binding [endpoint.apply], Source={x:Static app:Loc.Instance}}"
+                                Command="{Binding ApplyCustomEndpointCommand}"/>
+                      </Grid>
+                      <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource UmTextMuted}"
+                                 Text="{Binding [endpoint.customHint], Source={x:Static app:Loc.Instance}}"/>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                      <TextBlock Grid.Column="0" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"
+                                 Text="{Binding EndpointStatus}" Foreground="{Binding EndpointStatusColor}"/>
+                      <Button Grid.Column="1" Classes="ghost" Padding="12,6" MinHeight="0" FontSize="11.5"
+                              IsVisible="{Binding SelectedEndpointIsCustom}"
+                              Content="{Binding [endpoint.reset], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding ResetEndpointCommand}"/>
+                    </Grid>
+                  </StackPanel>
+                </Border>
+
                 <!-- Who this wallet talks to. "Your keys never leave your device" is true and every
                      wallet says it; the part usually left unsaid is that the wallet still has to ASK
                      somebody what is on the chain, and on a public chain asking means handing over the

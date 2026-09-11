@@ -14,7 +14,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 
 ![CI](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/ci.yml/badge.svg)
 ![CodeQL](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/codeql.yml/badge.svg)
-![Version](https://img.shields.io/badge/version-4.6.0-4B3F86)
+![Version](https://img.shields.io/badge/version-4.7.0-4B3F86)
 ![Tests](https://img.shields.io/badge/tests-526%20offline-7DCF8F)
 ![Platform fee](https://img.shields.io/badge/platform%20fee-none-7DCF8F)
 
@@ -84,6 +84,17 @@ it says your IP is visible to every explorer you use. It will not flatter you.
 <img src="docs/assets/screenshot-security-v46.png" width="80%" alt="Security Center"/>
 </div>
 
+**You choose which server sees your addresses.**
+A wallet cannot read a chain by itself — it has to ask somebody, and on a transparent chain asking
+means *saying the address*. Tor hides your IP; it does not un-send an address. So Settings → Privacy
+names every server the wallet talks to and what each one learns, and lets you point any chain
+somewhere else — a different company, or a node you run. Monero, Bitcoin, Litecoin, Bitcoin Cash,
+Dogecoin, Ethereum, Solana, TON, Tron and Cardano.
+
+Two rules are enforced rather than suggested: a `.onion` node is never used without Tor and is never
+silently swapped for a clearnet one, and a plain `http://` endpoint is refused outright — choosing
+your own server *for privacy* and then sending addresses in clear would be worse than not choosing.
+
 **Privacy Radar.**
 Before you send, the wallet reads the transaction you are about to make and tells you what it would
 reveal on-chain — chiefly whether it links coins that were previously unconnected, which is how chain
@@ -144,9 +155,9 @@ This is the icon you will see once it is installed.
 
 | | |
 |---|---|
-| **Windows installer** | `UmbrellaWallet-Setup-4.6.0.exe` |
-| **Windows portable** | `UmbrellaWallet-4.6.0-win-x64-portable.exe` — one file, no install, leaves nothing behind |
-| **Linux** | `UmbrellaWallet-4.6.0-linux-x64.tar.gz` |
+| **Windows installer** | `UmbrellaWallet-Setup-4.7.0.exe` |
+| **Windows portable** | `UmbrellaWallet-4.7.0-win-x64-portable.exe` — one file, no install, leaves nothing behind |
+| **Linux** | `UmbrellaWallet-4.7.0-linux-x64.tar.gz` |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
@@ -157,12 +168,12 @@ Every release ships `SHA256SUMS-<version>.txt`. Check it before you run anything
 
 ```bash
 # Linux / macOS — run in the folder with the download and the sums file
-sha256sum -c SHA256SUMS-4.6.0.txt
+sha256sum -c SHA256SUMS-4.7.0.txt
 ```
 
 ```powershell
 # Windows PowerShell — compare against the matching line in the sums file
-Get-FileHash .\UmbrellaWallet-Setup-4.6.0.exe -Algorithm SHA256
+Get-FileHash .\UmbrellaWallet-Setup-4.7.0.exe -Algorithm SHA256
 ```
 
 If the hash does not match, do not run it. Better still, [build it yourself](docs/building.md) — the

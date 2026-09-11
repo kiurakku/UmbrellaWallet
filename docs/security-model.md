@@ -121,6 +121,30 @@ Two refusals are enforced rather than warned about, both fail-closed:
 `MoneroNodeTests` pins both refusals, along with the address parser — a mistyped node is not merely a
 wallet that never syncs, it is a stranger answering for the chain.
 
+## Choosing who answers for each chain
+
+The node picker exists for every chain, not just Monero: **Settings → Privacy → Where each chain is
+read from**. Pick a different company, or point the wallet at a server you run.
+
+Three rules hold it together:
+
+**Plain `http://` is refused** for anything but loopback and `.onion`. Someone deliberately choosing
+their own endpoint *for privacy* and sending every address they own in clear would have made things
+worse while believing they had made them better — and is the least likely person to notice. Loopback
+never leaves the machine; `.onion` is encrypted by Tor itself.
+
+**Credentials in a URL are refused**, because every hop along the way records the URL.
+
+**A chosen server is never silently replaced.** With no choice made, the shipped Esplora instances
+fall back to one another — one being rate-limited should not leave the wallet with no Bitcoin balance
+at all, and that is not hypothetical: Blockstream was returning 429 while two other instances answered
+the same question identically. But once the *user* picks a server, there is no fallback. Rerouting
+their addresses to the default is exactly what choosing was meant to prevent; the scan reports
+"unknown" and they decide. Same rule as a chosen Monero node.
+
+An endpoint stored in settings is re-validated on load, not trusted because it was written earlier —
+the settings file is plain text and editable by anything running as the user.
+
 ## Who the wallet talks to
 
 The keys stay local. That is true, and every wallet says it. The part usually left unsaid is that a
