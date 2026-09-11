@@ -44,14 +44,17 @@ jobs:
           choco install innosetup -y --no-progress
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           & $iscc "/DAppVersion=$(Get-Content VERSION)" "/DSourceDir=$(Resolve-Path dist/app)" "/DDistDir=$(Resolve-Path dist)" desktop/installer/umbrella.iss
-          Compress-Archive -Path dist/portable/* -DestinationPath "dist/UmbrellaWallet-Portable-${{ steps.v.outputs.version }}.zip" -Force
+          # The README links to a single portable EXE, not an archive. Producing a zip here meant the
+          # download link on the front page 404'd on every release until somebody uploaded the exe by
+          # hand - which the checksum job below would then reject as a stray artifact.
+          Copy-Item "dist/portable/Umbrella.exe" "dist/UmbrellaWallet-${{ steps.v.outputs.version }}-win-x64-portable.exe" -Force
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/UmbrellaWallet-Setup-${{ steps.v.outputs.version }}.exe
-            dist/UmbrellaWallet-Portable-${{ steps.v.outputs.version }}.zip
+            dist/UmbrellaWallet-${{ steps.v.outputs.version }}-win-x64-portable.exe
 
   linux:
     name: linux
@@ -111,7 +114,7 @@ jobs:
           V="${{ steps.v.outputs.version }}"
           expected=(
             "UmbrellaWallet-Setup-${V}.exe"
-            "UmbrellaWallet-Portable-${V}.zip"
+            "UmbrellaWallet-${V}-win-x64-portable.exe"
             "UmbrellaWallet-${V}-linux-x64.tar.gz"
           )
           missing=0
@@ -127,14 +130,21 @@ jobs:
           done
           [ "$missing" -eq 0 ] || { echo "Release artifact set is incomplete or unexpected."; exit 1; }
 
-      - name: Generate and self-verify SHA256SUMS.txt
+      # Named per-version, because that is what the README tells people to run:
+      #   sha256sum -c SHA256SUMS-<version>.txt
+      # An unversioned manifest also meant a later release's file could sit next to an older one's
+      # downloads with no way to tell which build it described.
+      - name: Generate and self-verify the checksum manifest
         run: |
-          ( cd assets && sha256sum UmbrellaWallet-* ) > SHA256SUMS.txt
-          echo "----- SHA256SUMS.txt -----"; cat SHA256SUMS.txt
-          # Prove every line matches the attached file byte-for-byte before we publish it.
-          ( cd assets && sha256sum -c ../SHA256SUMS.txt )
+          V="${{ steps.v.outputs.version }}"
+          ( cd assets && sha256sum UmbrellaWallet-* ) > "SHA256SUMS-${V}.txt"
+          echo "----- SHA256SUMS-${V}.txt -----"; cat "SHA256SUMS-${V}.txt"
+          # Prove every line matches the attached file byte-for-byte before we publish it, and that
+          # the manifest is not empty - v4.5.0 shipped one that was.
+          [ -s "SHA256SUMS-${V}.txt" ] || { echo "::error::checksum manifest is empty"; exit 1; }
+          ( cd assets && sha256sum -c "../SHA256SUMS-${V}.txt" )
 
       - name: Attach checksums to release
         uses: softprops/action-gh-release@v2
         with:
-          files: SHA256SUMS.txt
+          files: SHA256SUMS-${{ steps.v.outputs.version }}.txt

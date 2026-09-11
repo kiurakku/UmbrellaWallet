@@ -42,6 +42,23 @@ require "README portable link"      "README.md"                                 
 require "README linux link"         "README.md"                                                   "UmbrellaWallet-${VERSION}-linux-x64.tar.gz"
 require "CHANGELOG entry"           "CHANGELOG.md"                                                 "## [${VERSION}]"
 
+# The release workflow must produce EXACTLY the files the README links to. It did not: the README
+# promised a portable .exe and a per-version checksum manifest while the workflow built a .zip and an
+# unversioned SHA256SUMS.txt, so the front-page download 404'd on every release until somebody
+# uploaded the missing file by hand. Checking the workflow here means the mismatch fails the gate
+# instead of being discovered by a user clicking a dead link.
+WF=".github/workflows/release.yml"
+require "workflow builds the portable exe"  "$WF" 'UmbrellaWallet-${{ steps.v.outputs.version }}-win-x64-portable.exe'
+require "workflow builds the installer"     "$WF" 'UmbrellaWallet-Setup-${{ steps.v.outputs.version }}.exe'
+require "workflow builds the linux tarball" "$WF" 'UmbrellaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz'
+require "workflow names the manifest per version" "$WF" 'SHA256SUMS-${{ steps.v.outputs.version }}.txt'
+if grep -qF 'UmbrellaWallet-Portable-' "$WF"; then
+  echo "::error::workflow still builds a portable ZIP; the README links to a portable EXE"
+  fail=1
+else
+  echo "  ok  workflow no longer builds the zip the README does not mention"
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo "Version consistency check FAILED for $VERSION."
   exit 1
