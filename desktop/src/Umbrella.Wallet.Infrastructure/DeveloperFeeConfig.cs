@@ -1,17 +1,18 @@
 namespace Umbrella.Wallet.Infrastructure;
 
 /// <summary>
-/// The platform (developer) fee taken on a send, and the address that receives it.
+/// The per-send platform fee. It is currently OFF: <c>BakedBps</c> is zero, so Umbrella takes no
+/// cut of any transfer on any chain.
 ///
-/// Baked into the build — there is NO user-facing configuration and no file on disk. The receiving
-/// address is stored obfuscated (XOR + base64) so it is not a plain string in the binary. It is a
-/// PUBLIC receiving address (it appears on-chain in every fee transfer), so this is obscurity, not
-/// secrecy — nobody sees it in the app, but it is not a private key and cannot be one.
+/// The wallet is funded by GitHub Sponsors, feature bounties and (later) a swap spread. A cut of
+/// every send is the one charge that makes a self-custody wallet feel like a middleman.
 ///
 /// <para>
-/// The fee <b>percentage</b> is still ALWAYS disclosed to the user in the send review before they
-/// confirm — only the recipient address is hidden. To change the recipient or add another chain,
-/// edit <see cref="ObfAddresses"/> (obfuscate with the same XOR key) and rebuild.
+/// The routing below is kept, switched off, rather than deleted: it is exercised by the spender
+/// tests, and removing machinery from a path that signs real spends is riskier than leaving it at
+/// zero. If it is ever switched back on, the percentage is disclosed in the send review before the
+/// user confirms — only the recipient address is obfuscated, and that address is public anyway
+/// (it appears on-chain in every transfer), so it is obscurity, not secrecy, and never a key.
 /// </para>
 /// </summary>
 public sealed class DeveloperFeeConfig
@@ -19,8 +20,19 @@ public sealed class DeveloperFeeConfig
     /// <summary>Hard ceiling: a bug can never quote more than 2%.</summary>
     public const int MaxBps = 200;
 
-    /// <summary>Baked fee percentage, in basis points. 50 = 0.5%.</summary>
-    private const int BakedBps = 50;
+    /// <summary>
+    /// Baked fee percentage, in basis points. ZERO: Umbrella takes no cut of a send.
+    ///
+    /// It was 50 (0.5%). The wallet is funded by GitHub Sponsors, feature bounties and (later) a
+    /// swap spread instead — a per-send cut is the one thing that makes a self-custody wallet feel
+    /// like it is charging you for touching your own money.
+    ///
+    /// Zero here disables the fee everywhere by construction: QuoteFee returns null for every chain,
+    /// so no fee output is ever added and no fee line is ever shown. The routing code below is left
+    /// intact and tested rather than ripped out, because deleting machinery from a path that signs
+    /// real spends carries more risk than leaving it switched off.
+    /// </summary>
+    private const int BakedBps = 0;
 
     private const byte ObfKey = 0x5A;
 
