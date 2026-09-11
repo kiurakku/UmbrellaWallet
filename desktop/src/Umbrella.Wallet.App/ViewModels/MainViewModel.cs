@@ -153,7 +153,8 @@ public partial class MainViewModel : ViewModelBase
     partial void OnTorEnabledChanged(bool value)
     {
         OnPropertyChanged(nameof(ShowSendClearnetNote));
-        RefreshPrivateSendPlan();   // the private-send plan is a read of this state
+        RefreshPrivateSendPlan();    // the private-send plan is a read of this state
+        RefreshMoneroNodeStatus();   // an .onion node becomes usable (or not) with Tor
     }
 
     // In-app documentation panel toggle.
@@ -210,7 +211,9 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();     // re-render money labels (Fx.Money/Price) in the new locale
             RecalcBalance();
             BuildGuide(); // the guide reads in the wallet's language
-            RefreshPrivateSendPlan(); // its steps and limits are prose, not codes
+            RefreshPrivateSendPlan();  // its steps and limits are prose, not codes
+            RefreshMoneroNodeStatus(); // its wording is prose, not a code
+            BuildCounterparties();     // the disclosure list is prose too
             if (IsUnlocked)
                 PushActivity("Settings", "Language",
                     Loc.Languages.FirstOrDefault(l => l.Code == value)?.Name ?? value, "changed", "now");
@@ -487,6 +490,7 @@ public partial class MainViewModel : ViewModelBase
             // Turning it on with Tor still off means everything is blocked until Tor connects — nudge.
             if (value && !TorEnabled) TorEnabled = true;
             RefreshPrivateSendPlan();
+            RefreshMoneroNodeStatus();
             _ = RefreshMarketAsync();
         }
     }
@@ -1216,6 +1220,10 @@ public partial class MainViewModel : ViewModelBase
         // Tor-only kill-switch first: if it was left on, clearnet stays blocked until Tor connects, so
         // no startup request can leak before the proxy is up.
         PublicHttp.SetRequireProxy(_uiSettings.TorOnlyMode);
+        // Which machine Monero asks about the chain. Read before anything can start the daemon.
+        _monero.NodeAddress = ActiveMoneroNode;
+        LoadMoneroNodeChoice();
+        BuildCounterparties();   // who this wallet talks to, from the catalog the tests pin
         if (EffectiveCustomProxy() is { } startupProxy)
         {
             PublicHttp.SetProxy(startupProxy);
@@ -1705,7 +1713,7 @@ public partial class MainViewModel : ViewModelBase
     {
         "BTC", "LTC", "BCH", "DOGE",                 // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
         "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
-        "ARB", "BASE", "OP",                         // Ethereum L2 rollups — native ETH, same 0x address
+        "ARB", "BASE", "OP", "LINEA",                // Ethereum L2 rollups — native ETH, same 0x address
         "SOL", "TON", "ADA",                         // account-based
         "TRX", "USDT",                               // TRON + TRC-20
         "XMR",                                       // Monero (local wallet-rpc)
@@ -1738,6 +1746,7 @@ public partial class MainViewModel : ViewModelBase
         new("ARB", "ETH · Arbitrum", "Arbitrum One · native ETH (same 0x address)"),
         new("BASE", "ETH · Base", "Base · native ETH (same 0x address)"),
         new("OP", "ETH · Optimism", "Optimism · native ETH (same 0x address)"),
+        new("LINEA", "ETH · Linea", "Linea · native ETH (same 0x address)"),
     ];
 
     /// <summary>Networks a watch-only address can be added for.</summary>
@@ -1892,9 +1901,30 @@ public partial class MainViewModel : ViewModelBase
     }
 
     // --- Send financial transparency (§6.3): show the available balance and a fee-aware Max. ---
-    private WalletAccountViewModel? SelectedSendAccount() =>
-        Accounts.FirstOrDefault(a => a.Symbol == (SelectedSendAsset?.Symbol ?? string.Empty)
+    /// <summary>
+    /// The holdings row the Send screen is spending from.
+    ///
+    /// The symbol alone is not enough for a token that exists on more than one chain. USDT is held as
+    /// TRC-20 on TRON and as a Jetton on TON, both under the symbol "USDT" — but this build sends only
+    /// the TRON one, so matching on symbol could show the TON balance as available and offer a Max
+    /// that the TRON send cannot possibly cover. The chain is pinned for exactly those cases.
+    /// </summary>
+    private WalletAccountViewModel? SelectedSendAccount()
+    {
+        var symbol = SelectedSendAsset?.Symbol ?? string.Empty;
+        var requiredChain = TokenSendChain.GetValueOrDefault(symbol);
+
+        return Accounts.FirstOrDefault(a => a.Symbol == symbol
+            && (requiredChain is null || a.Chain.Equals(requiredChain, StringComparison.OrdinalIgnoreCase))
             && a.SupportStatus is "Ready" or "Receive only" && IsRealAddress(a.Address));
+    }
+
+    /// <summary>The one chain each sendable TOKEN may be spent on. A symbol absent from here is a
+    /// native coin, where the symbol already identifies the chain.</summary>
+    private static readonly Dictionary<string, string> TokenSendChain = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["USDT"] = "TRON",
+    };
 
     public decimal SelectedSendBalance => (decimal)(SelectedSendAccount()?.Amount ?? 0d);
 
@@ -2617,6 +2647,9 @@ public partial class MainViewModel : ViewModelBase
         var filePassword = Convert.ToHexString(
             System.Security.Cryptography.SHA256.HashData(
                 System.Text.Encoding.UTF8.GetBytes("umbrella-monero-file:" + wallet.SecretViewKeyHex)))[..32];
+
+        // Re-read rather than trusting a field set long ago: the user may have changed the node since.
+        _monero.NodeAddress = ActiveMoneroNode;
 
         var (ok, message) = await _monero.StartAsync(
             wallet.Address, wallet.SecretSpendKeyHex, wallet.SecretViewKeyHex, filePassword, progress);
@@ -3441,7 +3474,12 @@ public partial class MainViewModel : ViewModelBase
     {
         var cached = _marketCache.Load();
         if (cached.Count == 0) return;
-        var bySym = cached.ToDictionary(e => e.Symbol, e => e, StringComparer.OrdinalIgnoreCase);
+        // Same reasoning as the balance cache: this is file data, so two rows may share a symbol.
+        // Losing the flicker-free first paint is a minor cosmetic cost; throwing here would be a crash
+        // before the wallet has drawn anything at all.
+        var bySym = cached
+            .GroupBy(e => e.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase);
 
         foreach (var chain in ChainCatalog.All)
         {
@@ -3666,6 +3704,12 @@ public partial class MainViewModel : ViewModelBase
 
     private string ActiveWalletCacheKey => _registry.Active?.Id ?? "main";
 
+    /// <summary>Identity of a cached holding. The network matters: ETH on mainnet, Arbitrum, Base,
+    /// Optimism and Linea all carry the symbol "ETH" at the same 0x address and are five different
+    /// balances.</summary>
+    private static string CacheKey(string symbol, string address, string network) =>
+        symbol + "|" + address + "|" + network;
+
     /// <summary>Apply the last-seen balances/prices for the active wallet so the total is right the
     /// instant it unlocks — before the live refresh returns — instead of flashing $0. Matched to
     /// accounts by symbol + address; the refresh overwrites with authoritative data moments later.</summary>
@@ -3673,12 +3717,21 @@ public partial class MainViewModel : ViewModelBase
     {
         var cached = _balanceStore.Load(ActiveWalletCacheKey);
         if (cached.Count == 0) return;
-        var byKey = cached.ToDictionary(e => e.Symbol + "|" + e.Address, e => e);
+
+        // Grouped, not ToDictionary: this reads a file, and a file can hold two rows with the same key.
+        // It already did - Ethereum and its L2 rollups all report symbol "ETH" at the SAME 0x address,
+        // so a cache holding ETH on both Arbitrum and Base threw "an item with the same key has already
+        // been added" and took the whole unlock down with it. A display cache must never be able to do
+        // that, so the newest row wins and a malformed file costs nothing.
+        var byKey = cached
+            .GroupBy(e => CacheKey(e.Symbol, e.Address, e.Network), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase);
+
         var touched = false;
         for (var i = 0; i < Accounts.Count; i++)
         {
             var a = Accounts[i];
-            if (byKey.TryGetValue(a.Symbol + "|" + a.Address, out var e))
+            if (byKey.TryGetValue(CacheKey(a.Symbol, a.Address, a.Chain), out var e))
             {
                 Accounts[i] = a with { Amount = e.Amount, Price = e.Price, Change24h = e.Change };
                 touched = true;
@@ -3692,7 +3745,7 @@ public partial class MainViewModel : ViewModelBase
     {
         var entries = Accounts
             .Where(a => a.Amount > 0 || a.Price > 0)
-            .Select(a => new BalanceStore.Entry(a.Symbol, a.Address, a.Amount, a.Price, a.Change24h));
+            .Select(a => new BalanceStore.Entry(a.Symbol, a.Address, a.Amount, a.Price, a.Change24h, a.Chain));
         _balanceStore.Save(ActiveWalletCacheKey, entries);
     }
 
@@ -3728,12 +3781,13 @@ public partial class MainViewModel : ViewModelBase
             // awaits here were the main reason the total took many seconds to appear after unlock /
             // wallet switch; firing them together cuts that to roughly the slowest single call.
             // (Receive-only chains TON/ADA have public balance APIs; XMR returns null safely.)
-            // BTC/LTC are handled by the HD scan below (aggregated across every address), not by the
-            // single-address balance call — otherwise change sent to an internal address would vanish
-            // from the shown balance.
+            // Every UTXO chain the wallet spends from is handled by the HD scan below (aggregated
+            // across every address), not by the single-address balance call — otherwise change sent to
+            // an internal address would vanish from the shown balance. That was still happening to BCH
+            // and DOGE, which spend to change like the others but were being read one address deep.
             var balanceTargets = Accounts.ToList()
                 .Where(a => a.SupportStatus is "Ready" or "Receive only" && ParseChain(a.Symbol) is not null
-                            && a.Symbol is not ("BTC" or "LTC"))
+                            && !UtxoScanChains.Contains(a.Symbol, StringComparer.OrdinalIgnoreCase))
                 .ToList();
             var balancesTask = Task.WhenAll(
                 balanceTargets.Select(a => _balances.GetBalanceAsync(ParseChain(a.Symbol)!.Value, a.Address, ct)));
@@ -3788,6 +3842,17 @@ public partial class MainViewModel : ViewModelBase
             {
                 await AddEthTokenRowsAsync(ethAccount.Address, "Ready", prices, ct);
                 await AddEvmSideRowsAsync(ethAccount.Address, prices, ct);
+            }
+
+            // Jettons on our OWN TON account. USD-tether on TON is how a great many people hold
+            // dollars on Telegram's chain, and until now the wallet showed the native TON and nothing
+            // else — so that balance simply was not there.
+            var tonAccount = Accounts.FirstOrDefault(a => a.Symbol == "TON" && a.SupportStatus == "Ready");
+            if (tonAccount is not null && IsRealAddress(tonAccount.Address))
+            {
+                // "Receive only", not "Ready": this build reads Jetton balances and does not send
+                // them, and the row is the only place that difference is visible to the user.
+                await AddTonJettonRowsAsync(tonAccount.Address, "Receive only", prices, ct);
             }
 
             // Watch-only. The balance calls run CONCURRENTLY — awaiting them one address at a time made
@@ -3887,6 +3952,14 @@ public partial class MainViewModel : ViewModelBase
         AddTokenRows(await _balances.GetEthTokensAsync(address, ct),
             address, status, prices, marker: "ERC20 on Ethereum", chain: "Ethereum", suffix: "ERC20");
 
+    /// <summary>Adds/refreshes a Holdings row for every Jetton at a TON address. Read-only: this build
+    /// reads jetton balances but does not send them, which the row's status says plainly.</summary>
+    private async Task AddTonJettonRowsAsync(
+        string address, string status,
+        IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct) =>
+        AddTokenRows(await _balances.GetTonJettonsAsync(address, ct),
+            address, status, prices, marker: "Jetton on TON", chain: "TON", suffix: "Jetton");
+
     /// <summary>Refreshes the NFT list from the wallet's Ethereum address (names + counts only).</summary>
     private async Task RefreshNftsAsync(string address, CancellationToken ct)
     {
@@ -3908,11 +3981,14 @@ public partial class MainViewModel : ViewModelBase
             Accounts.Remove(stale);
         }
 
-        foreach (var (symbol, amount, network) in await _balances.GetEvmSideBalancesAsync(address, ct))
+        foreach (var (symbol, amount, network, canSend) in await _balances.GetEvmSideBalancesAsync(address, ct))
         {
             var (usd, change) = prices.GetValueOrDefault(symbol);
+            // "Ready" is a claim that the coin can be moved. A network this build can read but not
+            // broadcast on says "Receive only" instead, so the holdings list never promises a send the
+            // Send screen will not offer.
             Accounts.Add(new WalletAccountViewModel(
-                symbol, $"{symbol} · {network}", "Ready", address, "EVM side-chain",
+                symbol, $"{symbol} · {network}", canSend ? "Ready" : "Receive only", address, "EVM side-chain",
                 (double)usd, (double)amount, network, (double)change));
         }
     }
@@ -4249,9 +4325,11 @@ public partial class MainViewModel : ViewModelBase
         SelectedReceiveNetwork = $"{account.Symbol} · {account.NetworkLabel}";
         ReceiveQr = BuildQr(BuildReceivePayload(account.Address));
 
-        // Rotation is only safe where the wallet fully spends across addresses (BTC/LTC).
+        // Rotation is only safe where the wallet both SCANS every address and SPENDS across them —
+        // issuing an address the scan never walks is money the user watches arrive and can never move.
+        // That is why this reads the scan list rather than naming chains: the two cannot drift apart.
         _receiveChain = ParseChain(account.Symbol);
-        CanRotateReceive = account.Symbol is "BTC" or "LTC"
+        CanRotateReceive = UtxoScanChains.Contains(account.Symbol, StringComparer.OrdinalIgnoreCase)
                            && _receiveChain is not null && _unlockedMnemonic is not null;
         ReceivePathLabel = CanRotateReceive ? $"{account.Symbol} receive address #0" : string.Empty;
         RebuildReceiveHistory(account.Symbol);

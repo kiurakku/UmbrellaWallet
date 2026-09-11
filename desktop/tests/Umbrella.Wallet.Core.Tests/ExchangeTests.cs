@@ -8,6 +8,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// Exchange balances must behave like any other holding — visible AND counted in the total.
 /// The whole point of connecting an exchange is that its funds stop being invisible.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class ExchangeTests : IDisposable
 {
     private const string GoodPassword = "umbrella-test-vault-2026";

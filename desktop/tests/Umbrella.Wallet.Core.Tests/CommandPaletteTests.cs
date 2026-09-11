@@ -7,6 +7,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// The Ctrl+K palette has to be fully drivable from the keyboard: ↑/↓ walk the results and Enter runs
 /// the highlighted one. Without this, Enter always fired the top row and the arrows did nothing.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class CommandPaletteTests : IDisposable
 {
     private readonly string _directory = Path.Combine(

@@ -95,6 +95,58 @@ than the others.
 The Monero **spend key** is as sensitive as your seed phrase. Settings → Monero → Reveal keys is
 capture-protected for the same reason the seed screen is.
 
+### The remote node
+
+A Monero wallet cannot read the chain on its own — it asks a node, and unless you run one, that node
+is somebody else's machine. This is the most consequential setting on Monero and the easiest one for
+a wallet to make silently. Umbrella did exactly that until this was added; now **Settings → Privacy →
+Monero node** names the machine being asked, offers alternatives, and takes a custom `host:port`
+including a `.onion`.
+
+What the node observes: the connecting IP (an exit node when Tor is on), that it belongs to a Monero
+wallet, roughly which block range it requested, when it is online, and which connection a submitted
+transaction entered the network through.
+
+What it does not observe: the keys, the balance, the addresses, or the amounts. Those stay local, and
+Monero encrypts amounts on the chain itself.
+
+Two refusals are enforced rather than warned about, both fail-closed:
+
+- A `.onion` node with Tor off is **not** attempted, and is **not** silently swapped for a clearnet
+  one. Substituting a different operator behind the user's back is the behaviour this feature exists
+  to end.
+- Any node while the Tor-only kill-switch is armed and Tor is down is refused outright, because
+  connecting would hand out the exact IP the kill-switch exists to hide.
+
+`MoneroNodeTests` pins both refusals, along with the address parser — a mistyped node is not merely a
+wallet that never syncs, it is a stranger answering for the chain.
+
+## Who the wallet talks to
+
+The keys stay local. That is true, and every wallet says it. The part usually left unsaid is that a
+wallet still has to **ask somebody what is on the chain** — and on a transparent chain, asking means
+handing over the very address you were trying to keep to yourself. Whoever answers *"what is the
+balance of bc1q…"* now knows that address belongs to a wallet, and can tie every address asked about
+in one session to one person.
+
+**Tor hides the IP. It does not un-send the address.**
+
+So Settings → Privacy carries the full list: every server, who runs it, why it is contacted, and what
+it learns. Entries are marked by whether they are called automatically, only when you do a specific
+thing, only if you connect an account yourself, or never at all (a block explorer the wallet links to
+but never calls).
+
+`NetworkCounterpartyTests` scans the source for hostnames in URLs and fails the build if one is not
+declared in `NetworkCounterpartyCatalog` — and fails the other way too, if the catalog lists a host
+the code no longer uses. A transparency page that can silently fall behind the code is worse than
+none, because it reassures without being true, and the person reading it is reading it because they
+need the truth.
+
+The catalog's own claims are checked for coherence as well: a link-only host may not be listed as
+learning anything, anything the wallet actually calls must admit to learning at least the IP (there
+is no such thing as a request that reveals nothing), a price feed may not be marked as seeing
+addresses, and only an opt-in exchange connection may be marked as holding credentials.
+
 ## What this does not protect you from
 
 Being direct about this is the point.

@@ -10,6 +10,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// "price only" to a real chain appeared twice — once correctly, and once claiming you cannot hold it.
 /// Bitcoin Cash was in exactly that state.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class MarketListTests : IDisposable
 {
     private readonly string _directory = Path.Combine(

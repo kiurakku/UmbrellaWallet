@@ -7,6 +7,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// The market overview is derived from prices the wallet already has — it must never invent a mover
 /// out of a coin whose price is unknown, and the watchlist is a local, persisted list of tickers.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class MarketOverviewTests : IDisposable
 {
     private readonly string _directory = Path.Combine(

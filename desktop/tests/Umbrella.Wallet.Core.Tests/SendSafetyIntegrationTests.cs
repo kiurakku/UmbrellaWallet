@@ -9,6 +9,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// typing a destination runs it and raises the banner state. The rules themselves are pinned in
 /// <see cref="AddressSafetyTests"/>; this is the integration.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class SendSafetyIntegrationTests : IDisposable
 {
     private const string Password = "umbrella-safety-2026";

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Umbrella.Wallet.Core.Chains;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -36,12 +37,20 @@ public sealed class MoneroRpcService : IDisposable
     /// <summary>Roughly 30 days of blocks (2 min each) — enough to catch recent deposits fast.</summary>
     private const ulong RecentBlocksWindow = 21_600;
 
-    private static readonly string[] PublicNodes =
-    [
-        "xmr-node.cakewallet.com:18081",
-        "node.community.rino.io:18081",
-        "node.monerodevs.org:18089",
-    ];
+    /// <summary>
+    /// The remote node this wallet asks about the chain — the single most consequential setting on
+    /// Monero, and one this service used to make silently. Set it before <see cref="StartAsync"/>;
+    /// empty means the catalog's default.
+    ///
+    /// The node never sees the keys, the balance, the addresses or the amounts. It does see the IP
+    /// that connected (an exit node, with Tor on), that the IP belongs to a Monero wallet, roughly
+    /// which blocks were asked for, and which connection a transaction entered the network through.
+    /// </summary>
+    public string NodeAddress { get; set; } = string.Empty;
+
+    /// <summary>The node the running daemon is actually talking to, so the UI can name it rather than
+    /// implying the chosen one was reached.</summary>
+    public string ActiveNode { get; private set; } = string.Empty;
 
     // The daemon is on loopback. A default HttpClient honours the system proxy, which can
     // route or block 127.0.0.1 — and would send local RPC through Tor once Tor is on.
@@ -211,7 +220,25 @@ public sealed class MoneroRpcService : IDisposable
                 "blocked (starting it would expose your IP). Connect Tor, or turn Tor-only mode off.");
         }
 
-        var node = PublicNodes[0];
+        // The user's choice, or the catalog default. Never a silent substitution: if the chosen node
+        // cannot be used under the current network settings, this refuses and says why rather than
+        // connecting the wallet to a different stranger's machine.
+        var chosen = MoneroNodeCatalog.Resolve(
+            NodeAddress,
+            torConnected: !string.IsNullOrWhiteSpace(proxy),
+            killSwitchArmed: PublicHttp.RequireProxy);
+
+        if (chosen is null)
+        {
+            return MoneroNode.TryParse(NodeAddress, out var wanted) && wanted.IsOnion
+                ? (false, "That Monero node is a .onion address, which only works over Tor. " +
+                          "Turn Tor on, or choose a different node.")
+                : (false, "Every Monero node is blocked right now: Tor-only mode is on and Tor is not " +
+                          "connected. Connect Tor, or turn Tor-only mode off.");
+        }
+
+        var node = chosen.Address;
+        ActiveNode = node;
 
         var startInfo = new ProcessStartInfo
         {

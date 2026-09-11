@@ -11,6 +11,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// bar, so the button looked dead. Every section then looked dead too, because they are gated
 /// behind ShowWorkspace => IsUnlocked. These tests pin both the happy path and the feedback.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class MainViewModelTests : IDisposable
 {
     private const string GoodPassword = "umbrella-test-vault-2026";

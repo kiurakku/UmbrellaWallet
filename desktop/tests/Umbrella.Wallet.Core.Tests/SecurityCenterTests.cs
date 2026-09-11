@@ -9,6 +9,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// protection that is off must say so and offer the remedy, and the score must not be padded with
 /// facts the user cannot switch on.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class SecurityCenterTests : IDisposable
 {
     private readonly string _directory = Path.Combine(

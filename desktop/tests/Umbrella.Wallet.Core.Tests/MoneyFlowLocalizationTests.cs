@@ -98,6 +98,7 @@ public sealed class MoneyFlowLocalizationTests
         "Bitcoin", "Ethereum", "Solana",        // chain names — proper nouns
         "1H", "7D", "24H", "30D", "1Y",         // chart ranges
         "socks5://127.0.0.1:9050",              // proxy address placeholder
+        "node.example.com:18089",               // Monero node address placeholder
     };
 
     /// <summary>

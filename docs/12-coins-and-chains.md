@@ -19,7 +19,7 @@
 | **BNB** | BNB Smart Chain | ✅ | ✅ | All BEP-20 | Binance native |
 | **SOL** | Solana | ✅ | ✅ | All SPL | Ultra-fast |
 | **TRX** | Tron | ✅ | ✅ | All TRC-20 | Powers USDT TRC-20 |
-| **TON** | TON | ✅ | ✅ | Jettons | Telegram's coin |
+| **TON** | TON | ✅ | ✅ | Jettons (balance) | Telegram's coin |
 | **ADA** | Cardano | ✅ | ✅ | Native assets | — |
 | **XMR** | Monero | ✅ | ✅ | — | 🟢 Maximum privacy |
 | **LTC** | Litecoin | ✅ | ✅ | — | Fast + cheap BTC |
@@ -29,7 +29,8 @@
 | **MATIC** | Polygon | ✅ | ✅ | All ERC-20 | Cheap EVM |
 | **FTM** | Fantom | ✅ | ✅ | All ERC-20 | Fast EVM |
 | **CRO** | Cronos | ✅ | ✅ | All ERC-20 | Crypto.com chain |
-| **ETH** | Arbitrum, Base, Optimism | ✅ | ✅ | All ERC-20 | Layer 2 — same 0x address, far cheaper |
+| **ETH** | Arbitrum, Base, Optimism, Linea | ✅ | ✅ | All ERC-20 | Layer 2 — same 0x address, far cheaper |
+| **ETH** | zkSync Era | — | ✅ | — | **Balance and receive only.** Its fee model is not Ethereum's, so sending is not enabled yet |
 | **ZEC** | Zcash | — | ✅ | — | Receive only for now |
 
 > Any ERC-20 token (LINK, UNI, AAVE, SHIB, PEPE, etc.) is automatically detected and its
@@ -150,6 +151,17 @@ Select the coin you want to receive.
 - Your ETH address (0x...) — for USDT ERC-20, also BSC, Polygon, Arbitrum
 - Your SOL address — for USDT SPL
 
+### A fresh address for every payment
+
+On Bitcoin, Litecoin, Bitcoin Cash and Dogecoin the Receive screen hands out a **new address each
+time** you ask. Reusing one address means every payment you have ever received sits under a single
+public heading that anyone can read — a fresh one per payment breaks that link.
+
+The wallet only offers this where it can also **find and spend** what arrives: the balance is scanned
+across every address it has issued, not just the first one, and a send signs across all of them. An
+address the wallet could hand out but never scan would be money you watch arrive and can never move,
+so the two lists are pinned to each other in the test suite.
+
 ### 3. Copy address or show QR
 - Click "Copy" — address goes to clipboard (auto-cleared after 45 seconds)
 - Show QR — sender scans with their phone or app
@@ -213,7 +225,7 @@ Click the transaction hash to open the block explorer and see confirmation statu
 
 ## Automatic token detection
 
-When you link a wallet address (ETH, TRX, or SOL), the wallet automatically finds all your tokens:
+When you link a wallet address (ETH, TRX, SOL, or TON), the wallet automatically finds all your tokens:
 
 **Ethereum address:**
 - Checks Blockscout for all ERC-20 tokens
@@ -226,6 +238,11 @@ When you link a wallet address (ETH, TRX, or SOL), the wallet automatically find
 **Solana address:**
 - Checks all SPL token accounts
 - Shows: USDT, USDC, RAY, BONK, WIF, JTO, JUP, and all others
+
+**TON address:**
+- Checks toncenter's index for all Jettons (up to 40)
+- Shows: USD₮ (Tether on TON), NOT, DOGS, and all others
+- Balance only for now — Jettons are read, not sent
 
 **Adding a custom token manually:**
 1. Go to Settings → Add Token
@@ -244,6 +261,31 @@ Every transaction hides:
 - How much was sent (RingCT — encrypted amounts)
 
 No one, not even blockchain analysis companies, can see your balance or transactions without your ViewKey. This is why Monero is used by privacy-conscious individuals worldwide.
+
+**The part most wallets do not tell you: the node.**
+
+A Monero wallet cannot read the chain by itself — it has to ask some machine, and unless you run
+your own, that machine belongs to somebody else. Umbrella used to pick one for you silently. It no
+longer does: **Settings → Privacy → Monero node** shows exactly which machine is being asked, lets
+you choose a different one, and lets you point at your own.
+
+What the node can see:
+
+- The IP that connected to it — an exit node instead of your home address when Tor is on
+- That the IP belongs to a Monero wallet
+- Roughly which range of blocks that wallet asked for
+- When you are online
+- When you send, that this connection is where the transaction entered the network
+
+What the node cannot see:
+
+- Your keys — they never leave your machine
+- Your balance, your addresses, or the amounts — Monero encrypts those on the chain itself
+
+A `.onion` node can be pasted into the custom field and will **only** ever be used with Tor on; with
+Tor off it cannot resolve at all, and the wallet says so rather than falling back to somebody else.
+Likewise, if the Tor-only kill-switch is armed and Tor is down, no node is used at all — connecting
+to a clearnet node in that state would hand out the very IP the kill-switch exists to hide.
 
 ### 🟡 Bitcoin with Tor — medium privacy
 Bitcoin is a public ledger — every transaction is visible. However:
@@ -290,6 +332,10 @@ Your coins are safe. They live on the blockchain, not in any app. Import your 24
 
 ### "My Monero balance is 0 but I know I received XMR"
 Monero requires scanning the blockchain with your ViewKey to find incoming transactions. Make sure the bundled monero-wallet-rpc is running (you'll see a status indicator in the app). Initial sync can take 10-60 minutes depending on how many blocks need scanning.
+
+If it never starts scanning at all, check the node under **Settings → Privacy → Monero node** — the
+status line there names the machine actually being asked, and says plainly when none is being used
+(a `.onion` node with Tor off, or any node while the Tor-only kill-switch is armed and Tor is down).
 
 ---
 
@@ -365,9 +411,7 @@ The wallet works like this:
 | Send any ERC-20 token | Currently send ETH native; soon send USDT, USDC, LINK, etc. on ETH |
 | Send any TRC-20 token | Send any token on Tron, not just USDT |
 | Send any SPL token | Send BONK, WIF, RAY etc. on Solana |
-| TON Jetton display | See your TON USDT balance |
-| zkSync Era | New cheap ETH layer 2 |
-| Linea | ConsenSys ZK rollup |
+| Send on zkSync Era | Its balance already shows; sending needs the gas limit to come from the chain |
 
 ### Medium term (months 3-6)
 
@@ -401,7 +445,7 @@ The wallet works like this:
 | 4 | Polygon | MATIC | ✅ Working | Send, receive, balance, ERC-20 |
 | 5 | Tron | TRX | ✅ Stable | Send, receive, balance, history, TRC-20 |
 | 6 | Solana | SOL | ✅ Working | Send, receive, balance, history, SPL |
-| 7 | TON | TON | ✅ Working | Send, receive, balance, history |
+| 7 | TON | TON | ✅ Working | Send, receive, balance, history, Jetton balances |
 | 8 | Avalanche | AVAX | ✅ Working | Send, receive, balance, ERC-20 |
 | 9 | Arbitrum | ETH | ✅ Working | Send, receive, balance, ERC-20 |
 | 10 | Base | ETH | ✅ Working | Send, receive, balance, ERC-20 |
@@ -411,11 +455,11 @@ The wallet works like this:
 | 14 | Cardano | ADA | ✅ Working | Send, receive, balance, history |
 | 15 | Monero | XMR | ✅ Working | Send, receive, balance, history, private |
 | 16 | Litecoin | LTC | ✅ Stable | Send, receive, balance, history |
-| 17 | Bitcoin Cash | BCH | ✅ Working | Send, receive, balance, history |
-| 18 | Dogecoin | DOGE | ✅ Working | Send, receive, balance |
+| 17 | Bitcoin Cash | BCH | ✅ Working | Send, receive, balance, history, fresh address per receive |
+| 18 | Dogecoin | DOGE | ✅ Working | Send, receive, balance, fresh address per receive |
 | 19 | Zcash | ZEC | ⚠️ Partial | Receive + balance only |
-| 20 | zkSync Era | ETH | 🔜 Soon | — |
-| 21 | Linea | ETH | 🔜 Soon | — |
+| 20 | Linea | ETH | ✅ Working | Send, receive, balance, ERC-20 |
+| 21 | zkSync Era | ETH | ⚠️ Partial | Receive + balance only |
 | 22 | XRP Ledger | XRP | 📅 Planned | — |
 | 23 | Stellar | XLM | 📅 Planned | — |
 | 24 | Cosmos | ATOM | 📅 Planned | — |
