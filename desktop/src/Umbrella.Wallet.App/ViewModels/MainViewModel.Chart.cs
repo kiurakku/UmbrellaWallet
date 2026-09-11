@@ -303,11 +303,14 @@ public partial class MainViewModel
             _ => TimeSpan.FromDays(365),
         };
         var t = DateTime.Now - TimeSpan.FromTicks((long)(span.Ticks * (1 - frac)));
+        // Month names follow the wallet's language, like every other date it shows. On InvariantCulture
+        // the crosshair read "Sep 10" while the Activity feed right next to it said "вер. 10".
+        // "HH:mm" carries no words, so it is the same either way.
         return ChartRange switch
         {
-            "1H" or "24H" => t.ToString("HH:mm", CultureInfo.InvariantCulture),
-            "7D" or "30D" => t.ToString("MMM d · HH:mm", CultureInfo.InvariantCulture),
-            _ => t.ToString("MMM d, yyyy", CultureInfo.InvariantCulture),
+            "1H" or "24H" => t.ToString("HH:mm", Fx.Culture),
+            "7D" or "30D" => t.ToString("MMM d · HH:mm", Fx.Culture),
+            _ => t.ToString("MMM d, yyyy", Fx.Culture),
         };
     }
 
