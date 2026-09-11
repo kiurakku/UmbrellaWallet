@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="docs/assets/logo-umbrella.png" width="112" alt="Umbrella"/>
-&nbsp;&nbsp;&nbsp;
-<img src="docs/assets/logo-thefear.png" width="112" alt="the fear"/>
+<img src="docs/assets/logo-umbrella.png" width="104" alt="Umbrella app icon"/>
+&nbsp;&nbsp;&nbsp;&nbsp;
+<img src="docs/assets/logo-umbrella-wordmark.png" width="104" alt="Umbrella mark"/>
 
 # Umbrella Wallet
 
@@ -10,7 +10,7 @@
 
 No account. No email. No phone number. No KYC. No tracking. No fee on your transfers.
 
-<sub>a **the fear** app · [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)</sub>
+<sub>an independent project by <b>the fear</b></sub>
 
 <br/>
 
@@ -34,7 +34,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 
 <br/>
 
-<img src="docs/assets/screenshot-portfolio.png" width="88%" alt="Umbrella Wallet portfolio"/>
+<img src="docs/assets/screenshot-portfolio-v46.png" width="88%" alt="Umbrella Wallet portfolio"/>
 
 </div>
 
@@ -83,7 +83,7 @@ It reads live settings and reports what is *actually* protecting the wallet righ
 it says your IP is visible to every explorer you use. It will not flatter you.
 
 <div align="center">
-<img src="docs/assets/screenshot-security.png" width="80%" alt="Security Center"/>
+<img src="docs/assets/screenshot-security-v46.png" width="80%" alt="Security Center"/>
 </div>
 
 **Privacy Radar.**
@@ -98,7 +98,7 @@ You pay the network's miner/validator fee and nothing else. See [What this costs
 
 | Receive | Settings |
 |---|---|
-| <img src="docs/assets/screenshot-receive.png" alt="Receive"/> | <img src="docs/assets/screenshot-settings.png" alt="Settings"/> |
+| <img src="docs/assets/screenshot-receive-v46.png" alt="Receive"/> | <img src="docs/assets/screenshot-settings-v46.png" alt="Settings"/> |
 
 **19 themes**, each with its own character rather than one accent swapped around:
 
@@ -403,7 +403,37 @@ Free to use. See [LICENSE](LICENSE) and the source policy in
 [docs/forking.md](docs/forking.md). Third-party components and their licences are listed in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+---
+
+## Who makes this
+
 <div align="center">
+
+<img src="docs/assets/logo-thefear-ghost.png" width="128" alt="the fear"/>
+
+### the fear
+
+<sub>An independent developer. No company, no investors, no board to answer to —<br/>
+which is exactly why there is no tracking and no cut of your transfers.</sub>
+
 <br/>
-<sub>© 2026 Umbrella Wallet · by <b>the fear</b> · <a href="https://t.me/UmbrellaWallet">t.me/UmbrellaWallet</a></sub>
+
+<a href="https://t.me/UmbrellaWallet">
+  <img src="docs/assets/logo-telegram.png" width="44" alt="Umbrella Wallet on Telegram"/>
+</a>
+
+**[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)**
+
+<sub>Releases, security notes and contact — the only official channel.<br/>
+Nobody there will ever ask you for your seed phrase.</sub>
+
+<br/>
+
+[💖 Sponsor this work](https://github.com/sponsors/kiurakku)
+
+<br/>
+<br/>
+
+<sub>© 2026 Umbrella Wallet · by <b>the fear</b></sub>
+
 </div>
