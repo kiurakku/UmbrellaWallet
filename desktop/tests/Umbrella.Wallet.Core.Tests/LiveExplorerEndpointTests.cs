@@ -8,15 +8,21 @@ namespace Umbrella.Wallet.Core.Tests;
 /// Real requests to real explorers, to prove the endpoint choice moves actual traffic rather than
 /// just a string in a settings file.
 ///
-/// Named LiveExplorer so the normal run and CI skip it — the suite must never fail because somebody
-/// else's server was down. Run it deliberately:
-/// <code>dotnet test --filter FullyQualifiedName~LiveExplorerEndpoint</code>
+/// Marked <c>Category=Live</c> so CI skips it — the suite must never fail because somebody else's
+/// server was down. Run it deliberately:
+/// <code>dotnet test --filter Category=Live</code>
 ///
 /// The check that matters is AGREEMENT. Two independent Esplora instances answering the same question
 /// about the same address must give the same answer; if they disagree, one of them is not reading the
 /// chain this wallet thinks it is, and pointing a user at it would show them a balance that is not
 /// theirs.
 /// </summary>
+// Category=Live is what CI filters on. Without it these run on every pull request, hammering free
+// public explorers from GitHub runners and failing the build whenever one of them rate-limits the
+// runner - a flake with nothing to do with the change under test. The rest of the suite was taken
+// offline for exactly this reason; this file reintroduced the problem by being named after the other
+// convention, and LiveTestTraitTests now stops that recurring.
+[Trait("Category", "Live")]
 [Collection(SharedAppStateCollection.Name)]
 public sealed class LiveExplorerEndpointTests : IDisposable
 {

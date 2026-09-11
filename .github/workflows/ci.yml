@@ -27,6 +27,23 @@ jobs:
       - run: dotnet test desktop/Umbrella.Wallet.sln --no-restore --verbosity minimal --filter "Category!=Live"
       - run: dotnet build desktop/Umbrella.Wallet.sln --no-restore -c Release
 
+  reproducible:
+    name: reproducible-build
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 because the check clones the repo at this commit into a second directory, and a
+      # shallow checkout cannot be cloned from.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      # Builds this commit twice, from two different absolute paths, and compares the assemblies that
+      # actually run. A check nobody runs decays silently, and this one underwrites a promise the
+      # release page makes: that verifying a published checksum proves the binary is the source.
+      - run: bash scripts/verify-reproducible-build.sh
+
   version:
     name: version-consistency
     runs-on: ubuntu-latest
