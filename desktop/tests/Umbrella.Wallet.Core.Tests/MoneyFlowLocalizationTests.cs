@@ -47,6 +47,48 @@ public sealed class MoneyFlowLocalizationTests
     }
 
     /// <summary>
+    /// The line-based check above misses a literal inside a switch expression, because the assignment
+    /// and the strings are on different lines. That is exactly how seven section descriptions
+    /// ("Send · ETH transfers sign locally…") stayed hardcoded English: the line reads
+    /// "StatusMessage = section switch", with the sentences underneath it.
+    /// </summary>
+    [Fact]
+    public void A_switch_assigned_to_the_status_line_contains_no_literal_sentences()
+    {
+        var viewModels = FindViewModelsDirectory();
+        if (viewModels is null) return;
+
+        var offenders = new List<string>();
+        foreach (var file in Directory.GetFiles(viewModels, "MainViewModel*.cs"))
+        {
+            var lines = File.ReadAllLines(file);
+            for (var i = 0; i < lines.Length; i++)
+            {
+                // A switch EXPRESSION opens with the line ending in "switch". Merely containing the
+                // word matches an unrelated key such as "status.switchedTo".
+                if (!lines[i].Contains("StatusMessage =", StringComparison.Ordinal) ||
+                    !lines[i].TrimEnd().EndsWith("switch", StringComparison.Ordinal)) continue;
+
+                // Walk the arms until the switch closes.
+                for (var j = i + 1; j < lines.Length; j++)
+                {
+                    if (lines[j].Trim() == "};") break;
+                    // An arm whose result is a literal, e.g.  "Send" => "Send · ETH transfers…"
+                    var trimmed = lines[j].Trim();
+                    var arrow = trimmed.IndexOf("=>", StringComparison.Ordinal);
+                    if (arrow < 0) continue;
+                    var rhs = trimmed[(arrow + 2)..].TrimStart();
+                    if (rhs.StartsWith("\"", StringComparison.Ordinal) ||
+                        rhs.StartsWith("$\"", StringComparison.Ordinal))
+                        offenders.Add($"{Path.GetFileName(file)}:{j + 1}: {lines[j].Trim()}");
+                }
+            }
+        }
+
+        Assert.Empty(offenders);
+    }
+
+    /// <summary>
     /// Literals that are deliberately the same in every language, so a translation table entry would add
     /// nothing: the brand, chain proper nouns, chart range codes, and a technical address placeholder.
     /// </summary>

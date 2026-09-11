@@ -3210,16 +3210,18 @@ public partial class MainViewModel : ViewModelBase
         // Choosing a section from the mobile "More" sheet closes it.
         IsMoreSheetOpen = false;
 
+        // The one-line description of the section the user just opened. These were hardcoded
+        // English inside the switch, which is why the StatusMessage guard never saw them.
         ActiveSection = section;
         StatusMessage = section switch
         {
-            "Send" => "Send · ETH transfers sign locally and broadcast via public RPC",
-            "Receive" => "Receive · share a derived address or QR",
-            "Connect" => "Connect · add watch-only addresses from MetaMask / explorers",
-            "Market" => $"Market · live prices · {ChartRange} charts, click a coin for detail",
-            "Swap" => "Swap · non-custodial cross-chain swaps route through THORChain vaults",
-            "P2p" => "P2P & DEX · non-custodial venues to trade — your keys never leave this device",
-            "Buy" => "Buy · card/bank on-ramps deliver straight to your own address — nothing is held here",
+            "Send" => Loc.Instance["section.send"],
+            "Receive" => Loc.Instance["section.receive"],
+            "Connect" => Loc.Instance["section.connect"],
+            "Market" => string.Format(Loc.Instance["section.market"], ChartRange),
+            "Swap" => Loc.Instance["section.swap"],
+            "P2p" => Loc.Instance["section.p2p"],
+            "Buy" => Loc.Instance["section.buy"],
             _ => StatusMessage,
         };
 

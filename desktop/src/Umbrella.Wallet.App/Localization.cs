@@ -797,6 +797,13 @@ public sealed class Loc : INotifyPropertyChanged
             ["net.XMR"] = "Monero network · private by default",
             ["net.TON"] = "TON network",
             ["net.ADA"] = "Cardano network",
+            ["section.send"] = "Send · ETH transfers sign locally and broadcast via public RPC",
+            ["section.receive"] = "Receive · share a derived address or QR",
+            ["section.connect"] = "Connect · add watch-only addresses from MetaMask / explorers",
+            ["section.market"] = "Market · live prices · {0} charts, click a coin for detail",
+            ["section.swap"] = "Swap · non-custodial cross-chain swaps route through THORChain vaults",
+            ["section.p2p"] = "P2P & DEX · non-custodial venues to trade — your keys never leave this device",
+            ["section.buy"] = "Buy · card/bank on-ramps deliver straight to your own address — nothing is held here",
         },
         ["uk"] = new()
         {
@@ -1533,6 +1540,13 @@ public sealed class Loc : INotifyPropertyChanged
             ["net.XMR"] = "Мережа Monero · приватна за замовчуванням",
             ["net.TON"] = "Мережа TON",
             ["net.ADA"] = "Мережа Cardano",
+            ["section.send"] = "Надсилання · перекази ETH підписуються локально й надсилаються через публічний RPC",
+            ["section.receive"] = "Отримання · поділіться похідною адресою або QR",
+            ["section.connect"] = "Підключення · додайте адреси спостереження з MetaMask / провідників",
+            ["section.market"] = "Ринок · актуальні ціни · графіки {0}, натисніть монету для деталей",
+            ["section.swap"] = "Обмін · некастодіальні крос-чейн обміни проходять через сховища THORChain",
+            ["section.p2p"] = "P2P і DEX · некастодіальні майданчики для торгівлі — ваші ключі не залишають цей пристрій",
+            ["section.buy"] = "Купівля · сервіси з карткою/банком надсилають прямо на вашу адресу — тут нічого не зберігається",
         },
         ["ru"] = new()
         {
@@ -2266,6 +2280,13 @@ public sealed class Loc : INotifyPropertyChanged
             ["net.XMR"] = "Сеть Monero · приватная по умолчанию",
             ["net.TON"] = "Сеть TON",
             ["net.ADA"] = "Сеть Cardano",
+            ["section.send"] = "Отправка · переводы ETH подписываются локально и отправляются через публичный RPC",
+            ["section.receive"] = "Получение · поделитесь производным адресом или QR",
+            ["section.connect"] = "Подключение · добавьте адреса наблюдения из MetaMask / обозревателей",
+            ["section.market"] = "Рынок · актуальные цены · графики {0}, нажмите монету для деталей",
+            ["section.swap"] = "Обмен · некастодиальные кросс-чейн обмены проходят через хранилища THORChain",
+            ["section.p2p"] = "P2P и DEX · некастодиальные площадки для торговли — ваши ключи не покидают это устройство",
+            ["section.buy"] = "Покупка · сервисы с картой/банком отправляют прямо на ваш адрес — здесь ничего не хранится",
         },
         ["zh"] = new()
         {
@@ -2999,6 +3020,13 @@ public sealed class Loc : INotifyPropertyChanged
             ["net.XMR"] = "Monero 网络 · 默认私密",
             ["net.TON"] = "TON 网络",
             ["net.ADA"] = "Cardano 网络",
+            ["section.send"] = "发送 · ETH 转账在本地签名并通过公共 RPC 广播",
+            ["section.receive"] = "接收 · 分享派生地址或二维码",
+            ["section.connect"] = "连接 · 从 MetaMask / 区块浏览器添加只读地址",
+            ["section.market"] = "行情 · 实时价格 · {0} 图表，点击币种查看详情",
+            ["section.swap"] = "兑换 · 非托管跨链兑换通过 THORChain 金库进行",
+            ["section.p2p"] = "P2P 与 DEX · 非托管交易场所 — 你的密钥永不离开本设备",
+            ["section.buy"] = "购买 · 银行卡/银行入金直接发送到你自己的地址 — 这里不托管任何资产",
         },
         ["es"] = new()
         {
@@ -3732,6 +3760,13 @@ public sealed class Loc : INotifyPropertyChanged
             ["net.XMR"] = "Red Monero · privada por defecto",
             ["net.TON"] = "Red TON",
             ["net.ADA"] = "Red Cardano",
+            ["section.send"] = "Enviar · las transferencias ETH se firman localmente y se difunden vía RPC público",
+            ["section.receive"] = "Recibir · comparte una dirección derivada o un QR",
+            ["section.connect"] = "Conectar · añade direcciones de solo lectura desde MetaMask / exploradores",
+            ["section.market"] = "Mercado · precios en vivo · gráficos {0}, haz clic en una moneda para ver el detalle",
+            ["section.swap"] = "Swap · los intercambios entre cadenas sin custodia pasan por bóvedas de THORChain",
+            ["section.p2p"] = "P2P y DEX · plataformas sin custodia para operar: tus claves nunca salen de este dispositivo",
+            ["section.buy"] = "Comprar · las pasarelas de tarjeta/banco entregan directo a tu dirección: aquí no se retiene nada",
         },
         ["de"] = new()
         {
@@ -4465,6 +4500,13 @@ public sealed class Loc : INotifyPropertyChanged
             ["net.XMR"] = "Monero-Netzwerk · standardmäßig privat",
             ["net.TON"] = "TON-Netzwerk",
             ["net.ADA"] = "Cardano-Netzwerk",
+            ["section.send"] = "Senden · ETH-Überweisungen werden lokal signiert und über öffentliches RPC gesendet",
+            ["section.receive"] = "Empfangen · teile eine abgeleitete Adresse oder einen QR-Code",
+            ["section.connect"] = "Verbinden · Watch-only-Adressen aus MetaMask / Explorern hinzufügen",
+            ["section.market"] = "Markt · Live-Preise · {0}-Charts, klicke eine Coin für Details",
+            ["section.swap"] = "Swap · nicht-verwahrende Cross-Chain-Swaps laufen über THORChain-Vaults",
+            ["section.p2p"] = "P2P & DEX · nicht-verwahrende Handelsplätze — deine Schlüssel verlassen dieses Gerät nie",
+            ["section.buy"] = "Kaufen · Karten-/Bank-Onramps liefern direkt an deine eigene Adresse — hier wird nichts gehalten",
         },
     };
 }
