@@ -141,9 +141,9 @@ Builds are published on the [releases page](https://github.com/kiurakku/Umbrella
 
 | | |
 |---|---|
-| **Windows installer** | `UmbrellaWallet-Setup-<version>.exe` |
-| **Windows portable** | `UmbrellaWallet-<version>-win-x64-portable.exe` — one file, no install, leaves nothing behind |
-| **Linux** | `UmbrellaWallet-<version>-linux-x64.tar.gz` |
+| **Windows installer** | `UmbrellaWallet-Setup-4.6.0.exe` |
+| **Windows portable** | `UmbrellaWallet-4.6.0-win-x64-portable.exe` — one file, no install, leaves nothing behind |
+| **Linux** | `UmbrellaWallet-4.6.0-linux-x64.tar.gz` |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
