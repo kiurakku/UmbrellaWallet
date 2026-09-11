@@ -466,6 +466,9 @@ public partial class MainViewModel
 
                     // Privacy Radar (local): the plan's inputs are the addresses this spend links on-chain.
                     ApplySendPrivacy(plan.Inputs.Select(i => i.Address));
+                    // Now that inputs are chosen, the private-send plan can name the real
+                    // number of addresses this spend links rather than the safe floor of one.
+                    RefreshPrivateSendPlan();
                     break;
                 }
 

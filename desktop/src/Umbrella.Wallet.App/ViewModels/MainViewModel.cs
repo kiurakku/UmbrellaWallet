@@ -150,7 +150,11 @@ public partial class MainViewModel : ViewModelBase
     /// would see your IP, linking it to the transaction.</summary>
     public bool ShowSendClearnetNote => !TorEnabled && !TorOnly;
 
-    partial void OnTorEnabledChanged(bool value) => OnPropertyChanged(nameof(ShowSendClearnetNote));
+    partial void OnTorEnabledChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowSendClearnetNote));
+        RefreshPrivateSendPlan();   // the private-send plan is a read of this state
+    }
 
     // In-app documentation panel toggle.
     [ObservableProperty] private bool _isDocsVisible;
@@ -206,6 +210,7 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();     // re-render money labels (Fx.Money/Price) in the new locale
             RecalcBalance();
             BuildGuide(); // the guide reads in the wallet's language
+            RefreshPrivateSendPlan(); // its steps and limits are prose, not codes
             if (IsUnlocked)
                 PushActivity("Settings", "Language",
                     Loc.Languages.FirstOrDefault(l => l.Code == value)?.Name ?? value, "changed", "now");
@@ -481,6 +486,7 @@ public partial class MainViewModel : ViewModelBase
                 value ? "clearnet blocked" : "clearnet allowed", "now");
             // Turning it on with Tor still off means everything is blocked until Tor connects — nudge.
             if (value && !TorEnabled) TorEnabled = true;
+            RefreshPrivateSendPlan();
             _ = RefreshMarketAsync();
         }
     }
@@ -1882,6 +1888,7 @@ public partial class MainViewModel : ViewModelBase
         RebuildSendAddressBook();
         ValidateSendAddress();
         ResetCoinControl();
+        RefreshPrivateSendPlan();   // a different chain means different limits
     }
 
     // --- Send financial transparency (§6.3): show the available balance and a fee-aware Max. ---

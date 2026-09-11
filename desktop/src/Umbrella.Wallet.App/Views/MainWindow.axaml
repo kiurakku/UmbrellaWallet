@@ -1115,6 +1115,76 @@
                       </StackPanel>
                     </Border>
 
+                    <!-- Private send (one switch). Turning it on does the things a careful person
+                         would otherwise have to remember: start Tor, wait for it, arm the kill-switch.
+                         The lower half is the part that keeps this honest - Tor hides your IP from an
+                         explorer, it does not make a public chain private, and no switch hides you from
+                         the person you are paying. Both halves are always shown together, so "nothing
+                         left to turn on" can never be read as "nothing left to know". -->
+                    <Border Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmBorder}"
+                            BorderThickness="1" CornerRadius="10" Padding="12,10">
+                      <StackPanel Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <StackPanel Grid.Column="0" Spacing="1">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                              <TextBlock Text="🧅" FontSize="12.5" VerticalAlignment="Center"/>
+                              <TextBlock Text="{Binding [psend.title], Source={x:Static app:Loc.Instance}}"
+                                         FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding [psend.hint], Source={x:Static app:Loc.Instance}}"
+                                       FontSize="11" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
+                          </StackPanel>
+                          <ToggleSwitch Grid.Column="1" VerticalAlignment="Center" OnContent="" OffContent=""
+                                        IsChecked="{Binding PrivateSendOn}"/>
+                        </Grid>
+
+                        <!-- What it will do. Hidden only when there is genuinely nothing left. -->
+                        <StackPanel Spacing="5" IsVisible="{Binding PrivateSendHasSteps}">
+                          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                     Text="{Binding [psend.willDo], Source={x:Static app:Loc.Instance}}"/>
+                          <ItemsControl ItemsSource="{Binding PrivateSendSteps}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="x:String">
+                                <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,0">
+                                  <TextBlock Text="→" Foreground="{DynamicResource UmAccent}"
+                                             VerticalAlignment="Top" Margin="0,0,8,0" FontSize="11.5"/>
+                                  <TextBlock Grid.Column="1" Text="{Binding}" FontSize="11.5" TextWrapping="Wrap"
+                                             Foreground="{DynamicResource UmTextSoft}"/>
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+
+                        <TextBlock IsVisible="{Binding PrivateSendReady}" FontSize="11.5" TextWrapping="Wrap"
+                                   Foreground="#8FCB9B"
+                                   Text="{Binding [psend.ready], Source={x:Static app:Loc.Instance}}"/>
+
+                        <!-- What it cannot change. Never hidden, never empty. -->
+                        <StackPanel Spacing="5">
+                          <TextBlock Classes="eyebrow" Foreground="#E7CA83"
+                                     Text="{Binding [psend.cannot], Source={x:Static app:Loc.Instance}}"/>
+                          <ItemsControl ItemsSource="{Binding PrivateSendLimits}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="x:String">
+                                <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,0">
+                                  <TextBlock Text="•" Foreground="#E7CA83"
+                                             VerticalAlignment="Top" Margin="0,0,8,0" FontSize="11.5"/>
+                                  <TextBlock Grid.Column="1" Text="{Binding}" FontSize="11" TextWrapping="Wrap"
+                                             Foreground="{DynamicResource UmTextDim}"/>
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+
+                        <Button Classes="ghost" HorizontalAlignment="Left" FontSize="11.5"
+                                IsVisible="{Binding PrivateSendHasSteps}"
+                                Command="{Binding ApplyPrivateSendCommand}"
+                                Content="{Binding [psend.apply], Source={x:Static app:Loc.Instance}}"/>
+                      </StackPanel>
+                    </Border>
+
                     <Border IsVisible="{Binding SendError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                             Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="6" Padding="12,9">
                       <TextBlock Text="{Binding SendError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
