@@ -13,6 +13,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using QRCoder;
 using Umbrella.Wallet.Core.Chains;
+using Umbrella.Wallet.Core.Safety;
 using Umbrella.Wallet.Core.Derivation;
 using Umbrella.Wallet.Core.Amounts;
 using Umbrella.Wallet.Core.Seed;
@@ -921,6 +922,70 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _hasSendQuote;
     [ObservableProperty] private string _sendQuoteSummary = string.Empty;
     [ObservableProperty] private string _sendQuoteFee = string.Empty;
+
+    // --- "What will happen": the send review, itemised -------------------------------------------
+    /// <summary>Each line of the simulation, already formatted and translated.</summary>
+    public ObservableCollection<SendSimulationRow> SendSimulationRows { get; } = [];
+
+    /// <summary>Advisory notes — an emptied balance, an outsized fee, dust change.</summary>
+    public ObservableCollection<string> SendSimulationWarnings { get; } = [];
+
+    public bool HasSendSimulation => SendSimulationRows.Count > 0;
+
+    /// <summary>
+    /// Fills the simulation from the numbers the quote already produced. Pure presentation: it signs
+    /// nothing, decides nothing, and every warning is advisory.
+    /// </summary>
+    private void BuildSendSimulation(
+        decimal balance, decimal amount, decimal networkFee, string symbol,
+        decimal changeReturned = 0m, decimal dustThreshold = 0m)
+    {
+        SendSimulationRows.Clear();
+        SendSimulationWarnings.Clear();
+
+        var sim = SendSimulation.Build(balance, amount, networkFee, changeReturned, dustThreshold);
+
+        foreach (var e in sim.Effects)
+        {
+            var label = e.Kind switch
+            {
+                SendEffectKind.Recipient => Loc.Instance["sim.recipient"],
+                SendEffectKind.NetworkFee => Loc.Instance["sim.fee"],
+                SendEffectKind.TotalLeaving => Loc.Instance["sim.total"],
+                SendEffectKind.ChangeReturned => Loc.Instance["sim.change"],
+                _ => Loc.Instance["sim.after"],
+            };
+            var hint = e.Kind == SendEffectKind.ChangeReturned ? Loc.Instance["sim.changeHint"] : string.Empty;
+            var emphasis = e.Kind is SendEffectKind.TotalLeaving or SendEffectKind.BalanceAfter;
+
+            SendSimulationRows.Add(new SendSimulationRow(
+                label, $"{Fmt(e.Amount)} {symbol}", hint, emphasis));
+        }
+
+        foreach (var w in sim.Warnings)
+        {
+            SendSimulationWarnings.Add(w.Kind switch
+            {
+                SendWarningKind.EmptiesBalance =>
+                    string.Format(Loc.Instance["sim.warnEmpties"], symbol),
+                SendWarningKind.FeeIsLargeShareOfAmount =>
+                    string.Format(Loc.Instance["sim.warnFee"], $"{w.Value:P0}"),
+                SendWarningKind.ChangeIsDust =>
+                    Loc.Instance["sim.warnDust"],
+                _ =>
+                    string.Format(Loc.Instance["sim.warnExceeds"], $"{Fmt(w.Value)} {symbol}"),
+            });
+        }
+
+        OnPropertyChanged(nameof(HasSendSimulation));
+    }
+
+    private void ClearSendSimulation()
+    {
+        SendSimulationRows.Clear();
+        SendSimulationWarnings.Clear();
+        OnPropertyChanged(nameof(HasSendSimulation));
+    }
     [ObservableProperty] private string _sendSuccess = string.Empty;
     private EthSendQuote? _sendQuote;
     private BtcSendQuote? _btcQuote;

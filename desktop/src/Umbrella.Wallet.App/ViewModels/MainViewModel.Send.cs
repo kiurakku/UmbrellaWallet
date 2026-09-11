@@ -220,6 +220,7 @@ public partial class MainViewModel
         SendError = string.Empty;
         SendSuccess = string.Empty;
         HasSendQuote = false;
+        ClearSendSimulation();
         HasSendPrivacy = false;
         _sendQuote = null;
         _tonQuote = null;
@@ -450,6 +451,19 @@ public partial class MainViewModel
                     if (CoinControlOn && _coinControlChain == chain)
                         SendQuoteFee += $" · coin control: funded from {plan.Inputs.Count} of your selected coin(s)";
 
+                    // "What will happen", from the plan rather than the request: the plan is the source
+                    // of truth for what is actually signed, including the change coming back to us.
+                    var utxoSpendable = _utxoScans.TryGetValue(chain, out var scanForSim)
+                        ? scanForSim.TotalSat / 100_000_000m
+                        : quote.Amount + quote.FeeAmount;
+                    BuildSendSimulation(
+                        balance: utxoSpendable,
+                        amount: quote.Amount,
+                        networkFee: quote.FeeAmount,
+                        symbol: chain,
+                        changeReturned: plan.ChangeSat / 100_000_000m,
+                        dustThreshold: 0.00000546m);   // the standard relay dust limit
+
                     // Privacy Radar (local): the plan's inputs are the addresses this spend links on-chain.
                     ApplySendPrivacy(plan.Inputs.Select(i => i.Address));
                     break;
@@ -467,6 +481,11 @@ public partial class MainViewModel
                         ? $"Network fee ≈ {Fmt(quote.FeeSol)} SOL · service fee {_devFee.FeePercent:0.##}% ≈ " +
                           $"{Fmt(quote.DevFeeLamports / 1_000_000_000m)} SOL to the developer (same transaction)"
                         : $"Network fee ≈ {Fmt(quote.FeeSol)} SOL";
+                    BuildSendSimulation(
+                        balance: (decimal)from.Amount,
+                        amount: quote.AmountSol,
+                        networkFee: quote.FeeSol,
+                        symbol: "SOL");
                     break;
                 }
 
@@ -773,6 +792,7 @@ public partial class MainViewModel
     private void ClearSendQuotes()
     {
         HasSendQuote = false;
+        ClearSendSimulation();
         _sendQuote = null;
         _btcQuote = null;
         _solQuote = null;
