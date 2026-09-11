@@ -121,6 +121,32 @@ Two refusals are enforced rather than warned about, both fail-closed:
 `MoneroNodeTests` pins both refusals, along with the address parser — a mistyped node is not merely a
 wallet that never syncs, it is a stranger answering for the chain.
 
+## Who the wallet talks to
+
+The keys stay local. That is true, and every wallet says it. The part usually left unsaid is that a
+wallet still has to **ask somebody what is on the chain** — and on a transparent chain, asking means
+handing over the very address you were trying to keep to yourself. Whoever answers *"what is the
+balance of bc1q…"* now knows that address belongs to a wallet, and can tie every address asked about
+in one session to one person.
+
+**Tor hides the IP. It does not un-send the address.**
+
+So Settings → Privacy carries the full list: every server, who runs it, why it is contacted, and what
+it learns. Entries are marked by whether they are called automatically, only when you do a specific
+thing, only if you connect an account yourself, or never at all (a block explorer the wallet links to
+but never calls).
+
+`NetworkCounterpartyTests` scans the source for hostnames in URLs and fails the build if one is not
+declared in `NetworkCounterpartyCatalog` — and fails the other way too, if the catalog lists a host
+the code no longer uses. A transparency page that can silently fall behind the code is worse than
+none, because it reassures without being true, and the person reading it is reading it because they
+need the truth.
+
+The catalog's own claims are checked for coherence as well: a link-only host may not be listed as
+learning anything, anything the wallet actually calls must admit to learning at least the IP (there
+is no such thing as a request that reveals nothing), a price feed may not be marked as seeing
+addresses, and only an opt-in exchange connection may be marked as holding credentials.
+
 ## What this does not protect you from
 
 Being direct about this is the point.

@@ -211,6 +211,7 @@ public partial class MainViewModel : ViewModelBase
             RecalcBalance();
             BuildGuide(); // the guide reads in the wallet's language
             RefreshMoneroNodeStatus(); // its wording is prose, not a code
+            BuildCounterparties();     // the disclosure list is prose too
             if (IsUnlocked)
                 PushActivity("Settings", "Language",
                     Loc.Languages.FirstOrDefault(l => l.Code == value)?.Name ?? value, "changed", "now");
@@ -1219,6 +1220,7 @@ public partial class MainViewModel : ViewModelBase
         // Which machine Monero asks about the chain. Read before anything can start the daemon.
         _monero.NodeAddress = ActiveMoneroNode;
         LoadMoneroNodeChoice();
+        BuildCounterparties();   // who this wallet talks to, from the catalog the tests pin
         if (EffectiveCustomProxy() is { } startupProxy)
         {
             PublicHttp.SetProxy(startupProxy);

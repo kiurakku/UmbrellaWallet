@@ -3303,6 +3303,61 @@
                   </StackPanel>
                 </Border>
 
+                <!-- Who this wallet talks to. "Your keys never leave your device" is true and every
+                     wallet says it; the part usually left unsaid is that the wallet still has to ASK
+                     somebody what is on the chain, and on a public chain asking means handing over the
+                     address. The list is generated from a catalog the test suite checks against the
+                     source, so it cannot quietly fall behind the code. -->
+                <Border Classes="card" IsVisible="{Binding IsTabPrivacy}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="{Binding [who.title], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="{Binding [who.hint], Source={x:Static app:Loc.Instance}}"/>
+
+                    <Border Background="#22000000" BorderBrush="#7A6230" BorderThickness="1"
+                            CornerRadius="8" Padding="12,9">
+                      <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Text="🧅" VerticalAlignment="Top" Margin="0,0,8,0"/>
+                        <TextBlock Grid.Column="1" FontSize="11.5" TextWrapping="Wrap" Foreground="#D8C79A"
+                                   Text="{Binding [who.addressNote], Source={x:Static app:Loc.Instance}}"/>
+                      </Grid>
+                    </Border>
+
+                    <ScrollViewer MaxHeight="360" HorizontalScrollBarVisibility="Disabled">
+                      <ItemsControl ItemsSource="{Binding Counterparties}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:CounterpartyRowVm">
+                            <Border Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmBorder2}"
+                                    BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,0,0,6">
+                              <StackPanel Spacing="3">
+                                <Grid ColumnDefinitions="*,Auto">
+                                  <StackPanel Grid.Column="0" Spacing="1">
+                                    <TextBlock Text="{Binding Host}" Classes="mono" FontSize="12"
+                                               FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding Operator}" FontSize="10.5"
+                                               Foreground="{DynamicResource UmTextMuted}"/>
+                                  </StackPanel>
+                                  <Border Grid.Column="1" CornerRadius="4" Padding="6,2" VerticalAlignment="Top"
+                                          Background="{DynamicResource UmCard}">
+                                    <TextBlock Text="{Binding Purpose}" FontSize="9.5"
+                                               Foreground="{Binding Accent}"/>
+                                  </Border>
+                                </Grid>
+                                <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextDim}"
+                                           IsVisible="{Binding HasChains}" Text="{Binding Chains}"/>
+                                <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextMuted}"
+                                           Text="{Binding Contact}"/>
+                                <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{Binding Accent}"
+                                           Text="{Binding Learns}"/>
+                              </StackPanel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </ScrollViewer>
+                  </StackPanel>
+                </Border>
+
                 <!-- Advanced network privacy: custom proxy, IP family, clipboard hygiene -->
                 <Border Classes="card" IsVisible="{Binding IsTabPrivacy}">
                   <StackPanel Spacing="10">
