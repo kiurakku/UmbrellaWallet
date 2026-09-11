@@ -1220,6 +1220,9 @@ public partial class MainViewModel : ViewModelBase
         // Tor-only kill-switch first: if it was left on, clearnet stays blocked until Tor connects, so
         // no startup request can leak before the proxy is up.
         PublicHttp.SetRequireProxy(_uiSettings.TorOnlyMode);
+        // Which machine answers for each chain. Applied before ANY network call can go out, or the
+        // first refresh would reach the shipped default and hand it addresses the user redirected away.
+        LoadChainEndpoints();
         // Which machine Monero asks about the chain. Read before anything can start the daemon.
         _monero.NodeAddress = ActiveMoneroNode;
         LoadMoneroNodeChoice();
@@ -1422,6 +1425,31 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("4.7", "Version 4.7 — you choose which server sees your addresses",
+            "Your keys never leave your device. That is true, and every wallet says it.\n\n" +
+            "What almost none of them say is that a wallet still has to ASK somebody what is on the chain — and on a public chain, asking means handing over the address. Whoever answers can tie together every address you ask about in one session. Tor hides your IP. It does not un-send an address.\n\n" +
+            "So this release is about that.\n\n" +
+            "WHO ANSWERS FOR YOUR MONEY\n" +
+            "• Every chain's server is now yours to choose — Bitcoin, Litecoin, Bitcoin Cash, Dogecoin, Ethereum, Solana, TON, Tron, Cardano and Monero. Pick a different company, or point the wallet at a node you run.\n" +
+            "• Monero used to have one node compiled in, the same for everybody, named nowhere. It now names the node, offers alternatives, and takes your own — including a .onion.\n" +
+            "• A .onion node is never used without Tor, and never silently swapped for a clearnet one. A plain http:// server is refused outright: choosing your own server for privacy and then sending addresses in clear would be worse than not choosing.\n" +
+            "• Once YOU pick a server, there is no falling back to ours. Rerouting your addresses to the default is exactly what choosing was meant to prevent.\n\n" +
+            "WHO THIS WALLET TALKS TO\n" +
+            "• A full list in Settings → Privacy: every server, who runs it, why it is contacted, and what it learns — sorted so the ones handed your actual addresses come first.\n" +
+            "• It cannot go stale. The build fails if a server appears in the code without appearing on that list.\n\n" +
+            "PRIVATE SEND, AS ONE SWITCH\n" +
+            "• Tor, the kill-switch, waiting for bootstrap, narrowing inputs, a fresh change address — one switch instead of a checklist nobody remembers.\n" +
+            "• Next to it, what no switch can change. Monero shows an empty to-do list and its limits all the same, because \"nothing to turn on\" must never read as \"nothing to know\".\n\n" +
+            "MONEY THAT WAS GOING MISSING\n" +
+            "• Bitcoin Cash and Dogecoin were read one address deep. Change from a send lands on an internal address by design, so after sending either coin the displayed balance dropped to whatever was left on the first address. The money was never at risk; the number was wrong. Both are now scanned across every address.\n" +
+            "• A fresh receive address per payment now works on BCH and DOGE too. Reusing one address means every payment you ever received sits under a single public heading.\n" +
+            "• Bitcoin balances no longer fail when one public explorer rate-limits — the wallet tries another.\n" +
+            "• A failed Send preparation now says so ON the Send screen. It used to report into the title bar, so pressing Review appeared to do nothing at all.\n\n" +
+            "COINS\n" +
+            "• Jetton balances on TON — including USD-tether, which is how most people hold dollars on Telegram's chain, and which this wallet simply did not show before.\n" +
+            "• Linea (send and receive) and zkSync Era (balance only — its fees do not work like Ethereum's, and the wallet says so rather than stranding a transfer).\n" +
+            "• A balance the wallet can read but not spend now says \"Receive only\" instead of \"Ready\".",
+            "2026-09-11", "v47"),
         new("4.6", "Version 4.6 — faster balances, 19 themes, history & privacy tools",
             "The biggest update yet.\n\n" +
             "FASTER\n" +
@@ -2185,11 +2213,25 @@ public partial class MainViewModel : ViewModelBase
     public bool HasSendAddressBook => SendAddressBook.Count > 0;
     [ObservableProperty] private string _sendAddressLabel = string.Empty;
 
+    /// <summary>
+    /// Reads the saved Send destinations. Needs the seed because the book is encrypted under a key
+    /// derived from it — which is also why this runs on unlock rather than at start-up. A locked
+    /// wallet shows no saved addresses at all, which is the correct answer rather than a limitation.
+    /// </summary>
     private void LoadAddressBook()
     {
         _addressBookAll.Clear();
-        _addressBookAll.AddRange(_addressBook.Load());
+        if (_unlockedMnemonic is not null)
+            _addressBookAll.AddRange(_addressBook.Load(_unlockedMnemonic));
         RebuildSendAddressBook();
+    }
+
+    /// <summary>Persists the book, sealed under the seed. Silently does nothing while locked — there
+    /// is no key to seal it with, and writing it in the clear is what this replaced.</summary>
+    private void SaveAddressBook()
+    {
+        if (_unlockedMnemonic is null) return;
+        _addressBook.Save(_unlockedMnemonic, _addressBookAll);
     }
 
     private void RebuildSendAddressBook()
@@ -2217,7 +2259,7 @@ public partial class MainViewModel : ViewModelBase
             string.Equals(e.Address, addr, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(e.Chain, sym, StringComparison.OrdinalIgnoreCase));
         _addressBookAll.Add(new AddressBookEntry(label, addr, sym));
-        _addressBook.Save(_addressBookAll);
+        SaveAddressBook();
         SendAddressLabel = string.Empty;
         RebuildSendAddressBook();
         ShowToast(Loc.Instance["send.addrSavedOk"], isError: false);
@@ -2237,16 +2279,44 @@ public partial class MainViewModel : ViewModelBase
         _addressBookAll.RemoveAll(e =>
             string.Equals(e.Address, entry.Address, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(e.Chain, entry.Chain, StringComparison.OrdinalIgnoreCase));
-        _addressBook.Save(_addressBookAll);
+        SaveAddressBook();
         RebuildSendAddressBook();
     }
 
-    /// <summary>How much to leave behind on "Max" so the network fee cannot overrun the balance. Tokens
-    /// (USDT/USDC) reserve nothing — their fee is paid in the chain's native coin.</summary>
+    /// <summary>
+    /// How much to leave behind on "Max" so the network fee cannot overrun the balance.
+    ///
+    /// A missing entry is not a harmless default — it means Max offers the WHOLE balance, leaving
+    /// nothing for the fee, and the send then fails at planning with "insufficient funds". That is
+    /// exactly what Bitcoin Cash, Dogecoin and every Ethereum L2 were doing: they were added to the
+    /// send picker without being added here, so their Max button could not produce a sendable amount
+    /// at all. <c>SendMaxReserveTests</c> now ties this table to the capability set so the next coin
+    /// cannot repeat it.
+    ///
+    /// Tokens (USDT/USDC) reserve nothing on purpose — their fee is paid in the chain's native coin,
+    /// so the whole token balance really is sendable.
+    /// </summary>
+    /// <remarks>
+    /// These are heuristics, not computed fees: the reserve is chosen to cover a realistic worst case
+    /// for each chain's fee band rather than quoted from the network. The planner remains the
+    /// authority - if a reserve turns out to be short, the send is refused with a plain "insufficient
+    /// funds including fee" rather than producing a wrong transaction.
+    /// </remarks>
     private static decimal SendMaxReserve(string symbol) => symbol.ToUpperInvariant() switch
     {
         "BTC" or "LTC" => 0.0003m,
+        // BCH: the fee band tops out at 20 sat/vB, so a 2,500-byte (many-input) spend costs at most
+        // 50,000 sat. A typical one- or two-input send is a few hundred. 0.0005 covers the worst case
+        // rather than the common one, because Max failing is invisible to the user.
+        "BCH" => 0.0005m,
+        // DOGE: the fee band is 1,000-10,000 koinu/vB, so even a 3,000-byte spend at the cap is
+        // 0.3 DOGE, and a typical send is nearer 0.002. One DOGE is roughly three times the worst
+        // realistic case - enough headroom to be safe, small enough not to strand real money.
+        "DOGE" => 1m,
         "ETH" or "BNB" or "MATIC" or "AVAX" or "FTM" or "CRO" => 0.002m,
+        // The L2 rollups send ETH, and their fees are a small fraction of mainnet's - but gas there
+        // does spike, so this is deliberately generous rather than tuned to a quiet day.
+        "ARB" or "BASE" or "OP" or "LINEA" => 0.0003m,
         "SOL" => 0.002m,
         "TON" => 0.05m,
         "TRX" => 2m,
@@ -2254,6 +2324,15 @@ public partial class MainViewModel : ViewModelBase
         "ADA" => 1m,
         _ => 0m,
     };
+
+    /// <summary>The reserve for a symbol, exposed so the guard test reads the same table the button
+    /// does rather than a copy of it.</summary>
+    public static decimal SendMaxReserveFor(string symbol) => SendMaxReserve(symbol);
+
+    /// <summary>Sendable symbols that legitimately reserve nothing: their fee is paid in another
+    /// coin, so the entire balance of THIS one can be sent.</summary>
+    public static IReadOnlySet<string> FeePaidInAnotherCoin { get; } =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "USDT" };
 
     [RelayCommand]
     private void SetMaxAmount()
@@ -2527,9 +2606,43 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
+        // Somebody who finds this window open can otherwise type guesses as fast as they can type.
+        // After three free mistakes the wait doubles, so the tenth guess costs minutes. It is not a
+        // defence against anyone who can copy vault.json - that attack happens offline where no UI
+        // rule reaches it, and is answered by Argon2id and the length of the password.
+        var wait = UnlockThrottle.Remaining(
+            _uiSettings.FailedUnlocks, _uiSettings.LastFailedUnlockUtc, DateTimeOffset.UtcNow);
+        if (wait > TimeSpan.Zero)
+        {
+            Fail(string.Format(Loc.Instance["unlock.throttled"], UnlockThrottle.Describe(wait)));
+            return;
+        }
+
         await RunBusyAsync(async () =>
         {
-            var mnemonic = await _vault.UnlockAsync(Password);
+            string mnemonic;
+            try
+            {
+                mnemonic = await _vault.UnlockAsync(Password);
+            }
+            catch
+            {
+                // Counted and persisted BEFORE the error surfaces, and persisted rather than held in
+                // memory: a counter that resets when the app is reopened stops nobody, since closing
+                // the window is easier than waiting.
+                _uiSettings.FailedUnlocks++;
+                _uiSettings.LastFailedUnlockUtc = DateTimeOffset.UtcNow;
+                _uiSettings.Save();
+                throw;
+            }
+
+            // A correct password clears the run. The next mistake starts from the free attempts again.
+            if (_uiSettings.FailedUnlocks != 0)
+            {
+                _uiSettings.FailedUnlocks = 0;
+                _uiSettings.Save();
+            }
+
             _sessionPassword = Password;
             var passphrase = UnlockPassphrase ?? string.Empty; // capture before the fields are cleared
             ClearPasswordFields();

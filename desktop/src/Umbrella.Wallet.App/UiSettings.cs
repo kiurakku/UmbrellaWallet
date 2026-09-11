@@ -47,6 +47,19 @@ public sealed class UiSettings
     /// the catalog default. It is a node address only - never a credential - so it is stored in the
     /// plain settings file like every other preference.</summary>
     public string MoneroNode { get; set; } = "";
+
+    /// <summary>Per-chain endpoint overrides as "SYMBOL=url" pairs. These are server addresses, never
+    /// credentials - a URL carrying credentials is refused before it can be stored - so they live in
+    /// the plain settings file like every other preference.</summary>
+    public string ChainEndpoints { get; set; } = "";
+
+    /// <summary>Consecutive wrong vault passwords, and when the last one was entered. Persisted so a
+    /// counter cannot be reset by closing the window - which would be easier than waiting. Someone
+    /// with file access can edit this, but someone with file access can copy the vault and attack it
+    /// offline anyway, where no UI rule applies.</summary>
+    public int FailedUnlocks { get; set; }
+
+    public DateTimeOffset LastFailedUnlockUtc { get; set; } = DateTimeOffset.MinValue;
     /// <summary>Seconds after which a copied address is auto-wiped from the clipboard; 0 = never.</summary>
     public int ClipboardAutoClearSeconds { get; set; } = 45;
     /// <summary>Lock the vault immediately whenever the window is minimized, so a shoulder-surfer or

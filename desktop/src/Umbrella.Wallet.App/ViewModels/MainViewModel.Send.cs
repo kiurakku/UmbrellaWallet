@@ -359,6 +359,32 @@ public partial class MainViewModel
         _sendSymbol = chain;
         await RunBusyAsync(async () =>
         {
+            // Anything that throws in here - an explorer that will not answer, a malformed response,
+            // a destination the chain library rejects outright - has to surface ON THE SEND SCREEN.
+            // RunBusyAsync catches for the whole app and reports through StatusMessage in the title
+            // bar, which for a send means the user presses Review, sees nothing change, and has no
+            // idea why. SendError is where they are looking.
+            try
+            {
+                await PrepareSendCoreAsync(chain, displayCoin, amount, from);
+            }
+            catch (Exception ex)
+            {
+                HasSendQuote = false;
+                SendError = string.Format(Loc.Instance["err.operationFailed"], ex.Message);
+            }
+        });
+    }
+
+    /// <summary>
+    /// The per-chain half of Prepare, split out so every failure inside it can be turned into a
+    /// message on the Send screen rather than a line in the title bar. Nothing about the quoting or
+    /// signing moved with it.
+    /// </summary>
+    private async Task PrepareSendCoreAsync(
+        string chain, string displayCoin, decimal amount, WalletAccountViewModel from)
+    {
+        {
             StatusMessage = Loc.Instance["status.fetchingFees"];
             switch (chain)
             {
@@ -517,7 +543,7 @@ public partial class MainViewModel
 
             HasSendQuote = true;
             StatusMessage = Loc.Instance["status.reviewTransfer"];
-        });
+        }
     }
 
     /// <summary>

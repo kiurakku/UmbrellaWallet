@@ -4,6 +4,103 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.7.0] — you choose which server sees your addresses
+
+Your keys never leave your device. That is true, and every wallet says it.
+
+What almost none of them say is that a wallet still has to **ask somebody** what is on the chain — and
+on a public chain, asking means handing over the address. Whoever answers can tie together every
+address you ask about in one session. Tor hides your IP; it does not un-send an address.
+
+This release is about that, and about three bugs found while looking into it.
+
+### Who answers for your money
+
+- **Every chain's server is now yours to choose** — Bitcoin, Litecoin, Bitcoin Cash, Dogecoin,
+  Ethereum, Solana, TON, Tron, Cardano and Monero. Pick a different company, or point the wallet at a
+  node you run (Settings → Privacy → Where each chain is read from).
+- **Monero node selection.** It had one node compiled in — the same for every user, named nowhere in
+  the interface, unchangeable. It now names the node, offers alternatives, and takes your own,
+  including a `.onion`.
+- **Two refusals, enforced rather than warned about.** A `.onion` node is never used without Tor and
+  is **never silently swapped for a clearnet one**; a plain `http://` endpoint is refused outright,
+  because choosing your own server *for privacy* and then sending addresses in clear would be worse
+  than not choosing. Credentials in a URL are refused too — every hop along the way logs the URL.
+- **Once you pick a server, there is no falling back to ours.** Rerouting your addresses to the
+  default is exactly what choosing was meant to prevent. The wallet reports "unknown" and lets you
+  decide.
+- Removed `node.community.rino.io` from the shipped Monero nodes — it no longer resolves at all.
+
+### Who this wallet talks to
+
+- **A full list** in Settings → Privacy: every server, who runs it, why it is contacted, and what it
+  learns — sorted so the ones handed your actual addresses come first. Four contact modes, because
+  they are genuinely different exposures: automatic, on-demand, opt-in, and never-contacted (a link
+  your browser follows, not the wallet).
+- **It cannot go stale.** The build fails if a server appears in the code without appearing on that
+  list, and fails the other way if the list names a host the code no longer uses.
+
+### Private send, as one switch
+
+- Tor, the kill-switch, waiting for bootstrap, narrowing inputs, a fresh change address — one switch
+  instead of a checklist nobody remembers.
+- Beside it, **what no switch can change**. Monero shows an empty to-do list and its limits all the
+  same, because "nothing to turn on" must never read as "nothing to know".
+
+### Fixed — money that was going missing from the display
+
+- **Bitcoin Cash and Dogecoin were read one address deep.** Change from a send lands on an internal
+  address by design, so after sending either coin the displayed balance dropped to whatever was left
+  on the first address. The money was never at risk; the number was wrong, in the direction that makes
+  people think they have lost funds. Both are now scanned across every address, like BTC and LTC.
+- **A fresh receive address per payment** now works on BCH and DOGE too, which follows from the
+  above: the wallet only offers an address it can also find and spend.
+- **Bitcoin balances no longer fail when one public explorer rate-limits.** Esplora had a single base
+  URL; Blockstream returning 429 left the wallet with no Bitcoin balance at all. It now tries another
+  instance and stays there for the rest of the scan.
+- **A failed Send preparation now says so on the Send screen.** It reported into the title bar, so
+  pressing Review appeared to do nothing at all.
+- **The balance cache no longer collapses the L2s.** ETH on mainnet, Arbitrum, Base, Optimism and
+  Linea are five balances sharing one symbol at the same address; the cache keyed on symbol + address
+  and threw on the unlock path.
+
+### Coins
+
+- **Jetton balances on TON**, including USD‑tether — how most people hold dollars on Telegram's chain,
+  and something this wallet simply did not show. Tether on TON calls itself `USD₮`, which no price
+  feed recognises, so a real dollar balance rendered as $0.
+- **Linea** — send and receive. **zkSync Era** — balance only: a plain transfer there does not cost a
+  flat 21,000 gas, so sending would strand the transaction, and the wallet says so instead.
+- A balance the wallet can read but not spend now says **Receive only** rather than "Ready".
+- USDT now exists on two chains under one symbol, so the Send screen pins each token's balance to the
+  one chain it can actually be spent on.
+
+### Fixed — "delete everything" did not
+
+- **Your address book survived a wallet delete**, and it is stored in **plain text**. So did your
+  private transaction notes, the count of addresses ever issued, and the price cache. A person
+  deleting their wallet believes it is gone; what stayed behind was precisely the part naming who they
+  were dealing with. All four are wiped now.
+- The wiper is no longer maintained by hand: the build fails if the app writes a file under its data
+  directory that the wiper does not handle, or that is not named as a deliberate exception (the
+  bundled Tor client, which is a program rather than user data).
+- The Danger Zone now states exactly what goes and what stays, in all six languages.
+
+### Added — the rules, written down
+
+- **[MANIFESTO.md](MANIFESTO.md)** — the twelve rules this wallet is held to, each one there because
+  it was broken at least once, and an honest note on what following them costs.
+- Three new sections in the in-app guide (English and Ukrainian): who answers for your money, who this
+  wallet talks to, and what deleting everything actually deletes.
+
+### Tests
+
+- **731 offline tests**, up from 617. The suite no longer touches the public internet at all: it was
+  quietly querying real explorers on every wallet it created and only looked fast because those calls
+  were failing.
+- Each run gets a throwaway data directory, and the classes that share process-wide state no longer
+  run in parallel with each other — two tests had begun failing against unchanged code.
+
 ## [4.6.0] — history, privacy tools, safer backups & a friendlier Send
 
 Rolls up the Bitcoin Cash / Zcash / L2 / swap work below, plus a wave of wallet, privacy and safety

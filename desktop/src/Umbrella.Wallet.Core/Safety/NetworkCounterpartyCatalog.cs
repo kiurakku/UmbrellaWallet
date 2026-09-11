@@ -30,6 +30,12 @@ public static class NetworkCounterpartyCatalog
         // --- Balances, unspent coins and history. These are handed your addresses. ------------------
         new("blockstream.info", "Blockstream", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "BTC"),
+        // Offered in the endpoint picker, and used as a fallback when the default is rate-limited —
+        // which means they are contacted for real and belong on this list like everything else.
+        new("mempool.space", "mempool.space", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, ChainAndBroadcast, "BTC"),
+        new("mempool.emzy.de", "mempool.emzy.de", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, ChainAndBroadcast, "BTC"),
         new("litecoinspace.org", "litecoinspace", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "LTC"),
         new("api.blockcypher.com", "BlockCypher", CounterpartyPurpose.Balances,

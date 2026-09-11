@@ -60,6 +60,31 @@ public static class DataWiper
         DeleteDir(Path.Combine(root, "profile"));               // avatar / banner / background images
         DeleteDir(Path.Combine(root, "monero"));                // Monero wallet keys + cache (not the binary)
 
+        // These four survived a "delete everything" until now, and two of them are the user's own
+        // content. The address book is the list of people they transact with - written in PLAIN TEXT -
+        // and the notes are what they wrote about their own transactions. For a wallet meant for
+        // somebody under pressure, leaving those on disk after they asked for the wallet to be gone is
+        // the most consequential thing this function could get wrong.
+        DeleteFile(Path.Combine(root, "address-book.bin"));     // saved counterparty addresses (encrypted)
+        DeleteFile(Path.Combine(root, "address-book.json"));    // the pre-4.7 plaintext book, if migration never ran
+        DeleteFile(Path.Combine(root, "addr-indexes.json"));    // how many addresses were ever issued
+        DeleteFile(Path.Combine(root, "market.json"));          // cached prices
+
+        // Private transaction notes are one encrypted file PER WALLET (tx-notes-<id>.bin), so they
+        // cannot be named individually here.
+        try
+        {
+            if (Directory.Exists(root))
+            {
+                foreach (var notes in Directory.EnumerateFiles(root, "tx-notes-*.bin"))
+                    DeleteFile(notes);
+            }
+        }
+        catch
+        {
+            // enumeration failure is non-fatal
+        }
+
         // Every encrypted backup that a restore left beside the vault (vault.json.replaced-*).
         try
         {

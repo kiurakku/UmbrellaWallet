@@ -44,6 +44,28 @@ public sealed class HdUtxoSpender
 {
     public const long DustSat = 546;
 
+    /// <summary>
+    /// The smallest output a chain will actually relay, in its own base units.
+    ///
+    /// Bitcoin's 546 is not a universal constant, and applying it to Dogecoin was wrong by more than
+    /// two orders of magnitude. Dogecoin Core enforces a HARD dust limit of 0.001 DOGE - outputs below
+    /// it are non-standard and the transaction is rejected outright - and a SOFT limit of 0.01 DOGE,
+    /// below which each such output demands an extra 0.01 DOGE of fee or the transaction is rejected
+    /// as underpaying. 546 koinu is 0.00000546 DOGE: under both.
+    ///
+    /// So a Dogecoin send could be planned, signed and handed to the network only to be refused,
+    /// either because the amount itself was dust or because the CHANGE output was. The soft limit is
+    /// used here, not the hard one: staying above it means no output ever triggers the extra fee, and
+    /// anything smaller is rolled into the fee instead of becoming an unspendable scrap.
+    ///
+    /// Litecoin and Bitcoin Cash both kept Bitcoin's relay parameters, so 546 is right for them.
+    /// </summary>
+    public static long DustSatFor(ChainId chain) => chain switch
+    {
+        ChainId.Doge => 1_000_000,   // 0.01 DOGE — Dogecoin Core's soft dust limit
+        _ => DustSat,
+    };
+
     private readonly HdAddressDeriver _deriver;
 
     public HdUtxoSpender(HdAddressDeriver? deriver = null) => _deriver = deriver ?? new HdAddressDeriver();
@@ -64,7 +86,8 @@ public sealed class HdUtxoSpender
         ChainId chain, IReadOnlyList<OwnedUtxo> utxos, UtxoSpendRequest request)
     {
         if (request.AmountSat <= 0) return (null, "Amount must be positive.");
-        if (request.AmountSat < DustSat) return (null, $"Amount is below the dust limit ({DustSat} sat).");
+        var dust = DustSatFor(chain);
+        if (request.AmountSat < dust) return (null, $"Amount is below the dust limit ({dust} sat).");
         if (request.FeeRateSatPerVByte <= 0) return (null, "Fee rate must be positive.");
 
         var (_, _, network, scriptType) = HdAddressDeriver.BitcoinLikeParams(chain);
@@ -107,7 +130,7 @@ public sealed class HdUtxoSpender
 
         var change = total - request.AmountSat - devFee - fee;
         long changeSat;
-        if (change > DustSat)
+        if (change > dust)
         {
             changeSat = change;
         }

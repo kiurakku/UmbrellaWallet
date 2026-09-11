@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Umbrella.Wallet.Core.Safety;
 using Umbrella.Wallet.Core.Utxo;
 
 namespace Umbrella.Wallet.Infrastructure.Network;
@@ -28,7 +29,10 @@ public sealed class BlockCypherUtxoExplorer : IUtxoExplorer
 
     public static BlockCypherUtxoExplorer For(string symbol) => new(CoinFor(symbol));
 
-    private string Base => $"https://api.blockcypher.com/v1/{_coin}/main";
+    /// <summary>What this build ships with, before any choice of the user's.</summary>
+    public const string DefaultRoot = "https://api.blockcypher.com";
+
+    private string Base => $"{ChainEndpoints.Resolve(_coin.ToUpperInvariant(), DefaultRoot)}/v1/{_coin}/main";
 
     public async Task<AddressActivity> GetActivityAsync(string address, CancellationToken ct)
     {
