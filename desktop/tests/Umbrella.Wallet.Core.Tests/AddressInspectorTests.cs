@@ -55,4 +55,25 @@ public sealed class AddressInspectorTests
     [InlineData("hello world")]
     public void Unrecognised_input_is_not_recognised(string addr) =>
         Assert.False(AddressInspector.Inspect(addr).Recognised);
+
+    [Fact]
+    public void An_xrp_address_is_named_and_verified_not_guessed()
+    {
+        // XRP is one of the coins people most often send over the wrong network, so the checker gives
+        // a definitive answer rather than "recognised by shape": the alphabet and the double-SHA256
+        // checksum are both verifiable without a chain-specific library.
+        var r = AddressInspector.Inspect("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh");
+        Assert.Equal("XRP", r.Network);
+        Assert.Equal(AddressValidity.Valid, r.Validity);
+    }
+
+    [Fact]
+    public void A_corrupted_xrp_address_is_named_but_reported_invalid()
+    {
+        // Naming the network while rejecting the checksum is the useful answer: it tells the user
+        // they meant XRP and got a character wrong, rather than just "unrecognised".
+        var r = AddressInspector.Inspect("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTa");
+        Assert.Equal("XRP", r.Network);
+        Assert.Equal(AddressValidity.Invalid, r.Validity);
+    }
 }

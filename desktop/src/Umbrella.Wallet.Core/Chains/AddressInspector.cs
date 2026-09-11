@@ -61,6 +61,12 @@ public static class AddressInspector
         if (a.StartsWith("t1", StringComparison.Ordinal) && a.Length == 35)
             return new("ZEC", Base58CheckOk(a) ? AddressValidity.Valid : AddressValidity.Invalid);
 
+        // XRP: its own base58 alphabet plus a double-SHA256 checksum, so this is a definitive answer
+        // rather than a guess from the shape. Worth checking early — XRP is one of the coins people
+        // most often try to send over the wrong network, and the alphabet makes a false match unlikely.
+        if (a.StartsWith('r') && a.Length is >= 25 and <= 35)
+            return new("XRP", XrpAddress.IsValid(a) ? AddressValidity.Valid : AddressValidity.Invalid);
+
         // Recognised by shape, but a deep check needs a chain-specific library we do not bundle.
         if (a.StartsWith("addr1", OIC)) return new("ADA", AddressValidity.Unverified);
         if (a.Length == 48 && (a.StartsWith("UQ") || a.StartsWith("EQ") || a.StartsWith("kQ") || a.StartsWith("0Q")))

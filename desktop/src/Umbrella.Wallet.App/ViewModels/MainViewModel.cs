@@ -1310,13 +1310,31 @@ public partial class MainViewModel : ViewModelBase
     /// balances still surface via the EVM/token paths, so nothing here is a dead "adapter pending" row.</summary>
     // Holdable = the wallet actually derives an address for it (EVM coins share the 0x address; the
     // tokens live at the ETH/TRON address). XRP/DOT/BCH are market-only until each gets its own chain.
-    private static readonly (string Symbol, string Name, bool Holdable)[] ExtraMarketCoins =
+    /// <summary>
+    /// Coins shown in Market for price only — held through the token/EVM balance paths rather than as
+    /// their own wallet chain. Hand-kept, so it is filtered against the chain catalog below.
+    /// </summary>
+    private static readonly (string Symbol, string Name, bool Holdable)[] PriceOnlyCoins =
     [
         ("BNB", "BNB", true), ("MATIC", "Polygon", true), ("AVAX", "Avalanche", true),
         ("FTM", "Fantom", true), ("CRO", "Cronos", true),
         ("USDT", "Tether", true), ("USDC", "USD Coin", true), ("LINK", "Chainlink", true), ("UNI", "Uniswap", true),
-        ("XRP", "XRP", false), ("DOT", "Polkadot", false), ("BCH", "Bitcoin Cash", false),
+        ("XRP", "XRP", false), ("DOT", "Polkadot", false),
     ];
+
+    /// <summary>
+    /// The price-only list with anything that is now a real chain removed.
+    ///
+    /// Without this filter a coin that graduated from "price only" to a full chain appeared TWICE in
+    /// Market — and worse, the cache restore looks rows up by FindIndex, which returns the FIRST match,
+    /// so the price-only entry overwrote the real one and the wallet ended up claiming it could not
+    /// hold a coin it demonstrably holds. Bitcoin Cash was in exactly that state.
+    /// </summary>
+    private static readonly (string Symbol, string Name, bool Holdable)[] ExtraMarketCoins =
+        PriceOnlyCoins
+            .Where(c => !ChainCatalog.All.Any(ch =>
+                string.Equals(ch.Symbol, c.Symbol, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
 
     /// <summary>Product news, shown in the News section. Curated, offline; no network needed.
     /// Click an item to read the full note. Newest first.</summary>
