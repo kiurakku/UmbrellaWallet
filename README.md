@@ -422,7 +422,7 @@ which is exactly why there is no tracking and no cut of your transfers.</sub>
 <br/>
 
 <a href="https://t.me/UmbrellaWallet">
-  <img src="docs/assets/logo-telegram.png" width="44" alt="Umbrella Wallet on Telegram"/>
+  <img src="docs/assets/logo-telegram-channel.png" width="72" alt="Umbrella Wallet on Telegram"/>
 </a>
 
 **[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)**
