@@ -1449,7 +1449,7 @@ public partial class MainViewModel : ViewModelBase
             "• Jetton balances on TON — including USD-tether, which is how most people hold dollars on Telegram's chain, and which this wallet simply did not show before.\n" +
             "• Linea (send and receive) and zkSync Era (balance only — its fees do not work like Ethereum's, and the wallet says so rather than stranding a transfer).\n" +
             "• A balance the wallet can read but not spend now says \"Receive only\" instead of \"Ready\".",
-            "2026-09-11", "news.v47"),
+            "2026-09-11", "v47"),
         new("4.6", "Version 4.6 — faster balances, 19 themes, history & privacy tools",
             "The biggest update yet.\n\n" +
             "FASTER\n" +
