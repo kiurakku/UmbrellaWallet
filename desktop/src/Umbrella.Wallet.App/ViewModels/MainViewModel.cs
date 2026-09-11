@@ -914,7 +914,7 @@ public partial class MainViewModel : ViewModelBase
     private async Task CopyReleasesLink()
     {
         await CopyTextAsync(UpdateChecker.ReleasesUrl);
-        StatusMessage = "Download link copied — open it in your browser (or Tor Browser) to get the new build.";
+        StatusMessage = Loc.Instance["status.downloadLinkCopied"];
     }
 
     // ETH send flow: quote → explicit confirm → broadcast result.
@@ -2272,7 +2272,7 @@ public partial class MainViewModel : ViewModelBase
             PendingPhraseBackup = true;
             ClearPasswordFields();
             ActiveSection = "Portfolio";
-            StatusMessage = "Write down all 24 words offline, then continue";
+            StatusMessage = Loc.Instance["status.writeDownWords"];
             await RefreshLiveDataAsync();
         });
     }
@@ -2348,7 +2348,7 @@ public partial class MainViewModel : ViewModelBase
         VerifyWord1 = VerifyWord2 = VerifyWord3 = string.Empty;
         VerifyError = string.Empty;
         _verifyPositions = Array.Empty<int>();
-        StatusMessage = "Wallet ready · keep your offline backup safe";
+        StatusMessage = Loc.Instance["status.walletReady"];
     }
 
     [RelayCommand]
@@ -2449,7 +2449,7 @@ public partial class MainViewModel : ViewModelBase
             SettingsPassword = string.Empty;
             SettingsRevealedPhrase = mnemonic;
             IsSettingsPhraseVisible = true;
-            StatusMessage = "Phrase revealed · hide it as soon as you have written it down";
+            StatusMessage = Loc.Instance["status.phraseRevealed"];
         });
     }
 
@@ -2482,7 +2482,7 @@ public partial class MainViewModel : ViewModelBase
             MoneroSpendKey = monero.SecretSpendKeyHex;
             MoneroViewKey = monero.SecretViewKeyHex;
             IsMoneroKeysVisible = true;
-            StatusMessage = "Monero keys revealed · treat the spend key like your seed phrase";
+            StatusMessage = Loc.Instance["status.moneroKeysRevealed"];
         });
     }
 
@@ -2587,7 +2587,7 @@ public partial class MainViewModel : ViewModelBase
         MoneroSpendKey = string.Empty;
         MoneroViewKey = string.Empty;
         IsMoneroKeysVisible = false;
-        StatusMessage = "Monero keys hidden";
+        StatusMessage = Loc.Instance["status.moneroKeysHidden"];
     }
 
     [RelayCommand]
@@ -2595,7 +2595,7 @@ public partial class MainViewModel : ViewModelBase
     {
         SettingsRevealedPhrase = string.Empty;
         IsSettingsPhraseVisible = false;
-        StatusMessage = "Recovery phrase hidden";
+        StatusMessage = Loc.Instance["status.phraseHidden"];
     }
 
     /// <summary>Copies the revealed recovery phrase to the clipboard (auto-cleared like every other copy).
@@ -2687,7 +2687,7 @@ public partial class MainViewModel : ViewModelBase
                 FileName = dir,
                 UseShellExecute = true,
             });
-            StatusMessage = $"Opened {dir}";
+            StatusMessage = string.Format(Loc.Instance["status.opened"], dir);
         }
         catch (Exception ex)
         {
@@ -2721,7 +2721,7 @@ public partial class MainViewModel : ViewModelBase
         RebuildFilteredActivity();
         RebuildTransactions();
         OnPropertyChanged(nameof(HasActivity));
-        StatusMessage = "Activity & transaction history cleared from this device";
+        StatusMessage = Loc.Instance["status.historyCleared"];
     }
 
     /// <summary>Danger zone: remove every linked watch-only address and connected exchange (keeps the vault).</summary>
@@ -2733,7 +2733,7 @@ public partial class MainViewModel : ViewModelBase
         await _watchStore.SaveAsync(WatchAddresses);
         Exchanges.Clear();
         if (_unlockedMnemonic is not null) await _exchangeStore.SaveAsync(Exchanges, _unlockedMnemonic);
-        StatusMessage = $"Disconnected {count} linked address(es) / exchange(s)";
+        StatusMessage = string.Format(Loc.Instance["status.disconnected"], count);
         if (IsUnlocked) await RefreshLiveDataAsync();
     }
 
@@ -2813,7 +2813,7 @@ public partial class MainViewModel : ViewModelBase
         SettingsPassword = string.Empty;
         ReceiveQr = null;
         SelectedReceiveAddress = string.Empty;
-        StatusMessage = "Vault locked";
+        StatusMessage = Loc.Instance["status.vaultLocked"];
         ResetAddresses();
         RecalcBalance();
     }
@@ -2967,7 +2967,7 @@ public partial class MainViewModel : ViewModelBase
                 SetSessionPassword(pw);
                 SetUnlocked(mnemonic);
                 ActiveSection = "Portfolio";
-                StatusMessage = $"Switched to “{ActiveWalletLabel}”";
+                StatusMessage = string.Format(Loc.Instance["status.switchedTo"], ActiveWalletLabel);
                 await RefreshLiveDataAsync();
                 return;
             }
@@ -3002,7 +3002,7 @@ public partial class MainViewModel : ViewModelBase
         NewWalletLabel = string.Empty;
         SetupStage = "Welcome";
         RefreshWalletList();
-        StatusMessage = $"New wallet “{label}” · create or import its seed";
+        StatusMessage = string.Format(Loc.Instance["status.newWallet"], label);
     }
 
     /// <summary>Abort an in-progress add-wallet: de-registers the pending wallet and returns to the
@@ -3032,14 +3032,14 @@ public partial class MainViewModel : ViewModelBase
                 SetSessionPassword(pw);
                 SetUnlocked(mnemonic);
                 ActiveSection = "Portfolio";
-                StatusMessage = $"Back to “{ActiveWalletLabel}”";
+                StatusMessage = string.Format(Loc.Instance["status.backTo"], ActiveWalletLabel);
                 await RefreshLiveDataAsync();
                 return;
             }
             catch { /* fall back to the unlock screen */ }
         }
 
-        StatusMessage = $"Back to “{ActiveWalletLabel}”";
+        StatusMessage = string.Format(Loc.Instance["status.backTo"], ActiveWalletLabel);
     }
 
     [RelayCommand]
@@ -3050,7 +3050,7 @@ public partial class MainViewModel : ViewModelBase
         _registry.Rename(active.Id, RenameWalletLabel.Trim());
         RenameWalletLabel = string.Empty;
         RefreshWalletList();
-        StatusMessage = $"Renamed to “{ActiveWalletLabel}”";
+        StatusMessage = string.Format(Loc.Instance["status.renamedTo"], ActiveWalletLabel);
     }
 
     /// <summary>Remove another (non-active) wallet, deleting only its own encrypted vault. The active
@@ -3063,7 +3063,7 @@ public partial class MainViewModel : ViewModelBase
         {
             _registry.Remove(id);
             RefreshWalletList();
-            StatusMessage = "Wallet removed from this device.";
+            StatusMessage = Loc.Instance["status.walletRemoved"];
         }
         catch (Exception ex)
         {
@@ -3164,7 +3164,7 @@ public partial class MainViewModel : ViewModelBase
             ImportPhrase = string.Empty;
             ClearPasswordFields();
             ActiveSection = "Portfolio";
-            StatusMessage = "Wallet restored from your recovery phrase with a new password.";
+            StatusMessage = Loc.Instance["status.walletRestored"];
             await RefreshLiveDataAsync();
         });
     }
@@ -3190,7 +3190,7 @@ public partial class MainViewModel : ViewModelBase
     {
         RecoveryPhrase = string.Empty;
         IsRecoveryPhraseVisible = false;
-        StatusMessage = "Recovery phrase hidden · keep your offline backup safe";
+        StatusMessage = Loc.Instance["status.phraseHiddenBackup"];
     }
 
     [RelayCommand]
@@ -3241,7 +3241,7 @@ public partial class MainViewModel : ViewModelBase
                 FileName = url,
                 UseShellExecute = true,
             });
-            StatusMessage = $"Opened {url} in your browser";
+            StatusMessage = string.Format(Loc.Instance["status.openedInBrowser"], url);
             ShowToast(Loc.Instance["toast.opened"], isError: false);
         }
         catch (Exception ex)
@@ -3612,7 +3612,7 @@ public partial class MainViewModel : ViewModelBase
         _refreshCts = new CancellationTokenSource();
         var ct = _refreshCts.Token;
         IsBusy = true;
-        StatusMessage = "Refreshing live prices & balances…";
+        StatusMessage = Loc.Instance["status.refreshingLive"];
         try
         {
             // Price every symbol we will show, including the chains behind watch-only addresses.
@@ -3763,7 +3763,7 @@ public partial class MainViewModel : ViewModelBase
             // NOTE: deliberately no "Sync" activity entry here. This runs every 60s on a timer, and
             // logging it flooded the Activity feed with identical "Sync · OK" rows. The live status
             // line below already shows the last-updated time; the Activity feed is for real events.
-            StatusMessage = $"Live · {Holdings.Count} assets · updated {DateTime.Now:HH:mm:ss}";
+            StatusMessage = string.Format(Loc.Instance["status.live"], Holdings.Count, DateTime.Now.ToString("HH:mm:ss"));
         }
         catch (OperationCanceledException)
         {
@@ -3771,7 +3771,7 @@ public partial class MainViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Refresh failed: {ex.Message}";
+            StatusMessage = string.Format(Loc.Instance["status.refreshFailed"], ex.Message);
         }
         finally
         {
@@ -3918,12 +3918,12 @@ public partial class MainViewModel : ViewModelBase
             (a.SupportStatus is "Ready" or "Watch") && IsRealAddress(a.Address));
         if (ready is null)
         {
-            StatusMessage = "No address to copy yet";
+            StatusMessage = Loc.Instance["status.noAddressToCopy"];
             return;
         }
 
         await CopyTextAsync(ready.Address);
-        StatusMessage = $"Copied {ready.Symbol} address";
+        StatusMessage = string.Format(Loc.Instance["status.copiedSymbolAddress"], ready.Symbol);
         ShowToast($"{ready.Symbol} · {Loc.Instance["toast.copied"]}", isError: false);
     }
 
@@ -3932,7 +3932,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (string.IsNullOrWhiteSpace(address) || !IsRealAddress(address)) return;
         await CopyTextAsync(address);
-        StatusMessage = "Address copied";
+        StatusMessage = Loc.Instance["status.addressCopied"];
         ShowToast(Loc.Instance["toast.copied"], isError: false);
     }
 
@@ -4030,11 +4030,11 @@ public partial class MainViewModel : ViewModelBase
             setPath(dest);
             _uiSettings.Save();
             LoadProfileImages();
-            StatusMessage = "Profile image updated";
+            StatusMessage = Loc.Instance["status.profileImageUpdated"];
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Could not set the image: {ex.Message}";
+            StatusMessage = string.Format(Loc.Instance["status.imageFailed"], ex.Message);
         }
     }
 
@@ -4490,13 +4490,13 @@ public partial class MainViewModel : ViewModelBase
         var chain = DetectChain(address) ?? WatchChain.Trim().ToUpperInvariant();
         if (string.IsNullOrWhiteSpace(address) || address.Length < 10)
         {
-            StatusMessage = "Paste a valid public address";
+            StatusMessage = Loc.Instance["status.pasteValidAddress"];
             return;
         }
 
         if (WatchAddresses.Any(w => w.Address.Equals(address, StringComparison.OrdinalIgnoreCase)))
         {
-            StatusMessage = "Address already linked";
+            StatusMessage = Loc.Instance["status.addressAlreadyLinked"];
             return;
         }
 
@@ -4505,7 +4505,7 @@ public partial class MainViewModel : ViewModelBase
         await _watchStore.SaveAsync(WatchAddresses);
         WatchAddress = string.Empty;
         WatchLabel = string.Empty;
-        StatusMessage = $"Linked watch-only {chain} address";
+        StatusMessage = string.Format(Loc.Instance["status.linkedWatch"], chain);
         PushActivity("Connected", chain, "watch-only", label, "now");
         if (IsUnlocked) await RefreshLiveDataAsync();
     }
@@ -4520,7 +4520,7 @@ public partial class MainViewModel : ViewModelBase
         if (match is not null) Accounts.Remove(match);
         RefreshHoldings();
         RecalcBalance();
-        StatusMessage = "Watch address removed";
+        StatusMessage = Loc.Instance["status.watchRemoved"];
     }
 
     // True when the unlocked wallet is a TON-native mnemonic (Telegram Wallet / Tonkeeper) rather than

@@ -302,7 +302,7 @@ public partial class MainViewModel
                 ? $"Network fee is set by Monero at broadcast · service fee {_devFee.FeePercent:0.##}% ≈ " +
                   $"{Fmt(_moneroFeeAmount)} XMR to the developer (same transaction)."
                 : "Fee is set by the Monero network at broadcast (priority: normal).";
-            StatusMessage = "Review the transfer, then confirm to broadcast";
+            StatusMessage = Loc.Instance["status.reviewTransfer"];
             return;
         }
 
@@ -319,7 +319,7 @@ public partial class MainViewModel
             _sendSymbol = symbol;
             await RunBusyAsync(async () =>
             {
-                StatusMessage = "Building the TRON transaction…";
+                StatusMessage = Loc.Instance["status.buildingTron"];
                 var (quote, error) = await _tronSender.PrepareAsync(
                     symbol, tronAccount.Address, SendTo.Trim(), amount);
                 if (quote is null) { SendError = error ?? Loc.Instance["send.errPrepareFailed"]; return; }
@@ -330,7 +330,7 @@ public partial class MainViewModel
                 SendQuoteFee = symbol == "USDT"
                     ? "USDT moves on the TRON network — the fee is paid in TRX (energy/bandwidth). Keep a little TRX on this address."
                     : "Fee is paid in TRX bandwidth.";
-                StatusMessage = "Review the transfer, then confirm to broadcast";
+                StatusMessage = Loc.Instance["status.reviewTransfer"];
             });
             return;
         }
@@ -358,7 +358,7 @@ public partial class MainViewModel
         _sendSymbol = chain;
         await RunBusyAsync(async () =>
         {
-            StatusMessage = "Fetching balance and network fees…";
+            StatusMessage = Loc.Instance["status.fetchingFees"];
             switch (chain)
             {
                 case "ETH":
@@ -494,7 +494,7 @@ public partial class MainViewModel
             }
 
             HasSendQuote = true;
-            StatusMessage = "Review the transfer, then confirm to broadcast";
+            StatusMessage = Loc.Instance["status.reviewTransfer"];
         });
     }
 
@@ -599,7 +599,7 @@ public partial class MainViewModel
 
         await RunBusyAsync(async () =>
         {
-            StatusMessage = "Signing locally and broadcasting…";
+            StatusMessage = Loc.Instance["status.signingBroadcast"];
             switch (_sendSymbol)
             {
                 case "ETH" or "BNB" or "MATIC" or "AVAX" or "FTM" or "CRO"
@@ -752,7 +752,7 @@ public partial class MainViewModel
             SendTo = string.Empty;
             SendAmount = string.Empty;
             SendSuccess = $"Broadcast ✓  {reference}\nTrack it: {explorer}";
-            StatusMessage = "Transaction broadcast · it will confirm shortly";
+            StatusMessage = Loc.Instance["status.txBroadcast"];
             var link = string.IsNullOrWhiteSpace(explorer) ? null
                 : explorer.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? explorer : $"https://{explorer}";
             // Just broadcast, not yet mined — mark it Pending so the feed is honest until it confirms.
@@ -762,7 +762,7 @@ public partial class MainViewModel
         else
         {
             SendError = error ?? Loc.Instance["send.errBroadcast"];
-            StatusMessage = "Broadcast failed — nothing was sent";
+            StatusMessage = Loc.Instance["status.broadcastFailed"];
             // A failed broadcast never left this device, so record it as retryable (full destination and
             // amount kept in retry context, not shown, so Retry can safely re-open a pre-filled send).
             PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", null, "Failed",
@@ -786,6 +786,6 @@ public partial class MainViewModel
     {
         ClearSendQuotes();
         SendError = string.Empty;
-        StatusMessage = "Transfer cancelled — nothing was signed";
+        StatusMessage = Loc.Instance["status.transferCancelled"];
     }
 }

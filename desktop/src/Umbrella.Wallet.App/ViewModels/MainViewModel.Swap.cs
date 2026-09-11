@@ -182,7 +182,7 @@ public partial class MainViewModel
         await RunBusyAsync(async () =>
         {
             SwapError = string.Empty;
-            StatusMessage = "Refreshing the swap quote…";
+            StatusMessage = Loc.Instance["status.refreshingQuote"];
 
             // A fresh quote immediately before sending: THORChain vaults rotate and quotes expire, so a
             // stale inbound address or memo would send the deposit into the void.
@@ -197,11 +197,11 @@ public partial class MainViewModel
                 _swapQuote = fresh;
                 SwapExpectedOut = $"{Fmt(fresh.ExpectedOut)} {to}";
                 SwapError = "The rate moved against you — review the updated quote and confirm again.";
-                StatusMessage = "Swap not sent — the rate changed";
+                StatusMessage = Loc.Instance["status.swapRateChanged"];
                 return;
             }
 
-            StatusMessage = "Signing locally and broadcasting the swap deposit…";
+            StatusMessage = Loc.Instance["status.signingSwap"];
             var fromAddr = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, fromChain.Value).Address;
             var walletId = _registry.Active?.Id ?? "default";
 
@@ -273,7 +273,7 @@ public partial class MainViewModel
             {
                 var track = ThorchainSwapClient.TrackUrl(txid);
                 SwapSuccess = $"Swap sent ✓  {txid}\nTHORChain will deliver ~{Fmt(fresh.ExpectedOut)} {to} to your wallet.\nTrack: {track}";
-                StatusMessage = "Swap deposit broadcast · THORChain is processing it";
+                StatusMessage = Loc.Instance["status.swapBroadcast"];
                 InvalidateSwap();
                 SwapAmount = string.Empty;
                 PushActivity("Swap", $"{from}→{to}", $"-{Fmt(shown.AmountIn)}", Shorten(fresh.InboundAddress), "now", track);
@@ -282,7 +282,7 @@ public partial class MainViewModel
             else
             {
                 SwapError = sendErr ?? "Broadcast failed.";
-                StatusMessage = "Swap failed — nothing was sent";
+                StatusMessage = Loc.Instance["status.swapFailed"];
             }
         });
     }
@@ -293,6 +293,6 @@ public partial class MainViewModel
         InvalidateSwap();
         SwapError = string.Empty;
         SwapWarning = string.Empty;
-        StatusMessage = "Swap cancelled — nothing was signed";
+        StatusMessage = Loc.Instance["status.swapCancelled"];
     }
 }

@@ -297,7 +297,7 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task RefreshHistory()
     {
-        StatusMessage = "Refreshing transaction history…";
+        StatusMessage = Loc.Instance["status.refreshingHistory"];
         await LoadOnChainHistoryAsync();
         ShowToast(Loc.Instance["activity.synced"], isError: false);
     }
@@ -357,7 +357,7 @@ public partial class MainViewModel
         SendError = string.Empty;
         HasSendQuote = false;
         SelectSection("Send");
-        StatusMessage = "Retry — review the pre-filled transfer, then send again";
+        StatusMessage = Loc.Instance["status.retryPrefilled"];
     }
 
     private ActivityRowViewModel ToActivityRow(ChainTx t)
@@ -383,7 +383,7 @@ public partial class MainViewModel
     {
         if (row?.Explorer is not { Length: > 0 } url) return;
         await CopyTextAsync(url);
-        StatusMessage = "Explorer link copied — paste it into your browser to view the transaction";
+        StatusMessage = Loc.Instance["status.explorerLinkCopied"];
         ShowToast(Loc.Instance["toast.linkCopied"], isError: false);
     }
 }

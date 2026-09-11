@@ -19,6 +19,11 @@ public sealed class MoneyFlowLocalizationTests
         "BackupError = $\"",
         "BackupStatus = \"",
         "BackupStatus = $\"",
+        // The status line is what the user reads after almost every action — copy, lock, broadcast,
+        // wallet switch. All 47 of its messages were hardcoded English while this suite stayed green,
+        // because it only watched the send/backup error fields.
+        "StatusMessage = \"",
+        "StatusMessage = $\"",
     ];
 
     [Fact]
