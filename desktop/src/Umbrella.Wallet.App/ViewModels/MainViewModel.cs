@@ -153,6 +153,7 @@ public partial class MainViewModel : ViewModelBase
     partial void OnTorEnabledChanged(bool value)
     {
         OnPropertyChanged(nameof(ShowSendClearnetNote));
+        RefreshPrivateSendPlan();    // the private-send plan is a read of this state
         RefreshMoneroNodeStatus();   // an .onion node becomes usable (or not) with Tor
     }
 
@@ -210,6 +211,7 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();     // re-render money labels (Fx.Money/Price) in the new locale
             RecalcBalance();
             BuildGuide(); // the guide reads in the wallet's language
+            RefreshPrivateSendPlan();  // its steps and limits are prose, not codes
             RefreshMoneroNodeStatus(); // its wording is prose, not a code
             BuildCounterparties();     // the disclosure list is prose too
             if (IsUnlocked)
@@ -487,6 +489,7 @@ public partial class MainViewModel : ViewModelBase
                 value ? "clearnet blocked" : "clearnet allowed", "now");
             // Turning it on with Tor still off means everything is blocked until Tor connects — nudge.
             if (value && !TorEnabled) TorEnabled = true;
+            RefreshPrivateSendPlan();
             RefreshMoneroNodeStatus();
             _ = RefreshMarketAsync();
         }
@@ -1894,6 +1897,7 @@ public partial class MainViewModel : ViewModelBase
         RebuildSendAddressBook();
         ValidateSendAddress();
         ResetCoinControl();
+        RefreshPrivateSendPlan();   // a different chain means different limits
     }
 
     // --- Send financial transparency (§6.3): show the available balance and a fee-aware Max. ---
