@@ -23,6 +23,7 @@ Start here if you are building on, forking, or auditing Umbrella.
 
 | Document | What's inside |
 |---|---|
+| **[12-coins-and-chains.md](12-coins-and-chains.md)** | Every chain, coin and token: derivation paths, address formats, fees, privacy level and current status. |
 | **[adding-a-chain.md](adding-a-chain.md)** | A coin end to end — derivation, validation, balance, history, send — with the gates that stop a new chain losing money on day one. |
 | **[localization.md](localization.md)** | Add or fix a language. Placeholder rules, what must *not* be translated, and the parity tests. |
 | **[theming.md](theming.md)** | Add a theme that passes the contrast and distinctness tests, and what makes a theme more than a recoloured default. |

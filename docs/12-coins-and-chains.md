@@ -2,6 +2,10 @@
 
 > Complete reference for every blockchain, native coin, and token.
 > Covers Top-100 CoinMarketCap assets + all major stablecoins.
+>
+> **`ChainCatalog` is the source of truth for what actually works.** This page is prose and can
+> drift; the flags the wallet itself obeys — `CanSend`, `CanSyncBalance`, `HasHistory` — live
+> there. Where the two disagree, the catalog is right and this page is the bug.
 
 ---
 
@@ -204,7 +208,7 @@ Library:     NBitcoin.Altcoins
 Derivation:  m/44'/3'/0'/0/n
 Address:     D...
 Fee:         1 DOGE minimum (~$0.10)
-Status:      ⚠️ Receive + balance only (send in roadmap)
+Status:      ✅ Receive + balance + send (real UTXO spend)
 Library:     NBitcoin.Altcoins
 ```
 
@@ -230,7 +234,8 @@ Address:     t... (transparent) / z... (shielded sapling)
              ua... (unified address — planned)
 Privacy:     🟢 High (shielded) / 🔴 Low (transparent)
 Fee:         ~$0.001 + shielding cost
-Status:      🟡 Planned (lightwalletd integration)
+Status:      ✅ Transparent (t-addr) receive + balance
+             🟡 Shielded (z-addr) planned — lightwalletd integration
 ```
 
 ### Stellar (XLM)
