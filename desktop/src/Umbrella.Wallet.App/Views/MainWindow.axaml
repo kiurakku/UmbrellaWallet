@@ -34,6 +34,7 @@
     <app:ToastGlyphConverter x:Key="ToastGlyph" />
     <app:ChangeWashConverter x:Key="ChangeWash" />
     <app:ActivityLabelConverter x:Key="ActivityLabel" />
+    <app:BoolToWeightConverter x:Key="BoolToWeight" />
   </Window.Resources>
 
   <Window.KeyBindings>
@@ -1154,6 +1155,49 @@
                       <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [send.networkFee], Source={x:Static app:Loc.Instance}}"/>
                       <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Text="{Binding SendQuoteFee}"/>
                     </StackPanel>
+
+                    <!-- "What will happen": the send, itemised, before anything is signed. The fee
+                         landing ON TOP of the amount and change returning to an address you own are the
+                         two things people misread most, so both get their own line. -->
+                    <Border IsVisible="{Binding HasSendSimulation}"
+                            Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmBorder2}"
+                            BorderThickness="1" CornerRadius="10" Padding="12,10">
+                      <StackPanel Spacing="8">
+                        <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                   Text="{Binding [sim.title], Source={x:Static app:Loc.Instance}}"/>
+
+                        <ItemsControl ItemsSource="{Binding SendSimulationRows}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SendSimulationRow">
+                              <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                                  <TextBlock FontSize="12" Text="{Binding Label}"
+                                             Foreground="{DynamicResource UmTextSoft}"/>
+                                  <TextBlock FontSize="10.5" IsVisible="{Binding HasHint}" Text="{Binding Hint}"
+                                             Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Classes="mono" FontSize="12" VerticalAlignment="Center"
+                                           Text="{Binding Amount}"
+                                           Foreground="{DynamicResource UmText}"
+                                           FontWeight="{Binding Emphasis, Converter={StaticResource BoolToWeight}}"/>
+                              </Grid>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <ItemsControl ItemsSource="{Binding SendSimulationWarnings}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                              <TextBlock FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"
+                                         Foreground="#E7CA83" Text="{Binding}"/>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource UmTextMuted}"
+                                   Text="{Binding [sim.final], Source={x:Static app:Loc.Instance}}"/>
+                      </StackPanel>
+                    </Border>
 
                     <!-- Total debit — what actually leaves the wallet, stated apart from the fee. -->
                     <Border Background="#1E1A12" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="8" Padding="10,8">

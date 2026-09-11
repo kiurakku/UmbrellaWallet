@@ -115,3 +115,19 @@ public sealed class ActivityLabelConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+/// <summary>
+/// Bold when true, normal otherwise. Used by the send simulation so the two numbers that decide
+/// whether somebody presses Confirm — what leaves the wallet, and what is left afterwards — carry more
+/// weight than the lines that make them up.
+/// </summary>
+public sealed class BoolToWeightConverter : IValueConverter
+{
+    public static readonly BoolToWeightConverter Instance = new();
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is true ? Avalonia.Media.FontWeight.SemiBold : Avalonia.Media.FontWeight.Normal;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

@@ -560,3 +560,13 @@ public sealed record MarketRowViewModel(
     /// already a complete brand icon), else the brand colour behind the letter-glyph fallback.</summary>
     public string BadgeBg => HasBadgeLogo ? "Transparent" : BadgeColor;
 }
+
+/// <summary>
+/// One line of the send review’s "what will happen": a translated label, the amount already
+/// formatted with its symbol, an optional clarifying hint, and whether it is one of the two
+/// numbers that matter most (what leaves, and what is left).
+/// </summary>
+public sealed record SendSimulationRow(string Label, string Amount, string Hint, bool Emphasis)
+{
+    public bool HasHint => Hint.Length > 0;
+}
