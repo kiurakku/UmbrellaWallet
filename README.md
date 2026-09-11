@@ -1,8 +1,12 @@
 <div align="center">
 
-<img src="docs/assets/logo-umbrella.png" width="104" alt="Umbrella app icon"/>
-&nbsp;&nbsp;&nbsp;&nbsp;
-<img src="docs/assets/logo-umbrella-wordmark.png" width="104" alt="Umbrella mark"/>
+<img src="docs/assets/logo-umbrella.png" width="96" alt="Umbrella"/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-umbrella-text-dark.png"/>
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo-umbrella-text-light.png"/>
+  <img src="docs/assets/logo-umbrella-text-light.png" width="190" alt="Umbrella"/>
+</picture>
 
 # Umbrella Wallet
 
