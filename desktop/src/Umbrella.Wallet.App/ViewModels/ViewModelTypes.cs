@@ -110,20 +110,19 @@ public sealed record WalletAccountViewModel(
 /// </summary>
 public static class CoinNetworks
 {
-    public static string For(string symbol, string fallback) => symbol.ToUpperInvariant() switch
+    /// <summary>
+    /// The network line under a coin, translated. It sits on the Receive screen, where sending on the
+    /// wrong network is the most common way people lose funds — so it has to be readable in the
+    /// user's own language. The chain names and the standards (BIP84, ERC-20, TRC-20, SPL) stay as
+    /// they are: those are identifiers the user matches against an exchange’s withdrawal screen.
+    /// </summary>
+    public static string For(string symbol, string fallback)
     {
-        "BTC" => "Bitcoin network · BIP84 native SegWit",
-        "ETH" => "Ethereum network (ERC-20 compatible)",
-        "LTC" => "Litecoin network · BIP84 native SegWit",
-        "DOGE" => "Dogecoin network",
-        "TRX" => "TRON network (TRC-20 compatible)",
-        "SOL" => "Solana network (SPL compatible)",
-        "USDT" => "TRC-20 · Tether on the TRON network",
-        "XMR" => "Monero network · private by default",
-        "TON" => "TON network",
-        "ADA" => "Cardano network",
-        _ => fallback,
-    };
+        var key = "net." + symbol.ToUpperInvariant();
+        var value = Umbrella.Wallet.App.Loc.Instance[key];
+        // Loc echoes the key back when nothing matches — the "coin we have no line for" case.
+        return value == key ? fallback : value;
+    }
 }
 
 /// <summary>One candlestick, pre-computed to pixel coordinates: the container sits at (ItemX,ItemY)

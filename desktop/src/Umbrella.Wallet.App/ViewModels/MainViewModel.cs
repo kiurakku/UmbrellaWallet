@@ -5086,12 +5086,14 @@ public partial class MainViewModel : ViewModelBase
         try { await action(); }
         catch (Exception error)
         {
+            // These reach the user on the unlock screen, where an English sentence in a translated
+            // wallet reads like a crash rather than "wrong password".
             Fail(error switch
             {
-                UnauthorizedAccessException => "Incorrect password or damaged vault.",
+                UnauthorizedAccessException => Loc.Instance["err.badPassword"],
                 ArgumentException => error.Message,
-                IOException io => $"Cannot write the vault to disk: {io.Message}",
-                _ => $"Operation failed: {error.Message}",
+                IOException io => string.Format(Loc.Instance["err.vaultWrite"], io.Message),
+                _ => string.Format(Loc.Instance["err.operationFailed"], error.Message),
             });
         }
         finally { IsBusy = false; }
