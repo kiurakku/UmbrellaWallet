@@ -15,6 +15,8 @@ Start here if you are building on, forking, or auditing Umbrella.
 | Document | What's inside |
 |---|---|
 | [../MANIFESTO.md](../MANIFESTO.md) | **Read first.** The rules everything below is held to |
+| [../THREAT_MODEL.md](../THREAT_MODEL.md) | Attack vectors, and where each defence ends |
+| [../PRIVACY.md](../PRIVACY.md) | What leaves this machine and what never does |
 | **[architecture.md](architecture.md)** | The three-project layering and why `Core` may never touch the network. Data flow, concurrency rules, the invariants the tests enforce. |
 | **[building.md](building.md)** | Build, run, test. Producing installers, the portable build and checksums. The apphost rename that trips people up. |
 | **[testing.md](testing.md)** | What the 526 tests actually protect, how to write one that belongs here, and the coverage gaps we know about. |

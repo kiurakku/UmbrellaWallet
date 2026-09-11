@@ -2213,11 +2213,25 @@ public partial class MainViewModel : ViewModelBase
     public bool HasSendAddressBook => SendAddressBook.Count > 0;
     [ObservableProperty] private string _sendAddressLabel = string.Empty;
 
+    /// <summary>
+    /// Reads the saved Send destinations. Needs the seed because the book is encrypted under a key
+    /// derived from it — which is also why this runs on unlock rather than at start-up. A locked
+    /// wallet shows no saved addresses at all, which is the correct answer rather than a limitation.
+    /// </summary>
     private void LoadAddressBook()
     {
         _addressBookAll.Clear();
-        _addressBookAll.AddRange(_addressBook.Load());
+        if (_unlockedMnemonic is not null)
+            _addressBookAll.AddRange(_addressBook.Load(_unlockedMnemonic));
         RebuildSendAddressBook();
+    }
+
+    /// <summary>Persists the book, sealed under the seed. Silently does nothing while locked — there
+    /// is no key to seal it with, and writing it in the clear is what this replaced.</summary>
+    private void SaveAddressBook()
+    {
+        if (_unlockedMnemonic is null) return;
+        _addressBook.Save(_unlockedMnemonic, _addressBookAll);
     }
 
     private void RebuildSendAddressBook()
@@ -2245,7 +2259,7 @@ public partial class MainViewModel : ViewModelBase
             string.Equals(e.Address, addr, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(e.Chain, sym, StringComparison.OrdinalIgnoreCase));
         _addressBookAll.Add(new AddressBookEntry(label, addr, sym));
-        _addressBook.Save(_addressBookAll);
+        SaveAddressBook();
         SendAddressLabel = string.Empty;
         RebuildSendAddressBook();
         ShowToast(Loc.Instance["send.addrSavedOk"], isError: false);
@@ -2265,7 +2279,7 @@ public partial class MainViewModel : ViewModelBase
         _addressBookAll.RemoveAll(e =>
             string.Equals(e.Address, entry.Address, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(e.Chain, entry.Chain, StringComparison.OrdinalIgnoreCase));
-        _addressBook.Save(_addressBookAll);
+        SaveAddressBook();
         RebuildSendAddressBook();
     }
 
@@ -2592,9 +2606,43 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
+        // Somebody who finds this window open can otherwise type guesses as fast as they can type.
+        // After three free mistakes the wait doubles, so the tenth guess costs minutes. It is not a
+        // defence against anyone who can copy vault.json - that attack happens offline where no UI
+        // rule reaches it, and is answered by Argon2id and the length of the password.
+        var wait = UnlockThrottle.Remaining(
+            _uiSettings.FailedUnlocks, _uiSettings.LastFailedUnlockUtc, DateTimeOffset.UtcNow);
+        if (wait > TimeSpan.Zero)
+        {
+            Fail(string.Format(Loc.Instance["unlock.throttled"], UnlockThrottle.Describe(wait)));
+            return;
+        }
+
         await RunBusyAsync(async () =>
         {
-            var mnemonic = await _vault.UnlockAsync(Password);
+            string mnemonic;
+            try
+            {
+                mnemonic = await _vault.UnlockAsync(Password);
+            }
+            catch
+            {
+                // Counted and persisted BEFORE the error surfaces, and persisted rather than held in
+                // memory: a counter that resets when the app is reopened stops nobody, since closing
+                // the window is easier than waiting.
+                _uiSettings.FailedUnlocks++;
+                _uiSettings.LastFailedUnlockUtc = DateTimeOffset.UtcNow;
+                _uiSettings.Save();
+                throw;
+            }
+
+            // A correct password clears the run. The next mistake starts from the free attempts again.
+            if (_uiSettings.FailedUnlocks != 0)
+            {
+                _uiSettings.FailedUnlocks = 0;
+                _uiSettings.Save();
+            }
+
             _sessionPassword = Password;
             var passphrase = UnlockPassphrase ?? string.Empty; // capture before the fields are cleared
             ClearPasswordFields();

@@ -886,6 +886,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["endpoint.query"] = "An API root is a path, not a request. Drop everything after the question mark.",
             ["endpoint.customCount"] = "chains pointed somewhere you chose",
             ["news.v47.title"] = "Version 4.7 — you choose which server sees your addresses",
+            ["unlock.throttled"] = "Too many wrong passwords. Try again in {0}.",
         },
         ["uk"] = new()
         {
@@ -1712,6 +1713,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["endpoint.customCount"] = "мереж спрямовано туди, куди ви обрали",
             ["news.v47.title"] = "Версія 4.7 — ви обираєте, який сервер бачить ваші адреси",
             ["news.v47.body"] = "Ваші ключі не покидають цей пристрій. Це правда, і це каже кожен гаманець.\n\nМайже ніхто не каже іншого: гаманець все одно мусить у КОГОСЬ запитати, що є в мережі — а в публічному ланцюзі запитати означає віддати адресу. Той, хто відповідає, може зв’язати всі адреси, про які ви питали за одну сесію. Tor ховає вашу IP. Він не скасовує вже надіслану адресу.\n\nТож цей випуск саме про це.\n\nХТО ВІДПОВІДАЄ ЗА ВАШІ ГРОШІ\n• Сервер кожної мережі тепер ваш вибір — Bitcoin, Litecoin, Bitcoin Cash, Dogecoin, Ethereum, Solana, TON, Tron, Cardano і Monero. Оберіть іншу компанію або вкажіть власний вузол.\n• У Monero був один вузол, зашитий у код, однаковий для всіх, ніде не названий. Тепер гаманець називає вузол, пропонує альтернативи і приймає ваш власний — включно з .onion.\n• Вузол .onion ніколи не використовується без Tor і ніколи не підміняється мовчки на clearnet. Сервер на простому http:// відхиляється: обрати власний сервер заради приватності й віддавати адреси відкритим текстом було б гірше, ніж не обирати.\n• Щойно сервер обрали ВИ — відкату на наш немає. Перенаправлення ваших адрес на дефолтний — це рівно те, проти чого ви обирали.\n\nЗ КИМ ЦЕЙ ГАМАНЕЦЬ РОЗМОВЛЯЄ\n• Повний список у Налаштуваннях → Приватність: кожен сервер, хто ним керує, навіщо його викликають і що він дізнається — зверху ті, кому віддають ваші справжні адреси.\n• Список не може застаріти. Збірка падає, якщо сервер з’явився в коді, але не з’явився в списку.\n\nПРИВАТНЕ НАДСИЛАННЯ ОДНИМ ПЕРЕМИКАЧЕМ\n• Tor, аварійне вимкнення, очікування підключення, звуження входів, свіжа адреса решти — один перемикач замість списку, який ніхто не пам’ятає.\n• Поруч — те, чого жоден перемикач не змінить. Monero показує порожній список справ і всі свої обмеження, бо «нічого вмикати» ніколи не має читатись як «нічого знати».\n\nГРОШІ, ЯКІ ЗНИКАЛИ\n• Bitcoin Cash і Dogecoin читалися на одну адресу вглиб. Решта від переказу за дизайном падає на внутрішню адресу, тож після надсилання показаний баланс просідав до того, що лишилось на першій адресі. Гроші не були під загрозою — цифра брехала. Тепер обидві мережі скануються по всіх адресах.\n• Свіжа адреса на кожен платіж тепер працює і для BCH та DOGE. Повторне використання однієї адреси означає, що всі отримані вами платежі лежать під одним публічним заголовком.\n• Баланс Bitcoin більше не падає, коли один публічний провідник обмежує запити — гаманець пробує інший.\n• Невдала підготовка переказу тепер повідомляє про це НА екрані Надсилання. Раніше повідомлення йшло в заголовок вікна, тож натискання «Переглянути» виглядало так, ніби нічого не сталося.\n\nМОНЕТИ\n• Баланси Jetton на TON — включно з USD-tether, у якому більшість людей тримає долари в мережі Telegram і якого цей гаманець просто не показував.\n• Linea (надсилання й отримання) і zkSync Era (лише баланс — комісії там працюють не як в Ethereum, і гаманець це каже, а не губить переказ).\n• Баланс, який гаманець уміє читати, але не вміє витрачати, тепер пише «Лише отримання», а не «Готово».",
+            ["unlock.throttled"] = "Забагато невірних паролів. Спробуйте ще раз через {0}.",
         },
         ["ru"] = new()
         {
@@ -2534,6 +2536,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["endpoint.query"] = "Корень API — это путь, а не запрос. Уберите всё после знака вопроса.",
             ["endpoint.customCount"] = "сетей направлено туда, куда вы выбрали",
             ["news.v47.title"] = "Версия 4.7 — вы выбираете, какой сервер видит ваши адреса",
+            ["unlock.throttled"] = "Слишком много неверных паролей. Попробуйте снова через {0}.",
         },
         ["zh"] = new()
         {
@@ -3356,6 +3359,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["endpoint.query"] = "API 根地址是一个路径，不是一次请求。请去掉问号之后的内容。",
             ["endpoint.customCount"] = "条链指向了你选择的地方",
             ["news.v47.title"] = "4.7 版 — 由你决定哪个服务器能看到你的地址",
+            ["unlock.throttled"] = "密码错误次数过多。请在 {0} 后重试。",
         },
         ["es"] = new()
         {
@@ -4178,6 +4182,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["endpoint.query"] = "La raíz de la API es una ruta, no una petición. Quita todo lo que va tras el signo de interrogación.",
             ["endpoint.customCount"] = "cadenas apuntando a donde elegiste",
             ["news.v47.title"] = "Versión 4.7 — tú eliges qué servidor ve tus direcciones",
+            ["unlock.throttled"] = "Demasiadas contraseñas incorrectas. Inténtalo de nuevo en {0}.",
         },
         ["de"] = new()
         {
@@ -5000,6 +5005,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["endpoint.query"] = "Eine API-Wurzel ist ein Pfad, keine Anfrage. Entferne alles nach dem Fragezeichen.",
             ["endpoint.customCount"] = "Ketten zeigen dorthin, wohin du gewählt hast",
             ["news.v47.title"] = "Version 4.7 — du entscheidest, welcher Server deine Adressen sieht",
+            ["unlock.throttled"] = "Zu viele falsche Passwörter. Versuche es in {0} erneut.",
         },
     };
 }

@@ -429,6 +429,22 @@ The wallet works like this:
 | Zcash shielded | Send with zero-knowledge proofs |
 | Duress password | Open decoy wallet if forced to unlock |
 
+### Security and privacy hardening
+
+Agreed priorities, in the order they are worth doing. None of these is implemented yet, and the
+threat model names each one as an open gap rather than implying it away.
+
+| Item | Why it is on this list |
+|---|---|
+| **Reproducible builds** | Today, verifying a checksum verifies against the same release an attacker would have had to compromise. Determinism is what makes the binary provably the published source. |
+| **Signed releases** (GPG / Sigstore) | Checksums prove integrity against accidental corruption, not against a replaced release. |
+| **Tor stream isolation** | Separate circuits per purpose, so a balance lookup and a price fetch cannot be correlated by timing on one circuit. |
+| **Dandelion++** | Broadcasting by flood lets an observer tie an IP to a transaction by propagation timing. A stem phase breaks that. |
+| **Taproot (BIP-341)** | Cheaper and indistinguishable from a single-key spend at the chain level. |
+| **PayJoin (BIP-78)** | Breaks the "all inputs belong to the sender" assumption chain analysis is built on. |
+| **CoinJoin** | The heavier answer to UTXO linkage; worth doing after PayJoin. |
+| **Hardware wallets** (Ledger / Trezor) | The only real answer to Vector 1 of the threat model — malware on the user's own machine. |
+
 ### Long term
 
 | Feature | What it means |

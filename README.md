@@ -29,6 +29,8 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 [Build it yourself](docs/building.md) ·
 [Security](SECURITY.md) ·
 [The rules](MANIFESTO.md) ·
+[Threat model](THREAT_MODEL.md) ·
+[Privacy](PRIVACY.md) ·
 [Docs](docs/README.md)
 
 <br/>
@@ -381,6 +383,8 @@ Being honest about what exists and what doesn't:
 | | |
 |---|---|
 | [MANIFESTO.md](MANIFESTO.md) | The rules this wallet is held to, and what they cost |
+| [THREAT_MODEL.md](THREAT_MODEL.md) | Nine attack vectors: what is defended, and where the defence ends |
+| [PRIVACY.md](PRIVACY.md) | What leaves this machine, to whom, and what never does |
 | [docs/README.md](docs/README.md) | Index of everything below |
 | [docs/architecture.md](docs/architecture.md) | How the layers fit together and why |
 | [docs/building.md](docs/building.md) | Build, run, test, package installers |

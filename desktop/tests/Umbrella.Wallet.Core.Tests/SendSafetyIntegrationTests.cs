@@ -17,13 +17,11 @@ public sealed class SendSafetyIntegrationTests : IDisposable
     private readonly string _directory = Path.Combine(
         Path.GetTempPath(), $"umbrella-safety-{Guid.NewGuid():N}");
 
-    public SendSafetyIntegrationTests()
-    {
-        // The address book is device-global (AppPaths.DataRoot), so a contact saved by one test would
-        // leak into the next run's "fresh" wallet. Clear it before each test so the safety checks see
-        // exactly the history the test sets up.
-        new AddressBookStore().Save(Array.Empty<AddressBookEntry>());
-    }
+    // There used to be a constructor here clearing the address book, because the file was
+    // device-global and PLAINTEXT, so a contact saved by one test leaked into the next one's
+    // "fresh" wallet. The book is now sealed under the wallet's own seed: every test creates a new
+    // wallet, so a book written by one is unreadable by the next and reads back as empty. The leak
+    // is gone by construction rather than by cleanup.
 
     private async Task<MainViewModel> UnlockedAsync()
     {
@@ -130,7 +128,8 @@ public sealed class SendSafetyIntegrationTests : IDisposable
 
     public void Dispose()
     {
-        try { new AddressBookStore().Save(Array.Empty<AddressBookEntry>()); } catch { }
+        // The book is sealed under the seed now, so there is no "clear it" without one - and the
+        // isolated data directory below takes the whole thing with it anyway.
         try { if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true); } catch { }
     }
 }
