@@ -1886,9 +1886,30 @@ public partial class MainViewModel : ViewModelBase
     }
 
     // --- Send financial transparency (§6.3): show the available balance and a fee-aware Max. ---
-    private WalletAccountViewModel? SelectedSendAccount() =>
-        Accounts.FirstOrDefault(a => a.Symbol == (SelectedSendAsset?.Symbol ?? string.Empty)
+    /// <summary>
+    /// The holdings row the Send screen is spending from.
+    ///
+    /// The symbol alone is not enough for a token that exists on more than one chain. USDT is held as
+    /// TRC-20 on TRON and as a Jetton on TON, both under the symbol "USDT" — but this build sends only
+    /// the TRON one, so matching on symbol could show the TON balance as available and offer a Max
+    /// that the TRON send cannot possibly cover. The chain is pinned for exactly those cases.
+    /// </summary>
+    private WalletAccountViewModel? SelectedSendAccount()
+    {
+        var symbol = SelectedSendAsset?.Symbol ?? string.Empty;
+        var requiredChain = TokenSendChain.GetValueOrDefault(symbol);
+
+        return Accounts.FirstOrDefault(a => a.Symbol == symbol
+            && (requiredChain is null || a.Chain.Equals(requiredChain, StringComparison.OrdinalIgnoreCase))
             && a.SupportStatus is "Ready" or "Receive only" && IsRealAddress(a.Address));
+    }
+
+    /// <summary>The one chain each sendable TOKEN may be spent on. A symbol absent from here is a
+    /// native coin, where the symbol already identifies the chain.</summary>
+    private static readonly Dictionary<string, string> TokenSendChain = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["USDT"] = "TRON",
+    };
 
     public decimal SelectedSendBalance => (decimal)(SelectedSendAccount()?.Amount ?? 0d);
 
@@ -3804,6 +3825,17 @@ public partial class MainViewModel : ViewModelBase
                 await AddEvmSideRowsAsync(ethAccount.Address, prices, ct);
             }
 
+            // Jettons on our OWN TON account. USD-tether on TON is how a great many people hold
+            // dollars on Telegram's chain, and until now the wallet showed the native TON and nothing
+            // else — so that balance simply was not there.
+            var tonAccount = Accounts.FirstOrDefault(a => a.Symbol == "TON" && a.SupportStatus == "Ready");
+            if (tonAccount is not null && IsRealAddress(tonAccount.Address))
+            {
+                // "Receive only", not "Ready": this build reads Jetton balances and does not send
+                // them, and the row is the only place that difference is visible to the user.
+                await AddTonJettonRowsAsync(tonAccount.Address, "Receive only", prices, ct);
+            }
+
             // Watch-only. The balance calls run CONCURRENTLY — awaiting them one address at a time made
             // the wait grow with the number of watched addresses (each up to the 20s client timeout).
             // Only the network phase is parallel; the rows are still applied one at a time on the UI
@@ -3900,6 +3932,14 @@ public partial class MainViewModel : ViewModelBase
         IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct) =>
         AddTokenRows(await _balances.GetEthTokensAsync(address, ct),
             address, status, prices, marker: "ERC20 on Ethereum", chain: "Ethereum", suffix: "ERC20");
+
+    /// <summary>Adds/refreshes a Holdings row for every Jetton at a TON address. Read-only: this build
+    /// reads jetton balances but does not send them, which the row's status says plainly.</summary>
+    private async Task AddTonJettonRowsAsync(
+        string address, string status,
+        IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct) =>
+        AddTokenRows(await _balances.GetTonJettonsAsync(address, ct),
+            address, status, prices, marker: "Jetton on TON", chain: "TON", suffix: "Jetton");
 
     /// <summary>Refreshes the NFT list from the wallet's Ethereum address (names + counts only).</summary>
     private async Task RefreshNftsAsync(string address, CancellationToken ct)

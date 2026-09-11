@@ -9,6 +9,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// always told how many were folded away, that one toggle brings them back, and — the part that keeps
 /// it honest — that nothing is ever removed from the account list itself.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class SpamHoldingsIntegrationTests : IDisposable
 {
     private readonly string _directory = Path.Combine(

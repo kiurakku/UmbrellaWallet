@@ -13,6 +13,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// Everything runs against a throwaway vault in a temp directory; no network, no real funds, and the
 /// live data directory is never touched.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class WalletJourneySmokeTests : IDisposable
 {
     private const string Password = "umbrella-journey-2026";

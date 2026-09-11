@@ -12,6 +12,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// checker, private notes, sign-and-verify and most of Settings. Duplicated keys are the same class of
 /// silent problem: a C# indexer initializer lets the later assignment win without complaint.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class LocalizationParityTests
 {
     private static IReadOnlyDictionary<string, Dictionary<string, string>> Tables()

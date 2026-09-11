@@ -19,7 +19,7 @@
 | **BNB** | BNB Smart Chain | ✅ | ✅ | All BEP-20 | Binance native |
 | **SOL** | Solana | ✅ | ✅ | All SPL | Ultra-fast |
 | **TRX** | Tron | ✅ | ✅ | All TRC-20 | Powers USDT TRC-20 |
-| **TON** | TON | ✅ | ✅ | Jettons | Telegram's coin |
+| **TON** | TON | ✅ | ✅ | Jettons (balance) | Telegram's coin |
 | **ADA** | Cardano | ✅ | ✅ | Native assets | — |
 | **XMR** | Monero | ✅ | ✅ | — | 🟢 Maximum privacy |
 | **LTC** | Litecoin | ✅ | ✅ | — | Fast + cheap BTC |
@@ -214,7 +214,7 @@ Click the transaction hash to open the block explorer and see confirmation statu
 
 ## Automatic token detection
 
-When you link a wallet address (ETH, TRX, or SOL), the wallet automatically finds all your tokens:
+When you link a wallet address (ETH, TRX, SOL, or TON), the wallet automatically finds all your tokens:
 
 **Ethereum address:**
 - Checks Blockscout for all ERC-20 tokens
@@ -227,6 +227,11 @@ When you link a wallet address (ETH, TRX, or SOL), the wallet automatically find
 **Solana address:**
 - Checks all SPL token accounts
 - Shows: USDT, USDC, RAY, BONK, WIF, JTO, JUP, and all others
+
+**TON address:**
+- Checks toncenter's index for all Jettons (up to 40)
+- Shows: USD₮ (Tether on TON), NOT, DOGS, and all others
+- Balance only for now — Jettons are read, not sent
 
 **Adding a custom token manually:**
 1. Go to Settings → Add Token
@@ -366,7 +371,6 @@ The wallet works like this:
 | Send any ERC-20 token | Currently send ETH native; soon send USDT, USDC, LINK, etc. on ETH |
 | Send any TRC-20 token | Send any token on Tron, not just USDT |
 | Send any SPL token | Send BONK, WIF, RAY etc. on Solana |
-| TON Jetton display | See your TON USDT balance |
 | Send on zkSync Era | Its balance already shows; sending needs the gas limit to come from the chain |
 
 ### Medium term (months 3-6)
@@ -401,7 +405,7 @@ The wallet works like this:
 | 4 | Polygon | MATIC | ✅ Working | Send, receive, balance, ERC-20 |
 | 5 | Tron | TRX | ✅ Stable | Send, receive, balance, history, TRC-20 |
 | 6 | Solana | SOL | ✅ Working | Send, receive, balance, history, SPL |
-| 7 | TON | TON | ✅ Working | Send, receive, balance, history |
+| 7 | TON | TON | ✅ Working | Send, receive, balance, history, Jetton balances |
 | 8 | Avalanche | AVAX | ✅ Working | Send, receive, balance, ERC-20 |
 | 9 | Arbitrum | ETH | ✅ Working | Send, receive, balance, ERC-20 |
 | 10 | Base | ETH | ✅ Working | Send, receive, balance, ERC-20 |

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Numerics;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -709,6 +710,162 @@ public sealed class PublicChainBalanceClient
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Every Jetton held at a TON address — USD&#8377; on TON above all, which is how a great many people
+    /// actually hold dollars on Telegram's chain. Keyless, via toncenter's v3 index.
+    /// </summary>
+    public async Task<IReadOnlyList<TokenBalance>> GetTonJettonsAsync(
+        string address, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(address)) return [];
+        var a = address.Trim();
+        if (!a.StartsWith("UQ", StringComparison.Ordinal) && !a.StartsWith("EQ", StringComparison.Ordinal))
+            return [];
+
+        try
+        {
+            using var res = await Http.GetAsync(
+                "https://toncenter.com/api/v3/jetton/wallets" +
+                $"?owner_address={Uri.EscapeDataString(a)}&limit=50&offset=0",
+                cancellationToken);
+            if (!res.IsSuccessStatusCode) return [];
+
+            return ParseTonJettons(await res.Content.ReadAsStringAsync(cancellationToken));
+        }
+        catch
+        {
+            return [];   // treated as "no jettons", never as zero balance
+        }
+    }
+
+    /// <summary>
+    /// Turns a toncenter v3 <c>jetton/wallets</c> payload into token balances. Pure, so the shape of a
+    /// real response can be pinned by tests rather than discovered in production.
+    ///
+    /// Two details in this payload lose money if they are read carelessly:
+    ///
+    /// The balance and the DECIMALS both arrive as strings, and the decimals live in the jetton
+    /// master's metadata rather than on the wallet row — so the amount has to be joined across two
+    /// parts of the document. USD&#8377; on TON has 6 decimals while most jettons have 9; reading one as
+    /// the other is wrong by a factor of a thousand.
+    ///
+    /// A jetton whose metadata is missing entirely is SKIPPED rather than guessed at. An unnamed row
+    /// with an assumed 9 decimals would be a number the user cannot check against anything.
+    /// </summary>
+    public static IReadOnlyList<TokenBalance> ParseTonJettons(string json, int max = 40)
+    {
+        var result = new List<TokenBalance>();
+        if (string.IsNullOrWhiteSpace(json)) return result;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("jetton_wallets", out var wallets) ||
+                wallets.ValueKind != JsonValueKind.Array)
+            {
+                return result;
+            }
+
+            root.TryGetProperty("metadata", out var metadata);
+            root.TryGetProperty("address_book", out var addressBook);
+
+            foreach (var wallet in wallets.EnumerateArray())
+            {
+                if (result.Count >= max) break;
+
+                var master = wallet.TryGetProperty("jetton", out var j) ? j.GetString() : null;
+                var rawBalance = wallet.TryGetProperty("balance", out var b) ? b.GetString() : null;
+                if (string.IsNullOrWhiteSpace(master) || string.IsNullOrWhiteSpace(rawBalance)) continue;
+                if (!BigInteger.TryParse(rawBalance, out var raw) || raw <= 0) continue;
+
+                var info = MasterInfo(metadata, master!);
+                if (info is null) continue;   // no metadata = nothing trustworthy to show
+
+                var (symbol, name, decimals) = info.Value;
+                if (string.IsNullOrWhiteSpace(symbol)) continue;
+
+                decimal divisor = 1m;
+                for (var i = 0; i < Math.Clamp(decimals, 0, 28); i++) divisor *= 10m;
+
+                decimal amount;
+                try { amount = (decimal)raw / divisor; }
+                catch (OverflowException) { continue; }
+                if (amount <= 0) continue;
+
+                // The user-friendly EQ… form of the master is what a TON explorer shows, so it is the
+                // contract string a user can actually look up; fall back to the raw form.
+                var contract = master!;
+                if (addressBook.ValueKind == JsonValueKind.Object &&
+                    addressBook.TryGetProperty(master!, out var entry) &&
+                    entry.TryGetProperty("user_friendly", out var friendly) &&
+                    friendly.ValueKind == JsonValueKind.String)
+                {
+                    contract = friendly.GetString() ?? master!;
+                }
+
+                result.Add(new TokenBalance(
+                    NormaliseJettonSymbol(symbol!), string.IsNullOrWhiteSpace(name) ? symbol! : name!,
+                    amount, contract, decimals));
+            }
+        }
+        catch
+        {
+            // malformed payload = no jettons
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Tether on TON calls itself "USD₮" — with the tugrik sign standing in for the T, the way the
+    /// brand writes it. Left as-is, that is a symbol no price feed has ever heard of, so the balance
+    /// would render at $0 and land squarely in the "my USDT is missing" pile the guide already has a
+    /// section about. The glyph is folded back to a plain T; the display name keeps whatever the token
+    /// actually calls itself.
+    /// </summary>
+    private static string NormaliseJettonSymbol(string symbol) =>
+        symbol.Replace('₮', 'T').Trim().ToUpperInvariant();
+
+    /// <summary>Symbol, name and decimals for a jetton master, from the payload's metadata block.
+    /// Null when the master is not described there at all.</summary>
+    private static (string? Symbol, string? Name, int Decimals)? MasterInfo(JsonElement metadata, string master)
+    {
+        if (metadata.ValueKind != JsonValueKind.Object) return null;
+        if (!metadata.TryGetProperty(master, out var node)) return null;
+        if (!node.TryGetProperty("token_info", out var infos) || infos.ValueKind != JsonValueKind.Array)
+            return null;
+
+        foreach (var info in infos.EnumerateArray())
+        {
+            var type = info.TryGetProperty("type", out var t) ? t.GetString() : null;
+            if (!string.Equals(type, "jetton_masters", StringComparison.Ordinal)) continue;
+
+            var symbol = info.TryGetProperty("symbol", out var sy) ? sy.GetString() : null;
+            var name = info.TryGetProperty("name", out var nm) ? nm.GetString() : null;
+
+            // Decimals arrive as a STRING inside "extra", and are absent for jettons that use TON's
+            // default of 9. Absent is fine; unparseable is not, and is treated as absent rather than
+            // silently becoming zero — which would multiply the displayed balance by a billion.
+            var decimals = 9;
+            if (info.TryGetProperty("extra", out var extra) &&
+                extra.ValueKind == JsonValueKind.Object &&
+                extra.TryGetProperty("decimals", out var d))
+            {
+                if (d.ValueKind == JsonValueKind.String && int.TryParse(d.GetString(), out var parsed))
+                    decimals = parsed;
+                else if (d.ValueKind == JsonValueKind.Number && d.TryGetInt32(out var asNumber))
+                    decimals = asNumber;
+            }
+
+            if (decimals is < 0 or > 28) continue;   // not a jetton this wallet will put a number on
+
+            return (symbol, name, decimals);
+        }
+
+        return null;
     }
 }
 

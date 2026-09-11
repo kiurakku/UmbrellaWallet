@@ -10,6 +10,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// wallet as "ERC20" or "Ethereum" resolved the right chain but missed the price table, leaving
 /// price 0 — and 0 × amount contributed nothing to the total, so the wallet looked ignored.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class WatchBalanceTests : IDisposable
 {
     private const string GoodPassword = "umbrella-test-vault-2026";

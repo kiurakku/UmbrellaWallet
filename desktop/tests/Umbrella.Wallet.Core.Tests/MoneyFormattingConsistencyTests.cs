@@ -11,6 +11,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// These pin the shared formatter's behaviour per locale so a future call site that reaches for
 /// InvariantCulture stands out.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class MoneyFormattingConsistencyTests : IDisposable
 {
     private readonly CultureInfo _original = Fx.Culture;

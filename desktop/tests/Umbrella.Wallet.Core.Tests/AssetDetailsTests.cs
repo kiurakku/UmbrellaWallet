@@ -9,6 +9,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// catalog (the same source the Send picker reads), and an action is only offered when there is an
 /// account behind it. A coin the wallet knows nothing about still opens, saying exactly that.
 /// </summary>
+[Collection(SharedAppStateCollection.Name)]
 public sealed class AssetDetailsTests : IDisposable
 {
     private readonly string _directory = Path.Combine(
