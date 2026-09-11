@@ -1,12 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/logo-umbrella.png" width="96" alt="Umbrella"/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-umbrella-text-dark.png"/>
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo-umbrella-text-light.png"/>
-  <img src="docs/assets/logo-umbrella-text-light.png" width="190" alt="Umbrella"/>
-</picture>
+<img src="docs/assets/readme-banner.png" width="100%" alt="Umbrella Wallet"/>
 
 # Umbrella Wallet
 
@@ -141,7 +135,12 @@ network delivers to your own address. Nobody holds your funds in between.
 
 ## Download
 
+<img src="docs/assets/logo-umbrella.png" width="64" align="left" alt="" hspace="14"/>
+
 Builds are published on the [releases page](https://github.com/kiurakku/UmbrellaWallet/releases/latest).
+This is the icon you will see once it is installed.
+
+<br clear="left"/>
 
 | | |
 |---|---|
@@ -423,7 +422,7 @@ which is exactly why there is no tracking and no cut of your transfers.</sub>
 <br/>
 
 <a href="https://t.me/UmbrellaWallet">
-  <img src="docs/assets/logo-telegram.png" width="44" alt="Umbrella Wallet on Telegram"/>
+  <img src="docs/assets/logo-telegram-channel.png" width="72" alt="Umbrella Wallet on Telegram"/>
 </a>
 
 **[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)**
