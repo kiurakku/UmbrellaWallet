@@ -29,7 +29,8 @@
 | **MATIC** | Polygon | ✅ | ✅ | All ERC-20 | Cheap EVM |
 | **FTM** | Fantom | ✅ | ✅ | All ERC-20 | Fast EVM |
 | **CRO** | Cronos | ✅ | ✅ | All ERC-20 | Crypto.com chain |
-| **ETH** | Arbitrum, Base, Optimism | ✅ | ✅ | All ERC-20 | Layer 2 — same 0x address, far cheaper |
+| **ETH** | Arbitrum, Base, Optimism, Linea | ✅ | ✅ | All ERC-20 | Layer 2 — same 0x address, far cheaper |
+| **ETH** | zkSync Era | — | ✅ | — | **Balance and receive only.** Its fee model is not Ethereum's, so sending is not enabled yet |
 | **ZEC** | Zcash | — | ✅ | — | Receive only for now |
 
 > Any ERC-20 token (LINK, UNI, AAVE, SHIB, PEPE, etc.) is automatically detected and its
@@ -366,8 +367,7 @@ The wallet works like this:
 | Send any TRC-20 token | Send any token on Tron, not just USDT |
 | Send any SPL token | Send BONK, WIF, RAY etc. on Solana |
 | TON Jetton display | See your TON USDT balance |
-| zkSync Era | New cheap ETH layer 2 |
-| Linea | ConsenSys ZK rollup |
+| Send on zkSync Era | Its balance already shows; sending needs the gas limit to come from the chain |
 
 ### Medium term (months 3-6)
 
@@ -414,8 +414,8 @@ The wallet works like this:
 | 17 | Bitcoin Cash | BCH | ✅ Working | Send, receive, balance, history |
 | 18 | Dogecoin | DOGE | ✅ Working | Send, receive, balance |
 | 19 | Zcash | ZEC | ⚠️ Partial | Receive + balance only |
-| 20 | zkSync Era | ETH | 🔜 Soon | — |
-| 21 | Linea | ETH | 🔜 Soon | — |
+| 20 | Linea | ETH | ✅ Working | Send, receive, balance, ERC-20 |
+| 21 | zkSync Era | ETH | ⚠️ Partial | Receive + balance only |
 | 22 | XRP Ledger | XRP | 📅 Planned | — |
 | 23 | Stellar | XLM | 📅 Planned | — |
 | 24 | Cosmos | ATOM | 📅 Planned | — |

@@ -1699,7 +1699,7 @@ public partial class MainViewModel : ViewModelBase
     {
         "BTC", "LTC", "BCH", "DOGE",                 // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
         "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
-        "ARB", "BASE", "OP",                         // Ethereum L2 rollups — native ETH, same 0x address
+        "ARB", "BASE", "OP", "LINEA",                // Ethereum L2 rollups — native ETH, same 0x address
         "SOL", "TON", "ADA",                         // account-based
         "TRX", "USDT",                               // TRON + TRC-20
         "XMR",                                       // Monero (local wallet-rpc)
@@ -1732,6 +1732,7 @@ public partial class MainViewModel : ViewModelBase
         new("ARB", "ETH · Arbitrum", "Arbitrum One · native ETH (same 0x address)"),
         new("BASE", "ETH · Base", "Base · native ETH (same 0x address)"),
         new("OP", "ETH · Optimism", "Optimism · native ETH (same 0x address)"),
+        new("LINEA", "ETH · Linea", "Linea · native ETH (same 0x address)"),
     ];
 
     /// <summary>Networks a watch-only address can be added for.</summary>
@@ -3434,7 +3435,12 @@ public partial class MainViewModel : ViewModelBase
     {
         var cached = _marketCache.Load();
         if (cached.Count == 0) return;
-        var bySym = cached.ToDictionary(e => e.Symbol, e => e, StringComparer.OrdinalIgnoreCase);
+        // Same reasoning as the balance cache: this is file data, so two rows may share a symbol.
+        // Losing the flicker-free first paint is a minor cosmetic cost; throwing here would be a crash
+        // before the wallet has drawn anything at all.
+        var bySym = cached
+            .GroupBy(e => e.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase);
 
         foreach (var chain in ChainCatalog.All)
         {
@@ -3659,6 +3665,12 @@ public partial class MainViewModel : ViewModelBase
 
     private string ActiveWalletCacheKey => _registry.Active?.Id ?? "main";
 
+    /// <summary>Identity of a cached holding. The network matters: ETH on mainnet, Arbitrum, Base,
+    /// Optimism and Linea all carry the symbol "ETH" at the same 0x address and are five different
+    /// balances.</summary>
+    private static string CacheKey(string symbol, string address, string network) =>
+        symbol + "|" + address + "|" + network;
+
     /// <summary>Apply the last-seen balances/prices for the active wallet so the total is right the
     /// instant it unlocks — before the live refresh returns — instead of flashing $0. Matched to
     /// accounts by symbol + address; the refresh overwrites with authoritative data moments later.</summary>
@@ -3666,12 +3678,21 @@ public partial class MainViewModel : ViewModelBase
     {
         var cached = _balanceStore.Load(ActiveWalletCacheKey);
         if (cached.Count == 0) return;
-        var byKey = cached.ToDictionary(e => e.Symbol + "|" + e.Address, e => e);
+
+        // Grouped, not ToDictionary: this reads a file, and a file can hold two rows with the same key.
+        // It already did - Ethereum and its L2 rollups all report symbol "ETH" at the SAME 0x address,
+        // so a cache holding ETH on both Arbitrum and Base threw "an item with the same key has already
+        // been added" and took the whole unlock down with it. A display cache must never be able to do
+        // that, so the newest row wins and a malformed file costs nothing.
+        var byKey = cached
+            .GroupBy(e => CacheKey(e.Symbol, e.Address, e.Network), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase);
+
         var touched = false;
         for (var i = 0; i < Accounts.Count; i++)
         {
             var a = Accounts[i];
-            if (byKey.TryGetValue(a.Symbol + "|" + a.Address, out var e))
+            if (byKey.TryGetValue(CacheKey(a.Symbol, a.Address, a.Chain), out var e))
             {
                 Accounts[i] = a with { Amount = e.Amount, Price = e.Price, Change24h = e.Change };
                 touched = true;
@@ -3685,7 +3706,7 @@ public partial class MainViewModel : ViewModelBase
     {
         var entries = Accounts
             .Where(a => a.Amount > 0 || a.Price > 0)
-            .Select(a => new BalanceStore.Entry(a.Symbol, a.Address, a.Amount, a.Price, a.Change24h));
+            .Select(a => new BalanceStore.Entry(a.Symbol, a.Address, a.Amount, a.Price, a.Change24h, a.Chain));
         _balanceStore.Save(ActiveWalletCacheKey, entries);
     }
 
@@ -3901,11 +3922,14 @@ public partial class MainViewModel : ViewModelBase
             Accounts.Remove(stale);
         }
 
-        foreach (var (symbol, amount, network) in await _balances.GetEvmSideBalancesAsync(address, ct))
+        foreach (var (symbol, amount, network, canSend) in await _balances.GetEvmSideBalancesAsync(address, ct))
         {
             var (usd, change) = prices.GetValueOrDefault(symbol);
+            // "Ready" is a claim that the coin can be moved. A network this build can read but not
+            // broadcast on says "Receive only" instead, so the holdings list never promises a send the
+            // Send screen will not offer.
             Accounts.Add(new WalletAccountViewModel(
-                symbol, $"{symbol} · {network}", "Ready", address, "EVM side-chain",
+                symbol, $"{symbol} · {network}", canSend ? "Ready" : "Receive only", address, "EVM side-chain",
                 (double)usd, (double)amount, network, (double)change));
         }
     }

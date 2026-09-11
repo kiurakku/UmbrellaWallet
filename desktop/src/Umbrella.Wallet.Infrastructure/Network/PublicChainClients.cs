@@ -397,25 +397,40 @@ public sealed class PublicChainBalanceClient
     }
 
     // Every EVM network that shares the same 0x address as Ethereum, with public RPC fallbacks. The
-    // L2s (Arbitrum / Optimism / Base) use ETH as their native coin, shown per-network.
-    private static readonly (string Symbol, string Network, string[] Rpcs)[] EvmSideChains =
+    // L2s (Arbitrum / Optimism / Base / Linea / zkSync Era) use ETH as their native coin, shown
+    // per-network.
+    //
+    // CanSend says whether this build can actually broadcast on that network, and it is NOT decoration:
+    // a balance the wallet can read but not spend has to say so, or the holdings list quietly promises
+    // a send that the Send screen will not offer. Reading a balance is a GET; spending needs a signer
+    // whose fee model matches the chain, which is a much higher bar.
+    private static readonly (string Symbol, string Network, bool CanSend, string[] Rpcs)[] EvmSideChains =
     [
-        ("BNB",   "BSC",       ["https://bsc-dataseed.binance.org", "https://bsc-dataseed1.defibit.io", "https://rpc.ankr.com/bsc"]),
-        ("MATIC", "Polygon",   ["https://polygon-rpc.com", "https://rpc.ankr.com/polygon"]),
-        ("AVAX",  "Avalanche", ["https://api.avax.network/ext/bc/C/rpc", "https://rpc.ankr.com/avalanche"]),
-        ("FTM",   "Fantom",    ["https://rpc.ftm.tools", "https://rpc.ankr.com/fantom"]),
-        ("CRO",   "Cronos",    ["https://evm.cronos.org", "https://cronos-evm-rpc.publicnode.com"]),
-        ("ETH",   "Arbitrum",  ["https://arb1.arbitrum.io/rpc", "https://rpc.ankr.com/arbitrum"]),
-        ("ETH",   "Optimism",  ["https://mainnet.optimism.io", "https://rpc.ankr.com/optimism"]),
-        ("ETH",   "Base",      ["https://mainnet.base.org", "https://base.publicnode.com"]),
+        ("BNB",   "BSC",        true,  ["https://bsc-dataseed.binance.org", "https://bsc-dataseed1.defibit.io", "https://rpc.ankr.com/bsc"]),
+        ("MATIC", "Polygon",    true,  ["https://polygon-rpc.com", "https://rpc.ankr.com/polygon"]),
+        ("AVAX",  "Avalanche",  true,  ["https://api.avax.network/ext/bc/C/rpc", "https://rpc.ankr.com/avalanche"]),
+        ("FTM",   "Fantom",     true,  ["https://rpc.ftm.tools", "https://rpc.ankr.com/fantom"]),
+        ("CRO",   "Cronos",     true,  ["https://evm.cronos.org", "https://cronos-evm-rpc.publicnode.com"]),
+        ("ETH",   "Arbitrum",   true,  ["https://arb1.arbitrum.io/rpc", "https://rpc.ankr.com/arbitrum"]),
+        ("ETH",   "Optimism",   true,  ["https://mainnet.optimism.io", "https://rpc.ankr.com/optimism"]),
+        ("ETH",   "Base",       true,  ["https://mainnet.base.org", "https://base.publicnode.com"]),
+        // Linea is EVM-equivalent: EIP-155 signing and the same 21,000 intrinsic gas as mainnet, so
+        // the existing signer covers it unchanged and sending is enabled alongside the balance.
+        ("ETH",   "Linea",      true,  ["https://rpc.linea.build", "https://linea.drpc.org"]),
+        // zkSync Era is READ ONLY here on purpose. Its balances are a normal eth_getBalance, but its
+        // fee model is not Ethereum's: a plain transfer does not cost a flat 21,000 gas, so the shared
+        // gas limit this wallet signs with would strand the transaction. Sending stays off until the
+        // gas comes from the chain rather than from a constant.
+        ("ETH",   "zkSync Era", false, ["https://mainnet.era.zksync.io", "https://zksync.drpc.org"]),
     ];
 
     /// <summary>
     /// Native balances of every major EVM network (BNB/MATIC/AVAX/FTM/CRO, plus ETH on the Arbitrum,
-    /// Optimism and Base L2s) at the SAME 0x address, so a MetaMask-imported wallet shows all of them —
-    /// not just Ethereum mainnet. Queried in parallel; only non-zero balances are returned.
+    /// Optimism, Base, Linea and zkSync Era L2s) at the SAME 0x address, so a MetaMask-imported wallet
+    /// shows all of them — not just Ethereum mainnet. Queried in parallel; only non-zero balances are
+    /// returned, each carrying whether this build can spend it as well as read it.
     /// </summary>
-    public async Task<IReadOnlyList<(string Symbol, decimal Amount, string Network)>> GetEvmSideBalancesAsync(
+    public async Task<IReadOnlyList<(string Symbol, decimal Amount, string Network, bool CanSend)>> GetEvmSideBalancesAsync(
         string address, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(address) || !address.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
@@ -424,12 +439,17 @@ public sealed class PublicChainBalanceClient
         var tasks = EvmSideChains.Select(async chain =>
         {
             var amount = await EvmNativeBalanceAsync(chain.Rpcs, address, cancellationToken);
-            return (chain.Symbol, Amount: amount ?? 0m, chain.Network);
+            return (chain.Symbol, Amount: amount ?? 0m, chain.Network, chain.CanSend);
         });
 
         var results = await Task.WhenAll(tasks);
         return results.Where(r => r.Amount > 0m).ToList();
     }
+
+    /// <summary>The EVM networks this build reads a native balance for, and whether it can spend each.
+    /// Exposed so the UI and the tests read the same list the balance fetch does.</summary>
+    public static IReadOnlyList<(string Symbol, string Network, bool CanSend)> EvmSideNetworks =>
+        EvmSideChains.Select(c => (c.Symbol, c.Network, c.CanSend)).ToList();
 
     private static async Task<decimal?> EvmNativeBalanceAsync(string[] rpcs, string address, CancellationToken ct)
     {

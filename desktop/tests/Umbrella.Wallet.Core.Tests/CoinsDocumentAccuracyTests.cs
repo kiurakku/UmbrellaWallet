@@ -87,6 +87,39 @@ public sealed class CoinsDocumentAccuracyTests
         return rows;
     }
 
+    /// <summary>
+    /// Ethereum's L2 rollups all carry the coin symbol "ETH" at the same 0x address, so the capability
+    /// set keys them by NETWORK instead (ARB/BASE/OP/LINEA). A row naming one of these networks has to
+    /// be checked against that key, not against "ETH" — otherwise every L2 row inherits Ethereum
+    /// mainnet's answer, and a network the wallet cannot broadcast on reads as sendable.
+    /// </summary>
+    private static readonly Dictionary<string, string> L2NetworkToSendKey = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Arbitrum"] = "ARB",
+        ["Base"] = "BASE",
+        ["Optimism"] = "OP",
+        ["Linea"] = "LINEA",
+        // zkSync Era has no entry on purpose: its balance is read, but nothing can broadcast there.
+    };
+
+    /// <summary>The capability keys a row is really about: the L2 networks it names, or else its own
+    /// symbol. Empty when the row names only networks the wallet cannot send on.</summary>
+    private static List<string> SendKeysFor(string symbol, string network)
+    {
+        if (!symbol.Equals("ETH", StringComparison.OrdinalIgnoreCase))
+            return [symbol];
+
+        var named = network
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(n => !n.Equals("Ethereum", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        // A plain "Ethereum" row is mainnet and answers to the ETH key.
+        if (named.Count == 0) return [symbol];
+
+        return named.Select(n => L2NetworkToSendKey.GetValueOrDefault(n, string.Empty)).ToList();
+    }
+
     [Fact]
     public void Every_native_coin_the_table_says_can_send_really_can()
     {
@@ -98,14 +131,38 @@ public sealed class CoinsDocumentAccuracyTests
         {
             if (TokenRows.Contains(symbol)) continue;
 
-            var canSend = MainViewModel.SendableSymbols.Contains(symbol);
+            var keys = SendKeysFor(symbol, network);
+
+            // A row that groups several networks claims the SAME thing about all of them, so every key
+            // it covers has to agree — one unsendable network in the list makes the whole row a lie.
+            var canSend = keys.Count > 0
+                          && keys.All(k => k.Length > 0 && MainViewModel.SendableSymbols.Contains(k));
+
             if (claimsSend && !canSend)
                 wrong.Add($"{symbol} ({network}): the table says it sends, the code says it cannot");
-            if (!claimsSend && canSend)
+            if (!claimsSend && keys.Any(k => k.Length > 0 && MainViewModel.SendableSymbols.Contains(k)))
                 wrong.Add($"{symbol} ({network}): the code sends it, the table says it cannot");
         }
 
         Assert.Empty(wrong);
+    }
+
+    [Fact]
+    public void The_zksync_row_says_receive_only_and_the_linea_row_does_not()
+    {
+        // The pair this indirection exists for. zkSync Era shows a balance the wallet cannot spend;
+        // Linea shows one it can. Both are "ETH" at the same address, so only the network tells them
+        // apart, and getting it backwards would strand somebody's funds in their own head.
+        var path = FindDocument();
+        if (path is null) return;
+
+        var rows = TableRows(path);
+
+        var zk = rows.SingleOrDefault(r => r.Network.Contains("zkSync", StringComparison.OrdinalIgnoreCase));
+        Assert.NotEqual(default, zk);
+        Assert.False(zk.ClaimsSend);
+
+        Assert.Contains(rows, r => r.Network.Contains("Linea", StringComparison.OrdinalIgnoreCase) && r.ClaimsSend);
     }
 
     [Fact]

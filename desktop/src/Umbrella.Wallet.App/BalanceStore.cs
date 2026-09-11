@@ -17,8 +17,16 @@ public sealed class BalanceStore
     public BalanceStore(string? path = null) =>
         _path = path ?? Path.Combine(AppPaths.DataRoot, "balances.json");
 
-    /// <summary>One cached holding: matched back to an account by symbol + address.</summary>
-    public sealed record Entry(string Symbol, string Address, double Amount, double Price, double Change);
+    /// <summary>
+    /// One cached holding, matched back to an account by symbol + address + network.
+    ///
+    /// The network is part of the identity, not decoration. Ethereum and its L2 rollups all report the
+    /// symbol "ETH" at the SAME 0x address, so ETH on Arbitrum and ETH on Base are indistinguishable
+    /// without it — four separate holdings collapsing onto one key. It is last and defaulted so a
+    /// balances.json written before this field existed still loads.
+    /// </summary>
+    public sealed record Entry(
+        string Symbol, string Address, double Amount, double Price, double Change, string Network = "");
 
     private sealed record Wrapper(Dictionary<string, List<Entry>> Wallets);
 

@@ -71,6 +71,15 @@ public sealed class EthTransactionSender
                 ["https://mainnet.base.org", "https://base.publicnode.com"]),
             ["OP"] = new("ETH", "Optimism", 10, "optimistic.etherscan.io/tx/",
                 ["https://mainnet.optimism.io", "https://rpc.ankr.com/optimism"]),
+            // Linea is EVM-equivalent: the same EIP-155 signing and the same 21,000 intrinsic gas for a
+            // native transfer, so the signer pinned to the official EIP-155 vector covers it with only
+            // the chain id changing. Newly enabled — verify with a small amount before trusting it.
+            //
+            // zkSync Era is deliberately NOT here even though its balance is read: a plain transfer
+            // there does not cost a flat 21,000 gas, so the shared TransferGasLimit would strand the
+            // transaction. It stays read-only until the gas limit comes from the chain.
+            ["LINEA"] = new("ETH", "Linea", 59144, "lineascan.build/tx/",
+                ["https://rpc.linea.build", "https://linea.drpc.org"]),
         };
 
     /// <summary>The explorer-tx base for a chain id (used at confirm time, when a quote carries only its
