@@ -75,6 +75,24 @@ This release is about that, and about three bugs found while looking into it.
 - USDT now exists on two chains under one symbol, so the Send screen pins each token's balance to the
   one chain it can actually be spent on.
 
+### Fixed — "delete everything" did not
+
+- **Your address book survived a wallet delete**, and it is stored in **plain text**. So did your
+  private transaction notes, the count of addresses ever issued, and the price cache. A person
+  deleting their wallet believes it is gone; what stayed behind was precisely the part naming who they
+  were dealing with. All four are wiped now.
+- The wiper is no longer maintained by hand: the build fails if the app writes a file under its data
+  directory that the wiper does not handle, or that is not named as a deliberate exception (the
+  bundled Tor client, which is a program rather than user data).
+- The Danger Zone now states exactly what goes and what stays, in all six languages.
+
+### Added — the rules, written down
+
+- **[MANIFESTO.md](MANIFESTO.md)** — the twelve rules this wallet is held to, each one there because
+  it was broken at least once, and an honest note on what following them costs.
+- Three new sections in the in-app guide (English and Ukrainian): who answers for your money, who this
+  wallet talks to, and what deleting everything actually deletes.
+
 ### Tests
 
 - **731 offline tests**, up from 617. The suite no longer touches the public internet at all: it was

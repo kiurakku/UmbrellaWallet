@@ -28,6 +28,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 [Verify your download](#verify-what-you-downloaded) ·
 [Build it yourself](docs/building.md) ·
 [Security](SECURITY.md) ·
+[The rules](MANIFESTO.md) ·
 [Docs](docs/README.md)
 
 <br/>
@@ -379,6 +380,7 @@ Being honest about what exists and what doesn't:
 
 | | |
 |---|---|
+| [MANIFESTO.md](MANIFESTO.md) | The rules this wallet is held to, and what they cost |
 | [docs/README.md](docs/README.md) | Index of everything below |
 | [docs/architecture.md](docs/architecture.md) | How the layers fit together and why |
 | [docs/building.md](docs/building.md) | Build, run, test, package installers |

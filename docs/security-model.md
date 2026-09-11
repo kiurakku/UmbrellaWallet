@@ -171,6 +171,26 @@ learning anything, anything the wallet actually calls must admit to learning at 
 is no such thing as a request that reveals nothing), a price feed may not be marked as seeing
 addresses, and only an opt-in exchange connection may be marked as holding credentials.
 
+## Deleting everything
+
+Settings → Danger zone wipes this device's copy: the encrypted seed, every additional wallet, settings
+and profile images, watch addresses, saved exchange keys, the **address book**, **private transaction
+notes**, the activity log, cached balances and prices, and the Monero wallet. The app itself and the
+bundled Tor client remain.
+
+Two of those were missing until 4.7, and they were the wrong two. The address book is the list of
+people the user transacts with — stored in **plain text** — and the notes are what they wrote about
+their own transactions. Both survived a delete. Somebody erasing their wallet under pressure would
+have left behind exactly the part that names their counterparties.
+
+`DataWiperCoverageTests` scans the source for every path written under the data root and fails the
+build if the wiper does not handle it. A new store cannot be added without either being wiped or being
+named as a deliberate exception. Proven by removing the address book from the wiper: two tests fail.
+
+**Still open:** the address book is plaintext on disk while the wallet is installed. Encrypting it the
+way transaction notes are encrypted (a key derived from the seed) is the next step; until then, the
+honest statement is that anything running as the user can read it.
+
 ## What this does not protect you from
 
 Being direct about this is the point.
