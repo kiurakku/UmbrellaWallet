@@ -3777,12 +3777,13 @@ public partial class MainViewModel : ViewModelBase
             // awaits here were the main reason the total took many seconds to appear after unlock /
             // wallet switch; firing them together cuts that to roughly the slowest single call.
             // (Receive-only chains TON/ADA have public balance APIs; XMR returns null safely.)
-            // BTC/LTC are handled by the HD scan below (aggregated across every address), not by the
-            // single-address balance call — otherwise change sent to an internal address would vanish
-            // from the shown balance.
+            // Every UTXO chain the wallet spends from is handled by the HD scan below (aggregated
+            // across every address), not by the single-address balance call — otherwise change sent to
+            // an internal address would vanish from the shown balance. That was still happening to BCH
+            // and DOGE, which spend to change like the others but were being read one address deep.
             var balanceTargets = Accounts.ToList()
                 .Where(a => a.SupportStatus is "Ready" or "Receive only" && ParseChain(a.Symbol) is not null
-                            && a.Symbol is not ("BTC" or "LTC"))
+                            && !UtxoScanChains.Contains(a.Symbol, StringComparer.OrdinalIgnoreCase))
                 .ToList();
             var balancesTask = Task.WhenAll(
                 balanceTargets.Select(a => _balances.GetBalanceAsync(ParseChain(a.Symbol)!.Value, a.Address, ct)));
@@ -4320,9 +4321,11 @@ public partial class MainViewModel : ViewModelBase
         SelectedReceiveNetwork = $"{account.Symbol} · {account.NetworkLabel}";
         ReceiveQr = BuildQr(BuildReceivePayload(account.Address));
 
-        // Rotation is only safe where the wallet fully spends across addresses (BTC/LTC).
+        // Rotation is only safe where the wallet both SCANS every address and SPENDS across them —
+        // issuing an address the scan never walks is money the user watches arrive and can never move.
+        // That is why this reads the scan list rather than naming chains: the two cannot drift apart.
         _receiveChain = ParseChain(account.Symbol);
-        CanRotateReceive = account.Symbol is "BTC" or "LTC"
+        CanRotateReceive = UtxoScanChains.Contains(account.Symbol, StringComparer.OrdinalIgnoreCase)
                            && _receiveChain is not null && _unlockedMnemonic is not null;
         ReceivePathLabel = CanRotateReceive ? $"{account.Symbol} receive address #0" : string.Empty;
         RebuildReceiveHistory(account.Symbol);

@@ -151,6 +151,17 @@ Select the coin you want to receive.
 - Your ETH address (0x...) — for USDT ERC-20, also BSC, Polygon, Arbitrum
 - Your SOL address — for USDT SPL
 
+### A fresh address for every payment
+
+On Bitcoin, Litecoin, Bitcoin Cash and Dogecoin the Receive screen hands out a **new address each
+time** you ask. Reusing one address means every payment you have ever received sits under a single
+public heading that anyone can read — a fresh one per payment breaks that link.
+
+The wallet only offers this where it can also **find and spend** what arrives: the balance is scanned
+across every address it has issued, not just the first one, and a send signs across all of them. An
+address the wallet could hand out but never scan would be money you watch arrive and can never move,
+so the two lists are pinned to each other in the test suite.
+
 ### 3. Copy address or show QR
 - Click "Copy" — address goes to clipboard (auto-cleared after 45 seconds)
 - Show QR — sender scans with their phone or app
@@ -444,8 +455,8 @@ The wallet works like this:
 | 14 | Cardano | ADA | ✅ Working | Send, receive, balance, history |
 | 15 | Monero | XMR | ✅ Working | Send, receive, balance, history, private |
 | 16 | Litecoin | LTC | ✅ Stable | Send, receive, balance, history |
-| 17 | Bitcoin Cash | BCH | ✅ Working | Send, receive, balance, history |
-| 18 | Dogecoin | DOGE | ✅ Working | Send, receive, balance |
+| 17 | Bitcoin Cash | BCH | ✅ Working | Send, receive, balance, history, fresh address per receive |
+| 18 | Dogecoin | DOGE | ✅ Working | Send, receive, balance, fresh address per receive |
 | 19 | Zcash | ZEC | ⚠️ Partial | Receive + balance only |
 | 20 | Linea | ETH | ✅ Working | Send, receive, balance, ERC-20 |
 | 21 | zkSync Era | ETH | ⚠️ Partial | Receive + balance only |

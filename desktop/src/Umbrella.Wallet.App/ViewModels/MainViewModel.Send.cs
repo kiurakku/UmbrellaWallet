@@ -522,19 +522,68 @@ public partial class MainViewModel
     /// aggregating their UTXOs, caching the scan for the send path. A transient explorer error keeps
     /// the last good balance rather than showing a lower, wrong number (roadmap §1.10, §3.2).
     /// </summary>
+    /// <summary>
+    /// The UTXO chains whose balance comes from a full HD scan across every address rather than from
+    /// one address, and therefore the chains on which handing out a fresh receive address is safe.
+    ///
+    /// These are the same list on purpose. The cardinal rule of this wallet is that it must never
+    /// issue an address it cannot then find and spend — an address the scan does not walk is money the
+    /// user can see arrive and never move. <c>ReceiveRotationTests</c> pins that.
+    /// </summary>
+    public static readonly string[] UtxoScanChains = ["BTC", "LTC", "BCH", "DOGE"];
+
+    /// <summary>When each chain last completed a full scan, so a rate-limited explorer is not walked
+    /// on every sixty-second refresh.</summary>
+    private readonly Dictionary<string, DateTimeOffset> _lastUtxoScan = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The shortest gap between full gap-limit walks of a chain.
+    ///
+    /// A walk is one request per address, so the cost is set by whoever answers them. Esplora
+    /// (BTC/LTC) tolerates a walk a minute and always has. BlockCypher's keyless tier does not —
+    /// walking DOGE every minute would exhaust the hourly allowance within a few refreshes and leave
+    /// the user with no balance at all, which is worse than a balance that is a few minutes old.
+    ///
+    /// This only delays noticing money that ARRIVED. Money that left is reflected immediately: a send
+    /// drops the cached scan and clears this stamp, so the change address is picked up on the very
+    /// next refresh.
+    /// </summary>
+    private static TimeSpan UtxoScanCooldown(string symbol) => symbol.ToUpperInvariant() switch
+    {
+        "DOGE" => TimeSpan.FromMinutes(10),   // BlockCypher, keyless: ~100 requests an hour
+        "BCH" => TimeSpan.FromMinutes(4),     // Haskoin, more generous but still somebody's server
+        _ => TimeSpan.Zero,                   // Esplora — unchanged from before
+    };
+
+    /// <summary>True when this chain should be walked now. Always true until it has been walked once:
+    /// a cooldown must never be the reason a balance has never been read at all.</summary>
+    private bool DueForUtxoScan(string symbol)
+    {
+        if (!_utxoScans.ContainsKey(symbol)) return true;
+        if (!_lastUtxoScan.TryGetValue(symbol, out var last)) return true;
+        return DateTimeOffset.UtcNow - last >= UtxoScanCooldown(symbol);
+    }
+
     private async Task RefreshUtxoWalletsAsync(
         IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct)
     {
         if (_unlockedMnemonic is null) return;
         var walletId = _registry.Active?.Id ?? "default";
 
-        // BTC and LTC are independent chains behind different explorers, so their scans run CONCURRENTLY —
-        // one after the other meant the user waited for the sum of two full gap-limit walks. Only the
-        // network phase overlaps; results are applied one at a time below, so Accounts and the address
-        // index are never mutated from two places at once.
+        // Every UTXO chain the wallet spends from, scanned across ALL its addresses rather than just
+        // the first one. BCH and DOGE used to be read by a single-address balance call, which meant the
+        // change from a send — which lands on an internal address by design — simply vanished from the
+        // shown balance until the next send re-scanned. The money was never lost; the number was wrong,
+        // which on a wallet is nearly as bad.
+        //
+        // The scans run CONCURRENTLY: one after the other meant waiting for the sum of four full
+        // gap-limit walks. Only the network phase overlaps; results are applied one at a time below, so
+        // Accounts and the address index are never mutated from two places at once.
         var targets = new List<(string Symbol, WalletAccountViewModel Account, ChainId Chain)>();
-        foreach (var symbol in new[] { "BTC", "LTC" })
+        foreach (var symbol in UtxoScanChains)
         {
+            if (!DueForUtxoScan(symbol)) continue;
+
             var account = Accounts.FirstOrDefault(a =>
                 a.Symbol == symbol && a.SupportStatus == "Ready" && IsRealAddress(a.Address));
             if (account is null) continue;
@@ -572,6 +621,7 @@ public partial class MainViewModel
             var (symbol, account, _) = targets[i];
             var scan = scans[i];
             if (scan is null) continue;
+            if (!scan.Partial) _lastUtxoScan[symbol] = DateTimeOffset.UtcNow;
 
             // A partial (network-degraded) scan must not lower a balance we already trust.
             if (scan.Partial && _utxoScans.ContainsKey(symbol)) continue;
@@ -655,7 +705,11 @@ public partial class MainViewModel
                     var (ok, txid, error) = await _btcSender.SignAndBroadcastHdAsync(
                         _unlockedMnemonic!, walletId, _addrIndex, _btcPlanSymbol ?? quote.Symbol, _btcPlan, _btcRequest);
                     // Force a fresh scan next time so the spent inputs and new change are reflected.
-                    _utxoScans.Remove(_btcPlanSymbol ?? quote.Symbol);
+                    // The cooldown stamp goes with it: change landing on an internal address is exactly
+                    // the case the user must not have to wait ten minutes to see.
+                    var spentSymbol = _btcPlanSymbol ?? quote.Symbol;
+                    _utxoScans.Remove(spentSymbol);
+                    _lastUtxoScan.Remove(spentSymbol);
                     var explorer = _sendSymbol switch
                     {
                         "BTC" => $"blockstream.info/tx/{txid}",
