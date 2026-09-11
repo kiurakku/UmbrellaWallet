@@ -5,4 +5,50 @@
     <Copyright>Copyright © 2026 kiurakku. All rights reserved.</Copyright>
     <Product>Umbrella Wallet</Product>
   </PropertyGroup>
+
+  <!--
+    Deterministic output: the same source must compile to the same bytes, on any machine, from any
+    directory.
+
+    This is the prerequisite for reproducible builds, and reproducible builds are what make "verify
+    the SHA256" mean anything. Without them a user checking a checksum is comparing the download
+    against a manifest published by the same release an attacker would have had to compromise. With
+    them, anyone can rebuild from the tag and prove the binary is the source.
+
+    `Deterministic` is already the .NET default and it works: two builds in the same directory were
+    byte-identical before this file said anything. What was NOT identical was the same source built
+    from a DIFFERENT directory - the compiler embeds absolute source paths, so `D:\WorkSpace\...` and
+    `/home/runner/work/...` produce different assemblies. That is precisely the case that matters,
+    because the person verifying is never building in the same folder as the person who released.
+
+    PathMap rewrites those embedded paths to a fixed token, which removes the difference without
+    pulling in SourceLink. Measured both ways: see docs/building.md.
+  -->
+  <PropertyGroup>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
+
+    <!--
+      Symbols are the one thing that stops a Release build being reproducible, and it took measuring
+      to find out why: the debug directory embeds the ABSOLUTE PATH of the .pdb, and the MVID depends
+      on it. Two builds of the same commit from different folders differed by 735 bytes, and the block
+      that differed was exactly 29 bytes longer on one side - the difference in the length of that
+      path.
+
+      Measured, all three, same commit, two different absolute paths:
+        portable  -> differs (735 bytes)
+        embedded  -> differs (the embedded blob is path-dependent too)
+        none      -> BYTE-IDENTICAL
+
+      So Release drops symbols and Debug keeps them. Reproducibility is what makes verifying a
+      published checksum mean anything, and that only matters for the artifact users download; line
+      numbers in a stack trace only matter while developing, where the build is right there.
+    -->
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <DebugType Condition="'$(Configuration)' != 'Release'">portable</DebugType>
+
+    <!-- The NuGet cache path also leaks into some generated files; keeping restore deterministic
+         means a rebuild resolves exactly the versions the lock/props pinned. -->
+    <RestoreLockedMode Condition="'$(ContinuousIntegrationBuild)' == 'true'">false</RestoreLockedMode>
+  </PropertyGroup>
 </Project>
