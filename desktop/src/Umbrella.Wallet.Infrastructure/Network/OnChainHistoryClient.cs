@@ -22,7 +22,7 @@ public sealed record ChainTx(
 /// </summary>
 public sealed class OnChainHistoryClient
 {
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.ChainData);
 
     /// <summary>TRC-20 token transfers (USDT and friends) for a TRON base58 address.</summary>
     public async Task<IReadOnlyList<ChainTx>> GetTronTrc20Async(

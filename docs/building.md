@@ -2,6 +2,67 @@
 
 Everything from "clone it" to "produce the same installer we publish".
 
+## Reproducible builds
+
+The same commit compiles to the same bytes, from any directory. Check it yourself:
+
+```bash
+./scripts/verify-reproducible-build.sh
+```
+
+It clones the repository at the current commit to a different absolute path, builds both, and compares
+the three assemblies that actually run. It does not compare the self-contained publish output — that
+also bundles the .NET runtime, which comes from NuGet and is identical by construction.
+
+### Why this matters
+
+Without it, verifying a published `SHA256SUMS` file proves only that the download was not corrupted in
+transit. The manifest comes from the same release an attacker would have had to compromise. With
+reproducibility, anyone can rebuild from the tag and prove the binary **is** the source.
+
+### How it was diagnosed
+
+`Deterministic` is already the .NET default, and it works: two builds in the same directory were
+byte-identical before any of this was configured. What differed was the same source built from a
+different directory.
+
+Measured, same commit, two absolute paths, `Umbrella.Wallet.Core.dll` (176 KB):
+
+| `DebugType` | Result |
+|---|---|
+| `portable` (default) | differs — **735 bytes** |
+| `embedded` | differs — the embedded blob is path-dependent too |
+| `none` | **byte-identical** |
+
+The differing bytes were clustered, and one block was exactly **29 bytes longer** on one side with
+every subsequent offset shifted by the same 29 — the difference in the length of the **absolute path
+to the `.pdb`**, which the debug directory embeds and which the MVID then depends on.
+
+Two false leads are worth recording, because both produced confident wrong numbers:
+
+- An early measurement said 2203 bytes. That compared a build inside a git repository against a build
+  in a plain copied folder — the SDK appends the commit SHA to `AssemblyInformationalVersion` only in
+  the former. The test, not the build, was at fault.
+- A `DebugType=none` run appeared to change nothing. MSBuild had considered the project up to date and
+  skipped compilation entirely; the output was a copy of the previous build.
+
+### What is configured
+
+`desktop/Directory.Build.props`:
+
+- `Deterministic` — explicit rather than relied upon as a default
+- `PathMap` — rewrites embedded source paths to a fixed token, so no absolute path reaches the binary
+- `DebugType` — `none` for **Release**, `portable` for Debug. Reproducibility matters for the artifact
+  users download; line numbers matter while developing, where the build is already at hand.
+
+`global.json` pins the SDK to the patch level. A different compiler version produces different output,
+so a verifier must use the same one.
+
+### What is still missing
+
+Signed binaries. Reproducibility proves the binary matches the source; a signature proves the release
+came from whoever holds the key. They answer different questions and the wallet has only the first.
+
 ## Requirements
 
 | | |

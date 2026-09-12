@@ -11,7 +11,7 @@ namespace Umbrella.Wallet.Infrastructure.Network;
 /// </summary>
 public sealed class EsploraUtxoExplorer : IUtxoExplorer
 {
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.ChainData);
 
     /// <summary>The servers to try, in order. More than one only when the user has NOT chosen.</summary>
     private readonly IReadOnlyList<string> _bases;

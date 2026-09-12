@@ -38,6 +38,90 @@ public static class PublicHttp
 
     public static HttpClient Shared => _shared;
 
+    /// <summary>
+    /// What a request is for. Over Tor, each purpose gets its own circuit.
+    ///
+    /// Tor keys a circuit on the SOCKS5 username/password pair, so handing a different pair per
+    /// purpose is all it takes. Without a proxy every purpose shares one client, because isolation
+    /// buys nothing there and extra connections cost something.
+    ///
+    /// The separation that matters most is <see cref="Broadcast"/>. On one circuit, a single exit
+    /// relay sees the wallet ask an explorer about an address AND, minutes later, hand over a
+    /// transaction spending it - and can tie the two together by timing. On separate circuits the
+    /// relay that saw the address is not the relay that saw the broadcast.
+    /// </summary>
+    public enum NetworkPurpose
+    {
+        /// <summary>Balances, unspent outputs, history. These carry the user's addresses.</summary>
+        ChainData,
+        /// <summary>Coin prices and fiat rates. No addresses, but they reveal what is held.</summary>
+        Prices,
+        /// <summary>Handing a signed transaction to the network.</summary>
+        Broadcast,
+        /// <summary>Swap quotes and routing.</summary>
+        Swaps,
+        /// <summary>Update checks and the Tor self-test.</summary>
+        Maintenance,
+        /// <summary>An exchange account the user connected. This carries their own API credentials -
+        /// the most identity-linked traffic the wallet makes, and the last thing that should share a
+        /// circuit with address lookups.</summary>
+        ExchangeAccount,
+    }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<NetworkPurpose, HttpClient>
+        Isolated = new();
+
+    /// <summary>
+    /// The client for a purpose. Over Tor this is a separate circuit; without a proxy it is the
+    /// shared client.
+    ///
+    /// Every client handed out here is built from the SAME proxy and kill-switch state as the shared
+    /// one, and all of them are torn down whenever that state changes. A cached client that outlived
+    /// a kill-switch being armed would keep connecting - a hole in the exact mechanism the kill-switch
+    /// exists to be, and worse than not isolating at all.
+    /// </summary>
+    public static HttpClient For(NetworkPurpose purpose)
+    {
+        var proxy = ActiveProxy;
+        if (string.IsNullOrWhiteSpace(proxy)) return _shared;
+
+        return Isolated.GetOrAdd(purpose, p => Build(IsolatedProxyUri(proxy!, p), _requireProxy));
+    }
+
+    /// <summary>
+    /// The proxy URI with per-purpose SOCKS5 credentials. Tor treats a distinct username/password as
+    /// a distinct circuit; the values are fixed labels, not secrets, and never leave the loopback
+    /// connection to Tor itself.
+    /// </summary>
+    private static string IsolatedProxyUri(string socks5Uri, NetworkPurpose purpose)
+    {
+        try
+        {
+            var uri = new Uri(socks5Uri);
+            var label = purpose.ToString().ToLowerInvariant();
+            return $"{uri.Scheme}://umbrella-{label}:{label}@{uri.Host}:{uri.Port}";
+        }
+        catch
+        {
+            // A proxy string we cannot parse is used as-is rather than dropped: losing the proxy
+            // would send the request direct, which is the one outcome that must never happen here.
+            return socks5Uri;
+        }
+    }
+
+    /// <summary>Disposes every per-purpose client. Called whenever the routing changes, so no client
+    /// can outlive the settings it was built from.</summary>
+    private static void DiscardIsolated()
+    {
+        foreach (var key in Isolated.Keys.ToList())
+        {
+            if (Isolated.TryRemove(key, out var client))
+            {
+                try { client.Dispose(); } catch { /* ignore */ }
+            }
+        }
+    }
+
     /// <summary>The active SOCKS5 proxy URI (Tor or a user proxy), or null when going direct.</summary>
     public static string? ActiveProxy { get; private set; }
 
@@ -59,6 +143,7 @@ public static class PublicHttp
         _requireProxy = require;
         var old = _shared;
         _shared = Build(ActiveProxy, _requireProxy);
+        DiscardIsolated();
         try { old.Dispose(); } catch { /* ignore */ }
     }
 
@@ -72,6 +157,7 @@ public static class PublicHttp
         var old = _shared;
         _shared = Build(normalized, _requireProxy);
         ActiveProxy = normalized;
+        DiscardIsolated();
         try { old.Dispose(); } catch { /* ignore */ }
     }
 
@@ -84,6 +170,7 @@ public static class PublicHttp
         _ipMode = mode;
         var old = _shared;
         _shared = Build(ActiveProxy, _requireProxy);
+        DiscardIsolated();
         try { old.Dispose(); } catch { /* ignore */ }
     }
 
@@ -188,7 +275,7 @@ public static class PublicHttp
 /// </summary>
 public sealed class PublicChainBalanceClient
 {
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.ChainData);
 
     /// <summary>
     /// The Ethereum RPCs to try, with the user's chosen server first when they have picked one.
@@ -911,7 +998,7 @@ public readonly record struct PriceCandle(double Open, double High, double Low, 
 
 public sealed class PublicMarketRatesClient
 {
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.Prices);
 
     private static readonly Dictionary<string, string> CoinIds = new(StringComparer.OrdinalIgnoreCase)
     {

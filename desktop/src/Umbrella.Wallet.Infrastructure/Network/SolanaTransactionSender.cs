@@ -24,7 +24,7 @@ public sealed class SolanaTransactionSender
 
     private static readonly byte[] SystemProgramId = new byte[32]; // all-zero = System Program
 
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.Broadcast);
 
     public async Task<(SolSendQuote? Quote, string? Error)> PrepareAsync(
         string from, string to, decimal amountSol,

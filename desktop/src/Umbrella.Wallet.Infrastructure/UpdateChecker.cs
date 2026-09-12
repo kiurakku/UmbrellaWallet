@@ -20,7 +20,7 @@ public static class UpdateChecker
     {
         try
         {
-            using var res = await PublicHttp.Shared.GetAsync(VersionUrl, ct);
+            using var res = await PublicHttp.For(PublicHttp.NetworkPurpose.Maintenance).GetAsync(VersionUrl, ct);
             if (!res.IsSuccessStatusCode)
             {
                 return new Result(false, current, $"Update server returned {(int)res.StatusCode}.");

@@ -438,7 +438,7 @@ threat model names each one as an open gap rather than implying it away.
 |---|---|
 | **Reproducible builds** | Today, verifying a checksum verifies against the same release an attacker would have had to compromise. Determinism is what makes the binary provably the published source. |
 | **Signed releases** (GPG / Sigstore) | Checksums prove integrity against accidental corruption, not against a replaced release. |
-| **Tor stream isolation** | Separate circuits per purpose, so a balance lookup and a price fetch cannot be correlated by timing on one circuit. |
+| ~~Tor stream isolation~~ | **Done.** Chain data, broadcasts, prices, swaps, exchange accounts and maintenance each get their own circuit. |
 | **Dandelion++** | Broadcasting by flood lets an observer tie an IP to a transaction by propagation timing. A stem phase breaks that. |
 | **Taproot (BIP-341)** | Cheaper and indistinguishable from a single-key spend at the chain level. |
 | **PayJoin (BIP-78)** | Breaks the "all inputs belong to the sender" assumption chain analysis is built on. |

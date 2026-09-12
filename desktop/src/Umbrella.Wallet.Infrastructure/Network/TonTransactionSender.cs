@@ -25,7 +25,7 @@ public sealed class TonTransactionSender
     /// <summary>A comfortable gas buffer for a single v4 transfer (paid from the balance, not the value).</summary>
     private const decimal FeeBufferTon = 0.02m;
 
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.Broadcast);
 
     public async Task<(TonSendQuote? Quote, string? Error)> PrepareAsync(
         string from, string to, decimal amountTon, CancellationToken ct = default)

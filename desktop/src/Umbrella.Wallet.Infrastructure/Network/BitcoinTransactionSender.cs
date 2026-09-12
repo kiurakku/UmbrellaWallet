@@ -31,7 +31,7 @@ public sealed record BtcSendQuote(
 /// </summary>
 public sealed class BitcoinTransactionSender
 {
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.Broadcast);
 
     private readonly HdAddressDeriver _deriver;
     private readonly HdUtxoSpender _spender;
