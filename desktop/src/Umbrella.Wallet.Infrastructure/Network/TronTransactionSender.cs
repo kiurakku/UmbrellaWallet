@@ -40,7 +40,7 @@ public sealed class TronTransactionSender
     /// <summary>Energy budget for a USDT transfer, in SUN. Unused fee is not charged.</summary>
     private const long FeeLimitSun = 40_000_000;
 
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.Broadcast);
 
     public async Task<(TronSendQuote? Quote, string? Error)> PrepareAsync(
         string symbol, string from, string to, decimal amount, CancellationToken ct = default)

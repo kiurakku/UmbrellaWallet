@@ -61,7 +61,9 @@ behind the code: the build fails if a host appears in the source without appeari
 ## What you can change
 
 - **Tor**, bundled and one switch. The kill-switch is fail-closed: with Tor-only on and Tor down, a
-  request that would go over clearnet does not go at all.
+  request that would go over clearnet does not go at all. Over Tor, requests are split across
+  **separate circuits by purpose** — the exit relay that saw your address is not the one that receives
+  your transaction.
 - **A SOCKS5 proxy** of your own instead.
 - **Which server answers for each chain** — Bitcoin, Litecoin, Bitcoin Cash, Dogecoin, Ethereum,
   Solana, TON, Tron, Cardano, Monero. Pick a different company, or point the wallet at a node you run.

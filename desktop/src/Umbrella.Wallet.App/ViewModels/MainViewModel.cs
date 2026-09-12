@@ -519,7 +519,8 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            using var res = await PublicHttp.Shared.GetAsync("https://check.torproject.org/api/ip", cts.Token);
+            using var res = await PublicHttp.For(PublicHttp.NetworkPurpose.Maintenance)
+                .GetAsync("https://check.torproject.org/api/ip", cts.Token);
             var body = (await res.Content.ReadAsStringAsync(cts.Token))
                 .Replace(" ", "").Replace("\n", "").ToLowerInvariant();
             if (body.Contains("\"istor\":true"))

@@ -30,7 +30,7 @@ public sealed class CardanoTransactionSender
     private const ulong MinFeeB = 155_381;     // constant fee term (lovelace)
     private const ulong TtlBufferSlots = 7_200; // ~2 h validity window
 
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.Broadcast);
 
     private readonly record struct Utxo(byte[] TxHash, ulong Index, ulong Value);
 

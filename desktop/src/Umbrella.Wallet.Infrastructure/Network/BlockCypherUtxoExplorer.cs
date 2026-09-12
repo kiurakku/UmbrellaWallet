@@ -15,7 +15,7 @@ namespace Umbrella.Wallet.Infrastructure.Network;
 /// </summary>
 public sealed class BlockCypherUtxoExplorer : IUtxoExplorer
 {
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.ChainData);
 
     private readonly string _coin; // BlockCypher coin slug, e.g. "doge"
 

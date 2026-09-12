@@ -41,7 +41,7 @@ public sealed record SwapQuote(
 /// </summary>
 public sealed class ThorchainSwapClient
 {
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.Swaps);
 
     // Public THORNode endpoints, tried in order. The direct nodes want an x-client-id header; the
     // cosmos.directory proxy is a keyless fallback that mirrors the same REST surface.

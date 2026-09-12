@@ -53,7 +53,7 @@ public static class ExchangeConnectors
         _ => "In Telegram open @CryptoBot → Crypto Pay → My Apps → create app → copy the API token.",
     };
 
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.ExchangeAccount);
 
     public static Task<ExchangeFetchResult> FetchBalancesAsync(
         string exchange, string apiKey, string apiSecret, string? passphrase, CancellationToken ct = default)

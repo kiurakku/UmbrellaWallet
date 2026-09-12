@@ -87,7 +87,7 @@ public sealed class EthTransactionSender
     public static string ExplorerTxForChainId(long chainId) =>
         Chains.Values.FirstOrDefault(c => c.ChainId == chainId)?.ExplorerTx ?? "etherscan.io/tx/";
 
-    private static HttpClient Http => PublicHttp.Shared;
+    private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.Broadcast);
 
     /// <summary>
     /// Prepares a send: validates inputs, fetches balance / nonce / gas price, and returns a

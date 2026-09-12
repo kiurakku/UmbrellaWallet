@@ -94,8 +94,21 @@ fail-closed**: with Tor-only on and Tor down, the shared HTTP client refuses con
 `ConnectCallback`, before DNS and before a socket. There is no fallback to clearnet — that silent
 fallback is a classic wallet vulnerability and this one does not have it.
 
+Requests are also **split across separate Tor circuits by purpose**. On one circuit a single exit
+relay sees the wallet ask an explorer "what is the balance of bc1q…" and then, minutes later, hand
+over a transaction spending it — and can tie the two together by timing alone. Chain data, broadcasts,
+prices, swap quotes, an exchange account and maintenance traffic each get their own circuit, so the
+relay that saw an address is not the relay that receives the spend. Tor keys a circuit on the SOCKS5
+credential pair, so this needs no extra dependency.
+
+Every per-purpose client is built from the same proxy and kill-switch state as the shared one and torn
+down whenever that state changes. A cached client outliving the kill-switch being armed would be a
+hole in the kill-switch itself — worse than not isolating — so `TorStreamIsolationTests` pins it, and
+the assertion was verified by removing the teardown and watching the test fail.
+
 **Where the defence ends.** Traffic timing and volume are still observable. A `.onion` node removes
-the exit node; a clearnet node over Tor does not.
+the exit node; a clearnet node over Tor does not. Isolation splits *who sees what*; it does not hide
+that a Tor user is doing something.
 
 **Residual risk: LOW with Tor on, HIGH with it off** — which the Security Center says out loud rather
 than scoring generously.
