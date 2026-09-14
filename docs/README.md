@@ -6,6 +6,8 @@ that knows you exist.
 
 New here? The [project README](../README.md) is the overview. These pages are the detail.
 
+**Що ще робити (єдиний backlog):** **[ROADMAP.md](ROADMAP.md)** — зведено з усіх docs, CHANGELOG, threat/privacy gaps і store/legal комплаєнсу.
+
 ---
 
 ## For engineers
@@ -51,10 +53,11 @@ Start here if you are building on, forking, or auditing Umbrella.
 
 | Document | What's inside |
 |---|---|
+| **[ROADMAP.md](ROADMAP.md)** | **Єдиний зведений backlog** — монети, безпека, UX, hardware, store/legal (§9), релізи. |
 | [04-desktop.md](04-desktop.md) | Older, more granular desktop notes: project structure, vault, packaging. |
 | [07-financial.md](07-financial.md) | Notes on the financial flow. |
-| [SECURE_ANON_ROADMAP.md](SECURE_ANON_ROADMAP.md) | The privacy/anonymity direction. |
-| [CLAUDE_IMPLEMENTATION_ROADMAP_UK.md](CLAUDE_IMPLEMENTATION_ROADMAP_UK.md) | The long-form implementation roadmap (Ukrainian). |
+| [SECURE_ANON_ROADMAP.md](SECURE_ANON_ROADMAP.md) | The privacy/anonymity pillars (status table). |
+| [CLAUDE_IMPLEMENTATION_ROADMAP_UK.md](CLAUDE_IMPLEMENTATION_ROADMAP_UK.md) | Long-form implementation phases + DoD (Ukrainian). |
 | [telegram-news-uk.md](telegram-news-uk.md) | Release announcements (Ukrainian). |
 | [archive/](archive/) | Documents for the discontinued web product. Kept for history; **not** current. |
 

@@ -369,13 +369,14 @@ Please don't open a public issue for anything that could put funds at risk.
 
 ## Roadmap
 
-Being honest about what exists and what doesn't:
+Being honest about what exists and what doesn't. Full backlog (coins, security, UX, hardware):
+**[docs/ROADMAP.md](docs/ROADMAP.md)**.
 
 | | |
 |---|---|
-| ✅ Shipped | 11 chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, 19 themes, 6 languages |
-| 🔜 Next | **Duress password** — a second password that opens a decoy wallet · **One-switch private send** — Tor on, route chosen, sent · **Transaction simulation** — see exactly what will happen before you confirm |
-| 🗓 Planned | Android · reproducible builds with published attestations · an external security audit |
+| ✅ Shipped | 11+ chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages |
+| 🔜 Next | **Duress password** · transaction simulation · supply-chain pin for Tor/Monero · capability matrix as single source of truth |
+| 🗓 Planned | Android · Taproot/PayJoin · hardware wallets · reproducible attestations · external security audit |
 | ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 
 ## Documentation
@@ -386,6 +387,7 @@ Being honest about what exists and what doesn't:
 | [THREAT_MODEL.md](THREAT_MODEL.md) | Nine attack vectors: what is defended, and where the defence ends |
 | [PRIVACY.md](PRIVACY.md) | What leaves this machine, to whom, and what never does |
 | [docs/README.md](docs/README.md) | Index of everything below |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | **Єдиний backlog** — монети, безпека, UX, hardware, релізи |
 | [docs/architecture.md](docs/architecture.md) | How the layers fit together and why |
 | [docs/building.md](docs/building.md) | Build, run, test, package installers |
 | [docs/security-model.md](docs/security-model.md) | Threat model, crypto choices, what is not protected |
