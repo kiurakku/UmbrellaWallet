@@ -118,8 +118,25 @@ are on the roadmap and are not done yet — this page will not claim them until 
 | Branch protection | `main` requires review + all checks green; no force-push, no deletion |
 | Tests | 526 offline tests, required before merge |
 
-No external audit has been performed. When one is, it will be linked here with the full report,
-including anything it found.
+No external audit has been performed. Status and future links live in
+**[AUDIT_STATUS.md](AUDIT_STATUS.md)**. When an audit exists, it will be linked there and here with the
+full report, including findings — not a badge alone.
+
+## Bug bounty
+
+**Currently unfunded.** There is no paid bounty programme yet. Responsible disclosure is still
+welcome under the process above; researchers will be credited publicly unless they ask otherwise.
+
+When funding exists, the intended structure is:
+
+| Severity | Example | Target reward | Acknowledgement |
+|---|---|---|---|
+| Critical | Loss or theft of funds / seed | TBD (aim: meaningful fixed range) | ≤ 72 hours |
+| High | Privacy bypass of kill-switch / Tor-only, vault crypto flaw | TBD | ≤ 72 hours |
+| Medium | Non-fund UX / honesty bugs that mislead about risk | Credit | ≤ 7 days |
+
+This table is a **promise of structure**, not a funded programme. It will not be described as “active
+bounty” until rewards are actually available.
 
 ## Our promises
 

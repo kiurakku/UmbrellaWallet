@@ -113,25 +113,26 @@
 | H.3 | **Multisig** 2-of-3 | 📅 long |
 | H.4 | **Android** (окремий mobile threat model + UX, не копія desktop) | 📅 Planned |
 | R.1 | **Reproducible builds** + published attestations (честно: installer .NET single-file не bit-identical) | 🟡 docs / ⏳ attestations |
-| R.2 | **Code signing** OV/EV (SmartScreen) | ❌ заблоковано без сертифіката → див. **R.6** |
+| R.2 | **Code signing OV/EV (SmartScreen)** | ⏳ **почати за ≥60 днів до store-релізу**; потрібна юрособа; ~$300–1000/рік (див. R.6) |
 | R.3 | Підпис релізів **GPG / Sigstore** | 📅 |
 | R.4 | SBOM / provenance як release asset | 📅 |
-| R.5 | Зовнішній **security audit** | 📅 Planned |
-| **R.6** | **EV Code Signing** (~$500–800/рік) або довірений CA для Windows build — без цього SmartScreen / Store блокують unsigned exe | ⏳ |
+| R.5 | Зовнішній **security audit** — статус у [`../AUDIT_STATUS.md`](../AUDIT_STATUS.md) | 📅 Planned |
+| **R.6** | **EV Code Signing** (~$500–800/рік) або OV для Windows build — без цього SmartScreen / Store блокують unsigned exe | ⏳ |
 | **R.7** | **Microsoft Store** (опційно): окрема збірка під Store / підпис Microsoft | 📅 |
 
-### P2 / Legal — комплаєнс магазинів (див. §9)
+### P2 / Legal — комплаєнс магазинів (див. §9 + кореневі юр. файли)
 
 | # | Завдання | Статус |
 |---|---|---|
-| **L.1** | **Apple / first-run:** екран — «не зберігаємо ключі; ви відповідаєте за backup» | ⏳ |
-| **L.2** | **No «Fully Private» claims:** marketing/UI → «Privacy-enhanced (non-custodial)»; Monero — ок як private coin; прозорі чейни — без «anonymous» | 📅 |
-| **L.3** | **Age gate 18+** при першому запуску (фінтех / store) | ⏳ |
-| **L.4** | **Google Play / store copy:** «Not a financial service — we do not hold funds or recover lost keys» | ⏳ |
-| **L.5** | **Jurisdictional blocklist** (де non-custodial заборонено / BitLicense тощо) | 📅 |
+| **L.0** | Юр. docs у репо: [`TERMS_OF_SERVICE.md`](../TERMS_OF_SERVICE.md), [`PRIVACY_POLICY.md`](../PRIVACY_POLICY.md), [`APP_STORE_NOTES.md`](../APP_STORE_NOTES.md), [`GEO_BLOCKING.md`](../GEO_BLOCKING.md), [`CONTACT.md`](../CONTACT.md) | ✅ docs (2026-09-15) |
+| **L.1** | **Apple / first-run:** екран — «не зберігаємо ключі; ви відповідаєте за backup» | ⏳ код |
+| **L.2** | **No «Fully Private» claims** у UI/listing — керуватися APP_STORE_NOTES | ⏳ audit UI strings |
+| **L.3** | **Age gate 18+** при першому запуску | ⏳ код |
+| **L.4** | **Google Play / store copy:** «Not a financial service…» | ⏳ при подачі |
+| **L.5** | **Jurisdictional blocklist** — політика в GEO_BLOCKING.md | 📅 enforce |
 | **L.6** | **Linux package signing** (PGP для Flatpak/Snap / distro repos) | ⏳ |
-| **L.7** | **Geo-blocking** (IP; на mobile + GPS якщо вимагає store) — список заборонених юрисдикцій | 📅 |
-| **L.8** | **ToS acceptance** при першому запуску + посилання на Terms / Privacy | ⏳ |
+| **L.7** | **Geo-blocking** у store-builds (IP/locale) після юр. консультації | 📅 |
+| **L.8** | **ToS / Privacy Policy acceptance** при першому запуску | ⏳ код |
 
 ### P3 — продукт / maintainability
 
@@ -237,8 +238,12 @@
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Що вже вийшло |
 | [`../PRIVACY.md`](../PRIVACY.md), [`../THREAT_MODEL.md`](../THREAT_MODEL.md) | Відкриті gaps |
 | [`BUILD_VERIFY.md`](BUILD_VERIFY.md) | Reproducible / verify builds |
-| Аудит roadmap vs MANIFESTO (2026-09-15) | P0.0, P0.6–P0.8, P1.11–P1.13, P1.20, M.7, §10 |
-| Store / legal compliance plan (2026-09-15) | §9, L.1–L.8, R.6–R.7 |
+| [`../TERMS_OF_SERVICE.md`](../TERMS_OF_SERVICE.md) | Store Terms |
+| [`../PRIVACY_POLICY.md`](../PRIVACY_POLICY.md) | Formal privacy policy |
+| [`../APP_STORE_NOTES.md`](../APP_STORE_NOTES.md) | Approved store wording |
+| [`../GEO_BLOCKING.md`](../GEO_BLOCKING.md) | Restricted jurisdictions |
+| [`../AUDIT_STATUS.md`](../AUDIT_STATUS.md) | External audit: none yet |
+| [`../CONTACT.md`](../CONTACT.md) | Public contacts |
 
 Оновлюй **цей** файл при зміні пріоритетів; деталі фаз — у спеціалізованих docs, без дублювання суперечливих статусів.
 
@@ -269,9 +274,10 @@
 
 | Вимога | Статус | Коментар |
 |---|---|---|
-| App Store: non-custodial confirmation + L.1/L.3 | ⏳ | Документ від developer account / юрособи |
+| Formal TOS + Privacy Policy + App Store notes + Geo + Contact | ✅ | Кореневі `.md` (2026-09-15) |
+| App Store: non-custodial confirmation + L.1/L.3 in **UI** | ⏳ | Документи готові; потрібен first-run екран |
 | Google Play: crypto publisher rules + L.4 | ⏳ | Підтвердження бізнесу; **без** KYC-less on-ramp у core |
-| Microsoft Store: code signing | ❌→R.6 | Без EV — лишаємо GitHub side-load |
+| Microsoft Store: code signing | ⏳ R.2/R.6 | Без EV — лишаємо GitHub side-load |
 | Linux repos: PGP (L.6) | ⏳ | Fedora / Debian / Flathub |
 
 ### 9.3. Дисплеймери (обовʼязкові для store / публічного релізу)

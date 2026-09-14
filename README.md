@@ -132,13 +132,15 @@ is the most common way people lose money.
 | Litecoin (LTC) | ✅ | ✅ | ✅ | ✅ | ✅ | BIP84, full HD scan |
 | Dogecoin (DOGE) | ✅ | ✅ | ✅ | ✅ | ✅ | real UTXO spend |
 | Bitcoin Cash (BCH) | ✅ | ✅ | ✅ | ✅ | — | CashAddr, SIGHASH_FORKID |
-| Monero (XMR) | ✅ | ✅ | ✅ | — | — | local `monero-wallet-rpc`, loopback only |
+| Monero (XMR) | ✅ | ✅ | ✅ | ✅ | — | local `monero-wallet-rpc`, loopback only |
 | Solana (SOL) | ✅ | ✅ | ✅ | ✅ | — | SPL compatible |
 | TRON (TRX) | ✅ | ✅ | ✅ | ✅ | — | + every TRC-20 at the same address |
 | USDT (TRC-20) | ✅ | ✅ | ✅ | ✅ | — | same address as TRX; fee paid in TRX |
 | TON | ✅ | ✅ | ✅ | ✅ | — | wallet v4R2, pinned to `@ton/ton` |
 | Cardano (ADA) | ✅ | ✅ | ✅ | ✅ | — | CIP-1852, BIP32-Ed25519 |
-| Zcash (ZEC) | ✅ | ✅ | — | — | — | transparent addresses only — stated plainly |
+| Zcash (ZEC) | ✅ | ✅ | — | — | — | **transparent `t1…` only** — not shielded |
+| Linea (ETH) | ✅ | ✅ | ✅ | 🟡 | — | same `0x` as mainnet |
+| zkSync Era (ETH) | ✅ | ✅ | — | 🟡 | — | **receive + balance only** (send not safe yet) |
 
 Plus the native coin of every major EVM network at the same `0x` address (BNB, MATIC, AVAX, FTM, CRO,
 and ETH on Arbitrum / Optimism / Base), and NFTs listed by name and count with **no image fetch**, so
@@ -383,11 +385,17 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 
 | | |
 |---|---|
-| [MANIFESTO.md](MANIFESTO.md) | The rules this wallet is held to, and what they cost |
-| [THREAT_MODEL.md](THREAT_MODEL.md) | Nine attack vectors: what is defended, and where the defence ends |
-| [PRIVACY.md](PRIVACY.md) | What leaves this machine, to whom, and what never does |
-| [docs/README.md](docs/README.md) | Index of everything below |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | **Єдиний backlog** — монети, безпека, UX, hardware, релізи |
+| [MANIFESTO.md](MANIFESTO.md) | The rules this wallet is held to — **do not dilute this tone** |
+| [THREAT_MODEL.md](THREAT_MODEL.md) | Attack vectors: what is defended, and where the defence ends |
+| [PRIVACY.md](PRIVACY.md) | Technical privacy: what leaves this machine |
+| [PRIVACY_POLICY.md](PRIVACY_POLICY.md) | **Formal privacy policy** (App Store / Play) |
+| [TERMS_OF_SERVICE.md](TERMS_OF_SERVICE.md) | **Terms of use** (non-custodial, 18+, liability) |
+| [APP_STORE_NOTES.md](APP_STORE_NOTES.md) | Approved store wording |
+| [GEO_BLOCKING.md](GEO_BLOCKING.md) | Restricted jurisdictions (store compliance) |
+| [AUDIT_STATUS.md](AUDIT_STATUS.md) | External audit status — none yet |
+| [CONTACT.md](CONTACT.md) | GitHub · Telegram · TikTok · Reddit |
+| [docs/README.md](docs/README.md) | Index of engineering docs |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Single backlog (coins, security, store/legal) |
 | [docs/architecture.md](docs/architecture.md) | How the layers fit together and why |
 | [docs/building.md](docs/building.md) | Build, run, test, package installers |
 | [docs/security-model.md](docs/security-model.md) | Threat model, crypto choices, what is not protected |
@@ -408,8 +416,8 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
   and the rest are public ledgers, and Privacy Radar exists to tell you what yours reveals.
 - Zcash here is transparent addresses only. It is listed that way rather than implying shielded
   privacy the wallet does not provide.
-- No external security audit has been done yet. 526 tests and a public CI are evidence, not a
-  substitute — and this page will say so until that changes.
+- No external security audit has been done yet — see [AUDIT_STATUS.md](AUDIT_STATUS.md). Tests and
+  public CI are evidence, not a substitute.
 
 ## Contributing
 
@@ -444,14 +452,20 @@ which is exactly why there is no tracking and no cut of your transfers.</sub>
   <img src="docs/assets/logo-telegram-channel.png" width="72" alt="Umbrella Wallet on Telegram"/>
 </a>
 
-**[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)**
+**[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)** ·
+[GitHub](https://github.com/kiurakku/UmbrellaWallet) ·
+[TikTok @thefear078](https://www.tiktok.com/@thefear078) ·
+[Reddit u/Particular_Lime_7004](https://www.reddit.com/user/Particular_Lime_7004)
 
-<sub>Releases, security notes and contact — the only official channel.<br/>
+<sub>Releases, security notes and contact — see [CONTACT.md](CONTACT.md).<br/>
 Nobody there will ever ask you for your seed phrase.</sub>
 
 <br/>
 
-[💖 Sponsor this work](https://github.com/sponsors/kiurakku)
+[💖 Sponsor this work](https://github.com/sponsors/kiurakku) ·
+[Terms](TERMS_OF_SERVICE.md) ·
+[Privacy Policy](PRIVACY_POLICY.md) ·
+[Audit status](AUDIT_STATUS.md)
 
 <br/>
 <br/>
