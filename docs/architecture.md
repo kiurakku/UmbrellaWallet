@@ -166,3 +166,8 @@ These are not lint rules; they are tests that exist because each one was a real 
 - [security-model.md](security-model.md) — threat model and crypto choices
 - [adding-a-chain.md](adding-a-chain.md) — the safety gates a new coin must pass
 - [04-desktop.md](04-desktop.md) — older, more granular desktop notes
+
+---
+
+📖 Back to [Documentation Index](INDEX.md)
+

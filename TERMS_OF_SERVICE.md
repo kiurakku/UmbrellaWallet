@@ -74,3 +74,8 @@ Your rights under these Terms end if you breach them or the [LICENSE](LICENSE). 
 - Author: [CONTACT.md](CONTACT.md)
 
 Do not send seed phrases or private keys to any contact channel.
+
+---
+
+📖 Back to [Documentation Index](docs/INDEX.md)
+

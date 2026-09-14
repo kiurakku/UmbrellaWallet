@@ -241,3 +241,8 @@ opening a public issue. See [BUILD_VERIFY.md](BUILD_VERIFY.md) for the current v
 | `monero-wallet-rpc` copy fails | Antivirus false positive. See the note above. |
 | Localization parity test fails | You added a key to one language only. Add it everywhere. |
 | Theme contrast test fails | A palette's text dropped below WCAG AA. See [theming.md](theming.md). |
+
+---
+
+📖 Back to [Documentation Index](INDEX.md)
+

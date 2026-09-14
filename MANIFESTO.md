@@ -153,3 +153,8 @@ somebody else's server.
 
 That is the trade, made deliberately. A wallet that oversells itself is fine until the day it is
 tested, and the person testing it is not the user.
+
+---
+
+📖 Back to [Documentation Index](docs/INDEX.md)
+

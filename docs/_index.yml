@@ -1,0 +1,63 @@
+# Machine-readable documentation map
+# Used by humans and tooling. Prefer docs/INDEX.md for reading.
+
+documentation:
+  hub: INDEX.md
+  users:
+    - title: Getting Started
+      file: getting-started.md
+    - title: Troubleshooting
+      file: troubleshooting.md
+    - title: Security Guide
+      file: ../SECURITY.md
+    - title: Privacy (technical)
+      file: ../PRIVACY.md
+    - title: Privacy Policy (formal)
+      file: ../PRIVACY_POLICY.md
+    - title: Terms of Service
+      file: ../TERMS_OF_SERVICE.md
+  developers:
+    - title: Architecture
+      file: architecture.md
+    - title: Building
+      file: building.md
+    - title: Testing
+      file: testing.md
+    - title: Adding a Chain
+      file: adding-a-chain.md
+    - title: Coins and Chains
+      file: 12-coins-and-chains.md
+    - title: Roadmap
+      file: ROADMAP.md
+    - title: Contributing
+      file: ../CONTRIBUTING.md
+    - title: Forking
+      file: forking.md
+  security:
+    - title: Threat Model
+      file: ../THREAT_MODEL.md
+    - title: Security Model
+      file: security-model.md
+    - title: Vulnerability Reporting
+      file: ../SECURITY.md
+    - title: Audit Status
+      file: ../AUDIT_STATUS.md
+    - title: Build Verify
+      file: BUILD_VERIFY.md
+    - title: Tor
+      file: TOR.md
+  philosophy_legal:
+    - title: Manifesto
+      file: ../MANIFESTO.md
+    - title: License
+      file: ../LICENSE
+    - title: Trademark Policy
+      file: ../TRADEMARK_POLICY.md
+    - title: Geo Blocking
+      file: ../GEO_BLOCKING.md
+    - title: App Store Notes
+      file: ../APP_STORE_NOTES.md
+    - title: Contact
+      file: ../CONTACT.md
+    - title: Third-Party Notices
+      file: ../THIRD_PARTY_NOTICES.md

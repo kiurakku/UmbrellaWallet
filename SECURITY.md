@@ -122,6 +122,34 @@ No external audit has been performed. Status and future links live in
 **[AUDIT_STATUS.md](AUDIT_STATUS.md)**. When an audit exists, it will be linked there and here with the
 full report, including findings — not a badge alone.
 
+## Security update process
+
+When a vulnerability is confirmed:
+
+1. **Within 72 hours:** acknowledge receipt.  
+2. **Within 7 days:** assessment and a fix timeline.  
+3. **Fix released** under coordinated disclosure.  
+4. **CVE** requested when severity is High or Critical and appropriate.  
+5. **Credit** publicly unless the reporter asks otherwise.
+
+## Release integrity
+
+Each release should include:
+
+| Asset | Status |
+|---|---|
+| `SHA256SUMS-<version>.txt` | ✅ shipped |
+| Detached GPG / Sigstore signature on the sums file | ⏳ roadmap R.3 |
+| SBOM (CycloneDX / SPDX) | ⏳ roadmap R.4 |
+
+## Historical vulnerabilities
+
+| Date | ID | Severity | Fixed in |
+|---|---|---|---|
+| — | — | — | None disclosed yet |
+
+When vulnerabilities are disclosed, they will be listed here with links to advisories.
+
 ## Bug bounty
 
 **Currently unfunded.** There is no paid bounty programme yet. Responsible disclosure is still
@@ -137,6 +165,10 @@ When funding exists, the intended structure is:
 
 This table is a **promise of structure**, not a funded programme. It will not be described as “active
 bounty” until rewards are actually available.
+
+---
+
+📖 Documentation hub: [docs/INDEX.md](docs/INDEX.md) · Support: [.github/SUPPORT.md](.github/SUPPORT.md)
 
 ## Our promises
 

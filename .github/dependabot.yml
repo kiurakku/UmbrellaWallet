@@ -1,41 +1,28 @@
 version: 2
 
-# Keeps dependencies patched across every ecosystem the wallet ships. Grouped so a
-# routine bump is one PR per ecosystem, not dozens. Security updates are always raised
-# individually and immediately, regardless of the weekly schedule below.
+# Desktop-only wallet. Security updates are raised immediately regardless of schedule.
 updates:
-  # Web wallet (Vite / React) at the repo root.
-  - package-ecosystem: npm
-    directory: "/"
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    groups:
-      web-minor-and-patch:
-        update-types: [minor, patch]
-
-  # NestJS backend.
-  - package-ecosystem: npm
-    directory: "/backend"
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    groups:
-      backend-minor-and-patch:
-        update-types: [minor, patch]
-
-  # Desktop wallet (.NET 8 / Avalonia) — the fund-critical codebase.
   - package-ecosystem: nuget
     directory: "/desktop"
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - nuget
     groups:
       desktop-minor-and-patch:
         update-types: [minor, patch]
+    commit-message:
+      prefix: "deps"
 
-  # The GitHub Actions themselves (pin drift, security fixes in the actions).
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "ci"

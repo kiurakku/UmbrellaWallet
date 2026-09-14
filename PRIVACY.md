@@ -137,3 +137,8 @@ with what each learns, and all replaceable.
 
 **Can I use my own node or proxy?** Yes: your own server per chain, your own Monero node, your own
 SOCKS5 proxy, or the bundled Tor.
+
+---
+
+📖 Back to [Documentation Index](docs/INDEX.md)
+

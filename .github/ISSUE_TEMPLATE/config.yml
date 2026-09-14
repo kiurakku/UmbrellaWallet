@@ -3,6 +3,12 @@ contact_links:
   - name: Security vulnerability (private)
     url: https://github.com/kiurakku/UmbrellaWallet/security/advisories/new
     about: Report security bugs privately — do not open a public issue
+  - name: Documentation hub
+    url: https://github.com/kiurakku/UmbrellaWallet/blob/main/docs/INDEX.md
+    about: Map of all official docs
+  - name: Support / community
+    url: https://t.me/UmbrellaWallet
+    about: Product questions (never share seeds)
   - name: Sponsor the project
     url: https://github.com/sponsors/kiurakku
     about: Support Umbrella Wallet development

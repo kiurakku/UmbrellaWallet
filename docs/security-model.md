@@ -255,3 +255,8 @@ If you are auditing this and have limited time, these are the paths where a bug 
 | 4 | `Core/Amounts/AmountInput.cs` — the "0,5 is not 5" boundary |
 | 5 | `Infrastructure/Network/PublicHttp.cs` — the single network chokepoint and kill-switch |
 | 6 | `App/ViewModels/MainViewModel.Send.cs` — review → confirm → broadcast |
+
+---
+
+📖 Back to [Documentation Index](INDEX.md)
+

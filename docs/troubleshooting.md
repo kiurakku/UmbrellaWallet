@@ -153,3 +153,8 @@ explicit culture in assertions rather than relying on the machine's.
 
 Never post your seed phrase, a private key, or a screenshot containing either. No one legitimate will
 ever ask you for them — not us, not support, not anyone.
+
+---
+
+📖 Back to [Documentation Index](INDEX.md)
+

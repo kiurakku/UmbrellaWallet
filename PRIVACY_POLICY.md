@@ -82,3 +82,8 @@ We will update the “Last updated” date when this policy changes. Material ch
 | Author contacts | [CONTACT.md](CONTACT.md) |
 
 **Never** send a recovery phrase or private key to any contact.
+
+---
+
+📖 Back to [Documentation Index](docs/INDEX.md)
+
