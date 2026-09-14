@@ -191,6 +191,25 @@ named as a deliberate exception. Proven by removing the address book from the wi
 way transaction notes are encrypted (a key derived from the seed) is the next step; until then, the
 honest statement is that anything running as the user can read it.
 
+## Code that exists but is not reachable
+
+Three pieces of the wallet are written, tested against published vectors, and deliberately not wired
+to anything the user can press:
+
+| | State |
+|---|---|
+| `TaprootDerivation` | Addresses reproduce all three BIP-86 vectors, internal keys included. No scanner for the `m/86'` account and no key-path signer, so showing a `bc1p…` address would break the cardinal rule. |
+| `Erc20Transfer` | Calldata encoding is pinned to the standard's own selector. Flipping it on needs a small real mainnet send first. |
+| `DeniableVaultFormat` | Two-slot constant-size vault for a duress password. Migrating a live vault is the risky half and is not done. |
+
+This is the pattern on purpose. The half that is hard to get right — encoding, derivation, a storage
+format — is finished and reviewable on its own, while the half that touches somebody's money waits for
+proof. Shipping derivation alone would mean a user receiving Bitcoin to an address the wallet cannot
+see.
+
+`TaprootDerivationTests` asserts the *absence* of the wiring as well as the correctness of the maths:
+Bitcoin must still report purpose 84 and `ScriptPubKeyType.Segwit` everywhere the user can act.
+
 ## What this does not protect you from
 
 Being direct about this is the point.

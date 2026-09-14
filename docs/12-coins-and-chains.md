@@ -440,7 +440,7 @@ threat model names each one as an open gap rather than implying it away.
 | **Signed releases** (GPG / Sigstore) | Checksums prove integrity against accidental corruption, not against a replaced release. |
 | ~~Tor stream isolation~~ | **Done.** Chain data, broadcasts, prices, swaps, exchange accounts and maintenance each get their own circuit. |
 | **Dandelion++** | Broadcasting by flood lets an observer tie an IP to a transaction by propagation timing. A stem phase breaks that. |
-| **Taproot (BIP-341)** | Cheaper and indistinguishable from a single-key spend at the chain level. |
+| **Taproot (BIP-341)** | Derivation done and pinned to BIP-86's published vectors; still needs the scanner to walk the `m/86'` account and a key-path signer before an address can be shown. Cheaper, and indistinguishable from a script spend at the chain level. |
 | **PayJoin (BIP-78)** | Breaks the "all inputs belong to the sender" assumption chain analysis is built on. |
 | **CoinJoin** | The heavier answer to UTXO linkage; worth doing after PayJoin. |
 | **Hardware wallets** (Ledger / Trezor) | The only real answer to Vector 1 of the threat model — malware on the user's own machine. |
