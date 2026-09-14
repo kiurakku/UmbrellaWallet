@@ -76,20 +76,26 @@ public partial class MainViewModel
         if (string.IsNullOrWhiteSpace(symbol)) return;
         var sym = symbol.Trim().ToUpperInvariant();
 
-        var holding = Holdings.FirstOrDefault(h => string.Equals(h.Symbol, sym, StringComparison.OrdinalIgnoreCase));
-        var account = Accounts.FirstOrDefault(a => string.Equals(a.Symbol, sym, StringComparison.OrdinalIgnoreCase));
-        var market = Market.FirstOrDefault(m => string.Equals(m.Symbol, sym, StringComparison.OrdinalIgnoreCase));
+        // Snapshot collections — market/holdings refresh can mutate ObservableCollections on another
+        // thread while we enumerate, which throws InvalidOperationException.
+        var holdings = Holdings.ToArray();
+        var accounts = Accounts.ToArray();
+        var market = Market.ToArray();
+
+        var holding = holdings.FirstOrDefault(h => string.Equals(h.Symbol, sym, StringComparison.OrdinalIgnoreCase));
+        var account = accounts.FirstOrDefault(a => string.Equals(a.Symbol, sym, StringComparison.OrdinalIgnoreCase));
+        var priceRow = market.FirstOrDefault(m => string.Equals(m.Symbol, sym, StringComparison.OrdinalIgnoreCase));
 
         AssetSymbol = sym;
-        AssetName = holding?.Name ?? account?.Name ?? market?.Name ?? sym;
+        AssetName = holding?.Name ?? account?.Name ?? priceRow?.Name ?? sym;
         AssetNetwork = holding?.NetworkLabel ?? account?.NetworkLabel ?? CoinNetworks.For(sym, sym);
         AssetAddress = account?.Address ?? string.Empty;
         AssetHasAddress = IsRealAddress(AssetAddress);
         AssetAmountLabel = holding?.AmountLabel ?? $"0 {sym}";
         AssetValueLabel = holding?.ValueLabel ?? Fx.Money(0);
-        AssetPriceLabel = holding?.PriceLabel ?? market?.PriceLabel ?? "—";
-        AssetChangeLabel = holding?.ChangeLabel ?? market?.ChangeLabel ?? "·";
-        AssetChangeColor = holding?.ChangeColor ?? market?.ChangeColor ?? "#8A9099";
+        AssetPriceLabel = holding?.PriceLabel ?? priceRow?.PriceLabel ?? "—";
+        AssetChangeLabel = holding?.ChangeLabel ?? priceRow?.ChangeLabel ?? "·";
+        AssetChangeColor = holding?.ChangeColor ?? priceRow?.ChangeColor ?? "#8A9099";
         AssetStatusLabel = account?.StatusLabel ?? "Not in this wallet";
         AssetStatusColor = account?.StatusColor ?? "#8A9099";
         AssetDerivation = account?.Derivation ?? string.Empty;
@@ -128,7 +134,7 @@ public partial class MainViewModel
     private void RebuildAssetActivity(string symbol)
     {
         AssetActivity.Clear();
-        foreach (var row in Transactions
+        foreach (var row in Transactions.ToArray()
             .Where(t => string.Equals(t.Asset, symbol, StringComparison.OrdinalIgnoreCase))
             .Take(12))
         {
