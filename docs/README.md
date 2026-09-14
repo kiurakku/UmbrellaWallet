@@ -8,6 +8,8 @@ New here? The [project README](../README.md) is the overview. These pages are th
 
 **Що ще робити (єдиний backlog):** **[ROADMAP.md](ROADMAP.md)** — зведено з усіх docs, CHANGELOG, threat/privacy gaps і store/legal комплаєнсу.
 
+**Legal / store (repo root):** [Terms](../TERMS_OF_SERVICE.md) · [Privacy Policy](../PRIVACY_POLICY.md) · [App Store notes](../APP_STORE_NOTES.md) · [Geo](../GEO_BLOCKING.md) · [Audit status](../AUDIT_STATUS.md) · [Contact](../CONTACT.md)
+
 ---
 
 ## For engineers

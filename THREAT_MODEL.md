@@ -39,11 +39,20 @@ window renders black to screenshots and screen sharing. The clipboard is cleared
 address is copied, and only if it still holds exactly what the wallet put there. Auto-lock defaults to
 five minutes.
 
-**Where the defence ends.** It does not hold. An attacker at this level can read keystrokes, read the
-clipboard before the timer, and read process memory while the wallet is unlocked — and the unlocked
-mnemonic is a .NET `string`, which cannot be reliably zeroed: strings are immutable, the GC moves
-them, and `SecureString` is a no-op outside Windows. **No desktop wallet survives this.** For balances
-worth an attacker's effort, a hardware wallet is the answer, and Umbrella does not support one yet.
+**Where the defence ends.** It does not hold. An attacker at this level can:
+
+- capture the vault password with a keylogger while you type it;
+- read the clipboard before the clear timer;
+- view the screen via remote desktop / RAT even when capture APIs are blocked for screenshots;
+- scrape process memory while the wallet is unlocked — and the unlocked mnemonic is a .NET `string`,
+  which cannot be reliably zeroed (immutable strings, GC moves, `SecureString` is a no-op outside
+  Windows).
+
+**No desktop wallet survives a fully compromised user session.** Full-disk encryption helps a stolen
+powered-off disk; it does not help malware already running as you.
+
+**Mitigation (not shipped yet):** hardware wallet signing (roadmap **H.1 / H.2**) so the seed never
+decrypts on the general-purpose PC for spends. Until then residual risk stays **HIGH and unmitigated**.
 
 **Residual risk: HIGH and unmitigated.** Stated here rather than buried.
 

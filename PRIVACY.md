@@ -107,6 +107,15 @@ The items in the right-hand column are there because they are useful before the 
 because they are not secret. If that trade is wrong for you, **Settings → Danger zone** removes all of
 it, and the build fails if the wallet writes a file the wipe does not handle.
 
+### Data retention
+
+- **We retain nothing on our servers** — there is no user database. See also the store-facing
+  [PRIVACY_POLICY.md](PRIVACY_POLICY.md).
+- **On your device**, data remains until you wipe it in-app or delete the application data directory:
+  - Windows (installed): `%APPDATA%\UmbrellaWallet`
+  - Linux: `~/.config/UmbrellaWallet` or `data/` next to a portable build
+- **Encrypted backup files** you export remain until **you** delete them.
+
 Full-disk encryption is the right answer to a stolen laptop, and it is the operating system's job
 rather than this program's.
 

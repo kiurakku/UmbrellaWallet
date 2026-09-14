@@ -3,20 +3,28 @@
 For engineers building on top of this. What you can change, what you should not, and the parts that
 will silently hurt your users if you get them wrong.
 
-## Read this first: the licence is not MIT
+## Read this first: the licence is not MIT / GPL
 
-Umbrella is **free to use** but **not** a permissive open-source licence. See [LICENSE](../LICENSE)
-for the binding text. In practice:
+Umbrella uses a **custom Free-Use, No-Derivatives** licence — see [LICENSE](../LICENSE) for the
+binding text. It is **source-available for audit**, not a permissive open-source grant.
 
-- ✅ Read it, audit it, build it, run it, learn from it.
-- ✅ Fork it privately to fix something, and send the fix back as a PR.
-- ⚠️ Redistributing a modified build under your own branding is **restricted**. Ask first —
-  [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet).
+In practice:
 
-The reason is not possessiveness. A wallet is a trust object: a fork that keeps the Umbrella name and
-look while quietly changing the fee address or the RNG is indistinguishable from the original to the
-person losing money. If you want to ship a derivative, talk to us and we will almost certainly say yes
-with a name change.
+| | |
+|---|---|
+| ✅ | Read it, audit it, build it locally, run it, learn from it |
+| ✅ | Fork **privately** to prepare a fix and send it back as a PR |
+| ❌ | Public forks, mirrors, redistribution, or rebrands **without written permission** |
+| ❌ | Keeping the Umbrella / the fear name or logos on a derivative |
+| ❌ | Quietly changing fee recipients, RNG, or Tor behaviour while looking official |
+
+**Why:** a wallet is a trust object. A clone that looks like Umbrella while changing the money path
+is how users lose funds. If you want to ship a derivative: ask via
+[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet) or [CONTACT.md](../CONTACT.md) — permission almost
+always requires a **full rebrand** and preserved honesty docs (threat model / privacy limits).
+
+Third-party components (Tor, Monero helpers, NuGet packages) keep **their own** licences — see
+[THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
 ## Rebranding checklist
 
