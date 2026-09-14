@@ -53,7 +53,7 @@ Start here if you are building on, forking, or auditing Umbrella.
 
 | Document | What's inside |
 |---|---|
-| **[ROADMAP.md](ROADMAP.md)** | **Єдиний зведений backlog** — монети, безпека, UX, hardware, Android, релізи. |
+| **[ROADMAP.md](ROADMAP.md)** | **Єдиний зведений backlog** — монети, безпека, UX, hardware, store/legal (§9), релізи. |
 | [04-desktop.md](04-desktop.md) | Older, more granular desktop notes: project structure, vault, packaging. |
 | [07-financial.md](07-financial.md) | Notes on the financial flow. |
 | [SECURE_ANON_ROADMAP.md](SECURE_ANON_ROADMAP.md) | The privacy/anonymity pillars (status table). |
