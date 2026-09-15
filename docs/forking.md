@@ -130,3 +130,8 @@ paths where a bug costs somebody their money, and a test is the only way a revie
 
 Tests should be offline and deterministic. If yours needs a live explorer, name it `LiveExplorer…` so
 it stays out of the default run.
+
+---
+
+📖 Back to [Documentation Index](INDEX.md)
+

@@ -27,3 +27,8 @@ You may clone and build locally to verify behaviour or study the code for person
 ## Questions
 
 Community channel: [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)
+
+---
+
+📖 Back to [Documentation Index](docs/INDEX.md)
+

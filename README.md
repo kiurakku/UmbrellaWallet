@@ -31,7 +31,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 [The rules](MANIFESTO.md) ·
 [Threat model](THREAT_MODEL.md) ·
 [Privacy](PRIVACY.md) ·
-[Docs](docs/README.md)
+[**Docs index**](docs/INDEX.md)
 
 <br/>
 
@@ -40,6 +40,36 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 </div>
 
 ---
+
+## Documentation navigation
+
+Official docs are one web: root philosophy/legal files + `docs/` deep-dives. **Hub:** [docs/INDEX.md](docs/INDEX.md).
+
+```
+UmbrellaWallet/
+├── README.md                 ← you are here
+├── MANIFESTO.md              ← core philosophy (THE RULES)
+├── SECURITY.md · PRIVACY.md · THREAT_MODEL.md
+├── TERMS_OF_SERVICE.md · PRIVACY_POLICY.md · TRADEMARK_POLICY.md
+├── LEGAL/                    ← pointers to legal docs
+├── docs/
+│   ├── INDEX.md              ← documentation hub
+│   ├── getting-started.md
+│   ├── ROADMAP.md
+│   └── …
+└── .github/SUPPORT.md
+```
+
+| If you want to… | Read this first |
+|---|---|
+| Install and use | [Getting started](docs/getting-started.md) |
+| Understand the philosophy | [MANIFESTO.md](MANIFESTO.md) |
+| Know security guarantees | [THREAT_MODEL.md](THREAT_MODEL.md) |
+| Report a vulnerability | [SECURITY.md](SECURITY.md) |
+| Build from source | [Building](docs/building.md) |
+| Add a new coin | [Adding a chain](docs/adding-a-chain.md) |
+| See the backlog | [ROADMAP.md](docs/ROADMAP.md) |
+| Legal / store | [LEGAL/](LEGAL/README.md) · [Terms](TERMS_OF_SERVICE.md) · [Trademark](TRADEMARK_POLICY.md) |
 
 ## What this is
 
@@ -385,16 +415,20 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 
 | | |
 |---|---|
+| [docs/INDEX.md](docs/INDEX.md) | **Central documentation hub** — start here |
+| [docs/getting-started.md](docs/getting-started.md) | Install, verify, first wallet |
 | [MANIFESTO.md](MANIFESTO.md) | The rules this wallet is held to — **do not dilute this tone** |
 | [THREAT_MODEL.md](THREAT_MODEL.md) | Attack vectors: what is defended, and where the defence ends |
 | [PRIVACY.md](PRIVACY.md) | Technical privacy: what leaves this machine |
 | [PRIVACY_POLICY.md](PRIVACY_POLICY.md) | **Formal privacy policy** (App Store / Play) |
 | [TERMS_OF_SERVICE.md](TERMS_OF_SERVICE.md) | **Terms of use** (non-custodial, 18+, liability) |
+| [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md) | Name and logo protection |
 | [APP_STORE_NOTES.md](APP_STORE_NOTES.md) | Approved store wording |
 | [GEO_BLOCKING.md](GEO_BLOCKING.md) | Restricted jurisdictions (store compliance) |
 | [AUDIT_STATUS.md](AUDIT_STATUS.md) | External audit status — none yet |
 | [CONTACT.md](CONTACT.md) | GitHub · Telegram · TikTok · Reddit |
-| [docs/README.md](docs/README.md) | Index of engineering docs |
+| [LEGAL/README.md](LEGAL/README.md) | Legal document map |
+| [docs/README.md](docs/README.md) | Engineering docs index |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Single backlog (coins, security, store/legal) |
 | [docs/architecture.md](docs/architecture.md) | How the layers fit together and why |
 | [docs/building.md](docs/building.md) | Build, run, test, package installers |
@@ -406,6 +440,7 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 | [docs/testing.md](docs/testing.md) | What the suite covers and how to extend it |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Diagnosing a misbehaving wallet |
 | [CHANGELOG.md](CHANGELOG.md) | Every release |
+| [.github/SUPPORT.md](.github/SUPPORT.md) | How to get help (never share seeds) |
 
 ## The honest part
 

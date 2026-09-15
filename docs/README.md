@@ -4,78 +4,74 @@ Umbrella is a **desktop-only**, self-custody crypto wallet (.NET 8 + Avalonia; W
 Android planned). There is **no web app and no backend server** — nothing to sign in to and nothing
 that knows you exist.
 
-New here? The [project README](../README.md) is the overview. These pages are the detail.
+**Start here:** **[INDEX.md](INDEX.md)** — full documentation map.
 
-**Що ще робити (єдиний backlog):** **[ROADMAP.md](ROADMAP.md)** — зведено з усіх docs, CHANGELOG, threat/privacy gaps і store/legal комплаєнсу.
-
-**Legal / store (repo root):** [Terms](../TERMS_OF_SERVICE.md) · [Privacy Policy](../PRIVACY_POLICY.md) · [App Store notes](../APP_STORE_NOTES.md) · [Geo](../GEO_BLOCKING.md) · [Audit status](../AUDIT_STATUS.md) · [Contact](../CONTACT.md)
+Product overview: [README.md](../README.md) · Backlog: [ROADMAP.md](ROADMAP.md) · Legal: [LEGAL/](../LEGAL/README.md)
 
 ---
 
 ## For engineers
-
-Start here if you are building on, forking, or auditing Umbrella.
 
 | Document | What's inside |
 |---|---|
 | [../MANIFESTO.md](../MANIFESTO.md) | **Read first.** The rules everything below is held to |
 | [../THREAT_MODEL.md](../THREAT_MODEL.md) | Attack vectors, and where each defence ends |
 | [../PRIVACY.md](../PRIVACY.md) | What leaves this machine and what never does |
-| **[architecture.md](architecture.md)** | The three-project layering and why `Core` may never touch the network. Data flow, concurrency rules, the invariants the tests enforce. |
-| **[building.md](building.md)** | Build, run, test. Producing installers, the portable build and checksums. The apphost rename that trips people up. |
-| **[testing.md](testing.md)** | What the 526 tests actually protect, how to write one that belongs here, and the coverage gaps we know about. |
-| **[forking.md](forking.md)** | Licence limits, the rebranding checklist, and the seven things that will hurt your users if you change them. |
+| **[architecture.md](architecture.md)** | Layers, data flow, why `Core` never touches the network |
+| **[building.md](building.md)** | Build, run, test, package |
+| **[testing.md](testing.md)** | What the offline suite protects |
+| **[forking.md](forking.md)** | Licence limits and rebrand checklist |
 
 ## Extending it
 
 | Document | What's inside |
 |---|---|
-| **[12-coins-and-chains.md](12-coins-and-chains.md)** | Every chain, coin and token: derivation paths, address formats, fees, privacy level and current status. |
-| **[adding-a-chain.md](adding-a-chain.md)** | A coin end to end — derivation, validation, balance, history, send — with the gates that stop a new chain losing money on day one. |
-| **[localization.md](localization.md)** | Add or fix a language. Placeholder rules, what must *not* be translated, and the parity tests. |
-| **[theming.md](theming.md)** | Add a theme that passes the contrast and distinctness tests, and what makes a theme more than a recoloured default. |
+| **[12-coins-and-chains.md](12-coins-and-chains.md)** | Every chain: paths, fees, privacy, status |
+| **[adding-a-chain.md](adding-a-chain.md)** | End-to-end procedure with safety gates |
+| **[localization.md](localization.md)** | Languages and parity tests |
+| **[theming.md](theming.md)** | Themes and contrast rules |
 
 ## Security
 
 | Document | What's inside |
 |---|---|
-| **[../SECURITY.md](../SECURITY.md)** | Reporting a vulnerability, scope, response times, supported versions. |
-| **[security-model.md](security-model.md)** | Threat model, cryptographic choices, and an explicit list of what Umbrella does **not** protect you from. |
-| **[BUILD_VERIFY.md](BUILD_VERIFY.md)** | Verifying a published build against source. |
-| **[TOR.md](TOR.md)** | The bundled Tor client: ports, bootstrap, the kill-switch. |
+| **[../SECURITY.md](../SECURITY.md)** | Reporting, scope, response times |
+| **[security-model.md](security-model.md)** | Crypto choices and explicit non-goals |
+| **[BUILD_VERIFY.md](BUILD_VERIFY.md)** | Verify a published build against source |
+| **[TOR.md](TOR.md)** | Bundled Tor, kill-switch, circuits |
 
 ## Using it
 
 | Document | What's inside |
 |---|---|
-| **[troubleshooting.md](troubleshooting.md)** | Slow balances, stuck Monero, spam tokens, failed sends, blank icons — users first, developers second. |
-| **[../CHANGELOG.md](../CHANGELOG.md)** | Every release. |
+| **[getting-started.md](getting-started.md)** | Install, verify, first wallet |
+| **[troubleshooting.md](troubleshooting.md)** | Common failures |
+| **[../CHANGELOG.md](../CHANGELOG.md)** | Every release |
 
 ## Reference and history
 
 | Document | What's inside |
 |---|---|
-| **[ROADMAP.md](ROADMAP.md)** | **Єдиний зведений backlog** — монети, безпека, UX, hardware, store/legal (§9), релізи. |
-| [04-desktop.md](04-desktop.md) | Older, more granular desktop notes: project structure, vault, packaging. |
-| [07-financial.md](07-financial.md) | Notes on the financial flow. |
-| [SECURE_ANON_ROADMAP.md](SECURE_ANON_ROADMAP.md) | The privacy/anonymity pillars (status table). |
-| [CLAUDE_IMPLEMENTATION_ROADMAP_UK.md](CLAUDE_IMPLEMENTATION_ROADMAP_UK.md) | Long-form implementation phases + DoD (Ukrainian). |
-| [telegram-news-uk.md](telegram-news-uk.md) | Release announcements (Ukrainian). |
-| [archive/](archive/) | Documents for the discontinued web product. Kept for history; **not** current. |
+| **[ROADMAP.md](ROADMAP.md)** | Single backlog — coins, security, UX, store/legal |
+| **[INDEX.md](INDEX.md)** | Central documentation hub |
+| [04-desktop.md](04-desktop.md) | Older granular desktop notes |
+| [07-financial.md](07-financial.md) | Financial flow notes |
+| [SECURE_ANON_ROADMAP.md](SECURE_ANON_ROADMAP.md) | Privacy/anonymity pillars |
+| [CLAUDE_IMPLEMENTATION_ROADMAP_UK.md](CLAUDE_IMPLEMENTATION_ROADMAP_UK.md) | Long-form implementation phases (**Ukrainian**, historical) |
+| [telegram-news-uk.md](telegram-news-uk.md) | Release announcements (**Ukrainian**) |
+| [archive/](archive/) | Discontinued web product — **not** current |
 
 ---
 
-## The short version
+## Engineering invariants
 
-If you read nothing else before changing code:
+1. **`Core` never touches the network.**  
+2. **Every human-typed amount goes through `AmountInput`.**  
+3. **Every outbound request goes through `PublicHttp`.**  
+4. **Never log a seed, key, or raw signed transaction.**  
+5. **A network error is "unknown", never "empty".**  
+6. **`CanSend: false` is an honest state.**
 
-1. **`Core` never touches the network.** That is what makes every piece of money logic testable
-   offline against known vectors.
-2. **Every human-typed amount goes through `AmountInput`.** `"0,5"` parsed naively is `5`.
-3. **Every outbound request goes through `PublicHttp`.** A stray `HttpClient` bypasses Tor and the
-   kill-switch.
-4. **Never log a seed, a key, or a raw signed transaction.** No debug flag, no exceptions.
-5. **A network error is "unknown", never "empty".** Showing zero because a request failed tells
-   somebody their coins are gone.
-6. **`CanSend: false` is an honest state.** Ship receive-only rather than a send path you have not
-   tested with real money.
+---
+
+📖 Back to [INDEX.md](INDEX.md)

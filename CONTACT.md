@@ -18,3 +18,8 @@
 - Security bugs → GitHub Security Advisories only (not public issues, not TikTok comments).  
 - Product questions → Telegram.  
 - Store / legal docs: [TERMS_OF_SERVICE.md](TERMS_OF_SERVICE.md), [PRIVACY_POLICY.md](PRIVACY_POLICY.md), [APP_STORE_NOTES.md](APP_STORE_NOTES.md).
+
+---
+
+📖 Back to [Documentation Index](docs/INDEX.md)
+

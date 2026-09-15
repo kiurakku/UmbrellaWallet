@@ -236,3 +236,8 @@ and is the operating system's job.
 
 See [SECURITY.md](SECURITY.md). The rules the code is held to are in [MANIFESTO.md](MANIFESTO.md);
 the implementation detail is in [docs/security-model.md](docs/security-model.md).
+
+---
+
+📖 Back to [Documentation Index](docs/INDEX.md)
+

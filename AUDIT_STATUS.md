@@ -33,3 +33,8 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) item **R.5** (external security audit) an
 
 Security reports: [GitHub Security Advisories](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new)  
 Author: [CONTACT.md](CONTACT.md)
+
+---
+
+📖 Back to [Documentation Index](docs/INDEX.md)
+
