@@ -14,6 +14,8 @@ Umbrella Wallet is an **independent product** by **the fear** (kiurakku). The so
 - **Security reports** — privately via [GitHub Security Advisories](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new). Do not open public issues for vulnerabilities.
 - **Sponsorship** — [GitHub Sponsors](https://github.com/sponsors/kiurakku) helps fund development. It does not buy roadmap priority or access to user data.
 
+Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## What we do not accept
 
 - Pull requests that add features, refactor large areas, or change product direction **without prior discussion**.

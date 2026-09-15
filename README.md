@@ -464,9 +464,10 @@ those are the paths where a bug costs somebody their money.
 
 ## License
 
-Free to use. See [LICENSE](LICENSE) and the source policy in
-[docs/forking.md](docs/forking.md). Third-party components and their licences are listed in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+**Free-use, no-derivatives** (source-available for audit — not MIT/GPL). See [LICENSE](LICENSE) and the
+plain-English map in [LEGAL/LICENSE_SUMMARY.md](LEGAL/LICENSE_SUMMARY.md). Forking limits:
+[docs/forking.md](docs/forking.md). Brand: [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md). Third-party
+components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ---
 

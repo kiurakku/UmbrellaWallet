@@ -9,6 +9,21 @@ help", it says so.
 **Scope.** Umbrella is a desktop wallet for Windows and Linux, .NET 8 / Avalonia. There is no server,
 no account and no backend: nothing about a user exists anywhere except on their own machine.
 
+## Contents
+
+- [Trust boundaries](#trust-boundaries)
+- [Vector 1 — Malware running as the user](#vector-1--malware-running-as-the-user-infostealer-keylogger-rat)
+- [Vector 2 — Someone at the keyboard](#vector-2--someone-at-the-keyboard-of-an-unlocked-or-locked-machine)
+- [Vector 3 — Offline brute force of `vault.json`](#vector-3--offline-brute-force-of-a-stolen-vaultjson)
+- [Vector 4 — The network operator](#vector-4--the-network-operator-isp-café-wi-fi-hostile-country)
+- [Vector 5 — The block explorer or RPC node](#vector-5--the-block-explorer-or-rpc-node)
+- [Vector 6 — Chain analysis](#vector-6--chain-analysis-of-your-own-transactions)
+- [Vector 7 — Compromised release binary](#vector-7--a-compromised-release-binary-supply-chain)
+- [Vector 8 — Telemetry and metadata leakage](#vector-8--telemetry-and-metadata-leakage-from-the-app-itself)
+- [Vector 9 — Data left after wipe](#vector-9--data-left-behind-after-delete-everything)
+- [What is deliberately out of scope](#what-is-deliberately-out-of-scope)
+- [Reporting a vulnerability](#reporting-a-vulnerability)
+
 ---
 
 ## Trust boundaries
@@ -239,5 +254,5 @@ the implementation detail is in [docs/security-model.md](docs/security-model.md)
 
 ---
 
-📖 Back to [Documentation Index](docs/INDEX.md)
+📖 Back to [Documentation Index](docs/INDEX.md) · [README](README.md)
 
