@@ -6,6 +6,9 @@ contact_links:
   - name: Documentation hub
     url: https://github.com/kiurakku/UmbrellaWallet/blob/main/docs/INDEX.md
     about: Map of all official docs
+  - name: Development workflow
+    url: https://github.com/kiurakku/UmbrellaWallet/blob/main/docs/WORKFLOW.md
+    about: How we add coins and update the ROADMAP
   - name: Support / community
     url: https://t.me/UmbrellaWallet
     about: Product questions (never share seeds)

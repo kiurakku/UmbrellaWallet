@@ -9,6 +9,20 @@ and **process** (EV certificate order) — not more markdown stubs.
 
 ---
 
+## Phases (product first, stores later)
+
+Legal and store markdown is **already written** — leave it alone while you ship coins, unless behaviour
+changes. Engineering order:
+
+1. **Core** — P0.0 + P0.6–P0.8 ([ROADMAP.md](ROADMAP.md))  
+2. **Coins** — [WORKFLOW.md](WORKFLOW.md) + [adding-a-chain.md](adding-a-chain.md)  
+3. **Stabilize** — P1 / P2 / hardware  
+4. **Release prep** — EV cert (≥60 days), L.1–L.8 UI, audit  
+
+Day-to-day: [WORKFLOW.md](WORKFLOW.md). Doc links: `pwsh scripts/check-doc-links.ps1`.
+
+---
+
 ## A. Documentation spider — DONE
 
 - [x] [docs/INDEX.md](INDEX.md) hub + back-links on root/docs pages
