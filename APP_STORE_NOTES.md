@@ -44,19 +44,84 @@ Must show and require acknowledgement of:
 
 Suggested short body (EN) — same spirit as ROADMAP §9.3.
 
-## 5. Apple App Store notes (§3.x payment / finance)
+## 5. Apple App Store notes (Guideline 3.1.5 — Cryptocurrencies)
 
-- Emphasize **user-controlled keys on device**; no Umbrella-hosted balances.  
-- No in-app fiat on-ramp without proper licensing (not planned — see ROADMAP).  
-- Swaps (if shown) are non-custodial protocol interactions, not Umbrella custody.  
-- Provide a demo/test build path for reviewers if requested; never ship a backdoor.
+**Official source:** [App Store Review Guidelines §3.1.5](https://developer.apple.com/app-store/review/guidelines/#cryptocurrencies)  
+**Umbrella today:** desktop Windows/Linux via GitHub Releases. These notes apply when/if an **iOS** build is submitted (roadmap mobile). Desktop side-load is not App Store distribution.
+
+### 5.1. What Apple allows (and our mapping)
+
+| Guideline | Rule (summary) | Umbrella stance |
+|-----------|----------------|-----------------|
+| **3.1.5 (i) Wallets** | May facilitate virtual-currency *storage* if published by a developer enrolled as an **organization** (not an individual) | Non-custodial: keys generated and stored **only on device**. No Umbrella-hosted balances. **Requires a legal entity + org Apple Developer account before submission** (see ROADMAP **R.2**). |
+| **3.1.5 (ii) Mining** | No on-device mining | We do not mine. |
+| **3.1.5 (iii) Exchanges** | Crypto exchange / transmission only where licensed for that region | Umbrella is **not** a licensed exchange. Any swap UI must be framed as user-initiated, non-custodial protocol use — **not** “Umbrella exchange”. Geo-limit if counsel requires (see [GEO_BLOCKING.md](GEO_BLOCKING.md)). |
+| **3.1.5 (iv) ICOs / crypto-securities** | Restricted to approved financial institutions | We do **not** offer ICOs, futures, or securities trading. |
+| **3.1.5 (v) Task rewards** | No crypto for downloading apps / social spam | We do **not** reward installs or referrals in crypto. |
+| **3.1.1 IAP** | Crypto/wallets must not unlock paid app features outside IAP | Umbrella must not sell “premium unlock” via coin transfers. Optional future tips/sponsors stay outside App Store entitlements (GitHub Sponsors). |
+
+### 5.2. Financial model — answers reviewers ask
+
+| Question | Approved answer |
+|----------|-----------------|
+| Who holds the user’s funds? | **Nobody except the user.** Keys never leave the device. Umbrella cannot freeze, reverse, or recover funds. |
+| How does Umbrella make money? | **No cut of transfers.** Optional sponsorship ([GitHub Sponsors](https://github.com/sponsors/kiurakku)). Any future in-app service fee (if added) must be disclosed in UI and still non-custodial — see [LICENSE](LICENSE) §3. |
+| Is there fiat on-ramp / card buy? | **Not planned** without proper licensing. Do not advertise “buy crypto with card” in the listing. |
+| Are swaps custody? | **No.** If present, swaps are user-signed transactions to third-party protocols; Umbrella never takes possession. |
+| Demo account for review? | Provide a **test vault / dry-run path** if requested. **Never** ship a backdoor, hardcoded seed, or bypass of Tor/kill-switch for reviewers. |
+
+### 5.3. Reviewer notes field (paste-ready)
+
+> Umbrella Wallet is non-custodial software. Private keys and recovery phrases are generated and stored only on the user’s device; we cannot access them. We do not provide banking, brokerage, or money-transmitter services. Tor (when enabled) hides the device IP from remote endpoints; it does not make transparent blockchains private. Please see in-app Terms and Privacy Policy links, and the first-run acknowledgement of 18+ / lost-seed risk.
+
+### 5.4. Pre-submit checklist (Apple)
+
+- [ ] Apple Developer membership is an **Organization**, not Individual  
+- [ ] Legal entity ready (ROADMAP R.2); seller name matches product  
+- [ ] Listing uses only §2 wording; no §3 forbidden claims  
+- [ ] Privacy Policy URL live; Terms linked  
+- [ ] First-run L.1 / L.3 / L.8 acknowledgement implemented  
+- [ ] No mining, no ICO, no task-for-crypto, no unlicensed fiat on-ramp  
+- [ ] Counsel reviewed geo targeting ([GEO_BLOCKING.md](GEO_BLOCKING.md))
+
+---
 
 ## 6. Google Play — crypto / financial policy
 
-- Publisher is a verified developer account (business verification as required).  
-- Listing must state non-custodial and no recovery of keys.  
-- No KYC-less card on-ramp inside the app without licences.  
-- Link Privacy Policy URL to the raw or pages-hosted [PRIVACY_POLICY.md](PRIVACY_POLICY.md).
+**Official source:** [Cryptocurrency Exchanges and Software Wallets Policy](https://support.google.com/googleplay/android-developer/answer/16329703) (Play Console Help)  
+**Umbrella today:** desktop-first; Android is planned. Apply these notes before Play submission.
+
+### 6.1. Non-custodial vs custodial (critical)
+
+Google’s Cryptocurrency Exchanges and Software Wallets policy targets **exchanges and custodial** software wallets in listed jurisdictions. Google has clarified that **non-custodial wallets are out of scope** of that licensing matrix — *provided the app truly never takes custody of keys or funds*.
+
+Umbrella **must remain non-custodial** in architecture and copy. If a future feature adds custodial behaviour, licensing requirements change overnight.
+
+### 6.2. What we still must do on Play
+
+| Requirement | Umbrella action |
+|-------------|-----------------|
+| Verified Play developer / business verification | Complete before production listing |
+| Honest Financial Features declaration | Declare wallet functionality accurately; do **not** claim to be a licensed exchange |
+| Privacy Policy URL | Point to published [PRIVACY_POLICY.md](PRIVACY_POLICY.md) (raw GitHub or hosted page) |
+| Listing copy | Only §2 claims; age 18+; lost-seed disclaimer |
+| Local law | Even when out of scope of Google’s matrix, counsel may still require geo limits — see [GEO_BLOCKING.md](GEO_BLOCKING.md) |
+| No KYC-less card on-ramp | Do not ship unlicensed fiat buy |
+
+### 6.3. Reviewer / declaration notes (paste-ready)
+
+> This app is a **non-custodial** cryptocurrency wallet: private keys are created and stored on the user’s device only. The developer never holds user funds or keys and cannot recover a lost recovery phrase. There is no fiat on-ramp and no custodial exchange. Privacy features (local vault encryption, optional Tor) reduce metadata exposure; they do not anonymise public ledger transactions.
+
+### 6.4. Pre-submit checklist (Google Play)
+
+- [ ] Developer account identity verified  
+- [ ] App Content → Financial features declared correctly (wallet; non-custodial)  
+- [ ] Privacy Policy URL resolves; Terms linked in-app  
+- [ ] No “fully private / anonymous” store text  
+- [ ] Target countries reviewed with counsel  
+- [ ] Data safety form matches [PRIVACY_POLICY.md](PRIVACY_POLICY.md) (no account, no tracking SDKs)
+
+---
 
 ## 7. Screenshots for reviewers
 
@@ -70,4 +135,14 @@ Include at least one frame where:
 
 - Community: https://t.me/UmbrellaWallet  
 - Source / releases: https://github.com/kiurakku/UmbrellaWallet  
-- Security: https://github.com/kiurakku/UmbrellaWallet/security/advisories/new
+- Security: https://github.com/kiurakku/UmbrellaWallet/security/advisories/new  
+- Trademark / brand: [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md)  
+- Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+
+---
+
+Related: [TERMS_OF_SERVICE.md](TERMS_OF_SERVICE.md) · [PRIVACY_POLICY.md](PRIVACY_POLICY.md) · [GEO_BLOCKING.md](GEO_BLOCKING.md) · [LEGAL/PRIVACY_POLICY_APPSTORE.md](LEGAL/PRIVACY_POLICY_APPSTORE.md) · [docs/ROADMAP.md](docs/ROADMAP.md) §9
+
+---
+
+📖 Back to [Documentation Index](docs/INDEX.md)

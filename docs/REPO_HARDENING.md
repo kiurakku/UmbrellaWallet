@@ -26,9 +26,11 @@ No-Derivatives** (source-available for audit).
 - [x] Branch rulesets: PR required, CI required, no force-push / deletion
 - [x] `docs/INDEX.md` + getting-started + `_index.yml`
 - [x] `CONTRIBUTING.md` (no “fork then PR” — conflicts with LICENSE)
-- [x] `CODE_OF_CONDUCT.md`
-- [x] `TRADEMARK_POLICY.md` (+ `LEGAL/` pointer)
+- [x] `CODE_OF_CONDUCT.md` ← **exists at repo root** (audits that say “missing” are stale)
+- [x] `TRADEMARK_POLICY.md` ← **exists at repo root** (+ `LEGAL/` pointer)
 - [x] PR + issue templates (+ security redirect)
+- [x] `APP_STORE_NOTES.md` §5–§6 filled (Apple 3.1.5 + Google Play non-custodial)
+- [x] ROADMAP §8 link-check (all sources of truth resolve)
 
 ### P2 — done
 

@@ -124,7 +124,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 
 | # | Task | Status |
 |---|---|---|
-| **L.0** | Legal docs in repo: [`TERMS_OF_SERVICE.md`](../TERMS_OF_SERVICE.md), [`PRIVACY_POLICY.md`](../PRIVACY_POLICY.md), [`APP_STORE_NOTES.md`](../APP_STORE_NOTES.md), [`GEO_BLOCKING.md`](../GEO_BLOCKING.md), [`CONTACT.md`](../CONTACT.md) | ✅ docs (2026-09-15) |
+| **L.0** | Legal docs in repo: TOS, Privacy Policy, APP_STORE_NOTES, GEO, CONTACT, TRADEMARK, CoC, LICENSE, LEGAL/, SECURITY/ | ✅ docs (2026-09-15) |
 | **L.1** | **Apple / first-run:** screen — “we do not store keys; you are responsible for backup” | ⏳ code |
 | **L.2** | **No “Fully Private” claims** in UI/listing — follow APP_STORE_NOTES | ⏳ audit UI strings |
 | **L.3** | **Age gate 18+** on first launch | ⏳ code |
@@ -240,10 +240,17 @@ Detailed PR schedule — §12 in [`CLAUDE_IMPLEMENTATION_ROADMAP_UK.md`](CLAUDE_
 | [`BUILD_VERIFY.md`](BUILD_VERIFY.md) | Reproducible / verify builds |
 | [`../TERMS_OF_SERVICE.md`](../TERMS_OF_SERVICE.md) | Store Terms |
 | [`../PRIVACY_POLICY.md`](../PRIVACY_POLICY.md) | Formal privacy policy |
-| [`../APP_STORE_NOTES.md`](../APP_STORE_NOTES.md) | Approved store wording |
+| [`../APP_STORE_NOTES.md`](../APP_STORE_NOTES.md) | Approved store wording (incl. Apple 3.1.5 / Play) |
 | [`../GEO_BLOCKING.md`](../GEO_BLOCKING.md) | Restricted jurisdictions |
 | [`../AUDIT_STATUS.md`](../AUDIT_STATUS.md) | External audit: none yet |
 | [`../CONTACT.md`](../CONTACT.md) | Public contacts |
+| [`../TRADEMARK_POLICY.md`](../TRADEMARK_POLICY.md) | Brand / name protection |
+| [`../CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | Community standards |
+| [`../LICENSE`](../LICENSE) | Free-Use, No-Derivatives |
+| [`../LEGAL/README.md`](../LEGAL/README.md) | Legal document map |
+| [`../SECURITY/README.md`](../SECURITY/README.md) | Disclosure process folder |
+| [`REPO_HARDENING.md`](REPO_HARDENING.md) | Live GitHub security / legal checklist |
+| [`INDEX.md`](INDEX.md) | Documentation hub |
 
 Update **this** file when priorities change; phase details belong in specialized docs, without duplicating conflicting statuses.
 
