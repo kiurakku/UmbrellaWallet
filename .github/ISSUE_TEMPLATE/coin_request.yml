@@ -1,0 +1,53 @@
+name: Add a new coin
+description: Propose a cryptocurrency for the roadmap (tracked in docs/ROADMAP.md)
+title: "[coin] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill this form to propose a coin. Work is tracked in `docs/ROADMAP.md` and the matrix in `docs/12-coins-and-chains.md`.
+
+        Maintainer procedure: `docs/adding-a-chain.md` · Workflow: `docs/WORKFLOW.md`.
+
+        **Do not** paste seed phrases or keys.
+  - type: input
+    id: coin_name
+    attributes:
+      label: Coin / ticker
+      placeholder: e.g. Bitcoin (BTC), Solana (SOL)
+    validations:
+      required: true
+  - type: dropdown
+    id: chain_type
+    attributes:
+      label: Chain type
+      options:
+        - UTXO (Bitcoin-like)
+        - EVM (Ethereum-like)
+        - Native account model (Solana, TON, …)
+        - Privacy coin (Monero-like)
+        - Other / unsure
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why add this?
+      description: User need, privacy properties, and whether receive-only is acceptable first.
+    validations:
+      required: true
+  - type: textarea
+    id: refs
+    attributes:
+      label: References
+      description: BIPs/SLIPs, explorer APIs, existing wallet paths (optional).
+  - type: checkboxes
+    id: honesty
+    attributes:
+      label: Honesty
+      options:
+        - label: I understand transparent chains are public ledgers (Tor ≠ anonymity).
+          required: true
+        - label: I will not demand a capability before an end-to-end path exists.
+          required: true

@@ -21,6 +21,8 @@ documentation:
       file: architecture.md
     - title: Building
       file: building.md
+    - title: Workflow
+      file: WORKFLOW.md
     - title: Testing
       file: testing.md
     - title: Adding a Chain

@@ -12,6 +12,7 @@ Android planned). There is no web app and no backend that knows who you are.
 | If you want to… | Start here |
 |---|---|
 | Install and use the wallet | [Getting started](getting-started.md) |
+| Follow day-to-day engineering workflow | [WORKFLOW.md](WORKFLOW.md) |
 | Understand the philosophy | [MANIFESTO.md](../MANIFESTO.md) |
 | Know what is defended (and what is not) | [THREAT_MODEL.md](../THREAT_MODEL.md) |
 | See what data leaves the device | [PRIVACY.md](../PRIVACY.md) |
@@ -41,6 +42,7 @@ Android planned). There is no web app and no backend that knows who you are.
 |---|---|
 | [architecture.md](architecture.md) | Layers, data flow, Core vs Infrastructure |
 | [building.md](building.md) | Compile, test, package installers |
+| [WORKFLOW.md](WORKFLOW.md) | How to add coins and keep ROADMAP honest |
 | [testing.md](testing.md) | What the suite protects |
 | [adding-a-chain.md](adding-a-chain.md) | Full procedure for a new cryptocurrency |
 | [12-coins-and-chains.md](12-coins-and-chains.md) | Capability matrix for every chain |
@@ -59,9 +61,11 @@ Android planned). There is no web app and no backend that knows who you are.
 | [SECURITY.md](../SECURITY.md) | Private reporting process |
 | [AUDIT_STATUS.md](../AUDIT_STATUS.md) | External audit: none yet |
 | [BUILD_VERIFY.md](BUILD_VERIFY.md) | Verify a release against source |
+| [VERIFY_YOUR_WALLET.md](VERIFY_YOUR_WALLET.md) | Self-verify outline (P1.20) |
 | [TOR.md](TOR.md) | Bundled Tor, kill-switch, circuits |
 | [REPO_HARDENING.md](REPO_HARDENING.md) | GitHub security + legal checklist (live status) |
 | [PRE_BETA_CHECKLIST.md](PRE_BETA_CHECKLIST.md) | What is done vs what blocks a public beta |
+| [WORKFLOW.md](WORKFLOW.md) | Coin-add + docs update process (phases 1–4) |
 | [SECURITY/](../SECURITY/README.md) | Coordinated disclosure + vulnerability history |
 | [LEGAL/](../LEGAL/README.md) | Legal map + App Store privacy pointer |
 
