@@ -50,7 +50,7 @@ jobs:
           Copy-Item "dist/portable/Umbrella.exe" "dist/UmbrellaWallet-${{ steps.v.outputs.version }}-win-x64-portable.exe" -Force
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/UmbrellaWallet-Setup-${{ steps.v.outputs.version }}.exe
@@ -81,7 +81,7 @@ jobs:
              "UmbrellaWallet-${V}-linux-x64.tar.gz"
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: UmbrellaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz
 
@@ -145,6 +145,6 @@ jobs:
           ( cd assets && sha256sum -c "../SHA256SUMS-${V}.txt" )
 
       - name: Attach checksums to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: SHA256SUMS-${{ steps.v.outputs.version }}.txt
