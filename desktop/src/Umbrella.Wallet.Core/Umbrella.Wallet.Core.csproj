@@ -7,11 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NBitcoin" Version="10.0.7" />
-    <PackageReference Include="NBitcoin.Altcoins" Version="6.0.3" />
+    <PackageReference Include="NBitcoin" Version="10.0.10" />
+    <PackageReference Include="NBitcoin.Altcoins" Version="6.0.5" />
     <PackageReference Include="Nethereum.Util" Version="6.1.0" />
     <!-- Ed25519 (Solana). .NET 8 has no Ed25519; BouncyCastle's Rfc8032 impl is audited. -->
-    <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
   </ItemGroup>
 
 </Project>
