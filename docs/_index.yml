@@ -48,6 +48,10 @@ documentation:
       file: TOR.md
     - title: Repo Hardening Status
       file: REPO_HARDENING.md
+    - title: Coordinated Disclosure
+      file: ../SECURITY/COORDINATED_DISCLOSURE.md
+    - title: Vulnerability History
+      file: ../SECURITY/VULNERABILITY_HISTORY.md
   philosophy_legal:
     - title: Manifesto
       file: ../MANIFESTO.md
@@ -63,6 +67,8 @@ documentation:
       file: ../GEO_BLOCKING.md
     - title: App Store Notes
       file: ../APP_STORE_NOTES.md
+    - title: App Store Privacy Policy Pointer
+      file: ../LEGAL/PRIVACY_POLICY_APPSTORE.md
     - title: Contact
       file: ../CONTACT.md
     - title: Third-Party Notices

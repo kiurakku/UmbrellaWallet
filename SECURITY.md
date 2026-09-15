@@ -144,11 +144,15 @@ Each release should include:
 
 ## Historical vulnerabilities
 
+Full log: **[SECURITY/VULNERABILITY_HISTORY.md](SECURITY/VULNERABILITY_HISTORY.md)**.  
+Process: **[SECURITY/COORDINATED_DISCLOSURE.md](SECURITY/COORDINATED_DISCLOSURE.md)**.
+
 | Date | ID | Severity | Fixed in |
 |---|---|---|---|
 | — | — | — | None disclosed yet |
 
-When vulnerabilities are disclosed, they will be listed here with links to advisories.
+When vulnerabilities are disclosed, they will be listed here and in `SECURITY/VULNERABILITY_HISTORY.md`
+with links to advisories.
 
 ## Bug bounty
 
