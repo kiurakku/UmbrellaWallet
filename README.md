@@ -14,6 +14,9 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 
 ![CI](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/ci.yml/badge.svg)
 ![CodeQL](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/codeql.yml/badge.svg)
+![Security](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/security.yml/badge.svg)
+![Release](https://img.shields.io/github/v/release/kiurakku/UmbrellaWallet?label=release)
+![License](https://img.shields.io/badge/license-Free--Use%20No--Derivatives-4B3F86)
 ![Version](https://img.shields.io/badge/version-4.7.0-4B3F86)
 ![Tests](https://img.shields.io/badge/tests-526%20offline-7DCF8F)
 ![Platform fee](https://img.shields.io/badge/platform%20fee-none-7DCF8F)

@@ -60,6 +60,8 @@ Android planned). There is no web app and no backend that knows who you are.
 | [AUDIT_STATUS.md](../AUDIT_STATUS.md) | External audit: none yet |
 | [BUILD_VERIFY.md](BUILD_VERIFY.md) | Verify a release against source |
 | [TOR.md](TOR.md) | Bundled Tor, kill-switch, circuits |
+| [REPO_HARDENING.md](REPO_HARDENING.md) | GitHub security + legal checklist (live status) |
+
 
 ## Philosophy & legal (repository root)
 

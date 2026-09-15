@@ -15,7 +15,7 @@ gh api --method PATCH "repos/$repo" `
   -f allow_squash_merge=true `
   -f allow_merge_commit=false `
   -f allow_rebase_merge=false `
-  -f description="Privacy-first non-custodial wallet (Windows & Linux). Source-available for audit — no forks. Sponsor: github.com/sponsors/kiurakku" | Out-Null
+  -f description="Privacy-first non-custodial wallet (Windows & Linux). Source-available for audit — no forks. Docs: docs/INDEX.md. By the fear." | Out-Null
 
 # Note: allow_forking=false only works on org-owned private repos via API.
 # Public repos rely on LICENSE + CONTRIBUTING policy instead.
@@ -33,12 +33,15 @@ if ($LASTEXITCODE -ne 0) {
   Write-Warning "Some security features may require GitHub Advanced Security or org policy."
 }
 
+# Private vulnerability reporting
+gh api --method PUT "repos/$repo/private-vulnerability-reporting" 2>$null | Out-Null
+
 # Remove legacy protection if present (rulesets supersede it).
 gh api --method DELETE "repos/$repo/branches/main/protection" 2>$null | Out-Null
 
 $globalRules = @'
 {
-  "name": "Global — no force-push or deletion",
+  "name": "All branches — no force-push",
   "target": "branch",
   "enforcement": "active",
   "bypass_actors": [],
@@ -52,9 +55,11 @@ $globalRules = @'
 }
 '@
 
+# Solo maintainer: require PR + CI, but approving_review_count=0 (self-approve is blocked
+# when count>=1). Code owners file still documents ownership; review not hard-required.
 $mainRules = @'
 {
-  "name": "main — PR, reviews, CI gates",
+  "name": "main — CI gates, no force-push, no deletion",
   "target": "branch",
   "enforcement": "active",
   "bypass_actors": [],
@@ -66,9 +71,9 @@ $mainRules = @'
       "type": "pull_request",
       "parameters": {
         "dismiss_stale_reviews_on_push": true,
-        "require_code_owner_review": true,
-        "require_last_push_approval": true,
-        "required_approving_review_count": 1,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_approving_review_count": 0,
         "required_review_thread_resolution": true
       }
     },
@@ -80,6 +85,7 @@ $mainRules = @'
           { "context": "desktop" },
           { "context": "gitleaks" },
           { "context": "dotnet-vulnerable" },
+          { "context": "dependency-review" },
           { "context": "analyze (csharp)" }
         ]
       }
@@ -101,7 +107,8 @@ function Upsert-Ruleset([string]$name, [string]$json) {
   }
 }
 
-Upsert-Ruleset "Global — no force-push or deletion" $globalRules
-Upsert-Ruleset "main — PR, reviews, CI gates" $mainRules
+Upsert-Ruleset "All branches — no force-push" $globalRules
+Upsert-Ruleset "main — CI gates, no force-push, no deletion" $mainRules
 
 Write-Host "Done. Verify: https://github.com/$repo/settings/rules" -ForegroundColor Cyan
+Write-Host "Status doc: docs/REPO_HARDENING.md" -ForegroundColor Cyan
