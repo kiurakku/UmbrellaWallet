@@ -1,16 +1,30 @@
 # .github/CODEOWNERS
 # Required reviewers for merges into protected branches.
-# Fake team handles are not used — solo maintainer owns the tree.
+# Solo maintainer — no fake team handles.
 
 * @kiurakku
 
+# Repo meta & docs
 /.github/ @kiurakku
 /LEGAL/ @kiurakku
 /docs/ @kiurakku
 *.md @kiurakku
+LICENSE @kiurakku
+CODE_OF_CONDUCT.md @kiurakku
+TRADEMARK_POLICY.md @kiurakku
+THIRD_PARTY_NOTICES.md @kiurakku
 
+# Desktop tree
 /desktop/ @kiurakku
-/desktop/src/Umbrella.Wallet.Core/ @kiurakku
+/desktop/tests/ @kiurakku
+
+# Security-sensitive paths (explicit for review visibility)
+/desktop/src/Umbrella.Wallet.Core/Derivation/ @kiurakku
+/desktop/src/Umbrella.Wallet.Core/Vault/ @kiurakku
 /desktop/src/Umbrella.Wallet.Infrastructure/ @kiurakku
 /desktop/src/Umbrella.Wallet.App/ @kiurakku
-/desktop/tests/ @kiurakku
+
+# Release / packaging
+/desktop/installer/ @kiurakku
+/desktop/scripts/ @kiurakku
+/scripts/ @kiurakku

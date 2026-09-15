@@ -67,7 +67,9 @@ Android planned). There is no web app and no backend that knows who you are.
 |---|---|
 | [MANIFESTO.md](../MANIFESTO.md) | The rules the code is held to |
 | [LICENSE](../LICENSE) | Free-use, no-derivatives (source-available) |
+| [LICENSE_SUMMARY.md](../LEGAL/LICENSE_SUMMARY.md) | Plain-English license map |
 | [TRADEMARK_POLICY.md](../TRADEMARK_POLICY.md) | Name and logo protection |
+| [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) | Community standards |
 | [GEO_BLOCKING.md](../GEO_BLOCKING.md) | Restricted jurisdictions (store policy) |
 | [APP_STORE_NOTES.md](../APP_STORE_NOTES.md) | Approved store wording |
 | [CONTACT.md](../CONTACT.md) | GitHub, Telegram, TikTok, Reddit |
@@ -95,5 +97,7 @@ UmbrellaWallet/
 ```
 
 ---
+
+*Last updated: 2026-09-15 · Wallet version [4.7.0](../VERSION)*
 
 📖 This page is the documentation hub. Product overview: [README.md](../README.md).

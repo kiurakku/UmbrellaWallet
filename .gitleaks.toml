@@ -3,6 +3,21 @@ title = "Umbrella Wallet gitleaks config"
 [extend]
 useDefault = true
 
+[[rules]]
+id = "umbrella-generic-api-key"
+description = "Generic API key / secret assignment"
+regex = '''(?i)(?:api[_-]?key|apikey|secret|token)\s*[=:]\s*['"]?[A-Za-z0-9_\-]{20,}'''
+
+[[rules]]
+id = "umbrella-private-key-block"
+description = "PEM / OpenSSH private key block"
+regex = '''-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----'''
+
+[[rules]]
+id = "umbrella-password-in-config"
+description = "Password literal in config-like assignment"
+regex = '''(?i)password\s*[=:]\s*['"][^'"]{8,}['"]'''
+
 [allowlist]
 description = "test vectors, docs, and example env files"
 paths = [
