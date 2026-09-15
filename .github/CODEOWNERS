@@ -7,6 +7,7 @@
 # Repo meta & docs
 /.github/ @kiurakku
 /LEGAL/ @kiurakku
+/SECURITY/ @kiurakku
 /docs/ @kiurakku
 *.md @kiurakku
 LICENSE @kiurakku
@@ -21,6 +22,7 @@ THIRD_PARTY_NOTICES.md @kiurakku
 # Security-sensitive paths (explicit for review visibility)
 /desktop/src/Umbrella.Wallet.Core/Derivation/ @kiurakku
 /desktop/src/Umbrella.Wallet.Core/Vault/ @kiurakku
+/desktop/src/Umbrella.Wallet.Core/Safety/ @kiurakku
 /desktop/src/Umbrella.Wallet.Infrastructure/ @kiurakku
 /desktop/src/Umbrella.Wallet.App/ @kiurakku
 

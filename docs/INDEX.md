@@ -61,6 +61,8 @@ Android planned). There is no web app and no backend that knows who you are.
 | [BUILD_VERIFY.md](BUILD_VERIFY.md) | Verify a release against source |
 | [TOR.md](TOR.md) | Bundled Tor, kill-switch, circuits |
 | [REPO_HARDENING.md](REPO_HARDENING.md) | GitHub security + legal checklist (live status) |
+| [SECURITY/](../SECURITY/README.md) | Coordinated disclosure + vulnerability history |
+| [LEGAL/](../LEGAL/README.md) | Legal map + App Store privacy pointer |
 
 
 ## Philosophy & legal (repository root)
