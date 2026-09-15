@@ -123,7 +123,41 @@ Umbrella **must remain non-custodial** in architecture and copy. If a future fea
 
 ---
 
-## 7. Screenshots for reviewers
+## 7. Microsoft Store / Windows packaging notes
+
+**Primary distribution today:** GitHub Releases (side-load). Microsoft Store is **optional** (ROADMAP **R.7**).
+
+### 7.1. Signing
+
+| Path | Requirement | Umbrella plan |
+|------|-------------|----------------|
+| GitHub `.exe` / portable | Users see SmartScreen until reputation builds | Ship `SHA256SUMS`; document verify steps in [SECURITY.md](SECURITY.md) |
+| Trusted SmartScreen / enterprise | **OV or EV** code signing certificate | ROADMAP **R.2 / R.6** — order **≥60 days** before relying on Store trust |
+| Microsoft Store listing | Store-compliant package + Microsoft association / signing rules | Only after legal entity + signing; do not list an unsigned “official” Store app |
+
+### 7.2. Listing claims (same honesty bar)
+
+Use §2 wording only. Emphasize:
+
+- Non-custodial; keys on device  
+- Not a bank / money transmitter  
+- 18+  
+- Lost seed = lost funds  
+
+### 7.3. Reviewer note (paste-ready)
+
+> Umbrella Wallet for Windows is non-custodial desktop software. Private keys never leave the device. We do not custody funds. Optional Tor hides IP from remote endpoints; transparent chains remain public ledgers. Verify downloads via SHA-256 sums on the GitHub Release.
+
+### 7.4. Pre-submit checklist (Microsoft)
+
+- [ ] OV/EV certificate issued to the correct legal entity  
+- [ ] Installer and portable artifacts signed; checksums published  
+- [ ] Privacy Policy + Terms URLs in Store listing  
+- [ ] Age / non-custodial first-run still required in-app (L.1–L.8)
+
+---
+
+## 8. Screenshots for reviewers
 
 Include at least one frame where:
 
@@ -131,13 +165,14 @@ Include at least one frame where:
 - Settings → Privacy lists servers;  
 - First-run disclaimer is visible.
 
-## 8. Support URL for stores
+## 9. Support URL for stores
 
 - Community: https://t.me/UmbrellaWallet  
 - Source / releases: https://github.com/kiurakku/UmbrellaWallet  
 - Security: https://github.com/kiurakku/UmbrellaWallet/security/advisories/new  
 - Trademark / brand: [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md)  
-- Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)  
+- Pre-beta gate: [docs/PRE_BETA_CHECKLIST.md](docs/PRE_BETA_CHECKLIST.md)
 
 ---
 

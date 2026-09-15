@@ -250,6 +250,7 @@ Detailed PR schedule — §12 in [`CLAUDE_IMPLEMENTATION_ROADMAP_UK.md`](CLAUDE_
 | [`../LEGAL/README.md`](../LEGAL/README.md) | Legal document map |
 | [`../SECURITY/README.md`](../SECURITY/README.md) | Disclosure process folder |
 | [`REPO_HARDENING.md`](REPO_HARDENING.md) | Live GitHub security / legal checklist |
+| [`PRE_BETA_CHECKLIST.md`](PRE_BETA_CHECKLIST.md) | Public-beta gate (docs done; P0 code still open) |
 | [`INDEX.md`](INDEX.md) | Documentation hub |
 
 Update **this** file when priorities change; phase details belong in specialized docs, without duplicating conflicting statuses.

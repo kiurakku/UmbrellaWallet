@@ -29,8 +29,9 @@ No-Derivatives** (source-available for audit).
 - [x] `CODE_OF_CONDUCT.md` ← **exists at repo root** (audits that say “missing” are stale)
 - [x] `TRADEMARK_POLICY.md` ← **exists at repo root** (+ `LEGAL/` pointer)
 - [x] PR + issue templates (+ security redirect)
-- [x] `APP_STORE_NOTES.md` §5–§6 filled (Apple 3.1.5 + Google Play non-custodial)
+- [x] `APP_STORE_NOTES.md` §5–§7 filled (Apple 3.1.5 + Google Play + Microsoft Store)
 - [x] ROADMAP §8 link-check (all sources of truth resolve)
+- [x] [PRE_BETA_CHECKLIST.md](PRE_BETA_CHECKLIST.md) — honest split: docs/security ✅ vs P0 code ⏳
 
 ### P2 — done
 

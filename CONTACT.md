@@ -17,7 +17,9 @@
 - **Never** send a seed phrase, private key, or vault password to any channel.  
 - Security bugs → GitHub Security Advisories only (not public issues, not TikTok comments).  
 - Product questions → Telegram.  
-- Store / legal docs: [TERMS_OF_SERVICE.md](TERMS_OF_SERVICE.md), [PRIVACY_POLICY.md](PRIVACY_POLICY.md), [APP_STORE_NOTES.md](APP_STORE_NOTES.md).
+- **Legal / trademark / store listing questions** → open a GitHub Discussion/Issue labeled appropriately, or message via Telegram **without** sending secrets. There is **no** separate `legal@…` inbox yet; do not invent placeholder emails.  
+- Store / legal docs: [TERMS_OF_SERVICE.md](TERMS_OF_SERVICE.md), [PRIVACY_POLICY.md](PRIVACY_POLICY.md), [APP_STORE_NOTES.md](APP_STORE_NOTES.md), [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md).  
+- Pre-beta gate: [docs/PRE_BETA_CHECKLIST.md](docs/PRE_BETA_CHECKLIST.md).
 
 ---
 
