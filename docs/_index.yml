@@ -46,13 +46,19 @@ documentation:
       file: BUILD_VERIFY.md
     - title: Tor
       file: TOR.md
+    - title: Repo Hardening Status
+      file: REPO_HARDENING.md
   philosophy_legal:
     - title: Manifesto
       file: ../MANIFESTO.md
     - title: License
       file: ../LICENSE
+    - title: License Summary
+      file: ../LEGAL/LICENSE_SUMMARY.md
     - title: Trademark Policy
       file: ../TRADEMARK_POLICY.md
+    - title: Code of Conduct
+      file: ../CODE_OF_CONDUCT.md
     - title: Geo Blocking
       file: ../GEO_BLOCKING.md
     - title: App Store Notes
