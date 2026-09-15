@@ -443,6 +443,7 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 | [docs/testing.md](docs/testing.md) | What the suite covers and how to extend it |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Diagnosing a misbehaving wallet |
 | [docs/PRE_BETA_CHECKLIST.md](docs/PRE_BETA_CHECKLIST.md) | Public beta gate (what is left) |
+| [docs/WORKFLOW.md](docs/WORKFLOW.md) | How to add coins and keep ROADMAP honest |
 | [docs/REPO_HARDENING.md](docs/REPO_HARDENING.md) | Live GitHub security / legal status |
 | [CHANGELOG.md](CHANGELOG.md) | Every release |
 | [.github/SUPPORT.md](.github/SUPPORT.md) | How to get help (never share seeds) |
