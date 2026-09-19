@@ -27,6 +27,21 @@ jobs:
       - run: dotnet test desktop/Umbrella.Wallet.sln --no-restore --verbosity minimal --filter "Category!=Live"
       - run: dotnet build desktop/Umbrella.Wallet.sln --no-restore -c Release
 
+  isolation:
+    name: network-isolation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - run: dotnet restore desktop/Umbrella.Wallet.sln
+      # Roadmap P0.8. Its own job so the kill-switch gate is visible as a gate, rather than three
+      # tests inside a run of eight hundred. They put a listener on loopback and count connections:
+      # with Tor-only armed nothing may reach it, and with it off the same client must — otherwise
+      # the first half would pass for the wrong reason. Nothing leaves the runner either way.
+      - run: dotnet test desktop/Umbrella.Wallet.sln --no-restore --verbosity minimal --filter "Category=Isolation"
+
   reproducible:
     name: reproducible-build
     runs-on: ubuntu-latest

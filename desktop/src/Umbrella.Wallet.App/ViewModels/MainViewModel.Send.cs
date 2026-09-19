@@ -15,6 +15,7 @@ using QRCoder;
 using Umbrella.Wallet.Core.Chains;
 using Umbrella.Wallet.Core.Derivation;
 using Umbrella.Wallet.Core.Amounts;
+using Umbrella.Wallet.Core.Safety;
 using Umbrella.Wallet.Core.Seed;
 using Umbrella.Wallet.Core.Utxo;
 using Umbrella.Wallet.Infrastructure;
@@ -30,6 +31,44 @@ namespace Umbrella.Wallet.App.ViewModels;
 /// </summary>
 public partial class MainViewModel
 {
+    // ---- Transport gate (roadmap P0.7) ------------------------------------------------------------
+
+    /// <summary>
+    /// The live routing state, as the gate wants it: what the user asked for beside what the network
+    /// layer is actually doing. <see cref="PublicHttp.ActiveProxy"/> is the live value, not a setting,
+    /// which is the whole point — a setting cannot tell you Tor died five minutes ago.
+    /// </summary>
+    private SendTransportState CurrentTransportState() => new(
+        TorRequested: TorEnabled,
+        TorConnected: _tor.IsRunning && _tor.BootstrapPercent >= 100,
+        KillSwitchOn: TorOnly,
+        TorProxy: _tor.ProxyUri,
+        CustomProxyRequested: CustomProxyEnabled,
+        RequestedProxy: EffectiveCustomProxy(),
+        ActiveProxy: PublicHttp.ActiveProxy);
+
+    /// <summary>
+    /// Null when this send may proceed; otherwise the reason it may not, in the user's language.
+    ///
+    /// Refusing is the point. A mismatch here means somebody is about to publish a transaction from
+    /// an IP they believe is hidden — the one privacy failure in this wallet that cannot be undone
+    /// afterwards, because the broadcast is permanent and the observer is somebody else's server.
+    /// </summary>
+    private string? TransportGateError()
+    {
+        var check = SendTransportGate.Evaluate(CurrentTransportState());
+        if (check.Allowed) return null;
+
+        return Loc.Instance[check.Reason switch
+        {
+            SendTransportReason.TorNotConnected => "gate.torNotConnected",
+            SendTransportReason.TorNotInUse => "gate.torNotInUse",
+            SendTransportReason.KillSwitchWithoutProxy => "gate.killNoProxy",
+            SendTransportReason.CustomProxyNotInUse => "gate.proxyNotInUse",
+            _ => "gate.torNotConnected",
+        }];
+    }
+
     // ---- Coin control (roadmap §3.4) --------------------------------------------------------------
     // Opt-in manual UTXO selection for BTC/LTC/DOGE. OFF by default, and while off the send path is
     // byte-identical to automatic selection. When on, only the coins the user ticks may fund the
@@ -234,6 +273,15 @@ public partial class MainViewModel
         if (string.IsNullOrWhiteSpace(SendTo) || string.IsNullOrWhiteSpace(SendAmount))
         {
             SendError = Loc.Instance["send.errFields"];
+            return;
+        }
+
+        // Before anything touches the network: is the route the user chose the route that exists?
+        // Preparing a send already hands the explorer the addresses this spend will draw on, so the
+        // check belongs here and not only at broadcast (roadmap P0.7).
+        if (TransportGateError() is { } routeError)
+        {
+            SendError = routeError;
             return;
         }
 
@@ -705,6 +753,15 @@ public partial class MainViewModel
         if (_unlockedMnemonic is null || !haveQuote)
         {
             SendError = Loc.Instance["send.errPrepareFirst"];
+            return;
+        }
+
+        // Checked AGAIN at the last moment, not only at Review: Tor can drop, or the proxy can be
+        // changed, between reading a quote and confirming it. A broadcast is the one request that
+        // ties an IP to specific coins permanently, so it fails closed (roadmap P0.7).
+        if (TransportGateError() is { } routeError)
+        {
+            SendError = routeError;
             return;
         }
 

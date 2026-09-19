@@ -39,23 +39,31 @@ public sealed class LiveTestTraitTests
         Assert.Empty(offenders);
     }
 
+    /// <summary>
+    /// Every category the CI workflow filters on, spelled exactly as the workflow spells it:
+    /// "Live" is excluded from the main run, "Isolation" is the kill-switch gate that runs as its
+    /// own job (roadmap P0.8).
+    /// </summary>
+    private static readonly string[] KnownCategories = ["Live", "Isolation"];
+
     [Fact]
     public void The_trait_value_is_spelled_the_way_the_ci_filter_expects()
     {
-        // "live" or "Live" are not the same string to a --filter expression. One typo and the class
-        // silently goes back to running in CI.
-        var live = typeof(LiveTestTraitTests).Assembly
+        // "live" and "Live" are not the same string to a --filter expression. One typo and a class
+        // silently changes which CI job runs it — back into the main run for a live test, or out of
+        // its own gate for an isolation test, and in both cases nothing fails to say so.
+        var categorised = typeof(LiveTestTraitTests).Assembly
             .GetTypes()
             .Where(t => t.IsClass && HasAnyCategoryTrait(t))
             .ToList();
 
-        Assert.NotEmpty(live);
+        Assert.NotEmpty(categorised);
 
-        foreach (var type in live)
+        foreach (var type in categorised)
         {
             foreach (var value in CategoryValues(type))
             {
-                Assert.Equal("Live", value);
+                Assert.Contains(value, KnownCategories);
             }
         }
     }
