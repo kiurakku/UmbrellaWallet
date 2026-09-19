@@ -845,6 +845,7 @@ public partial class MainViewModel : ViewModelBase
         new("Tor / network privacy", "Privacy", "tor onion routing ip"),
         new("Screenshot protection", "Privacy", "hide seed capture screen"),
         new("Guide & docs", "Guide", "help documentation how to"),
+        new("About & licence", "Guide", "version publisher the fear licence trademark notices"),
         new("Delete wallet", "Danger", "erase wipe remove everything"),
         new("Clear history", "Danger", "activity transactions log"),
         new("Disconnect all", "Danger", "watch addresses exchanges unlink"),

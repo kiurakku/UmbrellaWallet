@@ -1,9 +1,17 @@
 <Project>
+  <!--
+    The publisher, as the LICENSE and TRADEMARK_POLICY state it: the brand is "the fear", kiurakku is
+    the account behind it. These land in the .exe's own version resource, so Windows' file properties,
+    the installer's publisher field and the in-app About screen all name the same author from one
+    source. A build that keeps the name while changing the money path is the thing users are asked to
+    watch for; the name has to be somewhere they can check it.
+  -->
   <PropertyGroup>
-    <Company>kiurakku</Company>
-    <Authors>kiurakku</Authors>
-    <Copyright>Copyright © 2026 kiurakku. All rights reserved.</Copyright>
+    <Company>the fear</Company>
+    <Authors>the fear (kiurakku)</Authors>
+    <Copyright>Copyright © 2026 the fear (kiurakku). All rights reserved.</Copyright>
     <Product>Umbrella Wallet</Product>
+    <Description>Umbrella Wallet — non-custodial desktop crypto wallet by the fear. Source-available under the Free-Use, No-Derivatives licence.</Description>
   </PropertyGroup>
 
   <!--

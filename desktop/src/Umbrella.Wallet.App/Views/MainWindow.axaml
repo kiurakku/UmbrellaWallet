@@ -3558,6 +3558,50 @@
                   </StackPanel>
                 </Border>
 
+                <!-- About this build: who published it, under what licence, and where the real
+                     copies live. A look-alike build keeping the name is the attack the user is asked
+                     to watch for, so the publisher is named in the app, not only in the installer. -->
+                <Border Classes="card" IsVisible="{Binding IsTabGuide}">
+                  <StackPanel Spacing="12">
+                    <TextBlock Classes="eyebrow" Text="{Binding [about.title], Source={x:Static app:Loc.Instance}}"/>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                      <Image Source="{Binding FearMark}" Width="44" Height="44" VerticalAlignment="Center"/>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                        <TextBlock Text="{Binding AboutProductLine}" FontWeight="SemiBold" FontSize="15"/>
+                        <TextBlock Text="{Binding AboutPublisherLine}" Foreground="{DynamicResource UmGold}"
+                                   FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding CopyrightLine}" Foreground="{DynamicResource UmTextMuted}" FontSize="11"/>
+                      </StackPanel>
+                    </Grid>
+
+                    <Border Background="{DynamicResource UmCardAlt}" CornerRadius="8" Padding="12,10">
+                      <StackPanel Spacing="5">
+                        <TextBlock Text="{Binding [about.licence], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
+                        <TextBlock Text="{Binding [about.licenceBody], Source={x:Static app:Loc.Instance}}"
+                                   Foreground="{DynamicResource UmTextDim}" FontSize="11.5" TextWrapping="Wrap"/>
+                      </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="{Binding [about.verify], Source={x:Static app:Loc.Instance}}"
+                               Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap"/>
+
+                    <WrapPanel>
+                      <Button Classes="ghost" Margin="0,0,8,8" Content="{Binding [about.repo], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding OpenUrlCommand}" CommandParameter="{Binding RepoUrl}"/>
+                      <Button Classes="ghost" Margin="0,0,8,8" Content="{Binding [about.releases], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding OpenUrlCommand}" CommandParameter="{Binding ReleasesUrl}"/>
+                      <Button Classes="ghost" Margin="0,0,8,8" Content="{Binding [sec.tgChannel], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding OpenUrlCommand}" CommandParameter="{Binding ChannelUrl}"/>
+                      <Button Classes="ghost" Margin="0,0,8,8" Content="{Binding [about.licence], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding OpenUrlCommand}" CommandParameter="{Binding LicenseUrl}"/>
+                      <Button Classes="ghost" Margin="0,0,8,8" Content="{Binding [about.trademark], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding OpenUrlCommand}" CommandParameter="{Binding TrademarkUrl}"/>
+                      <Button Classes="ghost" Margin="0,0,8,8" Content="{Binding [about.notices], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding OpenUrlCommand}" CommandParameter="{Binding NoticesUrl}"/>
+                    </WrapPanel>
+                  </StackPanel>
+                </Border>
+
                 <!-- Documentation -->
                 <Border Classes="card" IsVisible="{Binding IsTabGuide}">
                   <StackPanel Spacing="10">
