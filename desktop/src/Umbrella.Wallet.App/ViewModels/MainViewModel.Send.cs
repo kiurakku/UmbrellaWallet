@@ -649,7 +649,17 @@ public partial class MainViewModel
         {
             var (symbol, account, _) = targets[i];
             var scan = scans[i];
-            if (scan is null) continue;
+            if (scan is null)
+            {
+                // The walk failed outright. Whatever is on the row is the last thing we knew, and it
+                // must stop presenting itself as current — a rate-limited explorer is not a zero
+                // balance (MANIFESTO §4 / P0.6).
+                var (_, failedState) = BalanceReadout.Apply(null, account.Amount, account.Balance);
+                var at = Accounts.IndexOf(account);
+                if (at >= 0) Accounts[at] = account with { Balance = failedState };
+                continue;
+            }
+
             if (!scan.Partial) _lastUtxoScan[symbol] = DateTimeOffset.UtcNow;
 
             // A partial (network-degraded) scan must not lower a balance we already trust.
@@ -669,6 +679,9 @@ public partial class MainViewModel
                     Amount = (double)amount,
                     Price = (double)usd,
                     Change24h = (double)change,
+                    // A partial scan reached some addresses and not others: the figure is a floor,
+                    // not the balance, so it is labelled as the last known one rather than current.
+                    Balance = scan.Partial ? BalanceRead.Cached : BalanceRead.Live,
                 };
             }
         }

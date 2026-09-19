@@ -31,7 +31,10 @@ public sealed class ExchangeTests : IDisposable
 
         vm.Accounts.Add(new WalletAccountViewModel(
             "BTC", "Binance · BTC", "Exchange", "Binance", "Binance",
-            Price: 60000, Amount: 0.25, Chain: "Binance", Change24h: 0));
+            Price: 60000, Amount: 0.25, Chain: "Binance", Change24h: 0,
+            // The row stands in for one built from a successful exchange read, so it carries a
+            // live reading — an unread row is deliberately excluded from the total (P0.6).
+            Balance: Umbrella.Wallet.App.BalanceRead.Live));
 
         vm.RecomputeHoldingsForTest();
 

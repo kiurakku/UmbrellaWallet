@@ -2809,6 +2809,9 @@ public partial class MainViewModel : ViewModelBase
                 Amount = (double)balance.Total,
                 Price = (double)usd,
                 Change24h = (double)change,
+                // A synced daemon is a real reading; a still-scanning one is a partial view of the
+                // chain, so it is presented as the last known figure rather than the current one.
+                Balance = balance.Synced ? BalanceRead.Live : BalanceRead.Cached,
             };
             RefreshHoldings();
             RecalcBalance();
@@ -3848,7 +3851,12 @@ public partial class MainViewModel : ViewModelBase
             var a = Accounts[i];
             if (byKey.TryGetValue(CacheKey(a.Symbol, a.Address, a.Chain), out var e))
             {
-                Accounts[i] = a with { Amount = e.Amount, Price = e.Price, Change24h = e.Change };
+                // Marked CACHED, not live: this is the last number the wallet saw, and until the
+                // refresh answers it is not entitled to be presented as the current one (P0.6).
+                Accounts[i] = a with
+                {
+                    Amount = e.Amount, Price = e.Price, Change24h = e.Change, Balance = BalanceRead.Cached,
+                };
                 touched = true;
             }
         }
@@ -3920,16 +3928,21 @@ public partial class MainViewModel : ViewModelBase
             for (var k = 0; k < balanceTargets.Count; k++)
             {
                 var account = balanceTargets[k];
-                var amount = balanceResults[k] is { } bal ? bal.NativeAmount : (decimal)account.Amount;
+                // A null result is a FAILED READ, never a zero balance — the client only returns null
+                // when nobody answered. Keeping the old number and marking the row is the difference
+                // between "we could not ask" and "there is nothing there" (MANIFESTO §4 / P0.6).
+                var (amount, state) = BalanceReadout.Apply(
+                    balanceResults[k]?.NativeAmount, account.Amount, account.Balance);
                 var (usd, change) = prices.GetValueOrDefault(account.Symbol);
                 var idx = Accounts.IndexOf(account);
                 if (idx >= 0)
                 {
                     Accounts[idx] = account with
                     {
-                        Amount = (double)amount,
+                        Amount = amount,
                         Price = (double)usd,
                         Change24h = (double)change,
+                        Balance = state,
                     };
                 }
             }
@@ -3992,6 +4005,9 @@ public partial class MainViewModel : ViewModelBase
                 var existing = Accounts.FirstOrDefault(a =>
                     a.Address.Equals(watch.Address, StringComparison.OrdinalIgnoreCase) &&
                     a.Symbol == nativeSymbol);
+                // Same rule as the wallet's own accounts: an unanswered lookup is not a zero balance.
+                var (watchAmount, watchState) = BalanceReadout.Apply(
+                    bal?.NativeAmount, existing?.Amount ?? 0, existing?.Balance ?? BalanceRead.Unknown);
                 var row = new WalletAccountViewModel(
                     nativeSymbol,
                     string.IsNullOrWhiteSpace(watch.Label) ? $"Watch · {nativeSymbol}" : watch.Label,
@@ -3999,9 +4015,10 @@ public partial class MainViewModel : ViewModelBase
                     watch.Address,
                     "external",
                     (double)usd,
-                    bal is null ? 0 : (double)bal.NativeAmount,
+                    watchAmount,
                     nativeSymbol,
-                    (double)change);
+                    (double)change,
+                    Balance: watchState);
                 if (existing is null) Accounts.Add(row);
                 else
                 {
@@ -4102,9 +4119,10 @@ public partial class MainViewModel : ViewModelBase
             // "Ready" is a claim that the coin can be moved. A network this build can read but not
             // broadcast on says "Receive only" instead, so the holdings list never promises a send the
             // Send screen will not offer.
+            // These rows exist only because the read succeeded, so their amount is a live reading.
             Accounts.Add(new WalletAccountViewModel(
                 symbol, $"{symbol} · {network}", canSend ? "Ready" : "Receive only", address, "EVM side-chain",
-                (double)usd, (double)amount, network, (double)change));
+                (double)usd, (double)amount, network, (double)change, Balance: BalanceRead.Live));
         }
     }
 
@@ -4140,7 +4158,7 @@ public partial class MainViewModel : ViewModelBase
             Accounts.Add(new WalletAccountViewModel(
                 tok.Symbol, $"{tok.Name} · {suffix}", status,
                 address, marker, usd, (double)tok.Amount, chain, 0,
-                IsSuspectedSpam: spam.IsSuspected));
+                IsSuspectedSpam: spam.IsSuspected, Balance: BalanceRead.Live));
         }
     }
 
@@ -4189,7 +4207,9 @@ public partial class MainViewModel : ViewModelBase
                     (double)usd,
                     (double)asset.Amount,
                     credential.Exchange,
-                    (double)change));
+                    (double)change,
+                    // The row only exists because the exchange answered.
+                    Balance: BalanceRead.Live));
             }
         }
     }
@@ -4968,17 +4988,42 @@ public partial class MainViewModel : ViewModelBase
         SpamTokenCount = visible.Count(a => a.IsSuspectedSpam);
         if (!ShowSpamTokens) visible = visible.Where(a => !a.IsSuspectedSpam).ToList();
 
+        // An unread balance contributes no value to the total — a row whose amount nobody could
+        // confirm must not be priced as if it were zero, nor as if it were known (P0.6).
         var built = visible.Select(a => new HoldingRowViewModel(
             a.Symbol, a.Name, a.Chain, a.Price, a.Amount,
-            a.Price * a.Amount, a.Change24h, a.Address, a.SupportStatus));
+            a.Balance == BalanceRead.Unknown ? 0 : a.Price * a.Amount,
+            a.Change24h, a.Address, a.SupportStatus, a.Balance));
         foreach (var h in HoldingsSorter.Order(built, HoldingsSort))
             Holdings.Add(h);
 
         RebuildStaking(); // keep the staking list driven by what the user actually holds
     }
 
+    /// <summary>How many shown assets have no balance reading at all right now.</summary>
+    [ObservableProperty] private int _unreadableAssetCount;
+
+    /// <summary>True when the portfolio total is missing at least one asset the wallet could not read.</summary>
+    public bool IsTotalIncomplete => UnreadableAssetCount > 0;
+
+    /// <summary>"3 assets could not be read — this total is incomplete", in the user's language.</summary>
+    public string TotalIncompleteLabel =>
+        UnreadableAssetCount > 0
+            ? string.Format(Loc.Instance["balance.incomplete"], UnreadableAssetCount)
+            : string.Empty;
+
+    partial void OnUnreadableAssetCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsTotalIncomplete));
+        OnPropertyChanged(nameof(TotalIncompleteLabel));
+    }
+
     private void RecalcBalance()
     {
+        // The total is a sum of what the wallet actually knows. Anything it could not read is counted
+        // separately and said out loud, because a number quietly missing an asset is a wrong number
+        // that looks exactly like a right one (MANIFESTO §4 / roadmap P0.6).
+        UnreadableAssetCount = Holdings.Count(h => h.Balance == BalanceRead.Unknown);
         var total = Holdings.Sum(h => h.Value);                 // USD
         var displayTotal = total * (double)Fx.Rate;             // in the chosen currency
 

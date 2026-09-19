@@ -74,8 +74,23 @@ public sealed record WalletAccountViewModel(
     /// <summary>True when this row is an unsolicited airdrop token rather than an asset the user
     /// chose to hold — see <see cref="Umbrella.Wallet.Core.Safety.SpamTokenInspector"/>. The row is
     /// kept, never deleted; Holdings simply folds it away behind a count the user can open.</summary>
-    bool IsSuspectedSpam = false)
+    bool IsSuspectedSpam = false,
+    /// <summary>
+    /// How much the wallet knows about <see cref="Amount"/>. A freshly derived account starts
+    /// <see cref="BalanceRead.Unknown"/> — zero is what it holds in the absence of an answer, not
+    /// what the chain said — and only a successful read promotes it (roadmap P0.6).
+    /// </summary>
+    BalanceRead Balance = BalanceRead.Unknown)
 {
+    /// <summary>The amount as the row may honestly state it: a dash while nothing has been read.</summary>
+    public string AmountLabel => BalanceReadout.AmountText(Amount, Balance, Symbol);
+
+    /// <summary>True when this row has no reading at all, so the UI can say so instead of showing 0.</summary>
+    public bool IsBalanceUnknown => Balance == BalanceRead.Unknown;
+
+    /// <summary>True when the number on screen is the last known one rather than a current one.</summary>
+    public bool IsBalanceStale => Balance == BalanceRead.Cached;
+
     /// <summary>Colour hint for the Receive list so status reads at a glance.</summary>
     public string StatusColor => SupportStatus switch
     {
@@ -253,11 +268,29 @@ public sealed record HoldingRowViewModel(
     double Value,
     double Change24h,
     string Address,
-    string SupportStatus)
+    string SupportStatus,
+    /// <summary>What the wallet knows about this amount — see <see cref="BalanceRead"/> (P0.6).
+    /// Defaults to <see cref="BalanceRead.Live"/> so a row built from a real reading reads normally;
+    /// the account list passes its own state through.</summary>
+    BalanceRead Balance = BalanceRead.Live)
 {
     public string PriceLabel => Fx.Price(Price);
-    public string AmountLabel => $"{Amount.ToString("N6", CultureInfo.InvariantCulture)} {Symbol}";
-    public string ValueLabel => Fx.Money(Value);
+    public string AmountLabel => BalanceReadout.AmountText(Amount, Balance, Symbol);
+    public string ValueLabel => Balance == BalanceRead.Unknown ? "—" : Fx.Money(Value);
+
+    /// <summary>No reading at all: the row says so rather than showing a confident zero.</summary>
+    public bool IsBalanceUnknown => Balance == BalanceRead.Unknown;
+
+    /// <summary>A number from the last successful read, not from now.</summary>
+    public bool IsBalanceStale => Balance == BalanceRead.Cached;
+
+    /// <summary>The short note under an unread or stale amount, in the user's language.</summary>
+    public string BalanceNote => Balance switch
+    {
+        BalanceRead.Unknown => Loc.Instance["balance.unavailable"],
+        BalanceRead.Cached => Loc.Instance["balance.stale"],
+        _ => string.Empty,
+    };
     public string ChangeLabel =>
         $"{(Change24h > 0 ? "▲" : Change24h < 0 ? "▼" : "·")} {Math.Abs(Change24h):0.00}%";
     public string ChangeColor =>

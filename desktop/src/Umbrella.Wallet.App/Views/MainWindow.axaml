@@ -593,6 +593,13 @@
                                 CornerRadius="999" Padding="9,4" HorizontalAlignment="Left" Margin="0,2,0,0">
                           <TextBlock Text="{Binding Change24hLabel}" Foreground="{Binding PortfolioChangeColor}" FontSize="12.5" FontWeight="SemiBold"/>
                         </Border>
+                        <!-- A total that is missing an asset says so. Silently summing what could be
+                             read produces a wrong number indistinguishable from a right one (P0.6). -->
+                        <Border IsVisible="{Binding IsTotalIncomplete}" Background="#33E7CA83" BorderBrush="#7A6230"
+                                BorderThickness="1" CornerRadius="8" Padding="10,5" HorizontalAlignment="Left" Margin="0,6,0,0">
+                          <TextBlock Text="{Binding TotalIncompleteLabel}" Foreground="#E7CA83" FontSize="11.5"
+                                     TextWrapping="Wrap" MaxWidth="360"/>
+                        </Border>
                       </StackPanel>
                     </Grid>
                   </Panel>
@@ -825,6 +832,11 @@
                                 <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" HorizontalAlignment="Right"
                                            Text="{Binding AmountLabel}" TextTrimming="CharacterEllipsis"
                                            IsVisible="{Binding #RootWindow.((vm:MainViewModel)DataContext).AreValuesVisible}"/>
+                                <!-- Why this row shows a dash, or a number that is not current. An
+                                     unanswered explorer must never read as an empty wallet (P0.6). -->
+                                <TextBlock FontSize="10.5" Foreground="#E7CA83" HorizontalAlignment="Right"
+                                           Text="{Binding BalanceNote}" TextTrimming="CharacterEllipsis" MaxWidth="240"
+                                           IsVisible="{Binding BalanceNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                               </StackPanel>
                             </Grid>
                           </Button>
