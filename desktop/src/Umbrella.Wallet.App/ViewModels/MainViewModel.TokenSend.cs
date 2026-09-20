@@ -5,7 +5,7 @@ using System.Linq;
 namespace Umbrella.Wallet.App.ViewModels;
 
 /// <summary>
-/// Sending an arbitrary ERC-20 (roadmap N.1).
+/// Sending an arbitrary token: ERC-20 on Ethereum (roadmap N.1) and TRC-20 on TRON (N.2).
 ///
 /// Until now the wallet could send native coins and exactly one token — USDT on TRON, hardcoded.
 /// Every other token it displayed was money the user could see and not move, which is the same
@@ -22,11 +22,25 @@ public partial class MainViewModel
     /// <summary>The prefix that marks a picker entry as an ERC-20 rather than a native coin.</summary>
     public const string TokenSendPrefix = "ERC20:";
 
+    /// <summary>The same, for a TRC-20 on TRON (roadmap N.2).</summary>
+    public const string TronTokenSendPrefix = "TRC20:";
+
     /// <summary>The contract a picker key refers to, or null when the key is a native coin.</summary>
-    public static string? ContractFromSendKey(string? key) =>
-        key is not null && key.StartsWith(TokenSendPrefix, StringComparison.OrdinalIgnoreCase)
-            ? key[TokenSendPrefix.Length..]
-            : null;
+    public static string? ContractFromSendKey(string? key)
+    {
+        if (key is null) return null;
+        if (key.StartsWith(TokenSendPrefix, StringComparison.OrdinalIgnoreCase))
+            return key[TokenSendPrefix.Length..];
+        if (key.StartsWith(TronTokenSendPrefix, StringComparison.OrdinalIgnoreCase))
+            return key[TronTokenSendPrefix.Length..];
+
+        return null;
+    }
+
+    /// <summary>True when a picker key names a TRC-20 — the fee comes out of TRX, not ETH, and the
+    /// transaction is built by TRON's own API rather than signed locally as an EVM transfer.</summary>
+    public static bool IsTronTokenKey(string? key) =>
+        key is not null && key.StartsWith(TronTokenSendPrefix, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Everything the Send picker offers: the native coins this build can broadcast, plus every
@@ -51,9 +65,10 @@ public partial class MainViewModel
 
         var tokens = Accounts
             .Where(a => a.IsSpendableToken)
-            // ERC-20 only for now: the TRON and TON token paths are separate work (N.2, N.3), and
-            // offering them here would promise a send this build cannot make.
-            .Where(a => a.Derivation.StartsWith("ERC20", StringComparison.OrdinalIgnoreCase))
+            // ERC-20 and TRC-20. Jettons on TON are still balance-only (N.3), and offering them
+            // here would promise a send this build cannot make.
+            .Where(a => a.Derivation.StartsWith("ERC20", StringComparison.OrdinalIgnoreCase)
+                        || a.Derivation.StartsWith("TRC20", StringComparison.OrdinalIgnoreCase))
             .Where(a => a.Amount > 0)
             // An unsolicited airdrop token is usually a lure; it stays visible in Holdings behind the
             // spam fold, but it does not get promoted into the send picker.
@@ -61,11 +76,15 @@ public partial class MainViewModel
             .GroupBy(a => a.Contract, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
             .OrderBy(a => a.Symbol, StringComparer.OrdinalIgnoreCase)
-            .Select(a => new SendOption(
-                TokenSendPrefix + a.Contract,
-                a.Name,
-                Loc.Instance["send.erc20Network"],
-                Ticker: a.Symbol))
+            .Select(a =>
+            {
+                var tron = a.Derivation.StartsWith("TRC20", StringComparison.OrdinalIgnoreCase);
+                return new SendOption(
+                    (tron ? TronTokenSendPrefix : TokenSendPrefix) + a.Contract,
+                    a.Name,
+                    Loc.Instance[tron ? "send.trc20Network" : "send.erc20Network"],
+                    Ticker: a.Symbol);
+            })
             .ToList();
 
         SendableAssetOptions.Clear();

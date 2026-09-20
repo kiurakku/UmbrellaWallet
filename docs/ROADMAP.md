@@ -95,7 +95,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | # | Task | Status |
 |---|---|---|
 | N.1 | Send **any ERC-20** (not only native ETH / separate USDT) | ✅ the picker lists every held ERC-20 and routes on the **contract**, never the ticker; the amount is scaled by the decimals that contract reports (a row without them is refused, not assumed to be 18), the token balance is read from the contract at quote time rather than from a cached row, and the review says the fee comes out of ETH. Verify a first send with a small amount |
-| N.2 | Send **any TRC-20** (not only USDT) | 📅 near |
+| N.2 | Send **any TRC-20** (not only USDT) | ✅ the same shape as N.1 — routed by contract, scaled by the decimals the contract reports, balance read from the contract with `triggerconstantcontract`. USDT is now just the TRC-20 whose contract was already known, and it gained the exact-scaling refusal the old path lacked (it multiplied through `Math.Pow` and truncated). Fee in TRX, said before Confirm |
 | N.3 | Send **any SPL** / full Jetton send (Jetton balances already exist) | 📅 near / 🟡 |
 | N.4 | **XRP** | 📅 |
 | N.5 | **Stellar (XLM)** | 📅 |
@@ -199,7 +199,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 7. ✅ **P1.20** + §10 — self-verify (xpub export) and the public guide “how to check you are not being lied to.”  
 8. ✅ **L.1 / L.3 / L.8** (+ L.2 wording) — disclaimers / age / ToS in the app; **L.4** is store-listing copy, written at submission.  
 9. **R.6 / L.6** — EV signing for Windows + PGP for Linux packages. R.3 attestations already cover “did this come from the project”; EV covers SmartScreen, which is a different problem and needs a legal entity and money. ← **next (human/process)**  
-10. ✅ **N.1** ERC-20 — **N.2** (any TRC-20) and **N.3** (SPL / Jetton) remain, each with the same full cycle. ← **next**  
+10. ✅ **N.1 / N.2** ERC-20 and TRC-20 — **N.3** (SPL / Jetton send) remains. ← **next**  
 11. **P2.1–P2.2** — Taproot spend + PayJoin.  
 12. **H.1 → H.2** — PSBT, then Ledger/Trezor.  
 13. **H.4** + L.5/L.7 — Android only after a mobile spec **and** store/geo compliance.  

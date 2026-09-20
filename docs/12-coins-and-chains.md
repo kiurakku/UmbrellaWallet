@@ -41,9 +41,12 @@
 > wallet routes on the CONTRACT, never the ticker, because two contracts can call themselves USDC.
 > A token whose contract never reported its decimals is refused rather than guessed at.
 >
-> **Still detected-but-not-sendable:** TRC-20 other than USDT (Tron), SPL tokens (Solana) and
-> Jettons (TON). Their balances appear; their Send paths are separate work (roadmap N.2, N.3).
-> Everything in the Send column above is a NATIVE coin.
+> **TRC-20 tokens on Tron can be sent too** — same rule, and the fee comes out of TRX
+> (energy/bandwidth) rather than out of the token.
+>
+> **Still detected-but-not-sendable:** SPL tokens (Solana) and Jettons (TON). Their balances appear;
+> their Send paths are separate work (roadmap N.3). Everything in the Send column above is a NATIVE
+> coin.
 
 ---
 

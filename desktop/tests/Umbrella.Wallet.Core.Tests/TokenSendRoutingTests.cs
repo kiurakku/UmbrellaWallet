@@ -124,4 +124,39 @@ public sealed class TokenSendRoutingTests
 
         Assert.Equal("0x" + Erc20Transfer.BalanceOfSelector + owner[2..].ToLowerInvariant().PadLeft(64, '0'), data);
     }
+
+    /// <summary>
+    /// N.2 — a TRC-20 is routed by its contract too, and is distinguishable from an ERC-20 because
+    /// the fee, the signing and the API are all different. Sending a TRON token down the Ethereum
+    /// path would sign an EVM transaction nobody can broadcast.
+    /// </summary>
+    [Fact]
+    public void A_tron_token_key_is_recognised_as_tron()
+    {
+        const string usdtOnTron = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+        var key = MainViewModel.TronTokenSendPrefix + usdtOnTron;
+
+        Assert.True(MainViewModel.IsTronTokenKey(key));
+        Assert.Equal(usdtOnTron, MainViewModel.ContractFromSendKey(key));
+
+        // An Ethereum token key is not a TRON one, and neither is a native coin.
+        Assert.False(MainViewModel.IsTronTokenKey(MainViewModel.TokenSendPrefix + Usdc));
+        Assert.False(MainViewModel.IsTronTokenKey("TRX"));
+        Assert.False(MainViewModel.IsTronTokenKey(null));
+    }
+
+    /// <summary>
+    /// Both standards scale through the same exact-integer conversion. The TRON path used to
+    /// multiply through Math.Pow and truncate, which silently dropped the remainder of an amount
+    /// finer than the token can hold; it now refuses, like the Ethereum path always did.
+    /// </summary>
+    [Fact]
+    public void An_amount_finer_than_the_token_is_refused_not_truncated()
+    {
+        // USDT has 6 decimals on both chains; a seventh digit cannot be represented.
+        Assert.Throws<ArgumentException>(() => Erc20Transfer.ToBaseUnits(1.9999999m, 6));
+
+        // And a representable amount converts exactly, with no floating-point step anywhere.
+        Assert.Equal(new BigInteger(1_999_999), Erc20Transfer.ToBaseUnits(1.999999m, 6));
+    }
 }

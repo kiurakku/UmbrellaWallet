@@ -42,7 +42,7 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
-### Any ERC-20 can be sent, not just watched
+### Any ERC-20 or TRC-20 can be sent, not just watched
 
 - The Send picker now lists every ERC-20 this wallet actually holds. Until now it could send native
   coins and exactly one token — USDT on Tron, hardcoded — so every other token was money you could
@@ -55,8 +55,13 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   minute old, and the review says plainly that the fee comes out of ETH rather than out of the token.
 - Unsolicited airdrop tokens stay out of the picker. They remain visible in Holdings behind the spam
   fold; what they do not get is a promotion into the screen that moves money.
+- **Tron tokens too.** USDT on Tron stops being a special case and becomes the TRC-20 whose
+  contract the wallet already knew; every other TRC-20 you hold appears in the picker beside it,
+  with the fee paid in TRX. That path also gained the exact-scaling refusal it never had — it
+  used to multiply through `Math.Pow` and truncate, silently dropping the remainder of an
+  over-precise amount.
 - **Verify a first send with a small amount** — the encoding and the refusals are covered by tests,
-  but no ERC-20 transfer from this build has yet been confirmed on-chain with real funds.
+  but no token transfer from this build has yet been confirmed on-chain with real funds.
 
 ### Releases are signed, without a signing key
 

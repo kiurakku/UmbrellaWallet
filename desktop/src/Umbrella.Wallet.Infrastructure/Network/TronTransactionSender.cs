@@ -7,6 +7,8 @@ using System.Text.Json;
 using NBitcoin;
 using NBitcoin.DataEncoders;
 
+using Umbrella.Wallet.Core.Chains;
+
 namespace Umbrella.Wallet.Infrastructure.Network;
 
 public sealed record TronSendQuote(
@@ -48,36 +50,122 @@ public sealed class TronTransactionSender
         if (amount <= 0) return (null, "Amount must be positive.");
         if (!IsTronAddress(to)) return (null, "That is not a valid TRON address (should start with T).");
 
-        var isToken = symbol.Equals("USDT", StringComparison.OrdinalIgnoreCase);
+        // USDT is now just the TRC-20 whose contract this build has always known; everything else
+        // about it goes down the same path as any other token (roadmap N.2).
+        if (symbol.Equals("USDT", StringComparison.OrdinalIgnoreCase))
+        {
+            return await PrepareTokenAsync(from, UsdtContract, to, amount, UsdtDecimals, "USDT", ct);
+        }
 
         try
         {
-            string? raw;
-            if (isToken)
-            {
-                var balance = await GetUsdtBalanceAsync(from, ct);
-                if (balance is not null && balance < amount)
-                {
-                    return (null, $"Insufficient USDT: balance {balance:0.######}, need {amount:0.######}.");
-                }
-
-                raw = await BuildTokenTransferAsync(from, to, amount, ct);
-            }
-            else
-            {
-                raw = await BuildTrxTransferAsync(from, to, amount, ct);
-            }
+            var raw = await BuildTrxTransferAsync(from, to, amount, ct);
 
             if (raw is null)
             {
                 return (null, "TRON API did not return a transaction — try again in a moment.");
             }
 
-            return (new TronSendQuote(isToken ? "USDT" : "TRX", from, to, amount, isToken, raw), null);
+            return (new TronSendQuote("TRX", from, to, amount, false, raw), null);
         }
         catch (Exception ex)
         {
             return (null, $"Could not prepare the TRON transaction: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Quotes a TRC-20 transfer for ANY token, not only USDT (roadmap N.2).
+    ///
+    /// The shape matches the ERC-20 path deliberately: route on the contract, scale by the decimals
+    /// that contract reports, and ask the contract itself what it holds before building anything. A
+    /// ticker identifies neither the token nor its precision.
+    ///
+    /// The fee is paid in TRX (energy/bandwidth), so an address holding only the token cannot send
+    /// it — which the caller says before the user reaches Confirm.
+    /// </summary>
+    public async Task<(TronSendQuote? Quote, string? Error)> PrepareTokenAsync(
+        string from, string contract, string to, decimal amount, int decimals, string symbol,
+        CancellationToken ct = default)
+    {
+        if (amount <= 0) return (null, "Amount must be positive.");
+        if (!IsTronAddress(to)) return (null, "That is not a valid TRON address (should start with T).");
+        if (!IsTronAddress(contract)) return (null, "That token's contract is not a TRON address.");
+        if (decimals is < 0 or > 36)
+        {
+            return (null, "This token did not report how many decimals it uses, so the amount cannot be computed safely.");
+        }
+
+        BigInteger units;
+        try
+        {
+            // Exact integer scaling, and a REFUSAL when the amount is finer than the token can
+            // represent. The old USDT path multiplied through Math.Pow and truncated, which loses
+            // the remainder silently — the one rounding this repository rules out.
+            units = Erc20Transfer.ToBaseUnits(amount, decimals);
+        }
+        catch (Exception ex)
+        {
+            return (null, ex.Message);
+        }
+
+        try
+        {
+            var held = await GetTokenBalanceAsync(from, contract, decimals, ct);
+            if (held is not null && held < amount)
+            {
+                return (null, $"Insufficient {symbol}: the contract reports {held:0.########}, you asked to send {amount:0.########}.");
+            }
+
+            var raw = await BuildTokenTransferAsync(from, contract, to, units, ct);
+            if (raw is null) return (null, "TRON API did not return a transaction — try again in a moment.");
+
+            return (new TronSendQuote(symbol, from, to, amount, true, raw), null);
+        }
+        catch (Exception ex)
+        {
+            return (null, $"Could not prepare the TRON transaction: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// What the token contract says this address holds, or null when the node would not answer.
+    /// Null means "unknown", never "zero": a balance nobody could read must not be reported as empty,
+    /// and must not block a send that is otherwise fine.
+    /// </summary>
+    private static async Task<decimal?> GetTokenBalanceAsync(
+        string owner, string contract, int decimals, CancellationToken ct)
+    {
+        try
+        {
+            var payload = new
+            {
+                owner_address = owner,
+                contract_address = contract,
+                function_selector = "balanceOf(address)",
+                parameter = Convert.ToHexString(Base58CheckDecodeTron(owner)).ToLowerInvariant().PadLeft(64, '0'),
+                visible = true,
+            };
+
+            using var res = await Http.PostAsJsonAsync($"{ApiBase}/wallet/triggerconstantcontract", payload, ct);
+            if (!res.IsSuccessStatusCode) return null;
+
+            using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
+            if (!doc.RootElement.TryGetProperty("constant_result", out var results) ||
+                results.ValueKind != JsonValueKind.Array || results.GetArrayLength() == 0)
+            {
+                return null;
+            }
+
+            var hex = results[0].GetString();
+            if (string.IsNullOrWhiteSpace(hex)) return null;
+
+            var raw = BigInteger.Parse("0" + hex, System.Globalization.NumberStyles.HexNumber);
+            return Erc20Transfer.FromBaseUnits(raw, decimals);
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -154,17 +242,17 @@ public sealed class TronTransactionSender
     }
 
     private static async Task<string?> BuildTokenTransferAsync(
-        string from, string to, decimal amount, CancellationToken ct)
+        string from, string contract, string to, BigInteger units, CancellationToken ct)
     {
         // transfer(address,uint256) — ABI-encoded: 32-byte padded address, then 32-byte amount.
-        var units = new BigInteger(amount * (decimal)Math.Pow(10, UsdtDecimals));
+        // The units arrive already scaled, in integer arithmetic, so no decimal step survives here.
         var toHex = Convert.ToHexString(Base58CheckDecodeTron(to)).ToLowerInvariant();
         var parameter = toHex.PadLeft(64, '0') + units.ToString("x").PadLeft(64, '0');
 
         var payload = new
         {
             owner_address = from,
-            contract_address = UsdtContract,
+            contract_address = contract,
             function_selector = "transfer(address,uint256)",
             parameter,
             fee_limit = FeeLimitSun,
@@ -178,12 +266,6 @@ public sealed class TronTransactionSender
         using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
         // triggersmartcontract wraps the unsigned tx under "transaction".
         return doc.RootElement.TryGetProperty("transaction", out var tx) ? tx.GetRawText() : null;
-    }
-
-    private async Task<decimal?> GetUsdtBalanceAsync(string address, CancellationToken ct)
-    {
-        var client = new PublicChainBalanceClient();
-        return await client.GetTronUsdtAsync(address, ct);
     }
 
     /// <summary>

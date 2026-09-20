@@ -789,10 +789,12 @@ public partial class MainViewModel
             return;
         }
 
-        var from = Accounts.FirstOrDefault(a => a.Symbol == "ETH" && a.SupportStatus == "Ready");
+        var onTron = IsTronTokenKey(sendKey);
+        var fundingSymbol = onTron ? "TRX" : "ETH";
+        var from = Accounts.FirstOrDefault(a => a.Symbol == fundingSymbol && a.SupportStatus == "Ready");
         if (from is null || !IsRealAddress(from.Address))
         {
-            SendError = string.Format(Loc.Instance["send.errNoAccount"], "Ethereum");
+            SendError = string.Format(Loc.Instance["send.errNoAccount"], onTron ? "TRON" : "Ethereum");
             return;
         }
 
@@ -813,6 +815,29 @@ public partial class MainViewModel
         await RunBusyAsync(async () =>
         {
             StatusMessage = Loc.Instance["status.reviewTransfer"];
+
+            if (onTron)
+            {
+                // TRON builds the unsigned transaction server-side and the wallet signs its txID;
+                // the fee comes out of TRX energy/bandwidth, never out of the token.
+                var (tronQuote, tronError) = await _tronSender.PrepareTokenAsync(
+                    from.Address, token.Contract, SendTo.Trim(), amount, token.TokenDecimals, token.Symbol);
+
+                if (tronQuote is null)
+                {
+                    SendError = tronError ?? Loc.Instance["send.errPrepareFailed"];
+                    return;
+                }
+
+                _tronQuote = tronQuote;
+                _sendTokenAmount = amount;
+                HasSendQuote = true;
+                SendQuoteSummary = $"Send {Fmt(amount)} {token.Symbol}  →  {SendTo.Trim()}";
+                SendQuoteFee = Loc.Instance["send.trc20Fee"];
+                StatusMessage = Loc.Instance["status.reviewTransfer"];
+                return;
+            }
+
             var (quote, error) = await _ethSender.PrepareTokenAsync(
                 from.Address, token.Contract, SendTo.Trim(), amount, token.TokenDecimals);
 
@@ -964,7 +989,10 @@ public partial class MainViewModel
                     break;
                 }
 
-                case "TRX" or "USDT" when _tronQuote is not null:
+                // Any TRON quote — native TRX or a TRC-20 of any ticker (roadmap N.2). Matching on
+                // the quote rather than on a list of symbols is what stops a newly-sendable token
+                // from falling through to "prepare first" with a perfectly good quote in hand.
+                case not null when _tronQuote is not null:
                 {
                     var quote = _tronQuote;
                     var key = _deriver.DeriveTronKey(_unlockedMnemonic!);
