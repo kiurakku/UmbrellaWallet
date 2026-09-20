@@ -42,6 +42,22 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### Any ERC-20 can be sent, not just watched
+
+- The Send picker now lists every ERC-20 this wallet actually holds. Until now it could send native
+  coins and exactly one token — USDT on Tron, hardcoded — so every other token was money you could
+  see and not move.
+- It routes on the **contract**, never the ticker: two contracts can call themselves USDC, and only
+  one of them is the one you hold. The amount is scaled by the decimals that contract reports, and a
+  token whose decimals were never read is **refused** rather than assumed to be 18 — a wrong guess
+  there is off by a factor of a trillion.
+- The token balance is read from the contract itself at quote time, not from a row that might be a
+  minute old, and the review says plainly that the fee comes out of ETH rather than out of the token.
+- Unsolicited airdrop tokens stay out of the picker. They remain visible in Holdings behind the spam
+  fold; what they do not get is a promotion into the screen that moves money.
+- **Verify a first send with a small amount** — the encoding and the refusals are covered by tests,
+  but no ERC-20 transfer from this build has yet been confirmed on-chain with real funds.
+
 ### Releases are signed, without a signing key
 
 - Every artifact **and** the checksum manifest now carry a build attestation: GitHub signs, keylessly

@@ -1264,7 +1264,7 @@ public partial class MainViewModel : ViewModelBase
 
         RestoreMarketCache(); // show last-seen prices instantly; the live refresh corrects them
 
-        SelectedSendAsset = SendableAssets[0];
+        RebuildSendableAssets();   // native coins now; tokens as soon as balances land
         SelectedWatchNetwork = WatchableNetworks[0];
         BuildGuide();
         LoadProfileImages();
@@ -1998,6 +1998,10 @@ public partial class MainViewModel : ViewModelBase
     private WalletAccountViewModel? SelectedSendAccount()
     {
         var symbol = SelectedSendAsset?.Symbol ?? string.Empty;
+
+        // An ERC-20 is identified by its contract, not its ticker (roadmap N.1).
+        if (ContractFromSendKey(symbol) is not null) return TokenAccountFor(symbol);
+
         var requiredChain = TokenSendChain.GetValueOrDefault(symbol);
 
         return Accounts.FirstOrDefault(a => a.Symbol == symbol
@@ -2016,7 +2020,7 @@ public partial class MainViewModel : ViewModelBase
 
     public string SelectedSendBalanceLabel => SelectedSendAsset is null
         ? string.Empty
-        : $"{Loc.Instance["send.available"]}: {Fmt(SelectedSendBalance)} {SelectedSendAsset.Symbol}";
+        : $"{Loc.Instance["send.available"]}: {Fmt(SelectedSendBalance)} {SelectedSendAsset.DisplayTicker}";
 
     // --- Send review breakdown (§4): full destination, amount + fiat, kept separate from the fee. ---
     /// <summary>The destination shown in review, ALWAYS in full (never shortened) so the user can verify
@@ -4218,7 +4222,10 @@ public partial class MainViewModel : ViewModelBase
             Accounts.Add(new WalletAccountViewModel(
                 tok.Symbol, $"{tok.Name} · {suffix}", status,
                 address, marker, usd, (double)tok.Amount, chain, 0,
-                IsSuspectedSpam: spam.IsSuspected, Balance: BalanceRead.Live));
+                IsSuspectedSpam: spam.IsSuspected, Balance: BalanceRead.Live,
+                // Carried so a send can route on the CONTRACT and scale by the decimals that
+                // contract reports — a ticker identifies neither (roadmap N.1).
+                Contract: tok.Contract, TokenDecimals: tok.Decimals));
         }
     }
 
@@ -5056,6 +5063,9 @@ public partial class MainViewModel : ViewModelBase
             a.Change24h, a.Address, a.SupportStatus, a.Balance));
         foreach (var h in HoldingsSorter.Order(built, HoldingsSort))
             Holdings.Add(h);
+
+        // A token that arrived becomes sendable; one spent to zero drops off (roadmap N.1).
+        RebuildSendableAssets();
 
         RebuildStaking(); // keep the staking list driven by what the user actually holds
     }

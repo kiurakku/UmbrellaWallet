@@ -49,6 +49,15 @@ public static class Erc20Transfer
         return "0x" + TransferSelector + address.PadLeft(64, '0') + ToHex32(baseUnits);
     }
 
+    /// <summary>First four bytes of keccak256("balanceOf(address)") — how the wallet asks the
+    /// contract itself what it holds, instead of trusting a cached row when money is about to
+    /// move.</summary>
+    public const string BalanceOfSelector = "70a08231";
+
+    /// <summary>Calldata for <c>balanceOf(owner)</c>, for an <c>eth_call</c>.</summary>
+    public static string EncodeBalanceOf(string owner) =>
+        "0x" + BalanceOfSelector + NormaliseAddress(owner).PadLeft(64, '0');
+
     /// <summary>
     /// Converts a human amount into the token's smallest unit, exactly.
     /// </summary>

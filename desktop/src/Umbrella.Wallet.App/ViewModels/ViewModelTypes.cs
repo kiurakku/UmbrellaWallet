@@ -80,7 +80,15 @@ public sealed record WalletAccountViewModel(
     /// <see cref="BalanceRead.Unknown"/> — zero is what it holds in the absence of an answer, not
     /// what the chain said — and only a successful read promotes it (roadmap P0.6).
     /// </summary>
-    BalanceRead Balance = BalanceRead.Unknown)
+    BalanceRead Balance = BalanceRead.Unknown,
+    /// <summary>The token's contract address, for a token row; empty for a native coin. A ticker does
+    /// not identify a token — two contracts can call themselves USDC — so the send path routes on
+    /// this, never on the symbol (roadmap N.1).</summary>
+    string Contract = "",
+    /// <summary>The token's decimals as its own contract reports them. Sending with the wrong value
+    /// is wrong by powers of ten, so a row whose decimals were never read stays at -1 and the send
+    /// path refuses rather than assuming 18.</summary>
+    int TokenDecimals = -1)
 {
     /// <summary>The amount as the row may honestly state it: a dash while nothing has been read.</summary>
     public string AmountLabel => BalanceReadout.AmountText(Amount, Balance, Symbol);
@@ -90,6 +98,10 @@ public sealed record WalletAccountViewModel(
 
     /// <summary>True when the number on screen is the last known one rather than a current one.</summary>
     public bool IsBalanceStale => Balance == BalanceRead.Cached;
+
+    /// <summary>True for a token row the wallet knows enough about to spend: a contract and the
+    /// decimals that contract reports.</summary>
+    public bool IsSpendableToken => Contract.Length > 0 && TokenDecimals >= 0;
 
     /// <summary>Colour hint for the Receive list so status reads at a glance.</summary>
     public string StatusColor => SupportStatus switch
@@ -422,10 +434,20 @@ public static class CoinBadge
     }
 }
 
-/// <summary>One entry in an asset / network picker.</summary>
-public sealed record SendOption(string Symbol, string Name, string Network)
+/// <summary>
+/// One entry in an asset / network picker.
+///
+/// <paramref name="Symbol"/> is the KEY the send path switches on. For a native coin that is the
+/// ticker; for an ERC-20 it is <c>ERC20:0x…</c>, because a ticker does not identify a token — two
+/// contracts can call themselves USDC, and only one of them is the one you hold.
+/// <paramref name="Ticker"/> is what the user reads.
+/// </summary>
+public sealed record SendOption(string Symbol, string Name, string Network, string? Ticker = null)
 {
-    public string Display => $"{Symbol} · {Name}";
+    /// <summary>What to show for this asset: the ticker, never the routing key.</summary>
+    public string DisplayTicker => Ticker ?? Symbol;
+
+    public string Display => $"{DisplayTicker} · {Name}";
 }
 
 public sealed record ActivityRowViewModel(

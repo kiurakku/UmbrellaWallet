@@ -276,6 +276,8 @@ public partial class MainViewModel
         HasSendPrivacy = false;
         _sendQuote = null;
         _tonQuote = null;
+        _sendTokenSymbol = null;
+        _sendTokenAmount = 0m;
 
         if (!IsUnlocked || _unlockedMnemonic is null)
         {
@@ -294,6 +296,14 @@ public partial class MainViewModel
         if (!AmountInput.TryParsePositive(SendAmount, out var amount))
         {
             SendError = Loc.Instance["send.errAmount"];
+            return;
+        }
+
+        // An ERC-20 picker entry carries its contract, not a ticker, so it branches before any of
+        // the chain-name normalisation below can mangle it (roadmap N.1).
+        if (ContractFromSendKey(SendChain.Trim()) is not null)
+        {
+            await PrepareTokenSendAsync(SendChain.Trim(), amount);
             return;
         }
 
@@ -763,6 +773,75 @@ public partial class MainViewModel
         value.ToString("0.########", CultureInfo.InvariantCulture);
 
     /// <summary>
+    /// Quotes an ERC-20 transfer: to the token's contract, carrying no ether, with the recipient and
+    /// amount in the calldata (roadmap N.1).
+    ///
+    /// Everything fund-critical is read rather than assumed — the contract from the holdings row, the
+    /// decimals that contract reported, and the token balance from the contract itself at quote time.
+    /// A row whose decimals were never read is refused: a guess there is wrong by powers of ten.
+    /// </summary>
+    private async Task PrepareTokenSendAsync(string sendKey, decimal amount)
+    {
+        var token = TokenAccountFor(sendKey);
+        if (token is null)
+        {
+            SendError = Loc.Instance["send.errTokenGone"];
+            return;
+        }
+
+        var from = Accounts.FirstOrDefault(a => a.Symbol == "ETH" && a.SupportStatus == "Ready");
+        if (from is null || !IsRealAddress(from.Address))
+        {
+            SendError = string.Format(Loc.Instance["send.errNoAccount"], "Ethereum");
+            return;
+        }
+
+        // The review says what will happen before anything is signed: the token amount, and that the
+        // fee comes out of ETH rather than out of the token being sent.
+        SendReviewTo = SendTo.Trim();
+        SendReviewAmount = $"{Fmt(amount)} {token.Symbol}";
+        SendReviewFiat = FiatEquivalentLabel(token.Symbol, amount);
+        SendReviewDebit = string.Format(Loc.Instance["send.debitToken"], SendReviewAmount);
+
+        if (TransportGateError() is { } routeError)
+        {
+            SendError = routeError;
+            return;
+        }
+
+        _sendSymbol = token.Symbol;
+        await RunBusyAsync(async () =>
+        {
+            StatusMessage = Loc.Instance["status.reviewTransfer"];
+            var (quote, error) = await _ethSender.PrepareTokenAsync(
+                from.Address, token.Contract, SendTo.Trim(), amount, token.TokenDecimals);
+
+            if (quote is null)
+            {
+                SendError = error ?? Loc.Instance["send.errPrepareFailed"];
+                return;
+            }
+
+            _sendQuote = quote;
+            _sendTokenSymbol = token.Symbol;
+            _sendTokenAmount = amount;
+            HasSendQuote = true;
+            SendQuoteSummary = $"Send {Fmt(amount)} {token.Symbol}  →  {SendTo.Trim()}";
+            SendQuoteFee = string.Format(
+                Loc.Instance["send.erc20Fee"], Fmt(quote.MaxFeeEth), new Uri(quote.Rpc).Host);
+            StatusMessage = Loc.Instance["status.reviewTransfer"];
+        });
+    }
+
+    /// <summary>The ticker of the ERC-20 being sent, so Confirm can route the quote to the contract
+    /// path and the activity row can name the token rather than "ETH".</summary>
+    private string? _sendTokenSymbol;
+
+    /// <summary>The token amount the review showed. The transaction itself carries zero ether, so
+    /// this is the only place the real figure survives to the activity feed.</summary>
+    private decimal _sendTokenAmount;
+
+    /// <summary>
     /// Step 2: the user explicitly confirms — derive the key, sign locally, broadcast, zero the key.
     /// </summary>
     [RelayCommand]
@@ -791,6 +870,32 @@ public partial class MainViewModel
             StatusMessage = Loc.Instance["status.signingBroadcast"];
             switch (_sendSymbol)
             {
+                // An ERC-20 transfer, matched FIRST: its quote carries calldata and goes to the
+                // token contract, so it must never fall into the native-send case below, which would
+                // sign a plain transfer to the contract address and burn the fee for nothing.
+                case not null when _sendTokenSymbol is not null && _sendQuote is not null:
+                {
+                    var quote = _sendQuote;
+                    var token = _sendTokenSymbol;
+                    var priv = _deriver.DeriveEthereumPrivateKey(_unlockedMnemonic!);
+                    try
+                    {
+                        var result = await _ethSender.SignAndBroadcastContractAsync(quote, priv);
+                        var explorer = EthTransactionSender.ExplorerTxForChainId(quote.ChainId) + result.TxHash;
+
+                        // The activity row names the TOKEN and its amount — the transaction's own
+                        // value is zero ether, which would otherwise be recorded as a 0 ETH send.
+                        await FinishSendAsync(result.Ok, result.TxHash, result.Error,
+                            token, _sendTokenAmount, SendReviewTo, explorer);
+                    }
+                    finally
+                    {
+                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
+                    }
+
+                    break;
+                }
+
                 case "ETH" or "BNB" or "MATIC" or "AVAX" or "FTM" or "CRO"
                      or "ARB" or "BASE" or "OP" when _sendQuote is not null:
                 {
@@ -976,6 +1081,10 @@ public partial class MainViewModel
         _tronQuote = null;
         _tonQuote = null;
         _adaQuote = null;
+        // Cleared with the rest: a stale token marker would route the NEXT quote — possibly a plain
+        // ETH send — down the contract-call path.
+        _sendTokenSymbol = null;
+        _sendTokenAmount = 0m;
     }
 
     [RelayCommand]

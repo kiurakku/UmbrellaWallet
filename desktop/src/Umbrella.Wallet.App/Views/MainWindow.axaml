@@ -1028,7 +1028,9 @@
                   <StackPanel Spacing="12">
                     <TextBlock Classes="eyebrow" Text="{Binding [send.step1], Source={x:Static app:Loc.Instance}}"/>
                     <TextBlock Classes="eyebrow" Text="{Binding [col.asset], Source={x:Static app:Loc.Instance}}"/>
-                    <ComboBox ItemsSource="{Binding SendableAssets}"
+                    <!-- The native coins plus every ERC-20 actually held, rebuilt from the
+                         holdings so the picker never offers what is not there (roadmap N.1). -->
+                    <ComboBox ItemsSource="{Binding SendableAssetOptions}"
                               SelectedItem="{Binding SelectedSendAsset}"
                               HorizontalAlignment="Stretch">
                       <ComboBox.ItemTemplate>

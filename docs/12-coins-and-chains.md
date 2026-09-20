@@ -36,9 +36,14 @@
 > Any ERC-20 token (LINK, UNI, AAVE, SHIB, PEPE, etc.) is automatically detected and its
 > balance shown when you link an Ethereum address. Same for TRC-20 on Tron and SPL on Solana.
 >
-> **Detected is not the same as sendable.** Token balances appear for every chain above;
-> sending a token is implemented for USDT on Tron only. Everything else in the Send column
-> above is a NATIVE coin.
+> **ERC-20 tokens on Ethereum can now be sent** — the Send picker lists the ones you actually hold,
+> and the transfer goes to the token's contract with the fee paid in ETH, not in the token. The
+> wallet routes on the CONTRACT, never the ticker, because two contracts can call themselves USDC.
+> A token whose contract never reported its decimals is refused rather than guessed at.
+>
+> **Still detected-but-not-sendable:** TRC-20 other than USDT (Tron), SPL tokens (Solana) and
+> Jettons (TON). Their balances appear; their Send paths are separate work (roadmap N.2, N.3).
+> Everything in the Send column above is a NATIVE coin.
 
 ---
 

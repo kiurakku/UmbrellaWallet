@@ -161,7 +161,7 @@ is the most common way people lose money.
 | Coin | Receive | Balance | Send | History | Swap | Notes |
 |---|:---:|:---:|:---:|:---:|:---:|---|
 | Bitcoin (BTC) | ✅ | ✅ | ✅ | ✅ | ✅ | BIP84 native SegWit, full HD scan |
-| Ethereum (ETH) | ✅ | ✅ | ✅ | ✅ | ✅ | + every ERC-20 at the same address |
+| Ethereum (ETH) | ✅ | ✅ | ✅ | ✅ | ✅ | + every ERC-20 at the same address — **and now sendable**, fee in ETH |
 | Litecoin (LTC) | ✅ | ✅ | ✅ | ✅ | ✅ | BIP84, full HD scan |
 | Dogecoin (DOGE) | ✅ | ✅ | ✅ | ✅ | ✅ | real UTXO spend |
 | Bitcoin Cash (BCH) | ✅ | ✅ | ✅ | ✅ | — | CashAddr, SIGHASH_FORKID |
