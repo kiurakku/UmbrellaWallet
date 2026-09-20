@@ -97,8 +97,20 @@ promise:
 bash scripts/verify-published-release.sh v4.7.0
 ```
 
-Not yet available: a GPG or Sigstore signature over the manifest (roadmap R.3). Until that exists, a
-checksum proves the file matches what the release page says — not who published the release page.
+A checksum proves the file matches what the release page says. It says nothing about **who put that
+page there** — somebody who can replace the artifacts can replace the manifest beside them. So every
+release from the next one on also carries a build attestation:
+
+```bash
+gh attestation verify UmbrellaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
+```
+
+That checks against a public transparency log — not against us — that these exact bytes came out of
+this repository's release workflow, at a named commit. There is no signing key involved, which means
+there is no signing key for anybody to steal.
+
+**Releases published before that have checksums only.** An attestation cannot be added to a build after the
+fact; a page claiming otherwise would be worth nothing.
 [AUDIT_STATUS.md](../AUDIT_STATUS.md) keeps that kind of gap in one place.
 
 ---
@@ -153,6 +165,8 @@ ours.
   hides your IP from the servers you ask, and un-sends nothing.
 - **That the code has been audited.** It has not. [AUDIT_STATUS.md](../AUDIT_STATUS.md) says so
   plainly and will keep saying so until it changes.
+- **That the source behind a signed build is good.** An attestation ties bytes to a commit in this
+  repository. Reading that commit is still your job — which is why the source is here.
 
 Found something that does not check out? [SECURITY.md](../SECURITY.md) — and never send a recovery
 phrase to anyone, including us, while "verifying".

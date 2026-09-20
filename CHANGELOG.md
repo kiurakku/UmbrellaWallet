@@ -42,6 +42,22 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### Releases are signed, without a signing key
+
+- Every artifact **and** the checksum manifest now carry a build attestation: GitHub signs, keylessly
+  through OIDC, a statement that these exact bytes came out of this repository's release workflow at
+  a named commit, recorded in a public transparency log.
+
+  ```bash
+  gh attestation verify UmbrellaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
+  ```
+
+- A checksum only ever proved that a download matches the manifest on the release page — and whoever
+  can replace the artifacts can replace the manifest beside them. This is the half that was missing.
+  There is no signing key involved, which means there is no signing key for anybody to steal.
+- Releases published before this have checksums only. An attestation cannot be added to a build after
+  the fact, and a page claiming otherwise would be worth nothing.
+
 ### Check this wallet against something that is not this wallet
 
 - **Settings → Security** exports a **watch-only key** for each UTXO chain. Paste it into an explorer

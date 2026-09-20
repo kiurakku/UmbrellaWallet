@@ -139,8 +139,18 @@ Each release should include:
 | Asset | Status |
 |---|---|
 | `SHA256SUMS-<version>.txt` | ✅ shipped |
-| Detached GPG / Sigstore signature on the sums file | ⏳ roadmap R.3 |
+| Build attestation over every artifact **and** the sums file | ✅ from the next release — keyless, via GitHub OIDC |
 | SBOM (CycloneDX / SPDX) | ⏳ roadmap R.4 |
+
+Verify an attestation with the GitHub CLI:
+
+```bash
+gh attestation verify UmbrellaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
+```
+
+It checks, against a public transparency log rather than against anything we say, that those exact
+bytes came out of this repository's release workflow at a specific commit. Releases published before then have checksums only — an attestation cannot be added to a build
+after the fact, and claiming otherwise would defeat the point.
 
 ## Historical vulnerabilities
 

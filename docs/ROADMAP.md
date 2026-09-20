@@ -114,7 +114,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | H.4 | **Android** (separate mobile threat model + UX, not a desktop copy) | 📅 Planned |
 | R.1 | **Reproducible builds** + published attestations (honestly: .NET single-file installer is not bit-identical) | 🟡 docs / ⏳ attestations |
 | R.2 | **Code signing OV/EV (SmartScreen)** | ⏳ **start ≥60 days before store release**; legal entity required; ~$300–1000/year (see R.6) |
-| R.3 | Sign releases with **GPG / Sigstore** | 📅 |
+| R.3 | Sign releases with **GPG / Sigstore** | ✅ from the next release — every artifact **and** the sums file carry a keyless build attestation (GitHub OIDC → public transparency log), verified with `gh attestation verify`. No signing key exists, so none can be stolen. Earlier releases have checksums only, and the docs say so |
 | R.4 | SBOM / provenance as a release asset | 📅 |
 | R.5 | External **security audit** — status in [`../AUDIT_STATUS.md`](../AUDIT_STATUS.md) | 📅 Planned |
 | **R.6** | **EV Code Signing** (~$500–800/year) or OV for Windows build — without this SmartScreen / Store block unsigned exe | ⏳ |
@@ -178,9 +178,9 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | Explorer sees the session address set | Already: node choice + Tor, and the Radar now says so under every status (P1.11); next: fewer addresses per request, Silent Payments |
 | UTXO linkage | PayJoin → CoinJoin; Silent Payments; the post-send report now names the count (P1.12 ✅) |
 | Broadcast timing ↔ IP | Dandelion++ |
-| Release substitution on GitHub | GPG/Sigstore + reproducible attestations |
+| Release substitution on GitHub | ✅ keyless build attestations (R.3) + the reproducible-build check; what remains is that a user must still choose to verify |
 | $5 wrench | Duress / decoy password ✅ — with its limits stated in the app: it does not hide that other wallets exist on the machine, nor help against being watched typing |
-| User forced to *trust* the client | ✅ watch-only xpub export + [`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md); a GPG/Sigstore signature over the checksum manifest (R.3) is still missing |
+| User forced to *trust* the client | ✅ watch-only xpub export + [`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md) + release attestations (R.3) |
 | No external audit | Commission audit (R.5); until then do not write “audited” |
 | Docs drifted from code | Annual documentation audit (M.7) |
 | App Store / Play rejection | §9 compliance (L.1–L.8, wording) |
@@ -198,7 +198,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 6. ✅ **P1.2, P1.4–P1.7, P1.9, P1.10** — hidden-wallet unlock, simulation, private-send parity across UTXO chains, connection status, honest capture wording, address book, Activity coverage. **P1.3** (panic wipe) is the last P1 open. ← **next**  
 7. ✅ **P1.20** + §10 — self-verify (xpub export) and the public guide “how to check you are not being lied to.”  
 8. ✅ **L.1 / L.3 / L.8** (+ L.2 wording) — disclaimers / age / ToS in the app; **L.4** is store-listing copy, written at submission.  
-9. **R.6 / L.6** — EV signing for Windows + PGP for Linux packages.  
+9. **R.6 / L.6** — EV signing for Windows + PGP for Linux packages. R.3 attestations already cover “did this come from the project”; EV covers SmartScreen, which is a different problem and needs a legal entity and money. ← **next (human/process)**  
 10. **N.1–N.3** — universal tokens, only with a full cycle.  
 11. **P2.1–P2.2** — Taproot spend + PayJoin.  
 12. **H.1 → H.2** — PSBT, then Ledger/Trezor.  
