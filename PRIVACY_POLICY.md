@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-09-15  
 **Applies to:** Umbrella Wallet app listings and public downloads  
-**Publisher:** the fear (kiurakku)
+**Publisher:** the fear (thefear078)
 
 This is the **formal privacy policy** for app stores and distributors.  
 For the honest technical breakdown (what each server learns), see **[PRIVACY.md](PRIVACY.md)** — that document is source-of-truth for engineers and users who want detail. This page is the short legal form stores expect.
@@ -78,7 +78,7 @@ We will update the “Last updated” date when this policy changes. Material ch
 | | |
 |---|---|
 | Privacy / product questions | [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet) |
-| Security issues (private) | [GitHub Security Advisories](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new) |
+| Security issues (private) | [GitHub Security Advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) |
 | Author contacts | [CONTACT.md](CONTACT.md) |
 
 **Never** send a recovery phrase or private key to any contact.

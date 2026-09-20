@@ -143,7 +143,7 @@ public partial class MainViewModel
         // --- Recovery & trust ---
         Note("💾", L["sec.backup"], L["sec.backupBody"], L["sec.openSettings"], "Settings");
         Note("🧾", L["sec.verify"], L["sec.verifyBody"], L["sec.openGuide"],
-            "https://github.com/kiurakku/umbrella-wallet/blob/main/docs/BUILD_VERIFY.md");
+            "https://github.com/thefear078/UmbrellaWallet/blob/main/docs/BUILD_VERIFY.md");
 
         SecurityScoreDone = good;
         SecurityScoreTotal = scored;

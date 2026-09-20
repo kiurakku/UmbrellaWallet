@@ -12,10 +12,10 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 
 <br/>
 
-![CI](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/ci.yml/badge.svg)
-![CodeQL](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/codeql.yml/badge.svg)
-![Security](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/security.yml/badge.svg)
-![Release](https://img.shields.io/github/v/release/kiurakku/UmbrellaWallet?label=release)
+![CI](https://github.com/thefear078/UmbrellaWallet/actions/workflows/ci.yml/badge.svg)
+![CodeQL](https://github.com/thefear078/UmbrellaWallet/actions/workflows/codeql.yml/badge.svg)
+![Security](https://github.com/thefear078/UmbrellaWallet/actions/workflows/security.yml/badge.svg)
+![Release](https://img.shields.io/github/v/release/thefear078/UmbrellaWallet?label=release)
 ![License](https://img.shields.io/badge/license-Free--Use%20No--Derivatives-4B3F86)
 ![Version](https://img.shields.io/badge/version-4.7.0-4B3F86)
 ![Tests](https://img.shields.io/badge/tests-526%20offline-7DCF8F)
@@ -27,7 +27,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 ![Tor](https://img.shields.io/badge/Tor-bundled-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
-**[⬇ Download](https://github.com/kiurakku/UmbrellaWallet/releases/latest)** ·
+**[⬇ Download](https://github.com/thefear078/UmbrellaWallet/releases/latest)** ·
 [Verify your download](#verify-what-you-downloaded) ·
 [Build it yourself](docs/building.md) ·
 [Security](SECURITY.md) ·
@@ -186,7 +186,7 @@ network delivers to your own address. Nobody holds your funds in between.
 
 <img src="docs/assets/logo-umbrella.png" width="64" align="left" alt="" hspace="14"/>
 
-Builds are published on the [releases page](https://github.com/kiurakku/UmbrellaWallet/releases/latest).
+Builds are published on the [releases page](https://github.com/thefear078/UmbrellaWallet/releases/latest).
 This is the icon you will see once it is installed.
 
 <br clear="left"/>
@@ -321,7 +321,7 @@ docs/                                everything in this README's Docs section
 You need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). Nothing else.
 
 ```bash
-git clone https://github.com/kiurakku/UmbrellaWallet.git
+git clone https://github.com/thefear078/UmbrellaWallet.git
 cd UmbrellaWallet
 dotnet build desktop/Umbrella.Wallet.sln -c Release
 ```
@@ -377,7 +377,7 @@ own keys should not charge you for touching your own money.
 
 It is funded instead by:
 
-- **[GitHub Sponsors](https://github.com/sponsors/kiurakku)**
+- **[GitHub Sponsors](https://github.com/sponsors/thefear078)**
 - **Bounties** — anyone can fund a specific coin or feature
 - **A small swap spread**, later and only on swaps, which are optional in a way a send is not
 
@@ -399,7 +399,7 @@ The short version:
 The long version, including the threat model and what Umbrella explicitly does **not** protect you
 from, is in **[SECURITY.md](SECURITY.md)**.
 
-Found a vulnerability? [Report it privately](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new).
+Found a vulnerability? [Report it privately](https://github.com/thefear078/UmbrellaWallet/security/advisories/new).
 Please don't open a public issue for anything that could put funds at risk.
 
 ## Roadmap
@@ -495,7 +495,7 @@ which is exactly why there is no tracking and no cut of your transfers.</sub>
 </a>
 
 **[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)** ·
-[GitHub](https://github.com/kiurakku/UmbrellaWallet) ·
+[GitHub](https://github.com/thefear078/UmbrellaWallet) ·
 [TikTok @thefear078](https://www.tiktok.com/@thefear078) ·
 [Reddit u/Particular_Lime_7004](https://www.reddit.com/user/Particular_Lime_7004)
 
@@ -504,7 +504,7 @@ Nobody there will ever ask you for your seed phrase.</sub>
 
 <br/>
 
-[💖 Sponsor this work](https://github.com/sponsors/kiurakku) ·
+[💖 Sponsor this work](https://github.com/sponsors/thefear078) ·
 [Terms](TERMS_OF_SERVICE.md) ·
 [Privacy Policy](PRIVACY_POLICY.md) ·
 [Audit status](AUDIT_STATUS.md)

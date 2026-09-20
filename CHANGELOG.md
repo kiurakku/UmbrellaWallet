@@ -42,6 +42,21 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### Where your requests are going, without asking
+
+- A connection chip in the sidebar (and in the top/bottom nav): **TOR**, **PROXY**, **DIRECT** or
+  **BLOCKED**, read from the live route rather than from a setting. Click it and you are in the
+  screen that can change it.
+- It turns amber for the state that looks like the good one: Tor switched on in Settings, Tor not
+  actually carrying the traffic, every request going out in the clear. It reads the same state the
+  send gate does, so the chip and a refused send can never tell different stories.
+
+### The project's GitHub account is now `thefear078`
+
+- Every link in the app, the docs, the installer and the release scripts follows it. GitHub redirects
+  the old ones, which is exactly why a stale link survives unnoticed — it works, and it is wrong. A
+  test now fails if one comes back.
+
 ### A password that opens a different wallet
 
 - **Duress password** (Settings → Security). If you are ever made to unlock this wallet in front of

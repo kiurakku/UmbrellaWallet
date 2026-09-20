@@ -143,7 +143,55 @@ public partial class MainViewModel : ViewModelBase
     /// the live Tor/proxy status, e.g. "Tor connected" / "Direct connection" (roadmap §7.1).</summary>
     public string ConnectionLabel => (TorStatus ?? string.Empty).Split('·')[0].Trim();
 
-    partial void OnTorStatusChanged(string value) => OnPropertyChanged(nameof(ConnectionLabel));
+    partial void OnTorStatusChanged(string value)
+    {
+        OnPropertyChanged(nameof(ConnectionLabel));
+        RefreshConnectionChip();
+    }
+
+    // --- Connection chip (roadmap P1.6) ---------------------------------------------------------
+    // Where requests are actually going, in the primary interface rather than three screens deep.
+    // The state worth showing most is the one that looks like the good one: Tor switched on in
+    // Settings, Tor not actually running, everything going out in the clear.
+
+    [ObservableProperty] private string _connectionChipLabel = string.Empty;
+    [ObservableProperty] private string _connectionChipColor = "#8A9099";
+    [ObservableProperty] private string _connectionChipTooltip = string.Empty;
+
+    /// <summary>Recomputes the chip from the same live signals the send gate reads, so the two can
+    /// never tell different stories.</summary>
+    public void RefreshConnectionChip()
+    {
+        var state = Umbrella.Wallet.Core.Safety.ConnectionStatus.Evaluate(CurrentTransportState());
+        var L = Loc.Instance;
+
+        // A route the user did not ask for is a warning, not a status line.
+        var warn = state.TorExpectedButNotUsed;
+
+        (ConnectionChipLabel, ConnectionChipColor) = state.Route switch
+        {
+            Umbrella.Wallet.Core.Safety.ConnectionRoute.Tor => (L["conn.tor"], "#8FCB9B"),
+            Umbrella.Wallet.Core.Safety.ConnectionRoute.CustomProxy => (L["conn.proxy"], warn ? "#E7CA83" : "#8FB8CB"),
+            Umbrella.Wallet.Core.Safety.ConnectionRoute.Blocked => (L["conn.blocked"], "#E09A9A"),
+            _ => (L["conn.direct"], warn ? "#E7CA83" : "#8A9099"),
+        };
+
+        ConnectionChipTooltip = state.Route switch
+        {
+            Umbrella.Wallet.Core.Safety.ConnectionRoute.Tor => L["conn.torHint"],
+            Umbrella.Wallet.Core.Safety.ConnectionRoute.CustomProxy => L["conn.proxyHint"],
+            Umbrella.Wallet.Core.Safety.ConnectionRoute.Blocked => L["conn.blockedHint"],
+            _ => warn ? L["conn.directTorOffHint"] : L["conn.directHint"],
+        };
+    }
+
+    /// <summary>The chip is a button: it opens the screen that can change what it reports.</summary>
+    [RelayCommand]
+    private void OpenConnectionSettings()
+    {
+        SettingsTab = "Privacy";
+        SelectSection("Settings");
+    }
 
     /// <summary>True when a broadcast would go over clearnet — Tor is off and the Tor-only kill-switch
     /// isn't forcing it. Shown as an anonymity reminder on the Send review: the node you broadcast to
@@ -153,6 +201,7 @@ public partial class MainViewModel : ViewModelBase
     partial void OnTorEnabledChanged(bool value)
     {
         OnPropertyChanged(nameof(ShowSendClearnetNote));
+        RefreshConnectionChip();
         RefreshPrivateSendPlan();    // the private-send plan is a read of this state
         RefreshMoneroNodeStatus();   // an .onion node becomes usable (or not) with Tor
     }
@@ -483,6 +532,7 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.Save();
             OnPropertyChanged();
             PublicHttp.SetRequireProxy(value);
+            RefreshConnectionChip();
             OnPropertyChanged(nameof(TorOnlyStatus));
             OnPropertyChanged(nameof(ShowSendClearnetNote));
             if (IsUnlocked) PushActivity("Security", "Tor-only", value ? "on" : "off",
@@ -572,6 +622,7 @@ public partial class MainViewModel : ViewModelBase
         {
             // Hand routing back to Tor (its proxy if on, else direct).
             PublicHttp.SetProxy(TorEnabled ? _tor.ProxyUri : null);
+            RefreshConnectionChip();
             ProxyStatus = string.Empty;
             _ = RefreshMarketAsync();
             return;
@@ -595,6 +646,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         PublicHttp.SetProxy(normalized);
+        RefreshConnectionChip();
         ProxyStatus = $"Routing through {normalized}";
         ProxyStatusColor = "#8FCB9B";
         if (IsUnlocked) PushActivity("Security", "Proxy", "on", normalized, "now");
@@ -1232,6 +1284,7 @@ public partial class MainViewModel : ViewModelBase
         if (EffectiveCustomProxy() is { } startupProxy)
         {
             PublicHttp.SetProxy(startupProxy);
+            RefreshConnectionChip();
             ProxyStatus = $"Routing through {startupProxy}";
             ProxyStatusColor = "#8FCB9B";
         }
@@ -2866,6 +2919,7 @@ public partial class MainViewModel : ViewModelBase
             // Fall back to the custom proxy if the user has one, otherwise go direct.
             var fallback = EffectiveCustomProxy();
             PublicHttp.SetProxy(fallback);
+            RefreshConnectionChip();
             TorStatus = fallback is null
                 ? "Direct connection · traffic is NOT anonymised"
                 : $"Off · using your custom proxy ({fallback})";
@@ -2901,10 +2955,12 @@ public partial class MainViewModel : ViewModelBase
             TorStatusColor = "#E09A9A";
             TorEnabled = false;
             PublicHttp.SetProxy(null);
+            RefreshConnectionChip();
             return;
         }
 
         PublicHttp.SetProxy(_tor.ProxyUri);
+        RefreshConnectionChip();
         TorStatus = $"{resultMessage} · your IP is hidden from explorers";
         TorStatusColor = "#8FCB9B";
         if (IsUnlocked) PushActivity("Security", "Tor", "on", "IP hidden from explorers", "now");

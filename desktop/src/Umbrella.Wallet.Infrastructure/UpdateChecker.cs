@@ -10,9 +10,9 @@ namespace Umbrella.Wallet.Infrastructure;
 /// </summary>
 public static class UpdateChecker
 {
-    public const string ReleasesUrl = "https://github.com/kiurakku/umbrella-wallet/releases";
+    public const string ReleasesUrl = "https://github.com/thefear078/UmbrellaWallet/releases";
     private const string VersionUrl =
-        "https://raw.githubusercontent.com/kiurakku/umbrella-wallet/main/VERSION";
+        "https://raw.githubusercontent.com/thefear078/UmbrellaWallet/main/VERSION";
 
     public sealed record Result(bool Available, string Latest, string? Error);
 

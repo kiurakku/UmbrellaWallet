@@ -20,7 +20,7 @@ safely.
 ## 1. Download
 
 Get the latest build from
-**[GitHub Releases](https://github.com/kiurakku/UmbrellaWallet/releases/latest)**.
+**[GitHub Releases](https://github.com/thefear078/UmbrellaWallet/releases/latest)**.
 
 Typical assets:
 

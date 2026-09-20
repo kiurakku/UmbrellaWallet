@@ -50,8 +50,8 @@ public partial class MainViewModel
     }
 
     /// <summary>The documents the acknowledgement refers to, at the canonical repository.</summary>
-    public string TermsUrl => "https://github.com/kiurakku/UmbrellaWallet/blob/main/TERMS_OF_SERVICE.md";
+    public string TermsUrl => "https://github.com/thefear078/UmbrellaWallet/blob/main/TERMS_OF_SERVICE.md";
 
     public string PrivacyPolicyUrl =>
-        "https://github.com/kiurakku/UmbrellaWallet/blob/main/PRIVACY_POLICY.md";
+        "https://github.com/thefear078/UmbrellaWallet/blob/main/PRIVACY_POLICY.md";
 }

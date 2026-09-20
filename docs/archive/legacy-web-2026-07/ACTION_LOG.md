@@ -51,7 +51,7 @@
 ## Todo
 
 ### Deployment (needs owner's Render dashboard — everything else is ready)
-- [ ] Deploy Render blueprint: https://dashboard.render.com/blueprint/new?repo=https://github.com/kiurakku/umbrella-wallet — set `DATABASE_URL` (Render Postgres), `REDIS_URL` (Render Key-Value), `TELEGRAM_BOT_TOKEN`; JWT secrets auto-generate; `COOKIE_SECURE=true` already in render.yaml
+- [ ] Deploy Render blueprint: https://dashboard.render.com/blueprint/new?repo=https://github.com/thefear078/UmbrellaWallet — set `DATABASE_URL` (Render Postgres), `REDIS_URL` (Render Key-Value), `TELEGRAM_BOT_TOKEN`; JWT secrets auto-generate; `COOKIE_SECURE=true` already in render.yaml
 - [ ] Confirm `GET https://umbra-api.onrender.com/health` → 200 (`database:true`)
 - [ ] Vercel `API_ORIGIN` already set — redeploy frontend after push, then verify register/login on prod
 - [ ] Set `TELEGRAM_WEBHOOK_URL=https://umbra-api.onrender.com/telegram/webhook` + `TELEGRAM_WEBHOOK_SECRET` for the bot (or `TELEGRAM_USE_POLLING=true` for quick start)

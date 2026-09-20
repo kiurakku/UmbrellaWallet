@@ -34,7 +34,7 @@ public sealed class PublisherAttributionTests
     {
         var copyright = App.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? "";
         Assert.Contains("the fear", copyright);
-        Assert.Contains("kiurakku", copyright);
+        Assert.Contains("thefear078", copyright);
     }
 
     [Fact]
@@ -60,6 +60,39 @@ public sealed class PublisherAttributionTests
         // And Settings carries the About card, which states the publisher from assembly metadata
         // rather than from a literal somebody could edit in one place and forget in the other.
         Assert.Contains("AboutPublisherLine", xaml, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The project's GitHub account was renamed (kiurakku → thefear078, matching the brand and the
+    /// TikTok handle). GitHub redirects the old URLs, which is exactly why a stale one survives
+    /// unnoticed: every link still works, and every link is wrong — including the ones the app opens
+    /// from the About card and the first-run screen, where "is this the real project?" is the
+    /// question being asked.
+    /// </summary>
+    [Fact]
+    public void No_file_still_points_at_the_old_account_name()
+    {
+        var root = RepoRoot();
+        var offenders = new List<string>();
+
+        foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(root, file);
+            if (relative.Split(Path.DirectorySeparatorChar)
+                .Any(part => part is ".git" or "bin" or "obj" or "node_modules")) continue;
+
+            // This file is ABOUT the old name, so it says it out loud. Named rather than pattern-
+            // matched around, so the exception is visible instead of hidden in a cleverer rule.
+            if (relative.EndsWith("PublisherAttributionTests.cs", StringComparison.Ordinal)) continue;
+
+            string text;
+            try { text = File.ReadAllText(file); }
+            catch { continue; }   // binary or locked: not a place a URL hides
+
+            if (text.Contains("kiurakku", StringComparison.OrdinalIgnoreCase)) offenders.Add(relative);
+        }
+
+        Assert.Empty(offenders);
     }
 
     private static string RepoRoot()

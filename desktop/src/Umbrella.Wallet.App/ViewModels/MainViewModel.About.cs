@@ -41,10 +41,10 @@ public partial class MainViewModel
         string.Format(Loc.Instance["about.byPublisher"], Publisher);
 
     /// <summary>The canonical repository. Every other copy of this source is somebody else's.</summary>
-    public string RepoUrl => "https://github.com/kiurakku/UmbrellaWallet";
+    public string RepoUrl => "https://github.com/thefear078/UmbrellaWallet";
 
-    public string ReleasesUrl => "https://github.com/kiurakku/UmbrellaWallet/releases";
-    public string LicenseUrl => "https://github.com/kiurakku/UmbrellaWallet/blob/main/LICENSE";
-    public string TrademarkUrl => "https://github.com/kiurakku/UmbrellaWallet/blob/main/TRADEMARK_POLICY.md";
-    public string NoticesUrl => "https://github.com/kiurakku/UmbrellaWallet/blob/main/THIRD_PARTY_NOTICES.md";
+    public string ReleasesUrl => "https://github.com/thefear078/UmbrellaWallet/releases";
+    public string LicenseUrl => "https://github.com/thefear078/UmbrellaWallet/blob/main/LICENSE";
+    public string TrademarkUrl => "https://github.com/thefear078/UmbrellaWallet/blob/main/TRADEMARK_POLICY.md";
+    public string NoticesUrl => "https://github.com/thefear078/UmbrellaWallet/blob/main/THIRD_PARTY_NOTICES.md";
 }

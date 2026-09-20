@@ -511,12 +511,29 @@
               </StackPanel>
             </Border>
 
-            <!-- Footer: lock action, icon only. -->
-            <Button Grid.Row="2" Classes="navicon" Margin="0,6,0,16" HorizontalAlignment="Center"
-                    Command="{Binding LockCommand}" AutomationProperties.Name="{Binding [footer.lock], Source={x:Static app:Loc.Instance}}"
- ToolTip.Tip="{Binding [footer.lock], Source={x:Static app:Loc.Instance}}">
-              <Path Data="M7 11 V8 A5 5 0 0 1 17 8 V11 M5 11 H19 V20 H5 Z"/>
-            </Button>
+            <!-- Footer: where requests are actually going, then the lock action (roadmap P1.6).
+                 The state worth showing most is the one that looks like the good one — Tor on in
+                 Settings, Tor not running, everything going out in the clear — so the dot turns
+                 amber for it rather than staying quietly grey. -->
+            <StackPanel Grid.Row="2" Spacing="6" Margin="0,6,0,16" HorizontalAlignment="Center">
+              <Button Classes="ghost" Padding="7,4" MinHeight="0" CornerRadius="999"
+                      HorizontalAlignment="Center"
+                      Command="{Binding OpenConnectionSettingsCommand}"
+                      ToolTip.Tip="{Binding ConnectionChipTooltip}"
+                      AutomationProperties.Name="{Binding ConnectionChipLabel}">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{Binding ConnectionChipColor}"/>
+                  <TextBlock Text="{Binding ConnectionChipLabel}" FontSize="9.5" FontWeight="SemiBold"
+                             Foreground="{Binding ConnectionChipColor}" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+
+              <Button Classes="navicon" HorizontalAlignment="Center"
+                      Command="{Binding LockCommand}" AutomationProperties.Name="{Binding [footer.lock], Source={x:Static app:Loc.Instance}}"
+                      ToolTip.Tip="{Binding [footer.lock], Source={x:Static app:Loc.Instance}}">
+                <Path Data="M7 11 V8 A5 5 0 0 1 17 8 V11 M5 11 H19 V20 H5 Z"/>
+              </Button>
+            </StackPanel>
           </Grid>
         </Border>
 
@@ -526,6 +543,19 @@
                 Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}"
                 BorderThickness="0,1,0,1" Padding="14,8">
           <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+            <!-- Same connection state as the vertical sidebar carries: it must not disappear because
+                 the nav was moved to the top or bottom (roadmap P1.6). -->
+            <Button Classes="ghost" Padding="9,5" MinHeight="0" CornerRadius="999" VerticalAlignment="Center"
+                    Command="{Binding OpenConnectionSettingsCommand}"
+                    ToolTip.Tip="{Binding ConnectionChipTooltip}"
+                    AutomationProperties.Name="{Binding ConnectionChipLabel}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{Binding ConnectionChipColor}"/>
+                <TextBlock Text="{Binding ConnectionChipLabel}" FontSize="10.5" FontWeight="SemiBold"
+                           Foreground="{Binding ConnectionChipColor}" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Button>
+
             <!-- Wallet switcher — always reachable, so switching works when the nav is top/bottom. -->
             <Button Classes="chip" Command="{Binding OpenWalletsCommand}" IsVisible="{Binding IsUnlocked}"
                     AutomationProperties.Name="{Binding [settings.tabWallets], Source={x:Static app:Loc.Instance}}"

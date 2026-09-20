@@ -2,32 +2,32 @@
 # Required reviewers for merges into protected branches.
 # Solo maintainer — no fake team handles.
 
-* @kiurakku
+* @thefear078
 
 # Repo meta & docs
-/.github/ @kiurakku
-/LEGAL/ @kiurakku
-/SECURITY/ @kiurakku
-/docs/ @kiurakku
-*.md @kiurakku
-LICENSE @kiurakku
-CODE_OF_CONDUCT.md @kiurakku
-TRADEMARK_POLICY.md @kiurakku
-THIRD_PARTY_NOTICES.md @kiurakku
+/.github/ @thefear078
+/LEGAL/ @thefear078
+/SECURITY/ @thefear078
+/docs/ @thefear078
+*.md @thefear078
+LICENSE @thefear078
+CODE_OF_CONDUCT.md @thefear078
+TRADEMARK_POLICY.md @thefear078
+THIRD_PARTY_NOTICES.md @thefear078
 
 # Desktop tree
-/desktop/ @kiurakku
-/desktop/tests/ @kiurakku
+/desktop/ @thefear078
+/desktop/tests/ @thefear078
 
 # Security-sensitive paths (explicit for review visibility)
-/desktop/src/Umbrella.Wallet.Core/Derivation/ @kiurakku
-/desktop/src/Umbrella.Wallet.Core/Vault/ @kiurakku
-/desktop/src/Umbrella.Wallet.Core/Safety/ @kiurakku
-/desktop/src/Umbrella.Wallet.Infrastructure/ @kiurakku
-/desktop/src/Umbrella.Wallet.App/ @kiurakku
+/desktop/src/Umbrella.Wallet.Core/Derivation/ @thefear078
+/desktop/src/Umbrella.Wallet.Core/Vault/ @thefear078
+/desktop/src/Umbrella.Wallet.Core/Safety/ @thefear078
+/desktop/src/Umbrella.Wallet.Infrastructure/ @thefear078
+/desktop/src/Umbrella.Wallet.App/ @thefear078
 
 # Release / packaging
-/desktop/installer/ @kiurakku
-/desktop/scripts/ @kiurakku
-/scripts/ @kiurakku
-VERSION @kiurakku
+/desktop/installer/ @thefear078
+/desktop/scripts/ @thefear078
+/scripts/ @thefear078
+VERSION @thefear078

@@ -4,15 +4,15 @@ Thank you for your interest. Please read this before opening a pull request or f
 
 ## This is not a community fork project
 
-Umbrella Wallet is an **independent product** by **the fear** (kiurakku). The source code is public so users can **audit** what the app does with their keys — not so anyone can ship a clone, rebrand, or "Umbrella mod".
+Umbrella Wallet is an **independent product** by **the fear** (thefear078). The source code is public so users can **audit** what the app does with their keys — not so anyone can ship a clone, rebrand, or "Umbrella mod".
 
 **Forking is prohibited** by the [LICENSE](LICENSE): no derivatives, no redistribution, no rebranding without written permission. On GitHub, the Fork button may still appear for public repos — using it to publish a clone still violates the license.
 
 ## What we welcome
 
-- **Bug reports** — [GitHub Issues](https://github.com/kiurakku/UmbrellaWallet/issues) with steps to reproduce, version, and platform.
-- **Security reports** — privately via [GitHub Security Advisories](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new). Do not open public issues for vulnerabilities.
-- **Sponsorship** — [GitHub Sponsors](https://github.com/sponsors/kiurakku) helps fund development. It does not buy roadmap priority or access to user data.
+- **Bug reports** — [GitHub Issues](https://github.com/thefear078/UmbrellaWallet/issues) with steps to reproduce, version, and platform.
+- **Security reports** — privately via [GitHub Security Advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new). Do not open public issues for vulnerabilities.
+- **Sponsorship** — [GitHub Sponsors](https://github.com/sponsors/thefear078) helps fund development. It does not buy roadmap priority or access to user data.
 
 Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 

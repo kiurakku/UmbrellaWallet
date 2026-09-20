@@ -9,7 +9,7 @@ The technical detail — threat model, cryptography, what is deliberately not pr
 ## Reporting a vulnerability
 
 **Report privately:**
-**[github.com/kiurakku/UmbrellaWallet/security/advisories/new](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new)**
+**[github.com/thefear078/UmbrellaWallet/security/advisories/new](https://github.com/thefear078/UmbrellaWallet/security/advisories/new)**
 
 Please do **not** open a public issue for anything that could put funds at risk. A public report on a
 wallet is a race between the fix and whoever reads it first.
@@ -76,7 +76,7 @@ There is no funded bounty programme yet. Being straight about that rather than i
 - **Critical** findings — anything that lets an attacker take funds or extract a seed — will be
   rewarded from project funds, and credited publicly.
 - All valid findings get credit and a fix.
-- If you would like to see a funded programme, [sponsorship](https://github.com/sponsors/kiurakku)
+- If you would like to see a funded programme, [sponsorship](https://github.com/sponsors/thefear078)
   is what would pay for it.
 
 ## Supported versions

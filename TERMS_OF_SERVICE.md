@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-09-15  
 **Product:** Umbrella Wallet (desktop self-custody software)  
-**Publisher:** the fear (kiurakku)
+**Publisher:** the fear (thefear078)
 
 By downloading, installing, or using Umbrella Wallet (“the Software”), you agree to these Terms. If you do not agree, do not use the Software.
 
@@ -69,7 +69,7 @@ Your rights under these Terms end if you breach them or the [LICENSE](LICENSE). 
 
 ## 11. Contact
 
-- Security (vulnerabilities): [GitHub Security Advisories](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new)
+- Security (vulnerabilities): [GitHub Security Advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new)
 - Product / community: [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)
 - Author: [CONTACT.md](CONTACT.md)
 

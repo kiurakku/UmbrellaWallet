@@ -9,7 +9,7 @@ labels: []
 
 Report privately instead:
 
-→ https://github.com/kiurakku/UmbrellaWallet/security/advisories/new
+→ https://github.com/thefear078/UmbrellaWallet/security/advisories/new
 
 Process and timelines: [SECURITY.md](../../SECURITY.md)
 

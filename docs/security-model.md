@@ -238,7 +238,7 @@ but they are not an audit. An audit is on the roadmap. Until it happens, this pa
 ## Reporting a vulnerability
 
 Please report privately:
-**[github.com/kiurakku/UmbrellaWallet/security/advisories/new](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new)**
+**[github.com/thefear078/UmbrellaWallet/security/advisories/new](https://github.com/thefear078/UmbrellaWallet/security/advisories/new)**
 
 Do not open a public issue for anything that could put funds at risk. See [SECURITY.md](../SECURITY.md)
 for scope, expected response time, and what counts as in-scope.

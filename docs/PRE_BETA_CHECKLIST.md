@@ -1,7 +1,7 @@
 # Pre-beta checklist
 
 **Last verified:** 2026-09-20 · Wallet [4.7.0](../VERSION)  
-**Repo:** [kiurakku/UmbrellaWallet](https://github.com/kiurakku/UmbrellaWallet)
+**Repo:** [thefear078/UmbrellaWallet](https://github.com/thefear078/UmbrellaWallet)
 
 This replaces stale audits that still claim “missing LICENSE / CODEOWNERS / CoC / Dependabot”.
 Those items are **done**. What remains before a **public beta** is mostly **code** (P0 fund-safety)

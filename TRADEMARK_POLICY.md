@@ -1,7 +1,7 @@
 # Trademark policy
 
 **Last updated:** 2026-09-15  
-**Owner:** the fear (kiurakku) — see [CONTACT.md](CONTACT.md)
+**Owner:** the fear (thefear078) — see [CONTACT.md](CONTACT.md)
 
 “**Umbrella Wallet**”, “**Umbrella**” (in the wallet product sense), “**the fear**” as publisher brand,
 and the associated logos and icons are product and brand identifiers of this project.
@@ -17,14 +17,14 @@ name. It does **not** replace the [LICENSE](LICENSE).
 - Refer to Umbrella Wallet by name in articles, reviews, and security research **with clear
   attribution** and without implying endorsement.
 - Build **compatible** tools or research harnesses under a **different** name and branding.
-- Link to the official repository and releases: https://github.com/kiurakku/UmbrellaWallet
+- Link to the official repository and releases: https://github.com/thefear078/UmbrellaWallet
 
 ## You may not (without prior written permission)
 
 - Use “Umbrella”, “Umbrella Wallet”, “the fear”, confusingly similar names, or our logos for a
   **fork, mirror, redistributed binary, or commercial service**.
 - Ship a modified client that still looks like official Umbrella (icons, splash, store listing copy).
-- Imply affiliation, partnership, or endorsement by kiurakku / the fear / Umbrella Wallet.
+- Imply affiliation, partnership, or endorsement by thefear078 / the fear / Umbrella Wallet.
 - Register domains, social handles, or store listings that impersonate this project.
 
 ## Forks and derivatives
