@@ -19,11 +19,12 @@ project’s own signed hashes file — never a random mirror.
 | | |
 |---|---|
 | Component | `tor.exe` + GeoIP databases (Windows x86_64 expert bundle) |
-| Version | 15.0.22 |
-| Archive | `tor-expert-bundle-windows-x86_64-15.0.22.tar.gz` |
-| Source URL | https://dist.torproject.org/torbrowser/15.0.22/tor-expert-bundle-windows-x86_64-15.0.22.tar.gz |
+| Version | 15.0.23 |
+| Archive | `tor-expert-bundle-windows-x86_64-15.0.23.tar.gz` |
+| Source URL | https://dist.torproject.org/torbrowser/15.0.23/tor-expert-bundle-windows-x86_64-15.0.23.tar.gz |
 | SHA-256 | `231dad6b9cb401a54c260db7046965ef04e4f72ff071b140d423fb5da281ab1e` |
-| Hash source | https://dist.torproject.org/torbrowser/15.0.22/sha256sums-unsigned-build.txt |
+| Hash source | https://dist.torproject.org/torbrowser/15.0.23/sha256sums-unsigned-build.txt (+ `.asc`) |
+| Signing key | `EF6E286DDA85EA2A4BA7DE684E2C6E8793298290` — Tor Browser Developers |
 | License | BSD 3-Clause (Tor Project upstream `LICENSE`) |
 
 ### Monero CLI (`monero-wallet-rpc`)
@@ -35,13 +36,14 @@ project’s own signed hashes file — never a random mirror.
 | Archive | `monero-win-x64-v0.18.5.1.zip` |
 | Source URL | https://downloads.getmonero.org/cli/monero-win-x64-v0.18.5.1.zip |
 | SHA-256 | `cf2ae8273977697d9ef2031c7337b781e6e5936578f602444b2990a173a2437d` |
-| Hash source | https://www.getmonero.org/downloads/hashes.txt (PGP-signed) |
+| Hash source | https://www.getmonero.org/downloads/hashes.txt (clearsigned) |
+| Signing key | `81AC591FE9C4B65C5806AFC3F0AF4D462A0BDF92` — binaryFate ([in-repo copy](https://raw.githubusercontent.com/monero-project/monero/master/utils/gpg_keys/binaryfate.asc)) |
 | License | BSD 3-Clause (Monero project upstream `LICENSE`) |
 
 ### Verifying binaries by hand
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\tor-expert-bundle-windows-x86_64-15.0.22.tar.gz
+Get-FileHash -Algorithm SHA256 .\tor-expert-bundle-windows-x86_64-15.0.23.tar.gz
 Get-FileHash -Algorithm SHA256 .\monero-win-x64-v0.18.5.1.zip
 ```
 

@@ -1,7 +1,7 @@
 # Umbrella Wallet — unified roadmap
 
 **Product version:** see [`VERSION`](../VERSION) (currently **4.7.0**).  
-**Consolidation date:** 2026-09-15 · **last status pass:** 2026-09-20 (P0.0, P0.6–P0.8 and L.1/L.2/L.3/L.8 closed).  
+**Consolidation date:** 2026-09-15 · **last status pass:** 2026-09-20 (P0.0, P0.2–P0.4, P0.6–P0.8 and L.1/L.2/L.3/L.8 closed).  
 **Purpose:** one document for “what remains to do” — compiled from README, CHANGELOG, `SECURE_ANON_ROADMAP`, `CLAUDE_IMPLEMENTATION_ROADMAP_UK`, `12-coins-and-chains`, `PRIVACY`, `THREAT_MODEL`, `security-model`, `BUILD_VERIFY`, and notes on alignment with the manifesto philosophy.
 
 Legend: ✅ done · 🟡 partial · ⏳ next · 📅 planned · ❌ not planned / blocked.
@@ -50,9 +50,9 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 |---|---|---|---|
 | **P0.0** | **Full restore proof (critical).** Test: new wallet → ≥20 receive addresses → funds to address **#15** → delete local state → restore **from seed only** + BIP44/gap limit → full balance found. Without state — full HD scan only. Without this, self-custody is fiction. | Audit vs MANIFESTO §6 | ✅ (`RestoreFromSeedProofTests`, BTC/LTC/BCH/DOGE: 20 issued, funds on #15, state deleted, rediscovered **and spent**; the past-gap limit is pinned too) |
 | P0.1 | Close HD UTXO edge-case gaps (gap scan, change not lost in UI) — after / together with P0.0 | Claude §3 | 🟡 partial in 4.5–4.7 |
-| P0.2 | Pin + SHA/PGP verification for **Tor** and **monero-wallet-rpc** in fetch scripts (fail-closed) | Claude §4.2, BUILD_VERIFY | ⏳ |
-| P0.3 | CI: verify `SHA256SUMS` ↔ attached artifacts byte-for-byte | Claude §4.1 | ⏳ |
-| P0.4 | Single machine-readable **capability matrix** → UI + README + tests (no discrepancies) | Claude §5.1, coins doc | ⏳ |
+| P0.2 | Pin + SHA/PGP verification for **Tor** and **monero-wallet-rpc** in fetch scripts (fail-closed) | Claude §4.2, BUILD_VERIFY | ✅ the fetch scripts verify each project's SIGNED sums file (Tor `.asc`, Monero clearsigned) against a pinned key fingerprint before trusting the hash; release builds pass `-RequireSignature`; `scripts/check-pinned-binaries.sh` keeps the scripts and THIRD_PARTY_NOTICES from drifting (they had: the pinned Tor version was gone from the mirror) |
+| P0.3 | CI: verify `SHA256SUMS` ↔ attached artifacts byte-for-byte | Claude §4.1 | ✅ the release job already self-verifies before publishing; `scripts/verify-published-release.sh` now checks what the page **serves afterwards**, including that no attached artifact is missing from the manifest |
+| P0.4 | Single machine-readable **capability matrix** → UI + README + tests (no discrepancies) | Claude §5.1, coins doc | ✅ `SendableSymbols` is the one source the picker, the send guard, the coins doc, the README table and §4 below are all checked against (`CapabilityMatrixTests`) |
 | P0.5 | zkSync Era **send** or honestly leave Receive-only with gas explanation (not “Ready”) | coins / CHANGELOG 4.7 | 🟡 |
 | **P0.6** | **Fail-closed balance.** If all RPC/nodes are unreachable (e.g. 3+ attempts) → UI: “Balance unavailable (network error)” + Refresh. **Do not** show cache as the current balance; cache only with an explicit “last synced …” / “unknown” label, never as a live `0.0000` caused by an error. Offline test mandatory. | MANIFESTO §4, audit | ✅ (`BalanceReadout`: unread → “—” + reason, cache marked “last known”, unread rows excluded from the total and counted out loud) |
 | **P0.7** | **Send-path transport gate.** Before Send/Review, verify that the actual path (Tor / Clearnet / Custom) matches the user’s settings (+ kill-switch). Violation → **FAIL**, send blocked; no silent clearnet fallback. | MANIFESTO §3–4, audit | ✅ (`SendTransportGate` at Review **and** Confirm: Tor on-but-down, routed elsewhere, unapplied proxy or armed kill-switch with no proxy all refuse) |
@@ -192,8 +192,8 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 
 1. ✅ **P0.0** — Full restore proof (without this, all self-custody security is in question).  
 2. ✅ **P0.6–P0.8** — fail-closed balance + send transport gate + network isolation CI.  
-3. **P0.2–P0.4** — supply chain helpers + checksum CI + capability matrix. ← **next**  
-4. **P1.11 / P1.12** — Privacy Radar limits + “What leaked?” (UI honesty).  
+3. ✅ **P0.2–P0.4** — supply chain helpers + checksum CI + capability matrix.  
+4. **P1.11 / P1.12** — Privacy Radar limits + “What leaked?” (UI honesty). ← **next**  
 5. **P1.1 / P1.13** (+ P1.2–P1.3) — duress/decoy + verified “under coercion” scenario.  
 6. **P1.4–P1.6** — simulation + connection status + private-send polish.  
 7. **P1.20** + §10 — self-verify mode and a public guide “how to check you are not being lied to.”  

@@ -30,8 +30,10 @@ $version = ([xml](Get-Content $csproj)).Project.PropertyGroup.Version | Where-Ob
 Write-Host "Releasing Umbrella Wallet $version (win-x64)…" -ForegroundColor Cyan
 
 # 1) Stage the bundled Tor + Monero binaries (idempotent; skip if already present).
-& (Join-Path $PSScriptRoot "fetch-tor.ps1")
-& (Join-Path $PSScriptRoot "fetch-monero.ps1")
+# -RequireSignature: this builds something other people install, so the upstream sums files are
+# checked against their publishers' keys rather than trusted because they downloaded cleanly.
+& (Join-Path $PSScriptRoot "fetch-tor.ps1") -RequireSignature
+& (Join-Path $PSScriptRoot "fetch-monero.ps1") -RequireSignature
 
 $appDir      = Join-Path $OutRoot "app"
 $portableDir = Join-Path $OutRoot "portable"

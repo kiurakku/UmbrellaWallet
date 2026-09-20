@@ -16,9 +16,19 @@ param(
     # Pinned version + SHA-256 of monero-win-x64-v<Version>.zip, from https://www.getmonero.org/downloads/hashes.txt
     [string]$Version = '0.18.5.1',
     [string]$ExpectedSha256 = 'cf2ae8273977697d9ef2031c7337b781e6e5936578f602444b2990a173a2437d',
+    # binaryFate's key, which clearsigns the Monero project's hashes.txt. The pinned hash is only
+    # worth as much as the file it came from; the signature is what ties it to the project rather
+    # than to whoever answered the request.
+    [string]$SigningKeyFingerprint = '81AC591FE9C4B65C5806AFC3F0AF4D462A0BDF92',
+    # Fail when the signature cannot be checked instead of falling back to the hash alone. Release
+    # builds pass this.
+    [switch]$RequireSignature,
     # Escape hatch for staging an unpinned version locally; never use it for a release build.
     [switch]$AllowUnverified
 )
+
+# Shared supply-chain helpers (gpg verification, honest reporting of what was actually checked).
+. (Join-Path $PSScriptRoot 'SupplyChain.ps1')
 
 $ErrorActionPreference = 'Stop'
 
@@ -37,6 +47,14 @@ $archive = Join-Path $work $file
 
 Write-Host "Downloading $url (~85 MB)…"
 Invoke-WebRequest -Uri $url -OutFile $archive -UseBasicParsing
+
+# hashes.txt is clearsigned by the Monero project, so the pin can be checked against what they
+# actually published rather than against itself.
+Assert-PinnedBySignedSums -SumsUrl 'https://www.getmonero.org/downloads/hashes.txt' `
+    -FileName $file -ExpectedSha256 $ExpectedSha256 `
+    -KeyFingerprint $SigningKeyFingerprint `
+    -KeyUrls @('https://raw.githubusercontent.com/monero-project/monero/master/utils/gpg_keys/binaryfate.asc') `
+    -WorkDir $work -Required:$RequireSignature -What 'Monero CLI'
 
 # Verify the archive against the pinned SHA-256 BEFORE trusting a single byte of it.
 $expected = $ExpectedSha256.Trim().ToLowerInvariant()

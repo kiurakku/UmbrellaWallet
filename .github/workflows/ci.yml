@@ -66,3 +66,8 @@ jobs:
       - uses: actions/checkout@v4
       # Release gate (roadmap §2): VERSION must match the csproj, installer, README and CHANGELOG.
       - run: bash scripts/check-version-consistency.sh
+      # Roadmap P0.2: the fetch scripts and THIRD_PARTY_NOTICES.md must describe the SAME pinned
+      # download. They had drifted — the script pinned a Tor version the mirror no longer carries,
+      # so a fresh clone got a 404 and anybody verifying the documented archive by hand was
+      # verifying a file that no longer exists.
+      - run: bash scripts/check-pinned-binaries.sh
