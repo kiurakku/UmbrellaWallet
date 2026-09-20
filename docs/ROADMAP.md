@@ -1,7 +1,7 @@
 # Umbrella Wallet — unified roadmap
 
 **Product version:** see [`VERSION`](../VERSION) (currently **4.7.0**).  
-**Consolidation date:** 2026-09-15 · **last status pass:** 2026-09-20 (P0.0, P0.2–P0.4, P0.6–P0.8, P1.11–P1.12 and L.1/L.2/L.3/L.8 closed).  
+**Consolidation date:** 2026-09-15 · **last status pass:** 2026-09-20 (P0.0, P0.2–P0.4, P0.6–P0.8, P1.1, P1.11–P1.13 and L.1/L.2/L.3/L.8 closed).  
 **Purpose:** one document for “what remains to do” — compiled from README, CHANGELOG, `SECURE_ANON_ROADMAP`, `CLAUDE_IMPLEMENTATION_ROADMAP_UK`, `12-coins-and-chains`, `PRIVACY`, `THREAT_MODEL`, `security-model`, `BUILD_VERIFY`, and notes on alignment with the manifesto philosophy.
 
 Legend: ✅ done · 🟡 partial · ⏳ next · 📅 planned · ❌ not planned / blocked.
@@ -62,7 +62,7 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 
 | # | Task | Source | Status |
 |---|---|---|---|
-| P1.1 | **Duress / decoy password** (second password → decoy vault) | README, SECURE 4.4–4.5, MANIFESTO | ⏳ wipe/passphrase code partial |
+| P1.1 | **Duress / decoy password** (second password → decoy vault) | README, SECURE 4.4–4.5, MANIFESTO | ✅ the vault is now the two-slot deniable file for **every** wallet (so setting one does not change the file's shape); Settings → Security sets or removes a decoy, and never reports whether one exists |
 | P1.2 | Restore/finish **hidden wallet** unlock UI (BIP39 passphrase), if the product promises it | SECURE 4.4 | 🟡 |
 | P1.3 | **Panic / duress wipe** with an explicit trigger | SECURE 4.5 | 🟡 DataWiper without UX |
 | P1.4 | Transaction **simulation** before Confirm (what exactly changes on-chain) | README Next | ⏳ |
@@ -74,7 +74,7 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | P1.10 | Consolidate Activity into one screen + filters + honest partial-history labels | Claude §6.4 | ⏳ |
 | **P1.11** | **Privacy Radar — limits under every status.** Mandatory text: *what is protected* and *what is not* (e.g. “Tor hides your IP, but the selected explorer sees your addresses”). Difference: “Tor works” ≠ “IP is hidden from whoever already received your address.” Without this, Radar violates MANIFESTO §1–2. | MANIFESTO, audit | ✅ every Privacy Radar finding renders its limit underneath (`PrivacyScoreFinding.LimitCode`), so no status can appear as a bare reassurance |
 | **P1.12** | **“What leaked?” after send.** Short report: IP hidden yes/no · addresses seen by Node X · broadcast via Tor/Direct · coin control / fresh change on or off. The user sees the privacy cost of that operation. | MANIFESTO §1–2, audit | ✅ `SendLeakReport` renders under the send result: IP, kill-switch, ledger, input linkage **with the count**, change freshness, coin control, and the one nobody can fix (the recipient knows) |
-| **P1.13** | **Duress test scenario.** QA scenario: “inspector coerces” → decoy vault opens, real funds remain inaccessible with the decoy password. Without this, P1.1–P1.3 are features, not verified solutions. | MANIFESTO intro, audit | ⏳ |
+| **P1.13** | **Duress test scenario.** QA scenario: “inspector coerces” → decoy vault opens, real funds remain inaccessible with the decoy password. Without this, P1.1–P1.3 are features, not verified solutions. | MANIFESTO intro, audit | ✅ `DuressWalletScenarioTests` — coercion opens the decoy, the real phrase stays unreachable, the two wallets share no address, the file's size is identical with and without a decoy, and removal is as deniable as adding |
 | **P1.20** | **Self-verify mode** (long, but required by philosophy). CLI or Debug panel: verify no clearnet in wallet connections; export xpub → balance in a third-party scanner; Tor via `curl --socks5-hostname`; cross-check with `VERIFY_YOUR_WALLET.md`. | MANIFESTO, audit | 📅 Long |
 
 ### P2 — on-chain privacy “heavy artillery”
@@ -179,7 +179,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | UTXO linkage | PayJoin → CoinJoin; Silent Payments; the post-send report now names the count (P1.12 ✅) |
 | Broadcast timing ↔ IP | Dandelion++ |
 | Release substitution on GitHub | GPG/Sigstore + reproducible attestations |
-| $5 wrench | Duress / decoy (P1.1) + test scenario (P1.13) |
+| $5 wrench | Duress / decoy password ✅ — with its limits stated in the app: it does not hide that other wallets exist on the machine, nor help against being watched typing |
 | User forced to *trust* the client | Self-verify (P1.20) + `VERIFY_YOUR_WALLET.md` (§10) |
 | No external audit | Commission audit (R.5); until then do not write “audited” |
 | Docs drifted from code | Annual documentation audit (M.7) |
@@ -194,7 +194,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 2. ✅ **P0.6–P0.8** — fail-closed balance + send transport gate + network isolation CI.  
 3. ✅ **P0.2–P0.4** — supply chain helpers + checksum CI + capability matrix.  
 4. ✅ **P1.11 / P1.12** — Privacy Radar limits + “What leaked?” (UI honesty).  
-5. **P1.1 / P1.13** (+ P1.2–P1.3) — duress/decoy + verified “under coercion” scenario. ← **next**  
+5. ✅ **P1.1 / P1.13** — duress/decoy + verified “under coercion” scenario. **P1.2–P1.3** (hidden-wallet unlock UI, panic wipe) remain. ← **next**  
 6. **P1.4–P1.6** — simulation + connection status + private-send polish.  
 7. **P1.20** + §10 — self-verify mode and a public guide “how to check you are not being lied to.”  
 8. ✅ **L.1 / L.3 / L.8** (+ L.2 wording) — disclaimers / age / ToS in the app; **L.4** is store-listing copy, written at submission.  

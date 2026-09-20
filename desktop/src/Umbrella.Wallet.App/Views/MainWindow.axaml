@@ -3321,6 +3321,67 @@
 
                 <!-- Prove address ownership: sign a message with the Ethereum key (never moves funds —
                      EIP-191 personal_sign), or verify anyone's signed message. -->
+                <!-- Duress password (roadmap P1.1). The wallet can never tell you whether one is
+                     set — that is the whole point of the storage format — so this offers to set one
+                     and to remove one, and reports neither state. -->
+                <Border Classes="card" IsVisible="{Binding IsTabSecurity}" BorderBrush="#7A6230">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Foreground="#E7CA83"
+                               Text="{Binding [duress.title], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextSoft}" FontSize="12" LineHeight="18" TextWrapping="Wrap"
+                               Text="{Binding [duress.hint], Source={x:Static app:Loc.Instance}}"/>
+
+                    <Border Background="{DynamicResource UmCardAlt}" CornerRadius="8" Padding="12,10">
+                      <StackPanel Spacing="4">
+                        <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                   Text="{Binding [duress.limitsTitle], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11.5" LineHeight="17" TextWrapping="Wrap"
+                                   Text="{Binding [duress.limits], Source={x:Static app:Loc.Instance}}"/>
+                      </StackPanel>
+                    </Border>
+
+                    <TextBox Text="{Binding DuressVaultPassword}" PasswordChar="●"
+                             Watermark="{Binding [duress.currentPw], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBox Text="{Binding DuressNewPassword}" PasswordChar="●"
+                             Watermark="{Binding [duress.newPw], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBox Text="{Binding DuressConfirmPassword}" PasswordChar="●"
+                             Watermark="{Binding [duress.confirmPw], Source={x:Static app:Loc.Instance}}"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <Button Classes="ghost" IsEnabled="{Binding !IsBusy}"
+                              Content="{Binding [duress.setBtn], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding SetDuressWalletCommand}"/>
+                      <Button Classes="ghost" IsEnabled="{Binding !IsBusy}"
+                              Content="{Binding [duress.removeBtn], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding RemoveDuressWalletCommand}"/>
+                    </StackPanel>
+
+                    <!-- The decoy is a real wallet: its phrase is shown once, because a wallet whose
+                         phrase nobody has is a wallet that cannot be restored. -->
+                    <StackPanel IsVisible="{Binding HasDuressPhrase}" Spacing="6">
+                      <TextBlock Classes="eyebrow" Foreground="#E7CA83"
+                                 Text="{Binding [duress.phraseTitle], Source={x:Static app:Loc.Instance}}"/>
+                      <Border Background="{DynamicResource UmBg}" BorderBrush="#7A6230" BorderThickness="1"
+                              CornerRadius="10" Padding="14">
+                        <TextBlock Classes="mono" FontSize="13" LineHeight="24" TextWrapping="Wrap"
+                                   Text="{Binding DuressRevealedPhrase}"/>
+                      </Border>
+                      <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap"
+                                 Text="{Binding [duress.phraseHint], Source={x:Static app:Loc.Instance}}"/>
+                      <Button Classes="ghost" HorizontalAlignment="Left"
+                              Content="{Binding [settings.hidePhrase], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding HideDuressPhraseCommand}"/>
+                    </StackPanel>
+
+                    <TextBlock IsVisible="{Binding DuressStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               Text="{Binding DuressStatus}" Foreground="{DynamicResource UmPos}" FontSize="12" TextWrapping="Wrap"/>
+                    <Border IsVisible="{Binding DuressError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="8" Padding="12,9">
+                      <TextBlock Text="{Binding DuressError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+                    </Border>
+                  </StackPanel>
+                </Border>
+
                 <Border Classes="card" IsVisible="{Binding IsTabSecurity}">
                   <StackPanel Spacing="10">
                     <TextBlock Classes="eyebrow" Text="{Binding [signmsg.title], Source={x:Static app:Loc.Instance}}"/>

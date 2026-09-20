@@ -48,6 +48,27 @@ public static class VaultBackup
 {
     private const string Magic = "umbrella-backup-v1";
 
+    /// <summary>
+    /// The vault is BINARY since the deniable format arrived, so it travels base64-encoded under its
+    /// own key. Older backups carry the JSON envelope as text under "vault" and still restore — a
+    /// backup that stops working because the program moved on is not a backup.
+    /// </summary>
+    private const string VaultBytesKey = "vaultBase64";
+
+    /// <summary>The vault bytes a bundle carries, whichever way it stored them.</summary>
+    private static byte[]? VaultBytesFrom(IReadOnlyDictionary<string, string?> bundle)
+    {
+        if (bundle.TryGetValue(VaultBytesKey, out var b64) && !string.IsNullOrWhiteSpace(b64))
+        {
+            try { return Convert.FromBase64String(b64); }
+            catch (FormatException) { return null; }
+        }
+
+        return bundle.TryGetValue("vault", out var text) && !string.IsNullOrWhiteSpace(text)
+            ? Encoding.UTF8.GetBytes(text)
+            : null;
+    }
+
     /// <summary>Writes a backup bundle. Returns the byte count so the UI can confirm it wrote.</summary>
     public static async Task<(bool Ok, string Message)> ExportAsync(
         string destinationPath, CancellationToken ct = default)
@@ -63,7 +84,8 @@ public static class VaultBackup
             {
                 ["magic"] = Magic,
                 ["exportedUtc"] = DateTime.UtcNow.ToString("O"),
-                ["vault"] = await File.ReadAllTextAsync(AppPaths.VaultFile, ct),
+                [VaultBytesKey] = Convert.ToBase64String(
+                    await File.ReadAllBytesAsync(AppPaths.VaultFile, ct)),
                 ["watchAddresses"] = await ReadIfPresentAsync(AppPaths.WatchAddressesFile, ct),
                 // Encrypted with a key derived from the seed, so it stays sealed in the backup too.
                 ["exchanges"] = await ReadBytesAsBase64Async(
@@ -111,7 +133,8 @@ public static class VaultBackup
             return new VaultBackupVerification(false, "That file is not an Umbrella backup.",
                 Reason: VaultBackupReason.NotABackup);
 
-        if (!bundle.TryGetValue("vault", out var vault) || string.IsNullOrWhiteSpace(vault))
+        var vaultBytes = VaultBytesFrom(bundle);
+        if (vaultBytes is null || vaultBytes.Length == 0)
             return new VaultBackupVerification(false, "The backup does not contain a vault.",
                 Reason: VaultBackupReason.NoVault);
 
@@ -128,7 +151,7 @@ public static class VaultBackup
         var tempPath = Path.Combine(Path.GetTempPath(), $"umbrella-verify-{Guid.NewGuid():N}.json");
         try
         {
-            await File.WriteAllTextAsync(tempPath, vault, ct);
+            await File.WriteAllBytesAsync(tempPath, vaultBytes, ct);
             var mnemonic = await new EncryptedFileSeedVault(tempPath).UnlockAsync(password, ct);
 
             var check = new Bip39MnemonicService().Validate(mnemonic);
@@ -194,22 +217,15 @@ public static class VaultBackup
                 return (false, "That file is not an Umbrella backup.");
             }
 
-            if (!bundle.TryGetValue("vault", out var vault) || string.IsNullOrWhiteSpace(vault))
+            var vaultBytes = VaultBytesFrom(bundle);
+            if (vaultBytes is null || vaultBytes.Length == 0)
             {
                 return (false, "The backup does not contain a vault.");
             }
 
-            // Verify it parses as a vault before touching anything on disk.
-            try
-            {
-                using var probe = JsonDocument.Parse(vault);
-                if (!probe.RootElement.TryGetProperty("Version", out _) &&
-                    !probe.RootElement.TryGetProperty("version", out _))
-                {
-                    return (false, "The backup's vault looks corrupt.");
-                }
-            }
-            catch
+            // Check it IS a vault before touching anything on disk — either the deniable binary
+            // format or the older JSON envelope.
+            if (!LooksLikeAVault(vaultBytes))
             {
                 return (false, "The backup's vault looks corrupt.");
             }
@@ -222,7 +238,7 @@ public static class VaultBackup
                 File.Move(AppPaths.VaultFile, aside);
             }
 
-            await File.WriteAllTextAsync(AppPaths.VaultFile, vault, ct);
+            await File.WriteAllBytesAsync(AppPaths.VaultFile, vaultBytes, ct);
 
             if (bundle.TryGetValue("watchAddresses", out var watch) && !string.IsNullOrWhiteSpace(watch))
             {
@@ -240,6 +256,23 @@ public static class VaultBackup
         catch (Exception ex)
         {
             return (false, $"Restore failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>True for either vault format: the deniable binary file, or the legacy JSON envelope.</summary>
+    private static bool LooksLikeAVault(byte[] bytes)
+    {
+        if (DeniableVaultFormat.IsWellFormed(bytes)) return true;
+
+        try
+        {
+            using var probe = JsonDocument.Parse(Encoding.UTF8.GetString(bytes));
+            return probe.RootElement.TryGetProperty("Version", out _)
+                   || probe.RootElement.TryGetProperty("version", out _);
+        }
+        catch
+        {
+            return false;
         }
     }
 

@@ -210,7 +210,8 @@ public sealed class WalletJourneySmokeTests : IDisposable
         {
             ["magic"] = "umbrella-backup-v1",
             ["exportedUtc"] = DateTime.UtcNow.ToString("O"),
-            ["vault"] = await File.ReadAllTextAsync(VaultPath),
+            // Binary since the deniable vault format arrived — base64, exactly as the real export does.
+            ["vaultBase64"] = Convert.ToBase64String(await File.ReadAllBytesAsync(VaultPath)),
         };
 
         var path = Path.Combine(_directory, "umbrella-backup.json");

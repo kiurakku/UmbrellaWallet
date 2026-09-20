@@ -42,6 +42,25 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### A password that opens a different wallet
+
+- **Duress password** (Settings → Security). If you are ever made to unlock this wallet in front of
+  somebody, the password you hand over works — a real wallet opens, with its own addresses and its own
+  history — and it is not the one holding your money.
+- The vault file is now the same two-slot shape for **every** wallet, whether a duress password is set
+  or not: same size, unused slot full of random bytes, real slot in a random position. A file that
+  only became two-slot when its owner asked for a decoy would announce, by its own size, that they had
+  asked. Existing vaults are rewritten into that shape the first time their password opens them —
+  verified to give back the identical seed before anything is replaced.
+- The wallet will never tell you whether a duress password is set. That is the entire point, so
+  Settings offers to set one and to remove one and reports neither state — and removing one leaves a
+  file indistinguishable from one that never had it.
+- What it does not do is printed beside it: it does not hide that other wallets exist on this
+  computer, does nothing about somebody watching you type, and cannot help against a copy of the file
+  taken before and after. Changing your vault password removes the decoy.
+- The decoy is a fresh wallet with its own recovery phrase, shown once — a decoy with nothing in it is
+  not convincing, and anything you put there is real money.
+
 ### What a send actually cost, said afterwards
 
 - A short report under the send result: whether the node you broadcast to saw your IP, whether the
