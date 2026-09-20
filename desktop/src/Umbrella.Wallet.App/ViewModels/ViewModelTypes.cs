@@ -389,12 +389,16 @@ public static class CoinBadge
         _ => "#6E5FB8",
     };
 
-    // Round coin logos sliced from the brand sheet (Assets/coins/*.png). Symbols not here fall back
-    // to the coloured glyph badge, so a coin without a logo still renders cleanly.
+    // Coin logos in Assets/coins/<SYMBOL>.png. A symbol NOT here falls back to the coloured glyph
+    // badge, which renders cleanly — a symbol here with no file renders an empty square, so
+    // CoinLogoAssetTests pins the two to each other.
     private static readonly HashSet<string> LogoSymbols = new(StringComparer.OrdinalIgnoreCase)
     {
         "BTC", "ETH", "LTC", "DOGE", "TRX", "SOL", "TON", "ADA", "XMR", "USDT",
         "BCH", "DOT", "XRP", "UNI", "LINK", "USDC", "CRO", "FTM", "AVAX", "MATIC", "BNB",
+        // Zcash shipped as a supported chain with no logo, so it drew a letter glyph next to
+        // eleven real brand marks.
+        "ZEC",
     };
     private static readonly Dictionary<string, Bitmap> LogoCache = new(StringComparer.OrdinalIgnoreCase);
 

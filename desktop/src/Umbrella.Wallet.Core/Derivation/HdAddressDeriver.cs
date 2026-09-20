@@ -227,6 +227,38 @@ public sealed class HdAddressDeriver
         return new DerivedUtxoAccount(path, address, key, scriptPubKey);
     }
 
+    /// <summary>
+    /// The account-level EXTENDED PUBLIC KEY for a UTXO chain — everything a third party needs to
+    /// list this wallet's addresses and its balance, and nothing that can spend a satoshi
+    /// (roadmap P1.20).
+    ///
+    /// This is what "verify, don't trust" needs to mean something. A user who has to take the
+    /// wallet's word for their balance is trusting the program that also tells them it is safe; an
+    /// xpub lets them ask an independent scanner the same question and compare answers.
+    ///
+    /// It is also the most privacy-revealing thing the wallet can export: it discloses EVERY address
+    /// on the account, past and future, to whoever receives it. The UI says so before showing it.
+    /// </summary>
+    public string DeriveAccountXpub(string mnemonic, ChainId chain, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var (purpose, coinType, network, _) = BitcoinLikeParams(chain);
+        var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
+
+        // The ACCOUNT level (m/purpose'/coin'/0'), exactly the level the addresses hang off — so what
+        // a scanner derives from it is the same set the wallet scans and spends from.
+        var account = parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"{purpose}'/{coinType}'/0'"));
+        return account.Neuter().ToString(network);
+    }
+
+    /// <summary>The BIP32 path that <see cref="DeriveAccountXpub"/> exports, for the UI to show
+    /// beside it — a key without its path is a key somebody has to guess at.</summary>
+    public static string AccountXpubPath(ChainId chain)
+    {
+        var (purpose, coinType, _, _) = BitcoinLikeParams(chain);
+        return $"m/{purpose}'/{coinType}'/0'";
+    }
+
     /// <summary>Validates a mnemonic and returns its normalized form, or throws with the reason.</summary>
     private string RequireNormalized(string mnemonic)
     {

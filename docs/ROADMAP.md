@@ -9,7 +9,7 @@ Legend: ✅ done · 🟡 partial · ⏳ next · 📅 planned · ❌ not planned 
 Long technical implementation phases remain in [`CLAUDE_IMPLEMENTATION_ROADMAP_UK.md`](CLAUDE_IMPLEMENTATION_ROADMAP_UK.md).  
 Privacy details — in [`SECURE_ANON_ROADMAP.md`](SECURE_ANON_ROADMAP.md).  
 Network matrix — in [`12-coins-and-chains.md`](12-coins-and-chains.md).  
-How to verify yourself — planned as [`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md) (not written yet; see §10 and P1.20).
+How to verify yourself — [`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md).
 
 ---
 
@@ -75,7 +75,7 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | **P1.11** | **Privacy Radar — limits under every status.** Mandatory text: *what is protected* and *what is not* (e.g. “Tor hides your IP, but the selected explorer sees your addresses”). Difference: “Tor works” ≠ “IP is hidden from whoever already received your address.” Without this, Radar violates MANIFESTO §1–2. | MANIFESTO, audit | ✅ every Privacy Radar finding renders its limit underneath (`PrivacyScoreFinding.LimitCode`), so no status can appear as a bare reassurance |
 | **P1.12** | **“What leaked?” after send.** Short report: IP hidden yes/no · addresses seen by Node X · broadcast via Tor/Direct · coin control / fresh change on or off. The user sees the privacy cost of that operation. | MANIFESTO §1–2, audit | ✅ `SendLeakReport` renders under the send result: IP, kill-switch, ledger, input linkage **with the count**, change freshness, coin control, and the one nobody can fix (the recipient knows) |
 | **P1.13** | **Duress test scenario.** QA scenario: “inspector coerces” → decoy vault opens, real funds remain inaccessible with the decoy password. Without this, P1.1–P1.3 are features, not verified solutions. | MANIFESTO intro, audit | ✅ `DuressWalletScenarioTests` — coercion opens the decoy, the real phrase stays unreachable, the two wallets share no address, the file's size is identical with and without a decoy, and removal is as deniable as adding |
-| **P1.20** | **Self-verify mode** (long, but required by philosophy). CLI or Debug panel: verify no clearnet in wallet connections; export xpub → balance in a third-party scanner; Tor via `curl --socks5-hostname`; cross-check with `VERIFY_YOUR_WALLET.md`. | MANIFESTO, audit | 📅 Long |
+| **P1.20** | **Self-verify mode** (long, but required by philosophy). CLI or Debug panel: verify no clearnet in wallet connections; export xpub → balance in a third-party scanner; Tor via `curl --socks5-hostname`; cross-check with `VERIFY_YOUR_WALLET.md`. | MANIFESTO, audit | ✅ watch-only account xpub export in Settings → Security (pinned by a test that the addresses it yields are the wallet's own, external **and** change), and [`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md) written in full: balance from a third party, live route, download, build, counterparties — and what none of it proves |
 
 ### P2 — on-chain privacy “heavy artillery”
 
@@ -180,7 +180,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | Broadcast timing ↔ IP | Dandelion++ |
 | Release substitution on GitHub | GPG/Sigstore + reproducible attestations |
 | $5 wrench | Duress / decoy password ✅ — with its limits stated in the app: it does not hide that other wallets exist on the machine, nor help against being watched typing |
-| User forced to *trust* the client | Self-verify (P1.20) + `VERIFY_YOUR_WALLET.md` (§10) |
+| User forced to *trust* the client | ✅ watch-only xpub export + [`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md); a GPG/Sigstore signature over the checksum manifest (R.3) is still missing |
 | No external audit | Commission audit (R.5); until then do not write “audited” |
 | Docs drifted from code | Annual documentation audit (M.7) |
 | App Store / Play rejection | §9 compliance (L.1–L.8, wording) |
@@ -195,8 +195,8 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 3. ✅ **P0.2–P0.4** — supply chain helpers + checksum CI + capability matrix.  
 4. ✅ **P1.11 / P1.12** — Privacy Radar limits + “What leaked?” (UI honesty).  
 5. ✅ **P1.1 / P1.13** — duress/decoy + verified “under coercion” scenario. **P1.2–P1.3** (hidden-wallet unlock UI, panic wipe) remain.  
-6. ✅ **P1.2, P1.4–P1.7, P1.9, P1.10** — hidden-wallet unlock, simulation, private-send parity across UTXO chains, connection status, honest capture wording, address book, Activity coverage. **P1.3** (panic wipe) and **P1.20** (self-verify) remain. ← **next**  
-7. **P1.20** + §10 — self-verify mode and a public guide “how to check you are not being lied to.”  
+6. ✅ **P1.2, P1.4–P1.7, P1.9, P1.10** — hidden-wallet unlock, simulation, private-send parity across UTXO chains, connection status, honest capture wording, address book, Activity coverage. **P1.3** (panic wipe) is the last P1 open. ← **next**  
+7. ✅ **P1.20** + §10 — self-verify (xpub export) and the public guide “how to check you are not being lied to.”  
 8. ✅ **L.1 / L.3 / L.8** (+ L.2 wording) — disclaimers / age / ToS in the app; **L.4** is store-listing copy, written at submission.  
 9. **R.6 / L.6** — EV signing for Windows + PGP for Linux packages.  
 10. **N.1–N.3** — universal tokens, only with a full cycle.  
@@ -348,16 +348,19 @@ Monero may be described as a privacy coin **honestly**; Bitcoin/ETH and similar 
 
 ---
 
-## 10. How to verify you are not being lied to (document plan)
+## 10. How to verify you are not being lied to
 
-Separate file **`docs/VERIFY_YOUR_WALLET.md`** (create together with P1.20 / R.1–R.3):
+Written: **[`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md)** — the balance from a third party
+(watch-only xpub, with its privacy cost stated), the live route (`curl --socks5-hostname`, and the
+wallet's own connections), the download (`SHA256SUMS`), the build (reproducible-build check and the
+pinned third-party binaries), and who the wallet talks to.
 
-1. Commands to verify Tor connectivity (`curl --socks5-hostname`, no clearnet in netstat for the wallet process).  
-2. Export **xpub** (or watch-only) and cross-check balance in an independent scanner — without trusting the Umbrella UI.  
-3. Download verification: `SHA256SUMS` + (when available) GPG/Sigstore; build from source per [`BUILD_VERIFY.md`](BUILD_VERIFY.md).  
-4. Links to Settings → Privacy (“who can see addresses”) and to Privacy Radar limit text (P1.11).
+It ends with what none of it proves: a clean machine, a private transparent chain, or an audit that
+has not happened.
 
-Until the file exists, this section is a placeholder and a backlog item, not a finished guide.
+**Still missing from that page, and named there rather than glossed over:** a GPG/Sigstore signature
+over the checksum manifest (R.3), so a checksum proves the file matches the release page but not who
+published it.
 
 ---
 

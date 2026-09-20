@@ -3381,6 +3381,68 @@
 
                 <!-- Prove address ownership: sign a message with the Ethereum key (never moves funds —
                      EIP-191 personal_sign), or verify anyone's signed message. -->
+                <!-- Check this wallet against something that is not this wallet (roadmap P1.20).
+                     Every number on this screen comes from the same program that says your money is
+                     safe; an account xpub lets an independent scanner answer the same question. -->
+                <Border Classes="card" IsVisible="{Binding IsTabSecurity}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="{Binding [verify.title], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextSoft}" FontSize="12" LineHeight="18" TextWrapping="Wrap"
+                               Text="{Binding [verify.hint], Source={x:Static app:Loc.Instance}}"/>
+
+                    <Border Background="{DynamicResource UmCardAlt}" CornerRadius="8" Padding="12,10">
+                      <StackPanel Spacing="4">
+                        <TextBlock Classes="eyebrow" Foreground="#E7CA83"
+                                   Text="{Binding [verify.costTitle], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11.5" LineHeight="17" TextWrapping="Wrap"
+                                   Text="{Binding [verify.cost], Source={x:Static app:Loc.Instance}}"/>
+                      </StackPanel>
+                    </Border>
+
+                    <TextBox Text="{Binding XpubPassword}" PasswordChar="●" MaxWidth="320" HorizontalAlignment="Left"
+                             Watermark="{Binding [settings.vaultPassword], Source={x:Static app:Loc.Instance}}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <Button Classes="ghost" IsEnabled="{Binding !IsBusy}"
+                              Content="{Binding [verify.revealBtn], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding RevealXpubsCommand}"/>
+                      <Button Classes="ghost" FontSize="12"
+                              Content="{Binding [verify.guideBtn], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding OpenUrlCommand}" CommandParameter="{Binding VerifyGuideUrl}"/>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding ExportedXpubs}" IsVisible="{Binding HasExportedXpubs}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:XpubRowVm">
+                          <Border Background="{DynamicResource UmBg}" BorderBrush="{DynamicResource UmBorder}"
+                                  BorderThickness="1" CornerRadius="10" Padding="12,10" Margin="0,0,0,8">
+                            <StackPanel Spacing="5">
+                              <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{Binding Symbol}" FontWeight="SemiBold" FontSize="12.5"/>
+                                <TextBlock Classes="mono" Text="{Binding Path}" FontSize="11"
+                                           Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"/>
+                              </StackPanel>
+                              <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap" Text="{Binding Key}"/>
+                              <Button Classes="ghost" FontSize="11" Padding="9,4" MinHeight="0" HorizontalAlignment="Left"
+                                      Content="{Binding [common.copy], Source={x:Static app:Loc.Instance}}"
+                                      Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).CopyXpubCommand}"
+                                      CommandParameter="{Binding Key}"/>
+                            </StackPanel>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Button Classes="ghost" IsVisible="{Binding HasExportedXpubs}" HorizontalAlignment="Left"
+                            Content="{Binding [settings.hideKeys], Source={x:Static app:Loc.Instance}}"
+                            Command="{Binding HideXpubsCommand}"/>
+
+                    <Border IsVisible="{Binding XpubError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="8" Padding="12,9">
+                      <TextBlock Text="{Binding XpubError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+                    </Border>
+                  </StackPanel>
+                </Border>
+
                 <!-- Duress password (roadmap P1.1). The wallet can never tell you whether one is
                      set — that is the whole point of the storage format — so this offers to set one
                      and to remove one, and reports neither state. -->

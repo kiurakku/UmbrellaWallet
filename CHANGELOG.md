@@ -42,6 +42,24 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### Check this wallet against something that is not this wallet
+
+- **Settings → Security** exports a **watch-only key** for each UTXO chain. Paste it into an explorer
+  you chose and it derives the same addresses and reports the same balance — or it does not, and that
+  answer is worth more than our reassurance. It cannot spend a coin; it does reveal every address on
+  that account, past and future, and the screen says so before it shows you anything.
+- **[VERIFY_YOUR_WALLET.md](docs/VERIFY_YOUR_WALLET.md)** was a stub. It is now the actual guide: the
+  balance from a third party, where the traffic really goes, the download, the build, who the wallet
+  talks to — and a closing section on what none of it proves.
+
+### Coin logos
+
+- Bitcoin, Ethereum, Litecoin, Dogecoin, Bitcoin Cash, Monero, Solana, TRON, Polygon and BNB use a
+  new, consistent icon set, and **Zcash finally has one** — it shipped as a supported chain drawing a
+  letter glyph beside eleven real brand marks. A test now pins the logo registry to the files on
+  disk, in both directions: a registration with no file renders an empty square, which is worse than
+  the letter it replaced.
+
 ### The hidden wallet has a way in
 
 - A BIP39 passphrase opens a **separate** wallet from the same recovery phrase, with its own

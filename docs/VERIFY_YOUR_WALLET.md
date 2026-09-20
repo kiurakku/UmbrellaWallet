@@ -1,27 +1,161 @@
 # Verify your wallet
 
-**Status:** outline for roadmap **P1.20** / §10 — expand when self-verify mode ships.
+Every number this wallet shows you comes from the same program that tells you your money is safe.
+That is not a reason to distrust it. It is the reason this page exists: each check below asks
+somebody who is **not** Umbrella the same question, so the answer stops depending on us being honest.
 
-Until then, use what already exists:
+None of it requires trusting this document either — every command is one you run yourself, and every
+result is something you can see.
 
-| Goal | Where |
-|------|--------|
-| Verify a GitHub Release download | [SECURITY.md](../SECURITY.md) · checksums on the Release |
-| Compare build to source | [BUILD_VERIFY.md](BUILD_VERIFY.md) |
-| Threat / residual risk | [THREAT_MODEL.md](../THREAT_MODEL.md) |
-| What leaves the device | [PRIVACY.md](../PRIVACY.md) |
-| Development order | [WORKFLOW.md](WORKFLOW.md) · [ROADMAP.md](ROADMAP.md) |
+| You want to know | Check |
+|---|---|
+| Is the balance real? | [1. Your balance, from somebody else](#1-your-balance-from-somebody-else) |
+| Is Tor actually carrying my traffic? | [2. Where the traffic goes](#2-where-the-traffic-goes) |
+| Did I download the real build? | [3. The download](#3-the-download) |
+| Does the build match this source? | [4. The build](#4-the-build) |
+| What leaves my machine at all? | [5. Who this wallet talks to](#5-who-this-wallet-talks-to) |
 
-## Planned contents (P1.20)
+---
 
-When written fully, this page should cover:
+## 1. Your balance, from somebody else
 
-1. Confirm Tor-only: no clearnet from the wallet process (`curl --socks5-hostname`, OS firewall / netstat).  
-2. Export an xpub / address → check balance in a **third-party** scanner you chose.  
-3. Restore dry-run from seed on a clean machine (ties to **P0.0**).  
-4. Cross-check release checksums and (later) signatures / SBOM (R.3 / R.4).
+**Settings → Security → "Check this wallet against something else"** exports a **watch-only key**
+(an account `xpub`) for each UTXO chain. Paste it into a block explorer you chose, and it will derive
+the same addresses and report the same balance — or it will not, and that answer is worth more than
+anything we could tell you.
 
-Do **not** send seeds to anyone while “verifying”.
+What the key is: the account-level extended **public** key, at the path shown beside it
+(`m/84'/0'/0'` for Bitcoin, `m/44'/145'/0'` for Bitcoin Cash, and so on). It is exactly the level
+this wallet's own addresses hang off, which is why a scanner sees the same set — including the
+internal change addresses, where money returns after a send.
+
+**What it costs.** A watch-only key cannot spend a single coin. It *does* reveal every address on
+that account, past and future, to whoever you give it to: how much you hold, when, and who you paid.
+Use a scanner you trust, over Tor, and do not leave the key lying around. This is the one check with
+a real privacy price, and it is your call whether to pay it.
+
+Scanners that take an xpub without an account: [mempool.space](https://mempool.space) (Bitcoin),
+[blockchair.com](https://blockchair.com), or your own Electrum server if you run one.
+
+---
+
+## 2. Where the traffic goes
+
+The sidebar chip always states the live route: **TOR**, **PROXY**, **DIRECT** or **BLOCKED**. It reads
+the same state the send gate reads, so a send cannot be refused for a route the chip calls fine.
+
+To check it from outside the wallet:
+
+```bash
+curl --socks5-hostname 127.0.0.1:9250 https://check.torproject.org/api/ip
+```
+
+Port **9250** is the bundled Tor deliberately — not 9050 or 9150 — so it never collides with a Tor
+Browser you are already running. A response with `"IsTor":true` means that SOCKS port really is Tor.
+
+Then check the wallet itself is using it. While the wallet is running, with **Tor-only** armed in
+Settings → Privacy, watch its connections:
+
+```powershell
+Get-NetTCPConnection -State Established |
+  Where-Object OwningProcess -eq (Get-Process Umbrella).Id |
+  Select-Object RemoteAddress, RemotePort
+```
+
+```bash
+# Linux
+ss -tnp | grep Umbrella
+```
+
+With Tor-only on, every remote endpoint should be loopback (`127.0.0.1:9250`). Anything else going
+out is a bug worth reporting — [SECURITY.md](../SECURITY.md).
+
+The wallet proves the same property to itself in CI: a test opens a listener on loopback and asserts
+that with the kill-switch armed **no socket is opened at all** — not that the request failed, that it
+never happened. With the kill-switch off the same client must reach that listener, so the first half
+cannot pass for the wrong reason.
+
+---
+
+## 3. The download
+
+Every release carries `SHA256SUMS-<version>.txt`. Verify what you downloaded before you run it:
+
+```powershell
+Get-FileHash -Algorithm SHA256 .\UmbrellaWallet-Setup-4.7.0.exe
+```
+
+```bash
+sha256sum -c SHA256SUMS-4.7.0.txt
+```
+
+The release workflow generates that manifest from the artifacts it attached and verifies every line
+before publishing. You can re-check what the page serves **now**, which is the part a workflow cannot
+promise:
+
+```bash
+bash scripts/verify-published-release.sh v4.7.0
+```
+
+Not yet available: a GPG or Sigstore signature over the manifest (roadmap R.3). Until that exists, a
+checksum proves the file matches what the release page says — not who published the release page.
+[AUDIT_STATUS.md](../AUDIT_STATUS.md) keeps that kind of gap in one place.
+
+---
+
+## 4. The build
+
+Reproducible builds are what make a published checksum mean anything: without them you are comparing
+a download against a manifest produced by the same release an attacker would have had to compromise.
+
+```bash
+bash scripts/verify-reproducible-build.sh
+```
+
+It builds this commit twice, from two different absolute paths, and compares the assemblies that
+actually run. CI runs it on every pull request. [BUILD_VERIFY.md](BUILD_VERIFY.md) explains what is
+and is not byte-identical — the single-file installer is **not**, and the document says why rather
+than claiming otherwise.
+
+The third-party binaries this wallet bundles are pinned and checked against their publishers' own
+signed sums:
+
+```bash
+bash scripts/check-pinned-binaries.sh     # the pins in the scripts match THIRD_PARTY_NOTICES.md
+pwsh desktop/scripts/fetch-tor.ps1 -RequireSignature
+pwsh desktop/scripts/fetch-monero.ps1 -RequireSignature
+```
+
+With `-RequireSignature` the fetch fails closed rather than falling back to the hash alone — which is
+what a release build uses. The key fingerprints are in
+[THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+
+---
+
+## 5. Who this wallet talks to
+
+**Settings → Privacy** lists every server the wallet can contact: who runs it, why it is contacted,
+and what it learns. The build fails if a server appears in the code without appearing on that list,
+and fails the other way if the list names a host the code no longer uses — a transparency page that
+can quietly fall behind the code is worse than none.
+
+You can point every chain somewhere else from the same screen, including at a node you run. If you
+choose one, it is used or the operation fails with a reason; it is never silently swapped back for
+ours.
+
+---
+
+## What none of this proves
+
+- **That your machine is clean.** Malware with your user account can read what you read. See
+  [THREAT_MODEL.md](../THREAT_MODEL.md), Vector 1.
+- **That a transparent chain is private.** Bitcoin, Ethereum and the rest are public ledgers; Tor
+  hides your IP from the servers you ask, and un-sends nothing.
+- **That the code has been audited.** It has not. [AUDIT_STATUS.md](../AUDIT_STATUS.md) says so
+  plainly and will keep saying so until it changes.
+
+Found something that does not check out? [SECURITY.md](../SECURITY.md) — and never send a recovery
+phrase to anyone, including us, while "verifying".
 
 ---
 
