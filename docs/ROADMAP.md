@@ -1,7 +1,7 @@
 # Umbrella Wallet — unified roadmap
 
 **Product version:** see [`VERSION`](../VERSION) (currently **4.7.0**).  
-**Consolidation date:** 2026-09-15 · **last status pass:** 2026-09-20 (P0.0, P0.2–P0.4, P0.6–P0.8, P1.1, P1.11–P1.13 and L.1/L.2/L.3/L.8 closed).  
+**Consolidation date:** 2026-09-15 · **last status pass:** 2026-09-20 (P0.0, P0.2–P0.4, P0.6–P0.8, P1.1, P1.4–P1.7, P1.9–P1.13 and L.1/L.2/L.3/L.8 closed).  
 **Purpose:** one document for “what remains to do” — compiled from README, CHANGELOG, `SECURE_ANON_ROADMAP`, `CLAUDE_IMPLEMENTATION_ROADMAP_UK`, `12-coins-and-chains`, `PRIVACY`, `THREAT_MODEL`, `security-model`, `BUILD_VERIFY`, and notes on alignment with the manifesto philosophy.
 
 Legend: ✅ done · 🟡 partial · ⏳ next · 📅 planned · ❌ not planned / blocked.
@@ -66,12 +66,12 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | P1.2 | Restore/finish **hidden wallet** unlock UI (BIP39 passphrase), if the product promises it | SECURE 4.4 | 🟡 |
 | P1.3 | **Panic / duress wipe** with an explicit trigger | SECURE 4.5 | 🟡 DataWiper without UX |
 | P1.4 | Transaction **simulation** before Confirm (what exactly changes on-chain) | README Next | ✅ already shipped — the Send review renders `SendSimulation` rows (what leaves, what returns as change, what the fee costs) |
-| P1.5 | One-switch private send — bring UX to “one toggle = full checklist” on all UTXO chains | README / CHANGELOG 4.7 | 🟡 |
+| P1.5 | One-switch private send — bring UX to “one toggle = full checklist” on all UTXO chains | README / CHANGELOG 4.7 | ✅ the three UTXO chain lists (balance scan, fee selector, coin control + private-send plan) had drifted and left Bitcoin Cash out of coin control and out of the linkage checklist; they are now one list |
 | P1.6 | Connection status in primary UI: Tor / Direct / Custom / Offline | Claude §7 | ✅ a chip in the sidebar (and in the top/bottom nav) reading TOR / PROXY / DIRECT / BLOCKED from the same live state the send gate uses — amber when Tor is on in Settings but is not carrying the traffic |
 | P1.7 | Mark screenshot-guard honestly as **Windows-only** until Linux exists | Claude §7 | ✅ already honest — the Security Center says capture blocking is a Windows feature and is unavailable elsewhere, and does not score it |
 | P1.8 | Verify backup (without revealing seed) + guided restore dry-run | Claude §6.5 | 🟡 verify exists partially |
 | P1.9 | Address book: local, with format-check, confirm on first send | Claude §6.3 | ✅ already shipped — local encrypted book on the Send screen, wrong-network shape check, and a first-time-to-this-address confirmation (`SendSafetyIntegrationTests`) |
-| P1.10 | Consolidate Activity into one screen + filters + honest partial-history labels | Claude §6.4 | 🟡 one screen with type/asset filters and a last-synced line; the per-chain "history is partial" label is still missing |
+| P1.10 | Consolidate Activity into one screen + filters + honest partial-history labels | Claude §6.4 | ✅ one screen with filters, a last-synced line, and a note naming the held coins whose history this build does not read — computed from the capability catalog, so it cannot claim coverage the code lacks |
 | **P1.11** | **Privacy Radar — limits under every status.** Mandatory text: *what is protected* and *what is not* (e.g. “Tor hides your IP, but the selected explorer sees your addresses”). Difference: “Tor works” ≠ “IP is hidden from whoever already received your address.” Without this, Radar violates MANIFESTO §1–2. | MANIFESTO, audit | ✅ every Privacy Radar finding renders its limit underneath (`PrivacyScoreFinding.LimitCode`), so no status can appear as a bare reassurance |
 | **P1.12** | **“What leaked?” after send.** Short report: IP hidden yes/no · addresses seen by Node X · broadcast via Tor/Direct · coin control / fresh change on or off. The user sees the privacy cost of that operation. | MANIFESTO §1–2, audit | ✅ `SendLeakReport` renders under the send result: IP, kill-switch, ledger, input linkage **with the count**, change freshness, coin control, and the one nobody can fix (the recipient knows) |
 | **P1.13** | **Duress test scenario.** QA scenario: “inspector coerces” → decoy vault opens, real funds remain inaccessible with the decoy password. Without this, P1.1–P1.3 are features, not verified solutions. | MANIFESTO intro, audit | ✅ `DuressWalletScenarioTests` — coercion opens the decoy, the real phrase stays unreachable, the two wallets share no address, the file's size is identical with and without a decoy, and removal is as deniable as adding |
@@ -195,7 +195,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 3. ✅ **P0.2–P0.4** — supply chain helpers + checksum CI + capability matrix.  
 4. ✅ **P1.11 / P1.12** — Privacy Radar limits + “What leaked?” (UI honesty).  
 5. ✅ **P1.1 / P1.13** — duress/decoy + verified “under coercion” scenario. **P1.2–P1.3** (hidden-wallet unlock UI, panic wipe) remain.  
-6. ✅ **P1.4 / P1.6 / P1.7 / P1.9** (several were already built) — **P1.5** private-send polish and **P1.10** partial-history labels remain. ← **next**  
+6. ✅ **P1.4–P1.7, P1.9, P1.10** — simulation, private-send parity across UTXO chains, connection status, honest capture wording, address book, Activity coverage. **P1.2–P1.3** (hidden-wallet unlock UI, panic wipe) and **P1.20** (self-verify) remain. ← **next**  
 7. **P1.20** + §10 — self-verify mode and a public guide “how to check you are not being lied to.”  
 8. ✅ **L.1 / L.3 / L.8** (+ L.2 wording) — disclaimers / age / ToS in the app; **L.4** is store-listing copy, written at submission.  
 9. **R.6 / L.6** — EV signing for Windows + PGP for Linux packages.  

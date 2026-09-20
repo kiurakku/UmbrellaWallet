@@ -70,7 +70,7 @@ public partial class MainViewModel
     }
 
     // ---- Coin control (roadmap §3.4) --------------------------------------------------------------
-    // Opt-in manual UTXO selection for BTC/LTC/DOGE. OFF by default, and while off the send path is
+    // Opt-in manual UTXO selection on every UTXO chain. OFF by default, and while off the send path is
     // byte-identical to automatic selection. When on, only the coins the user ticks may fund the
     // spend: the planner is handed exactly that subset and never reaches outside it, so a spend can
     // avoid pulling in (and thus publicly linking) coins that belong to a different identity.
@@ -91,10 +91,23 @@ public partial class MainViewModel
     // The chain the loaded coin list belongs to, so a stale list is never applied to another chain.
     private string? _coinControlChain;
 
-    private static bool IsUtxoSendChain(string s) => s is "BTC" or "LTC" or "DOGE";
+    /// <summary>
+    /// The UTXO chains, as ONE list (roadmap P1.5).
+    ///
+    /// There were three of these, and they had drifted: the balance scan walked BTC/LTC/BCH/DOGE, the
+    /// fee selector offered all four, and coin control — plus the private-send plan that reads it —
+    /// quietly left Bitcoin Cash out. So on BCH the panel that lets you avoid linking your addresses
+    /// was simply absent, and the privacy checklist did not mention linkage at all, on a chain where
+    /// it is exactly as real as on Bitcoin.
+    ///
+    /// They all mean the same thing, so they are now the same list: the chains this wallet scans
+    /// across every address and can spend from.
+    /// </summary>
+    private static bool IsUtxoSendChain(string s) =>
+        UtxoScanChains.Contains(s, StringComparer.OrdinalIgnoreCase);
 
     // ---- Fee level (network speed) ----------------------------------------------------------------
-    // A slow/standard/fast selector for the UTXO chains (BTC/LTC/DOGE/BCH). Standard is exactly the
+    // A slow/standard/fast selector for the UTXO chains. Standard is exactly the
     // economical rate the wallet has always used, so an untouched selector never changes the fee. Only
     // the sat/vB handed to PlanSpend changes — the signing/broadcast path is completely unaffected, and
     // every level stays inside the chain's safe fee band (never below the relay floor). See FeeLevels.
@@ -105,7 +118,7 @@ public partial class MainViewModel
     /// <summary>0 = Economy, 1 = Standard, 2 = Priority. Standard by default, which equals today's fee.</summary>
     [ObservableProperty] private int _feeLevelIndex = 1;
 
-    private static bool IsUtxoFeeChain(string s) => s is "BTC" or "LTC" or "DOGE" or "BCH";
+    private static bool IsUtxoFeeChain(string s) => IsUtxoSendChain(s);
 
     private FeeLevel SelectedFeeLevel => FeeLevelIndex switch
     {

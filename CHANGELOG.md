@@ -42,6 +42,24 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### Activity says which coins it is not reading
+
+- The feed shows what this wallet did plus whatever history an explorer will give us. For a coin with
+  no history reader — Dogecoin and transparent Zcash today — a transfer made anywhere else, or before
+  this wallet existed, was simply absent, and an empty feed read as "nothing happened" when it meant
+  "nobody asked". Those coins are now named above the list, computed from the capability catalog so
+  the note cannot claim coverage the code does not have — or keep warning after one is wired up.
+- The empty-state hint used to list the covered chains by name and had gone stale (BCH, SOL, TON and
+  ADA all gained history since it was written). It now points at that computed note instead.
+
+### Coin control on Bitcoin Cash
+
+- There were three lists of "the UTXO chains" and they had drifted: the balance scan walked
+  BTC/LTC/BCH/DOGE, the fee selector offered all four, and coin control — with the private-send
+  checklist that reads it — quietly left Bitcoin Cash out. So on BCH the panel that lets you avoid
+  linking your own addresses was missing, and the privacy checklist never mentioned linkage, on a
+  chain where it is exactly as real as on Bitcoin. One list now.
+
 ### Where your requests are going, without asking
 
 - A connection chip in the sidebar (and in the top/bottom nav): **TOR**, **PROXY**, **DIRECT** or

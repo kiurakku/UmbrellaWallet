@@ -2544,6 +2544,15 @@
                 <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" Margin="2,0,0,4"
                            Text="{Binding [activity.desc], Source={x:Static app:Loc.Instance}}"/>
 
+                <!-- Coins whose history this build does not read (roadmap P1.10). Without this an
+                     empty feed reads as "nothing happened" when it means "nobody asked" — the same
+                     shape of lie as a zero balance from an unreachable explorer. -->
+                <Border IsVisible="{Binding HasHistoryGaps}" Background="#33E7CA83" BorderBrush="#7A6230"
+                        BorderThickness="1" CornerRadius="10" Padding="12,9">
+                  <TextBlock Text="{Binding HistoryGapNote}" Foreground="#E7CA83" FontSize="11.5"
+                             LineHeight="17" TextWrapping="Wrap" MaxWidth="720"/>
+                </Border>
+
                 <!-- Last sync + on-demand refresh: the history is fetched from public explorers, so tell
                      the user how fresh it is and let them re-pull it. -->
                 <Border Classes="card" Padding="12,8">

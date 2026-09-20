@@ -111,6 +111,41 @@ public partial class MainViewModel
 
     public bool HasFilteredActivity => FilteredActivity.Count > 0;
 
+    // --- Honest coverage (roadmap P1.10) --------------------------------------------------------
+    // The feed shows what this wallet did plus whatever history an explorer will give us. For a chain
+    // with no history reader, a transaction made anywhere else — or before this wallet existed — is
+    // simply not here. An empty feed then reads as "nothing happened" when it means "nobody asked",
+    // which is the same shape of lie as a zero balance on an unreachable explorer.
+
+    /// <summary>"DOGE, ZEC" — the coins this wallet holds whose history is not read.</summary>
+    [ObservableProperty] private string _historyGapCoins = string.Empty;
+
+    public bool HasHistoryGaps => HistoryGapCoins.Length > 0;
+
+    /// <summary>The sentence shown under the Activity header, naming those coins.</summary>
+    public string HistoryGapNote =>
+        HasHistoryGaps ? string.Format(Loc.Instance["activity.partial"], HistoryGapCoins) : string.Empty;
+
+    partial void OnHistoryGapCoinsChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasHistoryGaps));
+        OnPropertyChanged(nameof(HistoryGapNote));
+    }
+
+    /// <summary>
+    /// Recomputes which held coins have no history reader, from the capability catalog — so this can
+    /// never claim coverage the code does not have, and never keep warning about a chain once one is
+    /// wired up.
+    /// </summary>
+    private void RefreshHistoryCoverage()
+    {
+        var held = Accounts
+            .Where(a => a.SupportStatus is "Ready" or "Receive only" && IsRealAddress(a.Address))
+            .Select(a => a.Symbol);
+
+        HistoryGapCoins = string.Join(", ", HistoryCoverage.WithoutHistory(held));
+    }
+
     /// <summary>The merged feed (roadmap §6): local events plus real on-chain history, deduped by explorer
     /// link, newest first — the single source the Activity screen renders and every filter narrows.</summary>
     private IEnumerable<ActivityRowViewModel> MergedActivity()
@@ -201,6 +236,7 @@ public partial class MainViewModel
         // Decrypt this wallet's private transaction notes first, so each row is built with its note.
         await LoadTxNotesAsync();
         HistoryLoading = true;
+        RefreshHistoryCoverage();                       // say up front which coins are not being read
         OnPropertyChanged(nameof(HasFilteredActivity)); // let the "loading" state show immediately
         try
         {
