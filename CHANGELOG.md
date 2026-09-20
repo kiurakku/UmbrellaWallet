@@ -4,6 +4,59 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [Unreleased] — what the wallet knows, and what it will not pretend to
+
+Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes what gets signed.
+
+### A balance the wallet could not read no longer reads as zero
+
+- An explorer that rate-limits, a node that is down, a request the kill-switch refused: each used to
+  leave the row showing **0.000000** at **$0.00**, with exactly the confidence of a genuinely empty
+  address. That is the wallet telling somebody their money is gone. Unread balances now show **—**
+  with the reason underneath.
+- A number from the last successful read is kept and labelled as such rather than blanked or passed
+  off as current. A real zero from the chain is still a real zero — an empty address is an answer.
+- The portfolio total leaves out what it could not read **and says how many assets that was**, instead
+  of quietly summing the rest into a wrong number that looks like a right one.
+
+### A send whose route is not the one you chose is refused
+
+- Tor on in Settings but not connected, Tor connected but the traffic routed elsewhere, a proxy typed
+  and never applied, or the Tor-only kill-switch armed with nothing to route through: each now blocks
+  the send, at Review **and** again at Confirm, because Tor can drop in between. A broadcast is the one
+  request that ties an IP to specific coins permanently.
+- Asking for nothing still sends over the open internet — that is your choice, and the review already
+  says what it costs.
+
+### First run says the things that cannot be said later
+
+- Before a seed exists: non-custodial software by **the fear**, not a financial institution; no
+  guarantee of anonymity on a transparent chain; and nobody — including the author — who can restore
+  a lost recovery phrase. Plus 18+ and the Terms and Privacy Policy, in all six languages.
+- It gates create, import and unlock. Acceptance is recorded against a version of the wording, so
+  changed wording asks again.
+
+### Honest wording
+
+- The wallet called itself an "anonymous crypto wallet" and offered "Tor · anonymous traffic". Tor
+  hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
+  "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
+
+### Who published this build
+
+- Settings → Guide gains **About this build**: version, publisher and copyright read from the
+  assembly, the licence in one line, and links to the only official repository, releases and channel.
+  The .exe's own properties and the installer now name **the fear** too, from one source.
+
+### Proof
+
+- The restore scenario runs end to end offline for BTC, LTC, BCH and DOGE: twenty addresses issued,
+  payment on #15, local state deleted, then found **and spent** from the phrase alone — and the
+  past-the-gap-limit case is pinned as the limit it is, rather than hidden.
+- A CI job proves the kill-switch opens no socket at all, with the kill-switch off as the
+  counter-proof, plus a scan for any HTTP client built outside the one place that wires it.
+- 837 offline tests.
+
 ## [4.7.0] — you choose which server sees your addresses
 
 Your keys never leave your device. That is true, and every wallet says it.
