@@ -20,6 +20,9 @@ regex = '''(?i)password\s*[=:]\s*['"][^'"]{8,}['"]'''
 
 [allowlist]
 description = "test vectors, docs, example env files, and PUBLIC key fingerprints"
+# Match against the whole LINE, not the extracted secret: what identifies these as public
+# fingerprints is the variable they are assigned to, and the secret alone is just forty hex digits.
+regexTarget = "line"
 regexes = [
   # PGP public-key FINGERPRINTS of the upstream projects whose binaries this wallet bundles: the Tor
   # Browser Developers and Monero's binaryFate. Forty hex characters of high entropy looks exactly
