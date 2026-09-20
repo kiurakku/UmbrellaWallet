@@ -42,6 +42,14 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### The hidden wallet has a way in
+
+- A BIP39 passphrase opens a **separate** wallet from the same recovery phrase, with its own
+  addresses. The derivation, the balance scan and the spender all honoured one already — the unlock
+  screen simply had no field to type it into, so the feature existed and nobody could reach it. It is
+  there now, folded behind **Advanced** so the unlock screen does not advertise to somebody watching
+  that hidden wallets are a thing this wallet does.
+
 ### Activity says which coins it is not reading
 
 - The feed shows what this wallet did plus whatever history an explorer will give us. For a coin with

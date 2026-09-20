@@ -1,7 +1,7 @@
 # Umbrella Wallet — unified roadmap
 
 **Product version:** see [`VERSION`](../VERSION) (currently **4.7.0**).  
-**Consolidation date:** 2026-09-15 · **last status pass:** 2026-09-20 (P0.0, P0.2–P0.4, P0.6–P0.8, P1.1, P1.4–P1.7, P1.9–P1.13 and L.1/L.2/L.3/L.8 closed).  
+**Consolidation date:** 2026-09-15 · **last status pass:** 2026-09-20 (P0.0, P0.2–P0.4, P0.6–P0.8, P1.1, P1.2, P1.4–P1.7, P1.9–P1.13 and L.1/L.2/L.3/L.8 closed).  
 **Purpose:** one document for “what remains to do” — compiled from README, CHANGELOG, `SECURE_ANON_ROADMAP`, `CLAUDE_IMPLEMENTATION_ROADMAP_UK`, `12-coins-and-chains`, `PRIVACY`, `THREAT_MODEL`, `security-model`, `BUILD_VERIFY`, and notes on alignment with the manifesto philosophy.
 
 Legend: ✅ done · 🟡 partial · ⏳ next · 📅 planned · ❌ not planned / blocked.
@@ -63,7 +63,7 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | # | Task | Source | Status |
 |---|---|---|---|
 | P1.1 | **Duress / decoy password** (second password → decoy vault) | README, SECURE 4.4–4.5, MANIFESTO | ✅ the vault is now the two-slot deniable file for **every** wallet (so setting one does not change the file's shape); Settings → Security sets or removes a decoy, and never reports whether one exists |
-| P1.2 | Restore/finish **hidden wallet** unlock UI (BIP39 passphrase), if the product promises it | SECURE 4.4 | 🟡 |
+| P1.2 | Restore/finish **hidden wallet** unlock UI (BIP39 passphrase), if the product promises it | SECURE 4.4 | ✅ the derivation, scan and spend paths already honoured a passphrase; the unlock screen had no field to type one into, so the feature existed and nobody could use it. Folded behind “Advanced”, and pinned by a test |
 | P1.3 | **Panic / duress wipe** with an explicit trigger | SECURE 4.5 | 🟡 DataWiper without UX |
 | P1.4 | Transaction **simulation** before Confirm (what exactly changes on-chain) | README Next | ✅ already shipped — the Send review renders `SendSimulation` rows (what leaves, what returns as change, what the fee costs) |
 | P1.5 | One-switch private send — bring UX to “one toggle = full checklist” on all UTXO chains | README / CHANGELOG 4.7 | ✅ the three UTXO chain lists (balance scan, fee selector, coin control + private-send plan) had drifted and left Bitcoin Cash out of coin control and out of the linkage checklist; they are now one list |
@@ -195,7 +195,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 3. ✅ **P0.2–P0.4** — supply chain helpers + checksum CI + capability matrix.  
 4. ✅ **P1.11 / P1.12** — Privacy Radar limits + “What leaked?” (UI honesty).  
 5. ✅ **P1.1 / P1.13** — duress/decoy + verified “under coercion” scenario. **P1.2–P1.3** (hidden-wallet unlock UI, panic wipe) remain.  
-6. ✅ **P1.4–P1.7, P1.9, P1.10** — simulation, private-send parity across UTXO chains, connection status, honest capture wording, address book, Activity coverage. **P1.2–P1.3** (hidden-wallet unlock UI, panic wipe) and **P1.20** (self-verify) remain. ← **next**  
+6. ✅ **P1.2, P1.4–P1.7, P1.9, P1.10** — hidden-wallet unlock, simulation, private-send parity across UTXO chains, connection status, honest capture wording, address book, Activity coverage. **P1.3** (panic wipe) and **P1.20** (self-verify) remain. ← **next**  
 7. **P1.20** + §10 — self-verify mode and a public guide “how to check you are not being lied to.”  
 8. ✅ **L.1 / L.3 / L.8** (+ L.2 wording) — disclaimers / age / ToS in the app; **L.4** is store-listing copy, written at submission.  
 9. **R.6 / L.6** — EV signing for Windows + PGP for Linux packages.  

@@ -102,4 +102,31 @@ public class PassphraseDerivationTests
         var ada = _sut.DeriveReceiveAddress(Mnemonic, ChainId.Ada, 0, "");
         Assert.StartsWith("addr1", ada.Address);
     }
+
+    /// <summary>
+    /// Roadmap P1.2 — the hidden wallet has to be reachable.
+    ///
+    /// Everything above proves the derivation. None of it helped: the view model held
+    /// <c>UnlockPassphrase</c>, the deriver, scanner and spender all honoured it, and the unlock
+    /// screen had no field to type it into, so the feature existed and could not be used by anybody.
+    /// A capability with no way in is the same as not having it, and it is invisible in every test
+    /// that only exercises the layer below the window.
+    /// </summary>
+    [Fact]
+    public void The_unlock_screen_offers_the_passphrase_field()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "desktop", "src")))
+            dir = dir.Parent;
+        Assert.NotNull(dir);
+
+        var xaml = File.ReadAllText(Path.Combine(
+            dir!.FullName, "desktop", "src", "Umbrella.Wallet.App", "Views", "MainWindow.axaml"));
+
+        Assert.Contains("{Binding UnlockPassphrase}", xaml, StringComparison.Ordinal);
+
+        // And it stays folded away, so the unlock screen does not advertise that hidden wallets are
+        // a thing this wallet does to whoever is standing behind the user.
+        Assert.Contains("ShowUnlockAdvanced", xaml, StringComparison.Ordinal);
+    }
 }
