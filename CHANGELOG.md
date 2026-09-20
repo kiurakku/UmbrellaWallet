@@ -42,6 +42,36 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### What a send actually cost, said afterwards
+
+- A short report under the send result: whether the node you broadcast to saw your IP, whether the
+  kill-switch was armed, that the ledger keeps the amount and both addresses forever — and, when the
+  spend drew on more than one of your addresses, **how many**, because "several" is exactly the
+  vagueness that lets somebody assume it was two when it was nine.
+- It credits what went right too (a single input, change to a fresh address, coins you picked
+  yourself), and ends with the one nobody can fix: the person you paid knows you paid them.
+
+### Privacy Radar states its limits
+
+- Every signal behind the grade now carries what it does **not** do, directly underneath. "Tor is on"
+  reads to most people as "I am anonymous"; what it means is that the servers being asked see an exit
+  node instead of your address, and nothing at all about the addresses they were handed.
+
+### Supply chain: the pins are checked against what upstream signed
+
+- A SHA-256 written into this repository only ever agreed with itself. Both fetch scripts now verify
+  the project's own **signed** sums file — Tor's detached signature, Monero's clearsigned hashes —
+  against a pinned key fingerprint before trusting the hash, and release builds refuse to proceed
+  when that check cannot run.
+- **The Tor pin was already broken:** the pinned version had been pruned from the mirror, so a fresh
+  clone got a 404 while the hash beside it belonged to a version that still exists. A repo check now
+  keeps the scripts and THIRD_PARTY_NOTICES describing the same download.
+- A published release can be re-checked against its own manifest at any time
+  (`scripts/verify-published-release.sh`) — the workflow verifies before publishing; this verifies
+  what the page serves afterwards.
+- The README's coin table and the roadmap's matrix are now checked against the same source of truth
+  the Send picker reads, like the coins document already was.
+
 ### Who published this build
 
 - Settings → Guide gains **About this build**: version, publisher and copyright read from the

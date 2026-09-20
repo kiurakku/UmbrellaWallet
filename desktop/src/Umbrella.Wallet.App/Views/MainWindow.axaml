@@ -1428,6 +1428,41 @@
                                Text="{Binding SendSuccess}" VerticalAlignment="Center"/>
                   </StackPanel>
                 </Border>
+
+                <!-- What that send actually cost (roadmap P1.12). Settings say what you configured;
+                     this says what the transfer you just made exposed, while you can still act on
+                     it — different coins next time, Tor on before the next send. -->
+                <Border Classes="card" IsVisible="{Binding HasSendLeakReport}" BorderBrush="#5A6B8C">
+                  <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel Spacing="2">
+                        <TextBlock Classes="eyebrow" Text="{Binding [leak.title], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" MaxWidth="560"
+                                   Text="{Binding [leak.subtitle], Source={x:Static app:Loc.Instance}}"/>
+                      </StackPanel>
+                      <Button Grid.Column="1" Classes="ghost" FontSize="11" Padding="10,5" VerticalAlignment="Top"
+                              Content="{Binding [common.close], Source={x:Static app:Loc.Instance}}"
+                              Command="{Binding DismissSendLeakReportCommand}"/>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding SendLeakFindings}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:LeakFindingVm">
+                          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9" Margin="0,0,0,5">
+                            <TextBlock Text="{Binding Glyph}" Foreground="{Binding Color}" FontSize="12"
+                                       FontWeight="Bold" VerticalAlignment="Top"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Text}" FontSize="12" LineHeight="18"
+                                       TextWrapping="Wrap" Foreground="{DynamicResource UmTextSoft}"/>
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock IsVisible="{Binding SendLeakHasAvoidable}" FontSize="11.5" Foreground="#E7CA83"
+                               TextWrapping="Wrap" MaxWidth="560"
+                               Text="{Binding [leak.avoidable], Source={x:Static app:Loc.Instance}}"/>
+                  </StackPanel>
+                </Border>
               </StackPanel>
 
               <!-- Swap (THORChain · non-custodial cross-chain) -->
@@ -2813,6 +2848,26 @@
                                  Text="{Binding [pscore.subtitle], Source={x:Static app:Loc.Instance}}"/>
                       <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap" Margin="0,2,0,0"
                                  Text="{Binding PrivacyTopFix}"/>
+
+                      <!-- Every signal behind the grade, each with what it does NOT do underneath
+                           (roadmap P1.11). "Strong" on its own reads as "I am anonymous"; what it
+                           means is that the servers being asked see an exit node instead of a home
+                           address, and nothing at all about the addresses they were handed. -->
+                      <ItemsControl ItemsSource="{Binding PrivacyFindings}" Margin="0,8,0,0">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:PrivacyFindingVm">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="0,0,0,7">
+                              <TextBlock Text="{Binding Glyph}" Foreground="{Binding Color}" FontSize="11.5"
+                                         FontWeight="Bold" VerticalAlignment="Top" Margin="0,1,0,0"/>
+                              <StackPanel Grid.Column="1" Spacing="1">
+                                <TextBlock Text="{Binding Text}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding Limit}" FontSize="11" LineHeight="16" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource UmTextMuted}" MaxWidth="560"/>
+                              </StackPanel>
+                            </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
                     </StackPanel>
                   </Grid>
                 </Border>

@@ -603,3 +603,13 @@ public sealed record SendSimulationRow(string Label, string Amount, string Hint,
 {
     public bool HasHint => Hint.Length > 0;
 }
+
+/// <summary>
+/// One line of the Privacy Radar: what is on (or off), and — always, never optionally — what that
+/// does not do. Roadmap P1.11 / MANIFESTO §2: both halves render together or neither does.
+/// </summary>
+public sealed record PrivacyFindingVm(string Text, string Limit, bool IsStrength)
+{
+    public string Glyph => IsStrength ? "✓" : "!";
+    public string Color => IsStrength ? "#8FCB9B" : "#E7CA83";
+}

@@ -928,6 +928,9 @@ public partial class MainViewModel
     {
         if (ok && reference is not null)
         {
+            // Built BEFORE the quotes are cleared: the plan is what knows how many of the user's own
+            // addresses funded this spend, and it is about to be thrown away (roadmap P1.12).
+            BuildSendLeakReport(symbol);
             ClearSendQuotes();
             SendTo = string.Empty;
             SendAmount = string.Empty;
