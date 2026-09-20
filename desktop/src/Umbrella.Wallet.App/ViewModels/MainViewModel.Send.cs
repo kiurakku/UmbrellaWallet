@@ -276,15 +276,6 @@ public partial class MainViewModel
             return;
         }
 
-        // Before anything touches the network: is the route the user chose the route that exists?
-        // Preparing a send already hands the explorer the addresses this spend will draw on, so the
-        // check belongs here and not only at broadcast (roadmap P0.7).
-        if (TransportGateError() is { } routeError)
-        {
-            SendError = routeError;
-            return;
-        }
-
         // AmountInput, not decimal.TryParse: with group separators allowed, "0,5" silently parses as
         // FIVE (see AmountInputTests), which in a send field is a tenfold overspend.
         if (!AmountInput.TryParsePositive(SendAmount, out var amount))
@@ -365,6 +356,14 @@ public partial class MainViewModel
                 return;
             }
 
+            // The last thing before the network: is the route the user chose the route that exists?
+            // Preparing already hands a public server this wallet's address (roadmap P0.7).
+            if (TransportGateError() is { } tronRouteError)
+            {
+                SendError = tronRouteError;
+                return;
+            }
+
             _sendSymbol = symbol;
             await RunBusyAsync(async () =>
             {
@@ -401,6 +400,15 @@ public partial class MainViewModel
         if (from is null || !IsRealAddress(from.Address))
         {
             SendError = string.Format(Loc.Instance["send.errNoAccount"], chain);
+            return;
+        }
+
+        // The last thing before the network. Local problems — a malformed address, a coin this
+        // build cannot send — are reported as themselves above; from here on the wallet is about to
+        // talk to somebody, so the route has to be the one that was chosen (roadmap P0.7).
+        if (TransportGateError() is { } routeError)
+        {
+            SendError = routeError;
             return;
         }
 

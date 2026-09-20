@@ -93,6 +93,72 @@
              scroll. Tall stages supply their own bottom spacing via their content margins. -->
         <Panel MinHeight="{Binding #OnbScroll.Bounds.Height}">
 
+          <!-- First run: what has to be said before a seed exists (roadmap L.1 / L.3 / L.8).
+               Two of these three facts are useless after the fact — nobody can recover a lost
+               phrase, and a public chain is not made private by any wallet. -->
+          <StackPanel IsVisible="{Binding IsDisclaimerStage}" MaxWidth="640" Margin="24,48,24,32"
+                      HorizontalAlignment="Center" Spacing="0">
+            <Image Source="{Binding LogoImage}" Width="96" Stretch="Uniform" HorizontalAlignment="Center"/>
+            <TextBlock Classes="serif" FontSize="27" HorizontalAlignment="Center" Margin="0,18,0,0"
+                       Text="{Binding [first.title], Source={x:Static app:Loc.Instance}}"/>
+            <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" TextWrapping="Wrap"
+                       TextAlignment="Center" Margin="0,8,0,0"
+                       Text="{Binding [first.subtitle], Source={x:Static app:Loc.Instance}}"/>
+
+            <Border Classes="card" Margin="0,20,0,0">
+              <StackPanel Spacing="14">
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="eyebrow" Text="{Binding [first.custodyTitle], Source={x:Static app:Loc.Instance}}"/>
+                  <TextBlock Foreground="{DynamicResource UmTextSoft}" FontSize="12.5" LineHeight="19" TextWrapping="Wrap"
+                             Text="{Binding [first.custodyBody], Source={x:Static app:Loc.Instance}}"/>
+                </StackPanel>
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="eyebrow" Text="{Binding [first.privacyTitle], Source={x:Static app:Loc.Instance}}"/>
+                  <TextBlock Foreground="{DynamicResource UmTextSoft}" FontSize="12.5" LineHeight="19" TextWrapping="Wrap"
+                             Text="{Binding [first.privacyBody], Source={x:Static app:Loc.Instance}}"/>
+                </StackPanel>
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="eyebrow" Text="{Binding [first.riskTitle], Source={x:Static app:Loc.Instance}}"/>
+                  <TextBlock Foreground="{DynamicResource UmTextSoft}" FontSize="12.5" LineHeight="19" TextWrapping="Wrap"
+                             Text="{Binding [first.riskBody], Source={x:Static app:Loc.Instance}}"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <CheckBox Margin="0,18,0,0" IsChecked="{Binding DisclaimerAgeConfirmed}">
+              <TextBlock FontSize="12.5" TextWrapping="Wrap" MaxWidth="540"
+                         Text="{Binding [first.age], Source={x:Static app:Loc.Instance}}"/>
+            </CheckBox>
+            <CheckBox Margin="0,6,0,0" IsChecked="{Binding DisclaimerTermsAccepted}">
+              <TextBlock FontSize="12.5" TextWrapping="Wrap" MaxWidth="540"
+                         Text="{Binding [first.terms], Source={x:Static app:Loc.Instance}}"/>
+            </CheckBox>
+
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
+              <Button Classes="ghost" FontSize="12" Padding="10,6"
+                      Content="{Binding [first.readTerms], Source={x:Static app:Loc.Instance}}"
+                      Command="{Binding OpenUrlCommand}" CommandParameter="{Binding TermsUrl}"/>
+              <Button Classes="ghost" FontSize="12" Padding="10,6"
+                      Content="{Binding [first.readPrivacy], Source={x:Static app:Loc.Instance}}"
+                      Command="{Binding OpenUrlCommand}" CommandParameter="{Binding PrivacyPolicyUrl}"/>
+            </StackPanel>
+
+            <Button Classes="primary" Margin="0,18,0,0" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Content="{Binding [first.accept], Source={x:Static app:Loc.Instance}}"
+                    IsEnabled="{Binding CanAcceptDisclaimer}"
+                    Command="{Binding AcceptDisclaimerCommand}"/>
+
+            <!-- The publisher, stated before anything is installed or created. -->
+            <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center" Margin="0,18,0,0">
+              <TextBlock Text="{Binding [onboard.builtBy], Source={x:Static app:Loc.Instance}}"
+                         Foreground="{DynamicResource UmBorder3}" FontSize="11" VerticalAlignment="Center"/>
+              <Image Source="{Binding FearMark}" Width="26" Height="26" VerticalAlignment="Center"/>
+              <TextBlock Text="the fear" Foreground="{DynamicResource UmGold}" FontSize="13" FontWeight="Bold"
+                         VerticalAlignment="Center"/>
+            </StackPanel>
+          </StackPanel>
+
           <!-- Welcome / cover -->
           <StackPanel IsVisible="{Binding IsWelcomeStage}" MaxWidth="720" Margin="24,48,24,24"
                       HorizontalAlignment="Center" Spacing="0">

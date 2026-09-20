@@ -24,7 +24,7 @@ public sealed class MarketListTests : IDisposable
     {
         var vm = NewViewModel();
 
-        var duplicates = vm.Market
+        var duplicates = vm.Market.ToList()
             .GroupBy(m => m.Symbol, StringComparer.OrdinalIgnoreCase)
             .Where(g => g.Count() > 1)
             .Select(g => $"{g.Key} x{g.Count()}")
@@ -44,7 +44,7 @@ public sealed class MarketListTests : IDisposable
             .Select(c => c.Symbol)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var wrong = vm.Market
+        var wrong = vm.Market.ToList()
             .Where(m => realChains.Contains(m.Symbol) && !m.IsSupported)
             .Select(m => m.Symbol)
             .ToList();
@@ -56,7 +56,7 @@ public sealed class MarketListTests : IDisposable
     public void Every_chain_the_wallet_holds_has_a_market_row()
     {
         var vm = NewViewModel();
-        var listed = vm.Market.Select(m => m.Symbol).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var listed = vm.Market.ToList().Select(m => m.Symbol).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var missing = ChainCatalog.All
             .Where(c => c.Support == ChainSupportLevel.Supported && !listed.Contains(c.Symbol))

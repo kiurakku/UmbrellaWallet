@@ -1,5 +1,6 @@
 using Umbrella.Wallet.App.ViewModels;
 using Umbrella.Wallet.Infrastructure;
+using Umbrella.Wallet.Infrastructure.Network;
 
 namespace Umbrella.Wallet.Core.Tests;
 
@@ -20,8 +21,14 @@ public sealed class MainViewModelTests : IDisposable
         Path.GetTempPath(),
         $"umbrella-vm-{Guid.NewGuid():N}");
 
-    private MainViewModel NewViewModel() =>
-        new(new EncryptedFileSeedVault(Path.Combine(_directory, "vault.json")));
+    private MainViewModel NewViewModel()
+    {
+        // These tests assert on the onboarding stages, which sit behind the first-run
+        // acknowledgement. A wipe test running earlier in the same collection deletes the settings
+        // file — correctly — so the baseline is restored rather than assumed.
+        TestDataIsolation.RestoreBaselineSettings();
+        return new(new EncryptedFileSeedVault(Path.Combine(_directory, "vault.json")));
+    }
 
     [Fact]
     public async Task CreateWallet_ShowsA24WordPhrase_AndOpensTheWorkspace()
@@ -153,14 +160,19 @@ public sealed class MainViewModelTests : IDisposable
     {
         var vm = NewViewModel();
 
+        // Snapshot once: the market refresh the view model starts on construction mutates this
+        // collection, and enumerating it mid-update fails with "collection was modified" — a flake
+        // about timing, not about the listing.
+        var market = vm.Market.ToList();
+
         // The wallet's own chains plus popular market-only coins (priced + charted, held via the
         // EVM/token paths), so the market is broader than the account list.
-        Assert.True(vm.Market.Count > Chains.ChainCatalog.All.Count);
-        Assert.Contains(vm.Market, m => m.Symbol == "BTC" && m.IsSupported);
-        Assert.Contains(vm.Market, m => m.Symbol == "SOL" && m.IsSupported);
-        Assert.Contains(vm.Market, m => m.Symbol == "XMR" && !m.IsSupported);
-        Assert.Contains(vm.Market, m => m.Symbol == "BNB"); // a market-only coin
-        Assert.Contains(vm.Market, m => m.Symbol == "XRP");
+        Assert.True(market.Count > Chains.ChainCatalog.All.Count);
+        Assert.Contains(market, m => m.Symbol == "BTC" && m.IsSupported);
+        Assert.Contains(market, m => m.Symbol == "SOL" && m.IsSupported);
+        Assert.Contains(market, m => m.Symbol == "XMR" && !m.IsSupported);
+        Assert.Contains(market, m => m.Symbol == "BNB"); // a market-only coin
+        Assert.Contains(market, m => m.Symbol == "XRP");
     }
 
     /// <summary>Reveal must never expose the phrase without the correct password.</summary>
@@ -229,19 +241,33 @@ public sealed class MainViewModelTests : IDisposable
         Assert.Contains("not available", vm.SendError);
         Assert.False(vm.HasSendQuote);
 
-        // ETH with a malformed destination → rejected before any signing.
-        vm.SendChain = "ETH";
-        vm.SendTo = "not-an-address";
-        await vm.PrepareSendCommand.ExecuteAsync(null);
-        Assert.Contains("0x", vm.SendError);
-        Assert.False(vm.HasSendQuote);
+        // The route gate (P0.7) refuses a send whose transport is not what the user asked for, and
+        // this suite runs with the kill-switch armed and no proxy — which is that exact state. The
+        // address checks below are about the chain layer, so the test gives the wallet a coherent
+        // route first: a proxy on a dead loopback port satisfies the kill-switch and keeps the run
+        // offline, since nothing is listening there.
+        var proxyBefore = PublicHttp.ActiveProxy;
+        PublicHttp.SetProxy("socks5://127.0.0.1:1");
+        try
+        {
+            // ETH with a malformed destination → rejected before any signing.
+            vm.SendChain = "ETH";
+            vm.SendTo = "not-an-address";
+            await vm.PrepareSendCommand.ExecuteAsync(null);
+            Assert.Contains("0x", vm.SendError);
+            Assert.False(vm.HasSendQuote);
 
-        // BTC with a destination that isn't a valid mainnet address → rejected too.
-        vm.SendChain = "BTC";
-        vm.SendTo = "definitely-not-bitcoin";
-        await vm.PrepareSendCommand.ExecuteAsync(null);
-        Assert.False(vm.HasSendQuote);
-        Assert.NotEmpty(vm.SendError);
+            // BTC with a destination that isn't a valid mainnet address → rejected too.
+            vm.SendChain = "BTC";
+            vm.SendTo = "definitely-not-bitcoin";
+            await vm.PrepareSendCommand.ExecuteAsync(null);
+            Assert.False(vm.HasSendQuote);
+            Assert.NotEmpty(vm.SendError);
+        }
+        finally
+        {
+            PublicHttp.SetProxy(proxyBefore);
+        }
 
         // Confirm without a quote must refuse.
         await vm.ConfirmSendCommand.ExecuteAsync(null);

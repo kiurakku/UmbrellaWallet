@@ -23,7 +23,14 @@ public sealed class WalletJourneySmokeTests : IDisposable
 
     private string VaultPath => Path.Combine(_directory, "vault.json");
 
-    private MainViewModel NewViewModel() => new(new EncryptedFileSeedVault(VaultPath));
+    private MainViewModel NewViewModel()
+    {
+        // These tests assert on the onboarding stages, which sit behind the first-run
+        // acknowledgement. A wipe test running earlier in the same collection deletes the settings
+        // file — correctly — so the baseline is restored rather than assumed.
+        TestDataIsolation.RestoreBaselineSettings();
+        return new(new EncryptedFileSeedVault(VaultPath));
+    }
 
     /// <summary>Create → back up the phrase → workspace → lock → unlock again, in one run.</summary>
     [Fact]

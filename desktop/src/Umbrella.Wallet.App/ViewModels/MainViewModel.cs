@@ -1834,10 +1834,13 @@ public partial class MainViewModel : ViewModelBase
     public bool IsActivityGroup => IsActivity || IsTransactions;
 
     // --- Onboarding state machine: each is a full-screen page, sidebar only in the workspace ---
-    public bool IsWelcomeStage => !HasVault && SetupStage == "Welcome";
-    public bool IsCreateStage => !HasVault && SetupStage == "Create";
-    public bool IsImportStage => !HasVault && SetupStage == "Import";
-    public bool IsUnlockStage => HasVault && !IsUnlocked;
+    // Every stage below is gated on the first-run acknowledgement (roadmap L.1/L.3/L.8): no create,
+    // no import, no unlock until it is given. A disclaimer the user can walk around is a disclaimer
+    // for the developer's benefit rather than theirs.
+    public bool IsWelcomeStage => !NeedsDisclaimer && !HasVault && SetupStage == "Welcome";
+    public bool IsCreateStage => !NeedsDisclaimer && !HasVault && SetupStage == "Create";
+    public bool IsImportStage => !NeedsDisclaimer && !HasVault && SetupStage == "Import";
+    public bool IsUnlockStage => !NeedsDisclaimer && HasVault && !IsUnlocked;
     public bool IsBackupStage => IsUnlocked && PendingPhraseBackup;
     public bool IsWorkspace => IsUnlocked && !PendingPhraseBackup;
     public bool ShowSidebar => IsWorkspace;
@@ -2419,6 +2422,7 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsDiscoverGroup));
         OnPropertyChanged(nameof(IsWalletGroup));
         OnPropertyChanged(nameof(IsActivityGroup));
+        OnPropertyChanged(nameof(IsDisclaimerStage));
         OnPropertyChanged(nameof(IsWelcomeStage));
         OnPropertyChanged(nameof(IsCreateStage));
         OnPropertyChanged(nameof(IsImportStage));
