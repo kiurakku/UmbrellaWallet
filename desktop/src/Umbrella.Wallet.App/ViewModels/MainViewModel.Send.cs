@@ -790,11 +790,14 @@ public partial class MainViewModel
         }
 
         var onTron = IsTronTokenKey(sendKey);
-        var fundingSymbol = onTron ? "TRX" : "ETH";
-        var from = Accounts.FirstOrDefault(a => a.Symbol == fundingSymbol && a.SupportStatus == "Ready");
+        var onTon = IsJettonKey(sendKey);
+        var fundingSymbol = onTon ? "TON" : onTron ? "TRX" : "ETH";
+        var fundingChain = onTon ? "TON" : onTron ? "TRON" : "Ethereum";
+
+        var from = Accounts.FirstOrDefault(a => a.Symbol == fundingSymbol && a.SupportStatus is "Ready" or "Receive only");
         if (from is null || !IsRealAddress(from.Address))
         {
-            SendError = string.Format(Loc.Instance["send.errNoAccount"], onTron ? "TRON" : "Ethereum");
+            SendError = string.Format(Loc.Instance["send.errNoAccount"], fundingChain);
             return;
         }
 
@@ -815,6 +818,28 @@ public partial class MainViewModel
         await RunBusyAsync(async () =>
         {
             StatusMessage = Loc.Instance["status.reviewTransfer"];
+
+            if (onTon)
+            {
+                // The message goes to the sender's OWN jetton wallet with TON attached for gas; that
+                // contract credits the recipient's jetton wallet. Two addresses, not one.
+                var (jettonQuote, jettonError) = await _tonSender.PrepareJettonAsync(
+                    from.Address, token.TokenWallet, SendTo.Trim(), amount, token.TokenDecimals, token.Symbol);
+
+                if (jettonQuote is null)
+                {
+                    SendError = jettonError ?? Loc.Instance["send.errPrepareFailed"];
+                    return;
+                }
+
+                _tonQuote = jettonQuote;
+                _sendTokenAmount = amount;
+                HasSendQuote = true;
+                SendQuoteSummary = $"Send {Fmt(amount)} {token.Symbol}  →  {SendTo.Trim()}";
+                SendQuoteFee = Loc.Instance["send.jettonFee"];
+                StatusMessage = Loc.Instance["status.reviewTransfer"];
+                return;
+            }
 
             if (onTron)
             {
@@ -1002,7 +1027,10 @@ public partial class MainViewModel
                     break;
                 }
 
-                case "TON" when _tonQuote is not null:
+                // Any TON quote — native TON or a jetton (roadmap N.3). Matching on the quote rather
+                // than on the ticker is what lets a jetton of any symbol reach its own signer instead
+                // of falling through to "prepare first" with a good quote in hand.
+                case not null when _tonQuote is not null:
                 {
                     var quote = _tonQuote;
                     // A TON-native wallet signs with the TON-mnemonic seed; a BIP39 wallet uses its
@@ -1012,9 +1040,17 @@ public partial class MainViewModel
                         : _deriver.DeriveTonPrivateKey(_unlockedMnemonic!);
                     try
                     {
-                        var (ok, _, error) = await _tonSender.SignAndBroadcastAsync(quote, priv);
+                        // A jetton quote carries the token's own wallet and units, and signs a
+                        // different message; the TON amount on it is gas, not the transfer.
+                        var isJetton = quote.JettonWallet is not null;
+                        var (ok, _, error) = isJetton
+                            ? await _tonSender.SignAndBroadcastJettonAsync(quote, priv)
+                            : await _tonSender.SignAndBroadcastAsync(quote, priv);
+
                         await FinishSendAsync(ok, ok ? quote.To : null, error,
-                            "TON", quote.AmountTon, quote.To, $"tonviewer.com/{quote.From}");
+                            isJetton ? quote.JettonSymbol ?? "TON" : "TON",
+                            isJetton ? _sendTokenAmount : quote.AmountTon,
+                            quote.To, $"tonviewer.com/{quote.From}");
                     }
                     finally
                     {

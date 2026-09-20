@@ -88,7 +88,11 @@ public sealed record WalletAccountViewModel(
     /// <summary>The token's decimals as its own contract reports them. Sending with the wrong value
     /// is wrong by powers of ten, so a row whose decimals were never read stays at -1 and the send
     /// path refuses rather than assuming 18.</summary>
-    int TokenDecimals = -1)
+    int TokenDecimals = -1,
+    /// <summary>For a jetton: the sender's OWN jetton-wallet contract, which is where a transfer
+    /// message is addressed. <see cref="Contract"/> holds the master, which identifies the token and
+    /// cannot receive one (roadmap N.3).</summary>
+    string TokenWallet = "")
 {
     /// <summary>The amount as the row may honestly state it: a dash while nothing has been read.</summary>
     public string AmountLabel => BalanceReadout.AmountText(Amount, Balance, Symbol);
@@ -102,6 +106,10 @@ public sealed record WalletAccountViewModel(
     /// <summary>True for a token row the wallet knows enough about to spend: a contract and the
     /// decimals that contract reports.</summary>
     public bool IsSpendableToken => Contract.Length > 0 && TokenDecimals >= 0;
+
+    /// <summary>A jetton can only be sent when the wallet also knows which jetton-wallet contract
+    /// holds it — the master cannot receive a transfer.</summary>
+    public bool IsSpendableJetton => IsSpendableToken && TokenWallet.Length > 0;
 
     /// <summary>Colour hint for the Receive list so status reads at a glance.</summary>
     public string StatusColor => SupportStatus switch

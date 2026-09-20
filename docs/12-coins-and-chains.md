@@ -44,9 +44,12 @@
 > **TRC-20 tokens on Tron can be sent too** — same rule, and the fee comes out of TRX
 > (energy/bandwidth) rather than out of the token.
 >
-> **Still detected-but-not-sendable:** SPL tokens (Solana) and Jettons (TON). Their balances appear;
-> their Send paths are separate work (roadmap N.3). Everything in the Send column above is a NATIVE
-> coin.
+> **Jettons on TON can be sent** when the wallet knows their jetton-wallet contract — the message
+> goes to that contract with about 0.05 TON attached for gas, part of which comes back. A jetton
+> whose wallet address is unknown still says **Receive only** rather than offering a send.
+>
+> **Still detected-but-not-sendable:** SPL tokens on Solana — their balances are not even read yet,
+> so there is nothing to send (roadmap N.3).
 
 ---
 

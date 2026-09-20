@@ -25,6 +25,10 @@ public partial class MainViewModel
     /// <summary>The same, for a TRC-20 on TRON (roadmap N.2).</summary>
     public const string TronTokenSendPrefix = "TRC20:";
 
+    /// <summary>And for a jetton on TON (roadmap N.3). The key is the jetton MASTER, which identifies
+    /// the token; the message goes to the sender's own jetton wallet, carried on the row.</summary>
+    public const string JettonSendPrefix = "JETTON:";
+
     /// <summary>The contract a picker key refers to, or null when the key is a native coin.</summary>
     public static string? ContractFromSendKey(string? key)
     {
@@ -33,6 +37,8 @@ public partial class MainViewModel
             return key[TokenSendPrefix.Length..];
         if (key.StartsWith(TronTokenSendPrefix, StringComparison.OrdinalIgnoreCase))
             return key[TronTokenSendPrefix.Length..];
+        if (key.StartsWith(JettonSendPrefix, StringComparison.OrdinalIgnoreCase))
+            return key[JettonSendPrefix.Length..];
 
         return null;
     }
@@ -41,6 +47,11 @@ public partial class MainViewModel
     /// transaction is built by TRON's own API rather than signed locally as an EVM transfer.</summary>
     public static bool IsTronTokenKey(string? key) =>
         key is not null && key.StartsWith(TronTokenSendPrefix, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>True when a picker key names a jetton — the message goes to a jetton wallet on TON
+    /// with TON attached for gas, which is a different shape again.</summary>
+    public static bool IsJettonKey(string? key) =>
+        key is not null && key.StartsWith(JettonSendPrefix, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Everything the Send picker offers: the native coins this build can broadcast, plus every
@@ -65,10 +76,13 @@ public partial class MainViewModel
 
         var tokens = Accounts
             .Where(a => a.IsSpendableToken)
-            // ERC-20 and TRC-20. Jettons on TON are still balance-only (N.3), and offering them
-            // here would promise a send this build cannot make.
+            // ERC-20, TRC-20 and jettons. A jetton additionally needs its jetton-wallet address:
+            // without it the token can be shown but not sent, and offering it would be a promise the
+            // send path cannot keep.
             .Where(a => a.Derivation.StartsWith("ERC20", StringComparison.OrdinalIgnoreCase)
-                        || a.Derivation.StartsWith("TRC20", StringComparison.OrdinalIgnoreCase))
+                        || a.Derivation.StartsWith("TRC20", StringComparison.OrdinalIgnoreCase)
+                        || (a.Derivation.StartsWith("Jetton", StringComparison.OrdinalIgnoreCase)
+                            && a.IsSpendableJetton))
             .Where(a => a.Amount > 0)
             // An unsolicited airdrop token is usually a lure; it stays visible in Holdings behind the
             // spam fold, but it does not get promoted into the send picker.
@@ -79,11 +93,11 @@ public partial class MainViewModel
             .Select(a =>
             {
                 var tron = a.Derivation.StartsWith("TRC20", StringComparison.OrdinalIgnoreCase);
-                return new SendOption(
-                    (tron ? TronTokenSendPrefix : TokenSendPrefix) + a.Contract,
-                    a.Name,
-                    Loc.Instance[tron ? "send.trc20Network" : "send.erc20Network"],
-                    Ticker: a.Symbol);
+                var jetton = a.Derivation.StartsWith("Jetton", StringComparison.OrdinalIgnoreCase);
+                var prefix = jetton ? JettonSendPrefix : tron ? TronTokenSendPrefix : TokenSendPrefix;
+                var network = jetton ? "send.jettonNetwork" : tron ? "send.trc20Network" : "send.erc20Network";
+
+                return new SendOption(prefix + a.Contract, a.Name, Loc.Instance[network], Ticker: a.Symbol);
             })
             .ToList();
 

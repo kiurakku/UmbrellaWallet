@@ -42,7 +42,7 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
-### Any ERC-20 or TRC-20 can be sent, not just watched
+### Tokens can be sent, not just watched — ERC-20, TRC-20 and jettons
 
 - The Send picker now lists every ERC-20 this wallet actually holds. Until now it could send native
   coins and exactly one token — USDT on Tron, hardcoded — so every other token was money you could
@@ -60,6 +60,15 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   with the fee paid in TRX. That path also gained the exact-scaling refusal it never had — it
   used to multiply through `Math.Pow` and truncate, silently dropping the remainder of an
   over-precise amount.
+- **Jettons on TON too.** A jetton moves by a message to your OWN jetton wallet — a separate
+  contract that then credits the recipient's — so the destination of the message and the
+  destination of the money are different addresses, and swapping them sends the tokens
+  nowhere recoverable. The message body is pinned cell-hash-for-cell-hash against the
+  reference `@ton/core` library, the way the wallet's TON transfers already were. About
+  0.05 TON is attached for gas and partly returned; a jetton whose wallet contract the
+  wallet does not know still says **Receive only** instead of offering a send it cannot make.
+- SPL tokens on Solana are **not** included: their balances are not read yet, so there is
+  nothing to send. Saying so beats a picker entry that does nothing.
 - **Verify a first send with a small amount** — the encoding and the refusals are covered by tests,
   but no token transfer from this build has yet been confirmed on-chain with real funds.
 

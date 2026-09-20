@@ -4042,8 +4042,9 @@ public partial class MainViewModel : ViewModelBase
             var tonAccount = Accounts.FirstOrDefault(a => a.Symbol == "TON" && a.SupportStatus == "Ready");
             if (tonAccount is not null && IsRealAddress(tonAccount.Address))
             {
-                // "Receive only", not "Ready": this build reads Jetton balances and does not send
-                // them, and the row is the only place that difference is visible to the user.
+                // Jettons are sendable now (roadmap N.3), but only when the wallet knows their
+                // jetton-wallet contract; AddTokenRows marks each row accordingly, so a token it
+                // cannot send still says "Receive only" rather than promising one.
                 await AddTonJettonRowsAsync(tonAccount.Address, "Receive only", prices, ct);
             }
 
@@ -4219,13 +4220,20 @@ public partial class MainViewModel : ViewModelBase
             var spam = Umbrella.Wallet.Core.Safety.SpamTokenInspector
                 .Inspect(tok.Name, tok.Symbol, hasMarketPrice: usd > 0);
 
+            // A jetton this build can actually send says "Ready"; one with no jetton-wallet address
+            // keeps the honest "Receive only", because the row would otherwise promise a send the
+            // picker will not offer (roadmap N.3).
+            var rowStatus = marker.StartsWith("Jetton", StringComparison.OrdinalIgnoreCase)
+                ? (tok.TokenWallet.Length > 0 ? "Ready" : status)
+                : status;
+
             Accounts.Add(new WalletAccountViewModel(
-                tok.Symbol, $"{tok.Name} · {suffix}", status,
+                tok.Symbol, $"{tok.Name} · {suffix}", rowStatus,
                 address, marker, usd, (double)tok.Amount, chain, 0,
                 IsSuspectedSpam: spam.IsSuspected, Balance: BalanceRead.Live,
                 // Carried so a send can route on the CONTRACT and scale by the decimals that
                 // contract reports — a ticker identifies neither (roadmap N.1).
-                Contract: tok.Contract, TokenDecimals: tok.Decimals));
+                Contract: tok.Contract, TokenDecimals: tok.Decimals, TokenWallet: tok.TokenWallet));
         }
     }
 

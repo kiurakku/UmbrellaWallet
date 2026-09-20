@@ -920,9 +920,21 @@ public sealed class PublicChainBalanceClient
                     contract = friendly.GetString() ?? master!;
                 }
 
+                // The wallet row's own address is this owner's jetton wallet — the contract a
+                // transfer is sent to (roadmap N.3). Without it the token is display-only.
+                var jettonWallet = wallet.TryGetProperty("address", out var wa) ? wa.GetString() ?? "" : "";
+                if (jettonWallet.Length > 0 &&
+                    addressBook.ValueKind == JsonValueKind.Object &&
+                    addressBook.TryGetProperty(jettonWallet, out var walletEntry) &&
+                    walletEntry.TryGetProperty("user_friendly", out var walletFriendly) &&
+                    walletFriendly.ValueKind == JsonValueKind.String)
+                {
+                    jettonWallet = walletFriendly.GetString() ?? jettonWallet;
+                }
+
                 result.Add(new TokenBalance(
                     NormaliseJettonSymbol(symbol!), string.IsNullOrWhiteSpace(name) ? symbol! : name!,
-                    amount, contract, decimals));
+                    amount, contract, decimals, jettonWallet));
             }
         }
         catch
@@ -984,7 +996,14 @@ public sealed class PublicChainBalanceClient
 }
 
 /// <summary>A fungible token balance (TRC-20 / ERC-20) held at an address.</summary>
-public sealed record TokenBalance(string Symbol, string Name, decimal Amount, string Contract, int Decimals);
+public sealed record TokenBalance(
+    string Symbol, string Name, decimal Amount, string Contract, int Decimals,
+    /// <summary>
+    /// For a jetton: the SENDER's own jetton-wallet contract, which is what a transfer message is
+    /// addressed to. The master in <see cref="Contract"/> identifies the token; it cannot receive a
+    /// transfer, and sending to it would be sending tokens to the issuer.
+    /// </summary>
+    string TokenWallet = "");
 
 /// <summary>An NFT collection held at an address (name + count only — no image fetch, for privacy).</summary>
 public sealed record NftHolding(string Name, string Symbol, int Count, string Standard, string Network);
