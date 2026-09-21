@@ -59,10 +59,15 @@ Invoke-WebRequest -Uri $url -OutFile $archivePath -UseBasicParsing
 # ever agrees with itself proves nothing — it says the download matches what this script expects, not
 # what Tor published. The signature is what connects the two.
 $sumsUrl = "https://dist.torproject.org/torbrowser/$Version/sha256sums-unsigned-build.txt"
+# The key comes from the Tor Project's own Web Key Directory first — the source their docs name
+# (gpg --locate-keys torbrowser@torproject.org). keys.openpgp.org strips the key's user ID, and
+# keyserver.ubuntu.com refused the release runner outright, which stopped the 4.8.0 Windows build.
+# Whatever serves it, the key is only used if its fingerprint is the pinned one.
 Assert-PinnedBySignedSums -SumsUrl $sumsUrl -SignatureUrl "$sumsUrl.asc" `
     -FileName $archive -ExpectedSha256 $ExpectedSha256 `
-    -KeyFingerprint $SigningKeyFingerprint -WorkDir $work `
-    -Required:$RequireSignature -What 'Tor expert bundle'
+    -KeyFingerprint $SigningKeyFingerprint `
+    -KeyUrls @('https://openpgpkey.torproject.org/.well-known/openpgpkey/torproject.org/hu/kounek7zrdx745qydx6p59t9mqjpuhdf?l=torbrowser') `
+    -WorkDir $work -Required:$RequireSignature -What 'Tor expert bundle'
 
 # Verify the archive against the pinned SHA-256 BEFORE extracting anything from it.
 $expected = $ExpectedSha256.Trim().ToLowerInvariant()
