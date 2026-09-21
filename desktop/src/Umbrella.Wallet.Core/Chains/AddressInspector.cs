@@ -71,6 +71,10 @@ public static class AddressInspector
         if (a.StartsWith("cosmos1", OIC))
             return new("ATOM", CosmosHub.IsValidAddress(a) ? AddressValidity.Valid : AddressValidity.Invalid);
 
+        // NEAR named accounts: recognisable by suffix, but a name carries no checksum to verify.
+        if (a.EndsWith(".near", OIC) && a.Length > 5)
+            return new("NEAR", AddressValidity.Unverified);
+
         // Stellar: StrKey carries a CRC16 checksum, so this is definitive too.
         if (a.StartsWith('G') && a.Length == 56)
             return new("XLM", StellarKeys.IsValidAccountId(a) ? AddressValidity.Valid : AddressValidity.Invalid);

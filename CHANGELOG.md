@@ -42,6 +42,19 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### NEAR: receive and balance
+
+- A NEAR account from the same phrase, at `m/44'/397'/0'` — the path NEAR's own seed-phrase library
+  uses, checked against that library's test. It is an *implicit* account: the 64-character id is your
+  public key, so it can receive without registering anything.
+- The balance is read at final finality from a server you can change (the NEAR Foundation's RPC by
+  default, or FastNEAR's). An account nobody has funded yet is a real zero. Large balances read
+  correctly — NEAR counts in 10⁻²⁴ units, more digits than the wallet's number type holds directly.
+- Named accounts (`you.near`) and NEAR staked with a pool are not shown.
+- **Not yet:** sending NEAR.
+- The four new balance readers (XRP, Stellar, Cosmos, NEAR) now treat a malformed server answer as
+  "could not read" in every shape the tests throw at them, instead of relying on an outer catch.
+
 ### Cosmos Hub: receive and balance
 
 - A Cosmos Hub (ATOM) address at `m/44'/118'/0'/0/0` — what Keplr, Leap and Ledger derive — checked

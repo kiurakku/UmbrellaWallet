@@ -102,6 +102,9 @@ public sealed class XrpReceiveTests
     [InlineData("""{"status":"success","validated":true,"account_data":{"Balance":1000000}}""")]     // number, not string
     [InlineData("""{"status":"success","validated":true}""")]
     [InlineData("""[]""")]
+    [InlineData("""{"status":"success","validated":true,"account_data":"oops"}""")]
+    [InlineData("""{"status":{"x":1}}""")]
+    [InlineData("""{"status":"error","error":{"x":1}}""")]
     public void Anything_else_is_unknown_never_zero(string json)
     {
         Assert.Null(Parse(json));

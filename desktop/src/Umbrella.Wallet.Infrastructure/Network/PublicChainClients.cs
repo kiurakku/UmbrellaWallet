@@ -338,6 +338,7 @@ public sealed class PublicChainBalanceClient
                 ChainId.Xrp => await GetXrpAsync(address, cancellationToken),
                 ChainId.Xlm => await GetXlmAsync(address, cancellationToken),
                 ChainId.Atom => await GetAtomAsync(address, cancellationToken),
+                ChainId.Near => await GetNearAsync(address, cancellationToken),
                 _ => null,
             };
         }
@@ -364,6 +365,23 @@ public sealed class PublicChainBalanceClient
 
         return XrpLedger.ParseAccountInfo(result) is { } xrp
             ? new ChainBalance(ChainId.Xrp, address, xrp, "XRP")
+            : null;
+    }
+
+    /// <summary>The NEAR JSON-RPC root: the user's chosen server, or the NEAR Foundation's.</summary>
+    private static string NearRoot => ChainEndpoints.Resolve("NEAR", "https://rpc.mainnet.near.org");
+
+    /// <summary>NEAR balance of the implicit account at final finality (roadmap N.7).</summary>
+    private static async Task<ChainBalance?> GetNearAsync(string address, CancellationToken ct)
+    {
+        if (!NearAccounts.IsImplicitAccountId(address)) return null;
+
+        using var res = await Http.PostAsJsonAsync(NearRoot, NearAccounts.ViewAccountRequest(address), ct);
+        if (!res.IsSuccessStatusCode) return null;
+        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+
+        return NearAccounts.ParseViewAccount(doc.RootElement) is { } near
+            ? new ChainBalance(ChainId.Near, address, near, "NEAR")
             : null;
     }
 

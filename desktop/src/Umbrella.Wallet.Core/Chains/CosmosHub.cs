@@ -37,7 +37,8 @@ public static class CosmosHub
     {
         if (statusCode != 200 || body is not { ValueKind: JsonValueKind.Object } root) return null;
         if (!root.TryGetProperty("balance", out var balance) || balance.ValueKind != JsonValueKind.Object) return null;
-        if (!balance.TryGetProperty("denom", out var denom) || denom.GetString() != Denom) return null;
+        if (!balance.TryGetProperty("denom", out var denom) || denom.ValueKind != JsonValueKind.String ||
+            denom.GetString() != Denom) return null;
         if (!balance.TryGetProperty("amount", out var amount) || amount.ValueKind != JsonValueKind.String) return null;
 
         // Micro-ATOM is an integer in a string; the SDK uses arbitrary precision, so parse as decimal digits.

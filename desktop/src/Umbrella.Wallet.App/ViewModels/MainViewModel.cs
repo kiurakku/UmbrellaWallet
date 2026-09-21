@@ -5355,6 +5355,7 @@ public partial class MainViewModel : ViewModelBase
         "XRP" or "RIPPLE" or "XRP LEDGER" => ChainId.Xrp,
         "XLM" or "STELLAR" or "LUMENS" => ChainId.Xlm,
         "ATOM" or "COSMOS" or "COSMOS HUB" => ChainId.Atom,
+        "NEAR" or "NEAR PROTOCOL" => ChainId.Near,
         _ => null,
     };
 
@@ -5419,6 +5420,7 @@ public partial class MainViewModel : ViewModelBase
         ChainId.Xrp => "XRP",
         ChainId.Xlm => "XLM",
         ChainId.Atom => "ATOM",
+        ChainId.Near => "NEAR",
         _ => chain.ToString().ToUpperInvariant(),
     };
 

@@ -110,6 +110,8 @@ public sealed class StellarReceiveTests
     [InlineData(200, """{"balances":[{"balance":"1,5","asset_type":"native"}]}""")]
     [InlineData(200, """{"balances":[{"balance":"-1","asset_type":"native"}]}""")]
     [InlineData(200, """{"id":"G…"}""")]
+    [InlineData(200, """{"balances":["native"]}""")]
+    [InlineData(200, """{"balances":[{"asset_type":7,"balance":"1.0"}]}""")]
     public void Anything_else_is_unknown_never_zero(int status, string? json)
     {
         Assert.Null(Parse(status, json));

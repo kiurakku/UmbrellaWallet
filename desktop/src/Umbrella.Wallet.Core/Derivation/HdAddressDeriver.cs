@@ -96,6 +96,7 @@ public sealed class HdAddressDeriver
             ChainId.Xrp => DeriveXrp(masterKey, addressIndex),
             ChainId.Xlm => DeriveStellar(parsed, addressIndex, passphrase),
             ChainId.Atom => DeriveCosmos(masterKey, addressIndex),
+            ChainId.Near => DeriveNear(parsed, addressIndex, passphrase),
             ChainId.Eth => DeriveEthereum(masterKey, addressIndex),
             ChainId.Tron => DeriveTron(masterKey, addressIndex),
             ChainId.Sol => DeriveSolana(parsed, addressIndex, passphrase),
@@ -138,6 +139,28 @@ public sealed class HdAddressDeriver
         System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
         return new ReceiveAddress(ChainId.Xlm, address, $"m/44'/148'/{addressIndex}'", addressIndex);
     }
+
+    /// <summary>
+    /// NEAR implicit account at m/44'/397'/{index}' (SLIP-0010 ed25519): the account id is the hex of
+    /// the public key (roadmap N.7). Pinned to near-seed-phrase's own parse test.
+    /// </summary>
+    private static ReceiveAddress DeriveNear(Mnemonic parsed, uint addressIndex, string passphrase = "")
+    {
+        var pub = DeriveNearPublicKey(parsed, addressIndex, passphrase);
+        return new ReceiveAddress(ChainId.Near, NearAccounts.ImplicitAccountId(pub), $"m/44'/397'/{addressIndex}'", addressIndex);
+    }
+
+    private static byte[] DeriveNearPublicKey(Mnemonic parsed, uint addressIndex, string passphrase)
+    {
+        var priv = Slip10Ed25519.DerivePrivateKey(parsed.DeriveSeed(passphrase), new[] { 44u, 397u, addressIndex });
+        var pub = Slip10Ed25519.PublicKey(priv);
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
+        return pub;
+    }
+
+    /// <summary>The NEAR ed25519 public key, for tests and for a future signer.</summary>
+    public byte[] DeriveNearPublicKey(string mnemonic, uint addressIndex = 0, string? passphrase = null) =>
+        DeriveNearPublicKey(Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic)), addressIndex, Resolve(passphrase));
 
     /// <summary>
     /// TON: SLIP-0010 ed25519 at m/44'/607'/0', wallet v4R2 address (non-bounceable / UQ form).

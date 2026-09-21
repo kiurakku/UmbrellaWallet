@@ -86,6 +86,8 @@ public sealed class CosmosReceiveTests
     [InlineData(200, """{"balance":{"denom":"uatom","amount":"1.5"}}""")]
     [InlineData(200, """{"balance":{"denom":"uatom","amount":5}}""")]
     [InlineData(200, """{"code":3,"message":"invalid address"}""")]
+    [InlineData(200, """{"balance":{"denom":5,"amount":"5"}}""")]
+    [InlineData(200, """{"balance":"uatom"}""")]
     public void Anything_else_is_unknown_never_zero(int status, string? json)
     {
         Assert.Null(Parse(status, json));

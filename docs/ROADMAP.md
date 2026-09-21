@@ -100,7 +100,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | N.4 | **XRP** | 🟡 **Receive + balance.** `m/44'/144'/0'/0/0`, the path Xaman, Ledger and Trust use — the key pinned to xrpl.js's own `fromMnemonic` test, the encoding to XRPL's documented example. Balance from `account_info` at the last *validated* ledger through a user-choosable server (XRPL Labs cluster, or Ripple's); an address the ledger does not have yet is a real zero, anything else is unknown. **Send off** until a signed Payment is pinned against the reference library |
 | N.5 | **Stellar (XLM)** | 🟡 **Receive + balance.** SEP-0005 (SLIP-0010 ed25519, `m/44'/148'/0'`) pinned to the SEP's own three vectors; StrKey `G…` with its CRC16 checked, so a typo'd Stellar address is refused on paste. Balance from Horizon through a choosable server (SDF, LOBSTR); a 404 is an unfunded address — a real zero — anything else is unknown. **Send off** until a signed transaction is pinned against the reference SDK |
 | N.6 | **Cosmos (ATOM)** / IBC | 🟡 **Receive + available balance.** `m/44'/118'/0'/0/0` pinned to cosmjs's own wallet test (key and address); the address checksum is verified by the shared BIP-173 codec, so a typo'd or wrong-prefix (e.g. `osmo1…`) address is refused. Balance: the bank module's uatom through a choosable server (PublicNode, Keplr) — **staked ATOM is not counted**, and the chain's note says so. **Send and IBC off** |
-| N.7 | **NEAR** | 📅 |
+| N.7 | **NEAR** | 🟡 **Receive + balance.** SLIP-0010 ed25519 `m/44'/397'/0'` pinned to near-seed-phrase's own parse test; the address is the implicit account (hex of the key), so nothing needs registering to receive. Balance: `view_account` at final finality through a choosable RPC (NEAR Foundation, FastNEAR — Lava's endpoint was found discontinued); `UNKNOWN_ACCOUNT` is a real zero; yocto amounts beyond `decimal` are split with BigInteger so a large holder never reads "unknown". Named `.near` accounts and staked NEAR are not shown. **Send off** |
 | N.8 | **Polkadot (DOT)** | 📅 |
 | N.9 | THORChain expansion / swap reliability (expiry, slippage, refund, failed broadcast) | 📅 after core |
 
@@ -169,7 +169,8 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | XRP | ✅ | ✅ | ❌ | ❌ | receive + balance (N.4); send once a signed Payment is proven |
 | XLM | ✅ | ✅ | ❌ | ❌ | receive + balance (N.5); send once a signed transaction is proven |
 | ATOM | ✅ | ✅ | ❌ | ❌ | receive + available balance (N.6); staked ATOM not counted |
-| NEAR / DOT | — | — | — | — | 📅 Planned |
+| NEAR | ✅ | ✅ | ❌ | ❌ | receive + balance (N.7) — implicit account only |
+| DOT | — | — | — | — | 📅 Planned |
 
 ---
 

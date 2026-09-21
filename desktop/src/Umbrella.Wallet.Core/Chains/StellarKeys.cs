@@ -113,7 +113,9 @@ public static class StellarHorizon
 
         foreach (var b in balances.EnumerateArray())
         {
-            if (!b.TryGetProperty("asset_type", out var type) || type.GetString() != "native") continue;
+            if (b.ValueKind != JsonValueKind.Object) return null;
+            if (!b.TryGetProperty("asset_type", out var type) || type.ValueKind != JsonValueKind.String ||
+                type.GetString() != "native") continue;
             if (!b.TryGetProperty("balance", out var value) || value.ValueKind != JsonValueKind.String) return null;
 
             // Horizon writes seven decimal places with a dot. No sign, no grouping, no exponent.

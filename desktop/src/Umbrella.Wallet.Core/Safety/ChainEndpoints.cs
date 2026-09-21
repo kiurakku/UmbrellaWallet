@@ -103,6 +103,12 @@ public static class ChainEndpoints
                 new("https://cosmos-rest.publicnode.com", "PublicNode (Allnodes)"),
                 new("https://lcd-cosmoshub.keplr.app", "Keplr"),
             ],
+            // NEAR JSON-RPC. near.lava.build was discontinued in 2025 — these two answered view_account.
+            ["NEAR"] =
+            [
+                new("https://rpc.mainnet.near.org", "NEAR Foundation"),
+                new("https://free.rpc.fastnear.com", "FastNEAR"),
+            ],
             // Horizon, Stellar's REST API. SDF runs the default; LOBSTR runs a public one too.
             ["XLM"] =
             [

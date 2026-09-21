@@ -19,4 +19,5 @@ public enum ChainId
     Xrp,
     Xlm,
     Atom,
+    Near,
 }

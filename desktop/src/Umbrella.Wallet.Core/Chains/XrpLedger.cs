@@ -33,11 +33,11 @@ public static class XrpLedger
     {
         if (result.ValueKind != JsonValueKind.Object) return null;
 
-        var status = result.TryGetProperty("status", out var s) ? s.GetString() : null;
+        var status = result.TryGetProperty("status", out var s) && s.ValueKind == JsonValueKind.String ? s.GetString() : null;
 
         if (status == "error")
         {
-            var error = result.TryGetProperty("error", out var e) ? e.GetString() : null;
+            var error = result.TryGetProperty("error", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null;
             return error == "actNotFound" ? 0m : null;
         }
 
@@ -47,6 +47,7 @@ public static class XrpLedger
         if (!result.TryGetProperty("validated", out var v) || v.ValueKind != JsonValueKind.True) return null;
 
         if (!result.TryGetProperty("account_data", out var data) ||
+            data.ValueKind != JsonValueKind.Object ||
             !data.TryGetProperty("Balance", out var balance) ||
             balance.ValueKind != JsonValueKind.String)
             return null;

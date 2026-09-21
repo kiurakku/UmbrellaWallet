@@ -35,6 +35,7 @@
 | **XRP** | XRP Ledger | — | ✅ | — | **Receive and balance only.** An address becomes an account once it receives the network's reserve |
 | **XLM** | Stellar | — | ✅ | — | **Receive and balance only.** An address becomes an account once someone funds it with the minimum balance |
 | **ATOM** | Cosmos Hub | — | ✅ | — | **Receive and balance only.** The balance is *available* ATOM — staked ATOM is not counted |
+| **NEAR** | NEAR Protocol | — | ✅ | — | **Receive and balance only.** Your implicit account (the 64-character hex id); named `.near` accounts and staked NEAR are not shown |
 
 > Any ERC-20 token (LINK, UNI, AAVE, SHIB, PEPE, etc.) is automatically detected and its
 > balance shown when you link an Ethereum address. Same for TRC-20 on Tron and SPL on Solana.
@@ -498,5 +499,5 @@ threat model names each one as an open gap rather than implying it away.
 | 22 | XRP Ledger | XRP | ⚠️ Partial | Receive + balance only |
 | 23 | Stellar | XLM | ⚠️ Partial | Receive + balance only |
 | 24 | Cosmos | ATOM | ⚠️ Partial | Receive + available balance only |
-| 25 | Near | NEAR | 📅 Planned | — |
+| 25 | Near | NEAR | ⚠️ Partial | Receive + balance of the implicit account only |
 | 26 | Polkadot | DOT | 📅 Planned | — |

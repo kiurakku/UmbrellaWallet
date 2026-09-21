@@ -17,7 +17,7 @@ public class ChainCatalogTests
         // transparent-only (t-addr) — the public side of Zcash, not shielded. XRP (N.4) joins on the
         // same terms: receive + balance, CanSend:false until a signed Payment is proven.
         Assert.Equal(
-            [ChainId.Btc, ChainId.Eth, ChainId.Ltc, ChainId.Doge, ChainId.Tron, ChainId.Sol, ChainId.Ton, ChainId.Ada, ChainId.Bch, ChainId.Zec, ChainId.Xrp, ChainId.Xlm, ChainId.Atom],
+            [ChainId.Btc, ChainId.Eth, ChainId.Ltc, ChainId.Doge, ChainId.Tron, ChainId.Sol, ChainId.Ton, ChainId.Ada, ChainId.Bch, ChainId.Zec, ChainId.Xrp, ChainId.Xlm, ChainId.Atom, ChainId.Near],
             ChainCatalog.Supported.Select(c => c.Id).ToArray());
 
         // Every chain now derives a real address; nothing is left "planned".
