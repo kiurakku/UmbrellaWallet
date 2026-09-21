@@ -42,6 +42,19 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### The default theme is gold
+
+- **Umbrella** — the theme every new wallet starts on — is now honey gold on a warm near-black, and it
+  is not a recolour. The balance card is a slab of polished gold with the balance in dark ink; the
+  round action keys and the active page in the sidebar are filled gold with dark icons; the page glow,
+  the splash and the card border follow the gold instead of staying brand blue.
+- The previous look is still there as **Navy · the classic blue**. A wallet that was on the default
+  theme opens in gold; pick Navy in Settings → Appearance to go back.
+- Every other theme keeps the quieter card it had. The splash and page glows used to be a fixed blue
+  on all of them; they now take each theme's own accent.
+- Limit: the gold card's text is checked against every stop of its gradient (the balance at 7:1, the
+  small print at 4.5:1), but only the Umbrella theme uses the bold card for now.
+
 ### Fixed — Activity overstated Bitcoin you sent
 
 - A payment that returned change to the wallet showed the change as money sent: paying 0.001 BTC from

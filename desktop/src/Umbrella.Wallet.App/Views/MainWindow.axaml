@@ -663,59 +663,69 @@
                      left and the brand mark over the 'portal' on the right. -->
                 <!-- Balance as a credit-card-sized card (≈1.6:1), left-aligned — not stretched full width. -->
                 <Border CornerRadius="22" ClipToBounds="True" Width="392" Height="266" HorizontalAlignment="Left"
-                        BorderBrush="{DynamicResource UmBorder}"
+                        BorderBrush="{DynamicResource UmHeroEdge}"
                         BorderThickness="1" BoxShadow="0 16 44 -16 #80000000"
                         PointerMoved="OnHeroPointerMoved" PointerExited="OnHeroPointerExited">
                   <Panel>
                     <!-- ANIMATED (default): a deep-navy base with rain footage composited over it. The
                          frames are keyed to alpha, so only the silver streaks show over the navy — no
                          darkening. Shown when the portfolio-video toggle and master motion are both on. -->
-                    <Border Background="{DynamicResource UmHeroGradient}" IsVisible="{Binding PortfolioVideoOn}"/>
-                    <Border Background="{DynamicResource UmAccentWash}" IsVisible="{Binding PortfolioVideoOn}"/>
-                    <controls:FrameAnimation Opacity="0.6" Margin="-1" IsVisible="{Binding PortfolioVideoOn}"/>
+                    <Border Background="{DynamicResource UmHeroSurface}" IsVisible="{Binding PortfolioVideoOn}"/>
+                    <Border Background="{DynamicResource UmHeroWash}" IsVisible="{Binding PortfolioVideoOn}"/>
+                    <controls:FrameAnimation Opacity="{DynamicResource UmHeroVideoOpacity}" Margin="-1" IsVisible="{Binding PortfolioVideoOn}"/>
 
                     <!-- STILL (motion off): the same clean navy hero gradient as the animated base, just
                          without the rain. No photo — the old photo backdrop blew out to bright white at
                          the card edges, which looked broken with motion off. -->
-                    <Border Background="{DynamicResource UmHeroGradient}" IsVisible="{Binding !PortfolioVideoOn}"/>
-                    <Border Background="{DynamicResource UmAccentWash}" IsVisible="{Binding !PortfolioVideoOn}"/>
+                    <Border Background="{DynamicResource UmHeroSurface}" IsVisible="{Binding !PortfolioVideoOn}"/>
+                    <Border Background="{DynamicResource UmHeroWash}" IsVisible="{Binding !PortfolioVideoOn}"/>
 
                     <!-- Bottom-left vignette so the balance always reads cleanly over either backdrop. -->
                     <Border>
                       <Border.Background>
                         <LinearGradientBrush StartPoint="0%,100%" EndPoint="65%,10%">
-                          <GradientStop Color="#B3060B14" Offset="0"/>
-                          <GradientStop Color="#00060B14" Offset="0.9"/>
+                          <GradientStop Color="{DynamicResource UmHeroShade}" Offset="0"/>
+                          <GradientStop Color="{DynamicResource UmHeroShadeClear}" Offset="0.9"/>
                         </LinearGradientBrush>
                       </Border.Background>
                     </Border>
                     <!-- Logo to the right, vertically centred — balance sits bottom-left, so the mark
                          reads as the card's brand without covering the numbers. -->
-                    <Image Source="{Binding LogoImage}" Width="96" Height="96" Opacity="0.96"
+                    <Image Source="{Binding HeroLogoImage}" Width="96" Height="96" Opacity="0.96"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,48,0"/>
                     <Grid Margin="30,22">
                       <!-- Balance anchored bottom-left so it never collides with the centred logo. -->
                       <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Left" Spacing="3">
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                          <TextBlock Classes="eyebrow" Text="{Binding TotalBalanceCaption}" VerticalAlignment="Center"/>
-                          <Button Classes="chip" Content="{Binding HideBalanceLabel}" Command="{Binding ToggleBalanceHiddenCommand}"/>
+                          <TextBlock Classes="eyebrow" Text="{Binding TotalBalanceCaption}" VerticalAlignment="Center"
+                                     Foreground="{DynamicResource UmHeroTextSoft}"/>
+                          <Button Classes="chip" Content="{Binding HideBalanceLabel}" Command="{Binding ToggleBalanceHiddenCommand}"
+                                  Foreground="{DynamicResource UmHeroTextSoft}" FontWeight="SemiBold"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
-                          <TextBlock Classes="serif" FontSize="30" Foreground="{DynamicResource UmAccentBright}" Text="{Binding CurrencySymbol}" Margin="0,0,4,7" VerticalAlignment="Bottom"/>
-                          <TextBlock Classes="serif" FontSize="54" FontWeight="Medium" Text="{Binding BalanceDisplayMain}" VerticalAlignment="Bottom" LineHeight="58"/>
-                          <TextBlock Classes="serif" FontSize="26" Foreground="{DynamicResource UmTextDim}" Text="{Binding BalanceDisplayCents}"
+                          <TextBlock Classes="serif" FontSize="30" Foreground="{DynamicResource UmHeroAccent}" Text="{Binding CurrencySymbol}" Margin="0,0,4,7" VerticalAlignment="Bottom"/>
+                          <TextBlock Classes="serif" FontSize="54" FontWeight="Medium" Foreground="{DynamicResource UmHeroText}" Text="{Binding BalanceDisplayMain}" VerticalAlignment="Bottom" LineHeight="58"/>
+                          <TextBlock Classes="serif" FontSize="26" Foreground="{DynamicResource UmHeroTextSoft}" Text="{Binding BalanceDisplayCents}"
                                      VerticalAlignment="Bottom" Margin="1,0,0,7"/>
                         </StackPanel>
-                        <Border Background="{Binding PortfolioChangeColor, Converter={StaticResource ChangeWash}}"
-                                CornerRadius="999" Padding="9,4" HorizontalAlignment="Left" Margin="0,2,0,0">
-                          <TextBlock Text="{Binding Change24hLabel}" Foreground="{Binding PortfolioChangeColor}" FontSize="12.5" FontWeight="SemiBold"/>
+                        <!-- The underlay is transparent on quiet themes and near-black on the gold card, so
+                             the green/red change text always sits on something it can be read against. -->
+                        <Border Background="{DynamicResource UmHeroUnderlay}" CornerRadius="999"
+                                HorizontalAlignment="Left" Margin="0,2,0,0">
+                          <Border Background="{Binding PortfolioChangeColor, Converter={StaticResource ChangeWash}}"
+                                  CornerRadius="999" Padding="9,4">
+                            <TextBlock Text="{Binding Change24hLabel}" Foreground="{Binding PortfolioChangeColor}" FontSize="12.5" FontWeight="SemiBold"/>
+                          </Border>
                         </Border>
                         <!-- A total that is missing an asset says so. Silently summing what could be
                              read produces a wrong number indistinguishable from a right one (P0.6). -->
-                        <Border IsVisible="{Binding IsTotalIncomplete}" Background="#33E7CA83" BorderBrush="#7A6230"
-                                BorderThickness="1" CornerRadius="8" Padding="10,5" HorizontalAlignment="Left" Margin="0,6,0,0">
-                          <TextBlock Text="{Binding TotalIncompleteLabel}" Foreground="#E7CA83" FontSize="11.5"
-                                     TextWrapping="Wrap" MaxWidth="360"/>
+                        <Border IsVisible="{Binding IsTotalIncomplete}" Background="{DynamicResource UmHeroUnderlay}"
+                                CornerRadius="8" HorizontalAlignment="Left" Margin="0,6,0,0">
+                          <Border Background="#33E7CA83" BorderBrush="#7A6230"
+                                  BorderThickness="1" CornerRadius="8" Padding="10,5">
+                            <TextBlock Text="{Binding TotalIncompleteLabel}" Foreground="#E7CA83" FontSize="11.5"
+                                       TextWrapping="Wrap" MaxWidth="360"/>
+                          </Border>
                         </Border>
                       </StackPanel>
                     </Grid>

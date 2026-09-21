@@ -333,6 +333,7 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.Save();
             OnPropertyChanged();
             OnPropertyChanged(nameof(LogoImage));
+            OnPropertyChanged(nameof(HeroLogoImage));
             // Theme changes are not real wallet events — logging them spammed the activity feed with
             // "Theme Appearance changed" rows that read like a developer log, so they're no longer logged.
         }
@@ -821,6 +822,11 @@ public partial class MainViewModel : ViewModelBase
         Theming.IsLightTheme(Theming.Current)
             ? "umbrella-logo-black.png"
             : "umbrella-logo-solidwhite.png");
+
+    /// <summary>The mark ON the balance card. The gold theme's card is a light slab of gold, so it takes
+    /// the dark mark even though the rest of the app is dark.</summary>
+    public Bitmap HeroLogoImage => LoadAsset(
+        Theming.HeroIsLight(Theming.Current) ? "umbrella-logo-black.png" : "umbrella-logo-solidwhite.png");
 
     /// <summary>The "the fear" maker's mark — the gold ghost (transparent background).</summary>
     public Bitmap FearMark => LoadAsset("thefear-ghost.png");

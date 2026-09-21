@@ -25,7 +25,8 @@ public static class Theming
     /// </summary>
     public static IReadOnlyList<ThemeOption> Themes { get; } =
     [
-        new("umbrella", "Umbrella · signature navy"),
+        new("umbrella", "Umbrella · honey gold"),
+        new("navy", "Navy · the classic blue"),
         new("purple", "The fear · monochrome noir"),
         new("signal", "Ember · crimson editorial"),
         new("black", "Void · electric OLED"),
@@ -58,10 +59,22 @@ public static class Theming
 
     private static readonly Dictionary<string, string[]> Palettes = new()
     {
-        // Umbrella premium — the signature look: deep navy/graphite base (never pure black), matte
-        // glass cards, cool-white text, and the cyan→blue→violet brand accent. This is the default.
+        // Umbrella — the signature look, and the default: honey gold on a warm near-black. The base
+        // carries a little warmth (never flat brown, never pure black) so the gold sits in it rather than
+        // on it; text is ivory rather than cold white; gains are jade, which reads clearly beside gold
+        // without fighting it. The accent is a honey yellow, so accent buttons take dark labels.
         // bg        bgAlt      card       input      cardAlt    hover      bd         bd2        bd3        accent     accentBr   accentHv   accentSel  accentDim  text       textSoft   textDim    textMut    pos        inverse    inverseHv  inverseTx
         ["umbrella"] =
+        [
+            "#0C0A07", "#120F0A", "#18140D", "#15110B", "#201A10", "#2A2214",
+            "#262015", "#362D1C", "#4A3D25",
+            "#E3A72F", "#F8C846", "#FFD766", "#3B2D0D", "#33260B",
+            "#FCF7EC", "#E6DCC6", "#AFA285", "#8A7E66", "#4FD39B",
+            "#FCF7EC", "#FFFFFF", "#0C0A07",
+        ],
+        // Navy — the original signature: deep navy/graphite base (never pure black), matte glass cards,
+        // cool-white text and the cyan→blue→violet accent. Kept for everyone who chose it.
+        ["navy"] =
         [
             "#080D16", "#0B1220", "#111927", "#0F1826", "#151E2D", "#1B2740",
             "#1E2A3D", "#26344A", "#33455F",
@@ -250,15 +263,33 @@ public static class Theming
 
     /// <summary>The themes whose page background is a sweep rather than a flat fill. Solana is here
     /// because its brand identity IS a gradient; Sunset because dusk has no single colour.</summary>
-    private static readonly HashSet<string> GradientThemes = new(StringComparer.Ordinal) { "sunset", "solana" };
+    private static readonly HashSet<string> GradientThemes = new(StringComparer.Ordinal) { "sunset", "solana", "umbrella" };
+
+    /// <summary>
+    /// Themes with the BOLD signature treatment: the balance card is a solid, glowing slab of the
+    /// accent with dark type on it, the round action keys are filled rather than outlined, and the
+    /// active navigation item is a solid accent pill. The gold default is built around this — a gold
+    /// theme that only warmed the greys would be the same app in a different tint.
+    /// </summary>
+    private static readonly HashSet<string> BoldThemes = new(StringComparer.Ordinal) { "umbrella" };
+
+    public static bool IsBoldTheme(string id) => BoldThemes.Contains(id);
+
+    /// <summary>True when the balance card is light, so the logo on it must be the dark one.</summary>
+    public static bool HeroIsLight(string id) => IsBoldTheme(id) || IsLightTheme(id);
 
     /// <summary>Gradient themes paint the page as a sweep instead of a flat fill.</summary>
     private static IBrush GradientBackground(string id)
     {
-        var stops = id == "sunset"
-            ? [("#2A0F1B", 0.0), ("#1C1020", 0.5), ("#120C18", 1.0)]
+        var stops = id switch
+        {
+            "sunset" => [("#2A0F1B", 0.0), ("#1C1020", 0.5), ("#120C18", 1.0)],
+            // Gold: warm light pooling in from the top-left corner and fading into near-black, so
+            // the page itself glows faintly rather than sitting flat behind the gold.
+            "umbrella" => [("#2B1E07", 0.0), ("#16110A", 0.38), ("#0C0A07", 0.72), ("#0A0806", 1.0)],
             // Solana's purple → teal sweep, darkened to stay a background rather than a poster.
-            : new[] { ("#1A0B33", 0.0), ("#120C28", 0.5), ("#07211D", 1.0) };
+            _ => new[] { ("#1A0B33", 0.0), ("#120C28", 0.5), ("#07211D", 1.0) },
+        };
 
         var brush = new LinearGradientBrush
         {
@@ -364,6 +395,15 @@ public static class Theming
         // A soft translucent wash of the accent, for hover fills and glows that follow the theme.
         resources["UmAccentWash"] = new SolidColorBrush(accent) { Opacity = 0.16 };
 
+        // Glow colours for the splash and aurora effects, which used to be a fixed brand blue and
+        // showed as blue smudges on every other theme. GradientStops take Colors, not brushes.
+        var bg = Color.Parse(palette[Array.IndexOf(Keys, "UmBg")]);
+        resources["UmGlow"] = accent;
+        resources["UmGlowSoft"] = Color.FromArgb(0x55, accent.R, accent.G, accent.B);
+        resources["UmGlowFaint"] = Color.FromArgb(0x1A, accent.R, accent.G, accent.B);
+        resources["UmGlowClear"] = Color.FromArgb(0x00, accent.R, accent.G, accent.B);
+        resources["UmBgClear"] = Color.FromArgb(0x00, bg.R, bg.G, bg.B);
+
         // Hero balance-card gradient, DERIVED from the theme so the card never clashes with the palette.
         // A fixed violet gradient used to sit under every theme, which "spoiled" the reds/greens/etc.
         // Card → a dark tint of the theme accent → card-alt, on a diagonal — a premium, on-theme surface.
@@ -380,7 +420,91 @@ public static class Theming
         hero.GradientStops.Add(new GradientStop(heroEnd, 1.0));
         resources["UmHeroGradient"] = hero;
 
+        PublishSignature(resources, id, palette, hero, accent);
+
         Current = id;
+    }
+
+    /// <summary>
+    /// The bold balance card's gold slab, corner highlight to far edge: pale highlight, honey through the
+    /// middle, deep amber at the edge — a metal card, not a flat yellow rectangle. Public, with the two
+    /// inks printed on it, so the contrast tests read exactly what <see cref="Apply"/> paints.
+    /// </summary>
+    public static readonly IReadOnlyList<(string Hex, double Offset)> GoldSlabStops =
+        [("#FFEFA8", 0.0), ("#FBD24A", 0.34), ("#F4B526", 0.72), ("#E39A14", 1.0)];
+
+    /// <summary>The balance and the currency sign on the gold card.</summary>
+    public const string GoldInk = "#1A1206";
+
+    /// <summary>The card's small print — "Total balance", the cents, the Hide chip.</summary>
+    public const string GoldInkSoft = "#4A360C";
+
+    /// <summary>
+    /// The balance card, the round action keys and the active navigation item, per theme. Every theme
+    /// publishes every one of these, so switching away from a bold theme restores the quiet look —
+    /// nothing from the previous theme can linger.
+    /// </summary>
+    private static void PublishSignature(
+        Avalonia.Controls.IResourceDictionary resources, string id, string[] palette, IBrush hero, Color accent)
+    {
+        IBrush Solid(string key) => new SolidColorBrush(Color.Parse(palette[Array.IndexOf(Keys, key)]));
+        IBrush Hex(string hex) => new SolidColorBrush(Color.Parse(hex));
+        var accentText = new SolidColorBrush(AccentTextFor(accent));
+
+        if (BoldThemes.Contains(id))
+        {
+            var slab = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+            };
+            foreach (var (stop, offset) in GoldSlabStops)
+                slab.GradientStops.Add(new GradientStop(Color.Parse(stop), offset));
+
+            resources["UmHeroSurface"] = slab;
+            resources["UmHeroWash"] = Brushes.Transparent;
+            resources["UmHeroEdge"] = Hex("#FFE183");
+            resources["UmHeroText"] = Hex(GoldInk);
+            resources["UmHeroTextSoft"] = Hex(GoldInkSoft);
+            resources["UmHeroAccent"] = Hex(GoldInk);
+            resources["UmHeroUnderlay"] = Hex("#E61A1206");
+            // Depth instead of darkness: a deeper amber pooling bottom-left, never a grey film.
+            resources["UmHeroShade"] = Color.Parse("#66B8700A");
+            resources["UmHeroShadeClear"] = Color.Parse("#00B8700A");
+            resources["UmHeroVideoOpacity"] = 0.22;
+
+            resources["UmDiscFill"] = Solid("UmAccentBright");
+            resources["UmDiscEdge"] = Solid("UmAccentHover");
+            resources["UmDiscIcon"] = accentText;
+            resources["UmDiscFillHover"] = Solid("UmAccentHover");
+            resources["UmDiscIconHover"] = accentText;
+
+            resources["UmNavActiveFill"] = Solid("UmAccentBright");
+            resources["UmNavActiveIcon"] = accentText;
+            resources["UmNavActiveText"] = accentText;
+            return;
+        }
+
+        resources["UmHeroSurface"] = hero;
+        resources["UmHeroWash"] = new SolidColorBrush(accent) { Opacity = 0.16 };
+        resources["UmHeroEdge"] = Solid("UmBorder");
+        resources["UmHeroText"] = Solid("UmText");
+        resources["UmHeroTextSoft"] = Solid("UmTextDim");
+        resources["UmHeroAccent"] = Solid("UmAccentBright");
+        resources["UmHeroUnderlay"] = Brushes.Transparent;
+        resources["UmHeroShade"] = Color.Parse("#B3060B14");
+        resources["UmHeroShadeClear"] = Color.Parse("#00060B14");
+        resources["UmHeroVideoOpacity"] = 0.6;
+
+        resources["UmDiscFill"] = new SolidColorBrush(accent) { Opacity = 0.16 };
+        resources["UmDiscEdge"] = Solid("UmBorder3");
+        resources["UmDiscIcon"] = Solid("UmAccentBright");
+        resources["UmDiscFillHover"] = Solid("UmAccentBright");
+        resources["UmDiscIconHover"] = accentText;
+
+        resources["UmNavActiveFill"] = Solid("UmAccentSel");
+        resources["UmNavActiveIcon"] = Solid("UmAccentBright");
+        resources["UmNavActiveText"] = Solid("UmText");
     }
 
     /// <summary>Perceptual-ish brightness in 0..1, to decide dark-vs-light text on a colour.</summary>
