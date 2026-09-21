@@ -199,6 +199,13 @@ public partial class MainWindow : Window
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Every section shares one scroll view. Without this a page opened wherever the previous page
+        // had been scrolled to — Security opened halfway down, below its own summary.
+        if (e.PropertyName is nameof(MainViewModel.ActiveSection))
+        {
+            PageScroll.Offset = default;
+        }
+
         if (e.PropertyName is nameof(MainViewModel.IsBackupStage)
             or nameof(MainViewModel.IsSettingsPhraseVisible)
             or nameof(MainViewModel.IsMoneroKeysVisible))

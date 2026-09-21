@@ -767,7 +767,7 @@
                disabled Avalonia measures content at the full viewport width and only then
                insets it by the ScrollViewer's padding, so the right edge overflowed by exactly
                that padding — which is what clipped the Receive QR card. A margin is measured. -->
-          <ScrollViewer Grid.Column="0" AllowAutoHide="True"
+          <ScrollViewer x:Name="PageScroll" Grid.Column="0" AllowAutoHide="True"
                         HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
             <!-- Cap the content column and CENTRE it, so a full-screen or large window doesn't
                  stretch the tiles and tables edge-to-edge and doesn't sit lopsided against the left
