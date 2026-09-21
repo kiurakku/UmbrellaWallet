@@ -103,6 +103,21 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private SendOption? _selectedWatchNetwork;
     [ObservableProperty] private string _sendTo = string.Empty;
     [ObservableProperty] private string _sendAmount = string.Empty;
+
+    /// <summary>The memo for a Stellar payment. Exchanges credit a deposit by it: sent without the one
+    /// they gave, the money reaches the exchange but not the account behind it.</summary>
+    [ObservableProperty] private string _sendMemo = string.Empty;
+
+    /// <summary>The memo as the review shows it, with its type — or a warning that there is none.</summary>
+    [ObservableProperty] private string _sendReviewMemo = string.Empty;
+
+    /// <summary>True for the chains whose payments carry a memo (Stellar).</summary>
+    public bool IsMemoChain => string.Equals(SendChain?.Trim(), "XLM", StringComparison.OrdinalIgnoreCase);
+
+    public bool HasSendReviewMemo => SendReviewMemo.Length > 0;
+
+    partial void OnSendChainChanged(string value) => OnPropertyChanged(nameof(IsMemoChain));
+    partial void OnSendReviewMemoChanged(string value) => OnPropertyChanged(nameof(HasSendReviewMemo));
     [ObservableProperty] private Bitmap? _receiveQr;
     [ObservableProperty] private string _selectedReceiveAddress = string.Empty;
     [ObservableProperty] private string _selectedReceiveSymbol = "ETH";
@@ -1066,6 +1081,7 @@ public partial class MainViewModel : ViewModelBase
     private TronSendQuote? _tronQuote;
     private TonSendQuote? _tonQuote;
     private AdaSendQuote? _adaQuote;
+    private XlmSendQuote? _xlmQuote;
     private string _sendSymbol = "ETH";
     private decimal _moneroAmount;
     private string _moneroTo = string.Empty;
@@ -1180,6 +1196,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly TronTransactionSender _tronSender = new();
     private readonly TonTransactionSender _tonSender = new();
     private readonly CardanoTransactionSender _adaSender = new();
+    private readonly StellarTransactionSender _xlmSender = new();
     private readonly EmbeddedTorService _tor = new();
     private readonly MoneroRpcService _monero = new();
     private CancellationTokenSource? _refreshCts;
@@ -1801,7 +1818,7 @@ public partial class MainViewModel : ViewModelBase
         "BTC", "LTC", "BCH", "DOGE",                 // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
         "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
         "ARB", "BASE", "OP", "LINEA",                // Ethereum L2 rollups — native ETH, same 0x address
-        "SOL", "TON", "ADA",                         // account-based
+        "SOL", "TON", "ADA", "XLM",                  // account-based (XLM: memo, reserve-aware)
         "TRX", "USDT",                               // TRON + TRC-20
         "XMR",                                       // Monero (local wallet-rpc)
     };
@@ -1824,6 +1841,7 @@ public partial class MainViewModel : ViewModelBase
         new("TRX", "TRON", "TRON network"),
         new("USDT", "Tether (TRC-20)", "TRON network · fee paid in TRX"),
         new("ADA", "Cardano", "Cardano network"),
+        new("XLM", "Stellar", "Stellar network · memo for exchange deposits"),
         new("BNB", "BNB", "BNB Smart Chain (BEP-20 address)"),
         new("MATIC", "Polygon", "Polygon network"),
         new("AVAX", "Avalanche", "Avalanche C-Chain"),
@@ -2394,6 +2412,10 @@ public partial class MainViewModel : ViewModelBase
         "TRX" => 2m,
         "XMR" => 0.001m,
         "ADA" => 1m,
+        // XLM: the fee bid is capped at 0.001 XLM, but an account must also KEEP its minimum balance —
+        // 1 XLM for an account with nothing else on it. Max leaves both; an account holding more
+        // (trustlines, offers) is told its exact spendable figure by the send review.
+        "XLM" => 1.001m,
         _ => 0m,
     };
 

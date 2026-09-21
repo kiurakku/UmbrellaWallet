@@ -628,6 +628,29 @@ public partial class MainViewModel
                     break;
                 }
 
+                case "XLM":
+                {
+                    // Everything that can refuse — the address, the memo, an unfunded account, a
+                    // destination that is not an account yet, the reserve the account must keep — is
+                    // checked by the sender before anything is signed (roadmap N.5).
+                    var (quote, error) = await _xlmSender.PrepareAsync(from.Address, SendTo.Trim(), amount, SendMemo);
+                    if (quote is null) { SendError = error ?? Loc.Instance["send.errPrepareFailed"]; return; }
+                    _xlmQuote = quote;
+                    SendQuoteSummary = $"Send {Fmt(quote.AmountXlm)} XLM  →  {quote.To}";
+                    SendQuoteFee = quote.CreatesAccount
+                        ? string.Format(Loc.Instance["send.xlmFeeCreates"], Fmt(quote.FeeXlm))
+                        : string.Format(Loc.Instance["send.xlmFee"], Fmt(quote.FeeXlm));
+                    SendReviewMemo = quote.Memo.Type == StellarMemoType.None
+                        ? Loc.Instance["send.reviewNoMemo"]
+                        : string.Format(Loc.Instance["send.reviewMemo"], quote.Memo);
+                    BuildSendSimulation(
+                        balance: (decimal)from.Amount,
+                        amount: quote.AmountXlm,
+                        networkFee: quote.FeeXlm,
+                        symbol: "XLM");
+                    break;
+                }
+
                 case "ADA":
                 {
                     var (quote, error) = await _adaSender.PrepareAsync(from.Address, SendTo.Trim(), amount);
@@ -939,6 +962,7 @@ public partial class MainViewModel
     {
         var haveQuote = _sendQuote is not null || _btcQuote is not null || _solQuote is not null
                         || _tonQuote is not null || _tronQuote is not null || _adaQuote is not null
+                        || _xlmQuote is not null
                         || (_sendSymbol == "XMR" && _moneroAmount > 0);
         if (_unlockedMnemonic is null || !haveQuote)
         {
@@ -1136,6 +1160,42 @@ public partial class MainViewModel
                     break;
                 }
 
+                case "XLM" when _xlmQuote is not null:
+                {
+                    var quote = _xlmQuote;
+                    var seed = _deriver.DeriveStellarPrivateKey(_unlockedMnemonic!);
+                    try
+                    {
+                        var outcome = await _xlmSender.SignAndBroadcastAsync(quote, seed);
+                        var explorer = outcome.Hash is null ? "" : $"stellar.expert/explorer/public/tx/{outcome.Hash}";
+
+                        if (outcome.Outcome == StellarSubmitOutcome.Unknown)
+                        {
+                            // It may be in a ledger. Never offered as a retry: a fresh send would take the
+                            // next sequence number and pay twice. The transaction's own five-minute window
+                            // is what settles it, and the message says until when.
+                            ClearSendQuotes();
+                            SendTo = string.Empty;
+                            SendAmount = string.Empty;
+                            SendMemo = string.Empty;
+                            SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
+                            StatusMessage = Loc.Instance["status.broadcastFailed"];
+                            PushActivity("Sent", "XLM", $"-{Fmt(quote.AmountXlm)}", Shorten(quote.To), "now",
+                                explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
+                            break;
+                        }
+
+                        await FinishSendAsync(outcome.Outcome == StellarSubmitOutcome.Included, outcome.Hash,
+                            outcome.Message, "XLM", quote.AmountXlm, quote.To, explorer);
+                    }
+                    finally
+                    {
+                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(seed);
+                    }
+
+                    break;
+                }
+
                 case "ADA" when _adaQuote is not null:
                 {
                     var quote = _adaQuote;
@@ -1192,6 +1252,7 @@ public partial class MainViewModel
             ClearSendQuotes();
             SendTo = string.Empty;
             SendAmount = string.Empty;
+            SendMemo = string.Empty;
             SendSuccess = $"Broadcast ✓  {reference}\nTrack it: {explorer}";
             StatusMessage = Loc.Instance["status.txBroadcast"];
             var link = string.IsNullOrWhiteSpace(explorer) ? null
@@ -1222,6 +1283,8 @@ public partial class MainViewModel
         _tronQuote = null;
         _tonQuote = null;
         _adaQuote = null;
+        _xlmQuote = null;
+        SendReviewMemo = string.Empty;
         // Cleared with the rest: a stale token marker would route the NEXT quote — possibly a plain
         // ETH send — down the contract-call path.
         _sendTokenSymbol = null;

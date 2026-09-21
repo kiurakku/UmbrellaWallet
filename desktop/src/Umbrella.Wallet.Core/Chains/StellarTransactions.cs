@@ -367,3 +367,92 @@ public static class StellarSendRules
         return true;
     }
 }
+
+/// <summary>What became of a transaction handed to Horizon.</summary>
+public enum StellarSubmitOutcome
+{
+    /// <summary>In a ledger: the payment happened.</summary>
+    Included,
+
+    /// <summary>Refused, with the network's reason. Nothing was sent; it is safe to review again.</summary>
+    Rejected,
+
+    /// <summary>
+    /// No answer that says either way — a timeout, a 5xx. The transaction MAY be in a ledger, so this
+    /// is never offered as a retry: a fresh send would take the next sequence number and pay twice.
+    /// Its own time window (five minutes) is what eventually settles it.
+    /// </summary>
+    Unknown,
+}
+
+public sealed record StellarSubmitResult(StellarSubmitOutcome Outcome, string? Hash, string? Reason, IReadOnlyList<string> Codes);
+
+/// <summary>Reads Horizon's answer to <c>POST /transactions</c> (roadmap N.5).</summary>
+public static class StellarSubmit
+{
+    public static StellarSubmitResult Parse(int statusCode, string? body)
+    {
+        JsonElement root = default;
+        var parsed = false;
+        if (!string.IsNullOrWhiteSpace(body))
+        {
+            try { root = JsonDocument.Parse(body).RootElement; parsed = root.ValueKind == JsonValueKind.Object; }
+            catch (JsonException) { }
+        }
+
+        if (statusCode == 200 && parsed && root.TryGetProperty("hash", out var hash) && hash.ValueKind == JsonValueKind.String)
+        {
+            // Horizon answers 200 only once the transaction is in a ledger. "successful": false would
+            // be a fee-charged failure; treat it as a rejection, never as a payment.
+            var ok = !root.TryGetProperty("successful", out var s) || s.ValueKind != JsonValueKind.False;
+            return ok
+                ? new StellarSubmitResult(StellarSubmitOutcome.Included, hash.GetString(), null, [])
+                : new StellarSubmitResult(StellarSubmitOutcome.Rejected, hash.GetString(), "The network included the transaction but it failed; only the fee was charged.", []);
+        }
+
+        if (statusCode == 400 && parsed)
+        {
+            var codes = new List<string>();
+            if (root.TryGetProperty("extras", out var extras) && extras.ValueKind == JsonValueKind.Object &&
+                extras.TryGetProperty("result_codes", out var rc) && rc.ValueKind == JsonValueKind.Object)
+            {
+                if (rc.TryGetProperty("transaction", out var tx) && tx.ValueKind == JsonValueKind.String) codes.Add(tx.GetString()!);
+                if (rc.TryGetProperty("operations", out var ops) && ops.ValueKind == JsonValueKind.Array)
+                    codes.AddRange(ops.EnumerateArray().Where(o => o.ValueKind == JsonValueKind.String).Select(o => o.GetString()!));
+            }
+
+            return new StellarSubmitResult(StellarSubmitOutcome.Rejected, null, Explain(codes), codes);
+        }
+
+        // Anything else — 504 "timeout", other 5xx, a body we cannot read — says nothing about whether
+        // the transaction made it in.
+        return new StellarSubmitResult(StellarSubmitOutcome.Unknown, null, null, []);
+    }
+
+    /// <summary>The network's result codes, in words a person can act on.</summary>
+    public static string Explain(IReadOnlyList<string> codes)
+    {
+        string? Has(params string[] any) => any.FirstOrDefault(codes.Contains);
+
+        if (Has("op_underfunded", "tx_insufficient_balance", "op_low_reserve") is not null)
+            return "Not enough XLM above the minimum balance this account must keep.";
+        if (Has("op_no_destination") is not null)
+            return "The destination is not a Stellar account yet. Sending it at least 1 XLM creates it.";
+        if (Has("op_already_exists") is not null)
+            return "The destination became an account in the meantime. Review the send again.";
+        if (Has("tx_bad_seq") is not null)
+            return "Another transaction was sent from this account in the meantime. Review the send again.";
+        if (Has("tx_insufficient_fee") is not null)
+            return "The network is busy and wanted a higher fee. Review the send again for a fresh fee.";
+        if (Has("tx_too_late") is not null)
+            return "The transaction's five-minute window closed before it was included. Nothing was sent.";
+        if (Has("tx_bad_auth", "tx_bad_auth_extra") is not null)
+            return "The network did not accept the signature. Nothing was sent.";
+        if (Has("op_malformed", "tx_malformed") is not null)
+            return "The network rejected the payment as malformed. Nothing was sent.";
+
+        return codes.Count == 0
+            ? "Stellar refused the transaction without saying why. Nothing was sent."
+            : $"Stellar refused the transaction ({string.Join(", ", codes)}). Nothing was sent.";
+    }
+}
