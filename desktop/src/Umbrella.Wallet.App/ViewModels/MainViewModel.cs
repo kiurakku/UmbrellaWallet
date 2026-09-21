@@ -3121,6 +3121,13 @@ public partial class MainViewModel : ViewModelBase
         ExchangeApiSecret = string.Empty;
         ExchangePassphrase = string.Empty;
         ClearSendQuotes();
+        // What the last session's scans found belongs to the last session's wallet. Kept across a
+        // lock, the next wallet — another wallet, or the hidden one behind a passphrase — could have
+        // its Send planned from someone else's coins, and its first refresh skipped by the previous
+        // wallet's cooldown. Under duress that would put the real wallet's coins in the decoy's review.
+        _utxoScans.Clear();
+        _lastUtxoScan.Clear();
+        _lastFullUtxoScan.Clear();
         HideMoneroKeys();
         SendSuccess = string.Empty;
         RecoveryPhrase = string.Empty;
@@ -4619,7 +4626,7 @@ public partial class MainViewModel : ViewModelBase
                 verdict = await _reuseInspector.InspectAsync(
                     UtxoExplorerFor(symbol), address, index, floor, cts.Token);
             }
-            catch (OperationCanceledException) { return; }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested) { return; }
             catch { verdict = AddressUseState.Unknown; }
 
             await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>

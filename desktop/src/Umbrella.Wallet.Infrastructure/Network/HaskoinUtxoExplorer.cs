@@ -45,7 +45,7 @@ public sealed class HaskoinUtxoExplorer : IUtxoExplorer
 
     public async Task<AddressActivity> GetActivityAsync(string address, CancellationToken ct)
     {
-        using var res = await Http.GetAsync($"{Base}/address/{Uri.EscapeDataString(Strip(address))}/balance", ct);
+        using var res = await ExplorerHttp.GetAsync(Http, $"{Base}/address/{Uri.EscapeDataString(Strip(address))}/balance", ct);
         res.EnsureSuccessStatusCode();
         using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
         var n = doc.RootElement.TryGetProperty("txs", out var t) && t.TryGetInt32(out var v) ? v : 0;
@@ -56,7 +56,7 @@ public sealed class HaskoinUtxoExplorer : IUtxoExplorer
     {
         // limit is generous so a busy address isn't silently truncated (which would under-report the
         // balance and could strand coins).
-        using var res = await Http.GetAsync(
+        using var res = await ExplorerHttp.GetAsync(Http,
             $"{Base}/address/{Uri.EscapeDataString(Strip(address))}/unspent?limit=2000", ct);
         res.EnsureSuccessStatusCode();
         var json = await res.Content.ReadAsStringAsync(ct);

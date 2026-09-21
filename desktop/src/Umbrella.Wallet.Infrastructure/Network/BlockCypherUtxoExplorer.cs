@@ -36,7 +36,7 @@ public sealed class BlockCypherUtxoExplorer : IUtxoExplorer
 
     public async Task<AddressActivity> GetActivityAsync(string address, CancellationToken ct)
     {
-        using var res = await Http.GetAsync($"{Base}/addrs/{Uri.EscapeDataString(address)}/balance", ct);
+        using var res = await ExplorerHttp.GetAsync(Http, $"{Base}/addrs/{Uri.EscapeDataString(address)}/balance", ct);
         res.EnsureSuccessStatusCode();
         using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
         var n = doc.RootElement.TryGetProperty("final_n_tx", out var t) ? t.GetInt32() : 0;
@@ -47,7 +47,7 @@ public sealed class BlockCypherUtxoExplorer : IUtxoExplorer
     {
         // unspentOnly keeps the list to spendable outputs; limit is generous so a busy address isn't
         // silently truncated (which would under-report the balance and could strand coins).
-        using var res = await Http.GetAsync(
+        using var res = await ExplorerHttp.GetAsync(Http,
             $"{Base}/addrs/{Uri.EscapeDataString(address)}?unspentOnly=true&limit=2000", ct);
         res.EnsureSuccessStatusCode();
         using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);

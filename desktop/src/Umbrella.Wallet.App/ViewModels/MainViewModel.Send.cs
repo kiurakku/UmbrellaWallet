@@ -677,10 +677,27 @@ public partial class MainViewModel
     /// </summary>
     private static TimeSpan UtxoScanCooldown(string symbol) => symbol.ToUpperInvariant() switch
     {
-        "DOGE" => TimeSpan.FromMinutes(10),   // BlockCypher, keyless: ~100 requests an hour
+        "DOGE" => TimeSpan.FromMinutes(15),   // BlockCypher, keyless: ~100 requests an hour
         "BCH" => TimeSpan.FromMinutes(4),     // Haskoin, more generous but still somebody's server
-        _ => TimeSpan.Zero,                   // Esplora — unchanged from before
+        // Esplora. Every sixty seconds was enough for Blockstream to start answering 429 — and a
+        // rate-limited explorer is an unreadable balance on the user's screen.
+        _ => TimeSpan.FromMinutes(2),
     };
+
+    /// <summary>When each chain last had a FULL gap-limit walk, as opposed to a refresh.</summary>
+    private readonly Dictionary<string, DateTimeOffset> _lastFullUtxoScan = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// How often a chain gets a full gap-limit walk. In between, a refresh re-reads every address the
+    /// wallet has issued or seen used plus <see cref="UtxoAccountScanner.RefreshGapLimit"/> past them —
+    /// roughly a fifth of the requests. The first scan after unlock is always full.
+    /// </summary>
+    private static TimeSpan FullUtxoScanInterval(string symbol) =>
+        symbol.Equals("DOGE", StringComparison.OrdinalIgnoreCase) ? TimeSpan.FromHours(2) : TimeSpan.FromMinutes(30);
+
+    private bool DueForFullUtxoScan(string symbol) =>
+        !_lastFullUtxoScan.TryGetValue(symbol, out var last) ||
+        DateTimeOffset.UtcNow - last >= FullUtxoScanInterval(symbol);
 
     /// <summary>True when this chain should be walked now. Always true until it has been walked once:
     /// a cooldown must never be the reason a balance has never been read at all.</summary>
@@ -721,15 +738,20 @@ public partial class MainViewModel
             targets.Add((symbol, account, chain.Value));
         }
 
+        var fullWalk = targets.ToDictionary(t => t.Symbol, t => DueForFullUtxoScan(t.Symbol), StringComparer.OrdinalIgnoreCase);
+
         async Task<UtxoScanResult?> ScanOrNullAsync(string symbol, ChainId chain)
         {
             try
             {
                 return await _utxoScanner.ScanAsync(
                     _unlockedMnemonic!, chain, UtxoExplorerFor(symbol),
-                    _addrIndex.FloorsFor(walletId, symbol), ct: ct);
+                    _addrIndex.FloorsFor(walletId, symbol), ct: ct,
+                    gapLimit: fullWalk[symbol] ? null : UtxoAccountScanner.RefreshGapLimit);
             }
-            catch (OperationCanceledException) { throw; }
+            // Only our own cancel ends the refresh. A request that timed out used to arrive here as a
+            // cancel too, and rethrowing it aborted every other chain's refresh along with this one.
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch
             {
                 // Leave the prior amount in place; the next refresh retries.
@@ -754,7 +776,11 @@ public partial class MainViewModel
                 continue;
             }
 
-            if (!scan.Partial) _lastUtxoScan[symbol] = DateTimeOffset.UtcNow;
+            if (!scan.Partial)
+            {
+                _lastUtxoScan[symbol] = DateTimeOffset.UtcNow;
+                if (fullWalk[symbol]) _lastFullUtxoScan[symbol] = DateTimeOffset.UtcNow;
+            }
 
             // A partial (network-degraded) scan must not lower a balance we already trust.
             if (scan.Partial && _utxoScans.ContainsKey(symbol)) continue;

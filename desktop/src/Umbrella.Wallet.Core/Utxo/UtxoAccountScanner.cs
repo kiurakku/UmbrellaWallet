@@ -35,6 +35,16 @@ public sealed class UtxoAccountScanner
 {
     public const int DefaultGapLimit = 20;
 
+    /// <summary>
+    /// The look-ahead of a REFRESH, once a full gap-limit walk has already covered the wallet this
+    /// session. The floors carry every address the wallet has issued or seen used, so a refresh only
+    /// has to re-read those plus a few past them. A full walk of twenty on every branch every minute
+    /// is what got the wallet rate-limited by the free explorers — and a rate-limited explorer shows
+    /// the user an unreadable balance. Full walks still run on unlock and periodically (the caller
+    /// decides), so money sent further out by another wallet on the same seed is found then.
+    /// </summary>
+    public const int RefreshGapLimit = 3;
+
     /// <summary>How many address probes may be in flight at once. Enough to collapse a gap-limit walk
     /// from ~21 sequential round-trips into a handful of waves, low enough not to trip the rate limits
     /// of public explorers (a 429 marks the scan partial, which is worse than being a little slower).</summary>
@@ -55,8 +65,10 @@ public sealed class UtxoAccountScanner
         IUtxoExplorer explorer,
         UtxoScanFloors floors,
         IProgress<UtxoScanProgress>? progress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        int? gapLimit = null)
     {
+        var gap = gapLimit is > 0 ? gapLimit.Value : _gapLimit;
         var utxos = new List<OwnedUtxo>();
         var externalAddresses = new List<string>();
         long confirmed = 0, pending = 0;
@@ -69,14 +81,14 @@ public sealed class UtxoAccountScanner
         var extForced = ForcedThrough(floors.LastIssuedExternalIndex, floors.LastSeenUsedExternalIndex, includeZero: true);
         var (extHigh, extPartial) = await ScanChainAsync(
             mnemonic, chain, change: 0, UtxoScriptKind.Default, explorer, extForced, externalAddresses, utxos,
-            Add, progressCount: () => scanned, onScan: () => scanned++, progress, ct);
+            Add, progressCount: () => scanned, onScan: () => scanned++, progress, gap, ct);
         partial |= extPartial;
 
         // internal chain (change = 1): no implicit #0, but a restore must still find used change addresses.
         var intForced = ForcedThrough(floors.LastIssuedInternalIndex, floors.LastSeenUsedInternalIndex, includeZero: false);
         var (intHigh, intPartial) = await ScanChainAsync(
             mnemonic, chain, change: 1, UtxoScriptKind.Default, explorer, intForced, collectAddresses: null, utxos,
-            Add, progressCount: () => scanned, onScan: () => scanned++, progress, ct);
+            Add, progressCount: () => scanned, onScan: () => scanned++, progress, gap, ct);
         partial |= intPartial;
 
         uint? trExtHigh = null, trIntHigh = null;
@@ -94,7 +106,7 @@ public sealed class UtxoAccountScanner
             var (h1, p1) = await ScanChainAsync(
                 mnemonic, chain, change: 0, UtxoScriptKind.Taproot, explorer, trExtForced,
                 collectAddresses: null, utxos,
-                Add, progressCount: () => scanned, onScan: () => scanned++, progress, ct);
+                Add, progressCount: () => scanned, onScan: () => scanned++, progress, gap, ct);
             trExtHigh = h1;
             partial |= p1;
 
@@ -103,7 +115,7 @@ public sealed class UtxoAccountScanner
             var (h2, p2) = await ScanChainAsync(
                 mnemonic, chain, change: 1, UtxoScriptKind.Taproot, explorer, trIntForced,
                 collectAddresses: null, utxos,
-                Add, progressCount: () => scanned, onScan: () => scanned++, progress, ct);
+                Add, progressCount: () => scanned, onScan: () => scanned++, progress, gap, ct);
             trIntHigh = h2;
             partial |= p2;
         }
@@ -143,6 +155,7 @@ public sealed class UtxoAccountScanner
         Func<int> progressCount,
         Action onScan,
         IProgress<UtxoScanProgress>? progress,
+        int gapLimit,
         CancellationToken ct)
     {
         uint? highestUsed = null;
@@ -151,17 +164,22 @@ public sealed class UtxoAccountScanner
         // A network error is "unknown", never "empty". These wrappers turn one into null so the walk
         // below can stop extending and flag the result partial — the balance is then a floor, not the
         // truth — while a cancel still propagates.
+        //
+        // Only OUR cancel propagates. HttpClient reports a request that timed out as a
+        // TaskCanceledException too, and treating that as "the user cancelled" aborted the whole scan
+        // on one slow explorer — every Bitcoin balance on a rate-limited Blockstream showed as
+        // unreadable, while a working fallback server was never asked.
         async Task<AddressActivity?> ProbeAsync(string address)
         {
             try { return await explorer.GetActivityAsync(address, ct); }
-            catch (OperationCanceledException) { throw; }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch { return null; }
         }
 
         async Task<IReadOnlyList<ExplorerUtxo>?> FetchUtxosAsync(string address)
         {
             try { return await explorer.GetUtxosAsync(address, ct); }
-            catch (OperationCanceledException) { throw; }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch { return null; }
         }
 
@@ -178,7 +196,7 @@ public sealed class UtxoAccountScanner
             // anyway, so this never reveals extra addresses to the explorer — a privacy property, not
             // just an optimisation. Concurrency is capped so a burst cannot trip explorer rate limits
             // (a 429 would mark the scan partial and end up slower).
-            var stillNeeded = Math.Max(1L, _gapLimit - consecutiveUnused);
+            var stillNeeded = Math.Max(1L, gapLimit - consecutiveUnused);
             if (forcedThrough >= index) stillNeeded = Math.Max(stillNeeded, forcedThrough - index + 1);
             var window = (int)Math.Min(stillNeeded, MaxParallelProbes);
 
@@ -216,10 +234,10 @@ public sealed class UtxoAccountScanner
                     consecutiveUnused++;
                 }
 
-                if (index + (uint)k >= forcedThrough && consecutiveUnused >= _gapLimit) { stop = true; break; }
+                if (index + (uint)k >= forcedThrough && consecutiveUnused >= gapLimit) { stop = true; break; }
 
                 // Hard cap so a misbehaving explorer that always answers "used" cannot loop forever.
-                if (index + (uint)k >= forcedThrough + _gapLimit + 10_000) { stop = true; stopPartial = true; break; }
+                if (index + (uint)k >= forcedThrough + gapLimit + 10_000) { stop = true; stopPartial = true; break; }
             }
 
             // Pull the unspent outputs of the used addresses — also concurrently, then applied in index
