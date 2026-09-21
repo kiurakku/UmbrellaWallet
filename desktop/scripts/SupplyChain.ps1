@@ -21,6 +21,25 @@
 
 Set-StrictMode -Version Latest
 
+<#
+.SYNOPSIS
+    A path as the gpg in use can read it.
+
+    Git for Windows ships an MSYS gpg, and its 2.4.9 build does not recognise a drive-letter path as
+    absolute at all — "C:\..." and "C:/..." alike were prefixed with its working directory, so on the
+    release runner the keyring and every key file were "not found" and nothing ever imported. An MSYS
+    gpg gets an MSYS path ("/c/..."), converted by the cygpath that ships beside it; any other gpg gets
+    forward slashes, which every build reads.
+#>
+function ConvertTo-GpgPath([string]$Path) {
+    if ($script:GpgCygpath) {
+        $converted = & $script:GpgCygpath -u $Path 2>$null
+        if ($LASTEXITCODE -eq 0 -and $converted) { return ($converted | Select-Object -First 1) }
+    }
+
+    return $Path -replace '\\', '/'
+}
+
 function Get-GpgCommand {
     foreach ($name in @('gpg', 'gpg2')) {
         $cmd = Get-Command $name -ErrorAction SilentlyContinue
@@ -84,9 +103,21 @@ function Assert-PinnedBySignedSums {
         Write-Warning "$message`nFalling back to the pinned hash alone — do NOT ship this build."
     }
     else {
+        # Git for Windows' gpg is an MSYS program (it lives in ...\usr\bin, beside cygpath.exe).
+        $cygpath = Join-Path (Split-Path $gpg) 'cygpath.exe'
+        $script:GpgCygpath = if ($gpg -match '\\usr\\bin\\' -and (Test-Path $cygpath)) { $cygpath } else { $null }
+
         $keyring = Join-Path $WorkDir 'gnupg'
         New-Item -ItemType Directory -Force -Path $keyring | Out-Null
-        $env:GNUPGHOME = $keyring
+        $env:GNUPGHOME = ConvertTo-GpgPath $keyring
+
+        # GnuPG 2.4 gives a NEW home directory a common.conf with "use-keyboxd", which moves the keyring
+        # into a daemon that a CI runner does not start: the key "imports" and then cannot be found.
+        # An empty common.conf keeps the plain file keyring. Say which gpg ran, so a failure here can
+        # be read from the log.
+        $commonConf = Join-Path $keyring 'common.conf'
+        if (-not (Test-Path $commonConf)) { New-Item -ItemType File -Path $commonConf | Out-Null }
+        Write-Host "  gpg: $gpg ($((& $gpg --version 2>&1 | Select-Object -First 1)))"
 
         # An isolated keyring, so this never depends on — or writes to — whatever the developer
         # happens to trust locally. The key is fetched by FINGERPRINT, so a keyserver can serve the
@@ -99,18 +130,24 @@ function Assert-PinnedBySignedSums {
         foreach ($source in $sources) {
             if (-not $source) { continue }
             try {
-                Invoke-WebRequest -Uri $source -OutFile $keyPath -UseBasicParsing
-                & $gpg --batch --quiet --import $keyPath 2>&1 | Out-Null
+                # A key kept in the repository is read from disk; anything else is downloaded.
+                if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination $keyPath -Force }
+                else { Invoke-WebRequest -Uri $source -OutFile $keyPath -UseBasicParsing }
+                $importLog = & $gpg --batch --import (ConvertTo-GpgPath $keyPath) 2>&1
 
                 # Imported is not the same as usable. keys.openpgp.org returns key material with no
                 # user ID unless the owner verified an address there, and gpg imports that happily
                 # and then refuses to verify with it ("no public key"). Ask for the key by
                 # fingerprint and only accept a source gpg can actually use.
                 & $gpg --batch --list-keys $fingerprint 2>&1 | Out-Null
-                if ($LASTEXITCODE -eq 0) { $fetched = $true; break }
+                if ($LASTEXITCODE -eq 0) { $fetched = $true; Write-Host "  signing key from: $source"; break }
+                Write-Host "  key source gave no usable key with fingerprint ${fingerprint}: $source"
+                $importLog | Select-Object -First 4 | ForEach-Object { Write-Host "    gpg: $_" }
             }
             catch {
-                # try the next source
+                # Say why, then try the next source: a release that fails here must be diagnosable
+                # from its log, and 4.8.0/4.8.1 were not.
+                Write-Host "  key source failed: $source - $($_.Exception.Message)"
             }
         }
 
@@ -123,11 +160,11 @@ function Assert-PinnedBySignedSums {
             if ($SignatureUrl) {
                 $sigPath = Join-Path $WorkDir 'upstream-sums.asc'
                 Invoke-WebRequest -Uri $SignatureUrl -OutFile $sigPath -UseBasicParsing
-                $output = & $gpg --batch --status-fd 1 --verify $sigPath $sumsPath 2>&1
+                $output = & $gpg --batch --status-fd 1 --verify (ConvertTo-GpgPath $sigPath) (ConvertTo-GpgPath $sumsPath) 2>&1
             }
             else {
                 # Clearsigned: the signature is inside the file itself.
-                $output = & $gpg --batch --status-fd 1 --verify $sumsPath 2>&1
+                $output = & $gpg --batch --status-fd 1 --verify (ConvertTo-GpgPath $sumsPath) 2>&1
             }
 
             $text = ($output | Out-String)

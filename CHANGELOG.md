@@ -4,6 +4,23 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.8.2] — 2026-09-21 — the Windows build, for real
+
+The same wallet as 4.8.0 and 4.8.1, which both shipped for Linux only. The Windows build checks the
+Tor and Monero it bundles against their projects' own signatures, and stops if it cannot. It stopped
+twice, as it should — not because a signature was wrong, but because the newer gpg on GitHub's build
+machine could not read Windows paths, so the Tor Project's key never imported, from any source.
+4.8.1's entry blamed the keyservers; the build log, once it said why, showed otherwise. Nothing was
+shipped unverified.
+
+- gpg is handed paths it can read (MSYS paths for Git for Windows' gpg).
+- The Tor Project's public signing key is kept in this repository, reviewed like code. It is used only
+  because its fingerprint is the pinned one; when Tor rotates a signing subkey the check fails closed
+  until the file is refreshed.
+- The build says which gpg ran, which key source failed and why.
+- A new CI job stages the bundled Tor and Monero, signatures required, on Windows for every change —
+  so this is found on a pull request, not on release day.
+
 ## [4.8.1] — 2026-09-21 — the Windows build of 4.8.0
 
 The same wallet as 4.8.0, released again because 4.8.0 shipped for Linux only. Its Windows build

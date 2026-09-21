@@ -107,6 +107,6 @@ UmbrellaWallet/
 
 ---
 
-*Last updated: 2026-09-21 · Wallet version [4.8.1](../VERSION)*
+*Last updated: 2026-09-21 · Wallet version [4.8.2](../VERSION)*
 
 📖 This page is the documentation hub. Product overview: [README.md](../README.md).
