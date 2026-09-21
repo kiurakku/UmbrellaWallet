@@ -59,6 +59,20 @@ jobs:
       # release page makes: that verifying a published checksum proves the binary is the source.
       - run: bash scripts/verify-reproducible-build.sh
 
+  supply-chain:
+    name: supply-chain
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The release job's first step, on every change and on the kind of machine that builds the
+      # release: the Tor and Monero it bundles must verify against their projects' own signatures.
+      # This only ever ran at release time, so 4.8.0 and 4.8.1 found out there - and shipped Linux-only.
+      - name: Stage bundled Tor + Monero (signatures required)
+        shell: pwsh
+        run: |
+          ./desktop/scripts/fetch-tor.ps1 -RequireSignature -Destination "$env:RUNNER_TEMP/tor"
+          ./desktop/scripts/fetch-monero.ps1 -RequireSignature -Destination "$env:RUNNER_TEMP/monero"
+
   version:
     name: version-consistency
     runs-on: ubuntu-latest

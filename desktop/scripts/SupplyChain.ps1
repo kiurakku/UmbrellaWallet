@@ -99,7 +99,9 @@ function Assert-PinnedBySignedSums {
         foreach ($source in $sources) {
             if (-not $source) { continue }
             try {
-                Invoke-WebRequest -Uri $source -OutFile $keyPath -UseBasicParsing
+                # A key kept in the repository is read from disk; anything else is downloaded.
+                if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination $keyPath -Force }
+                else { Invoke-WebRequest -Uri $source -OutFile $keyPath -UseBasicParsing }
                 & $gpg --batch --quiet --import $keyPath 2>&1 | Out-Null
 
                 # Imported is not the same as usable. keys.openpgp.org returns key material with no
@@ -107,10 +109,13 @@ function Assert-PinnedBySignedSums {
                 # and then refuses to verify with it ("no public key"). Ask for the key by
                 # fingerprint and only accept a source gpg can actually use.
                 & $gpg --batch --list-keys $fingerprint 2>&1 | Out-Null
-                if ($LASTEXITCODE -eq 0) { $fetched = $true; break }
+                if ($LASTEXITCODE -eq 0) { $fetched = $true; Write-Host "  signing key from: $source"; break }
+                Write-Host "  key source gave no usable key with fingerprint ${fingerprint}: $source"
             }
             catch {
-                # try the next source
+                # Say why, then try the next source: a release that fails here must be diagnosable
+                # from its log, and 4.8.0/4.8.1 were not.
+                Write-Host "  key source failed: $source - $($_.Exception.Message)"
             }
         }
 

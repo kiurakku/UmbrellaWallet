@@ -66,7 +66,13 @@ $sumsUrl = "https://dist.torproject.org/torbrowser/$Version/sha256sums-unsigned-
 Assert-PinnedBySignedSums -SumsUrl $sumsUrl -SignatureUrl "$sumsUrl.asc" `
     -FileName $archive -ExpectedSha256 $ExpectedSha256 `
     -KeyFingerprint $SigningKeyFingerprint `
-    -KeyUrls @('https://openpgpkey.torproject.org/.well-known/openpgpkey/torproject.org/hu/kounek7zrdx745qydx6p59t9mqjpuhdf?l=torbrowser') `
+    -KeyUrls @(
+        # The public key itself, kept in this repository and reviewed like code — so a release does
+        # not depend on any keyserver answering. It is still used only because its fingerprint is
+        # the pinned one; when Tor rotates a signing subkey, verification fails closed until this
+        # file is refreshed from the source below.
+        (Join-Path $PSScriptRoot "keys/torbrowser-$SigningKeyFingerprint.asc"),
+        'https://openpgpkey.torproject.org/.well-known/openpgpkey/torproject.org/hu/kounek7zrdx745qydx6p59t9mqjpuhdf?l=torbrowser') `
     -WorkDir $work -Required:$RequireSignature -What 'Tor expert bundle'
 
 # Verify the archive against the pinned SHA-256 BEFORE extracting anything from it.
