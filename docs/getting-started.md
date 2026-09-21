@@ -38,12 +38,12 @@ Do not run an unsigned copy you cannot check.
 
 ```powershell
 # Windows PowerShell — compare to the matching line in SHA256SUMS
-Get-FileHash .\UmbrellaWallet-Setup-4.8.0.exe -Algorithm SHA256
+Get-FileHash .\UmbrellaWallet-Setup-4.8.1.exe -Algorithm SHA256
 ```
 
 ```bash
 # Linux / macOS
-sha256sum -c SHA256SUMS-4.8.0.txt
+sha256sum -c SHA256SUMS-4.8.1.txt
 ```
 
 Details: [SECURITY.md — Verifying what you run](../SECURITY.md#verifying-what-you-run).

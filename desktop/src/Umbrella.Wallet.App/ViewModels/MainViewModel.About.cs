@@ -32,7 +32,7 @@ public partial class MainViewModel
         typeof(MainViewModel).Assembly.GetCustomAttribute<AssemblyCompanyAttribute>()?.Company
         ?? "the fear";
 
-    /// <summary>"Umbrella Wallet 4.8.0" — the product name and version as the assembly declares them.</summary>
+    /// <summary>"Umbrella Wallet 4.8.1" — the product name and version as the assembly declares them.</summary>
     public string AboutProductLine =>
         $"{typeof(MainViewModel).Assembly.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "Umbrella Wallet"} {CurrentVersion}";
 

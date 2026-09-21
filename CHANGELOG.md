@@ -4,6 +4,16 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.8.1] — 2026-09-21 — the Windows build of 4.8.0
+
+The same wallet as 4.8.0, released again because 4.8.0 shipped for Linux only. Its Windows build
+stopped where it should: the release checks the Tor it bundles against the Tor Project's own
+signature, and the keyservers it asked for Tor's signing key either served the key without its user
+ID or refused the build machine. Nothing was shipped unverified.
+
+- The key is now fetched first from the Tor Project's own key directory, the source its docs name.
+  Wherever it comes from, it is used only if its fingerprint is the pinned one.
+
 ## [4.8.0] — 2026-09-21 — the gold design, Taproot and PayJoin, and balances you can trust
 
 A new look, and a lot underneath it. The wallet is gold light on black, its logos follow whichever
