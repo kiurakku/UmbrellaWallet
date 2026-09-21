@@ -2843,21 +2843,28 @@ public partial class MainViewModel : ViewModelBase
         await RefreshMoneroAsync();
     }
 
+    /// <summary>
+    /// With the Monero service off nothing was asked, so nothing failed: the XMR row says the service is
+    /// off rather than blaming a server, which sent people looking for a network problem that was not
+    /// there. Returns true when the row changed.
+    /// </summary>
+    private bool MarkMoneroUnreadReason()
+    {
+        if (_monero.IsRunning) return false;
+        var row = Accounts.FirstOrDefault(a => a.Symbol == "XMR");
+        var note = Loc.Instance["balance.xmrOff"];
+        if (row is null || row.Balance != BalanceRead.Unknown || row.UnreadNote == note) return false;
+
+        Accounts[Accounts.IndexOf(row)] = row with { UnreadNote = note };
+        return true;
+    }
+
     /// <summary>Pulls the Monero balance and reports scan progress rather than a misleading 0.</summary>
     private async Task RefreshMoneroAsync()
     {
         if (!_monero.IsRunning)
         {
-            // Nothing asked, so nothing failed: the row says the service is off rather than blaming a
-            // server, which sent people looking for a network problem that was not there.
-            var off = Accounts.FirstOrDefault(a => a.Symbol == "XMR");
-            var note = Loc.Instance["balance.xmrOff"];
-            if (off is not null && off.Balance == BalanceRead.Unknown && off.UnreadNote != note)
-            {
-                Accounts[Accounts.IndexOf(off)] = off with { UnreadNote = note };
-                RefreshHoldings();
-            }
-
+            if (MarkMoneroUnreadReason()) RefreshHoldings();
             return;
         }
 
@@ -4036,6 +4043,10 @@ public partial class MainViewModel : ViewModelBase
                     };
                 }
             }
+            // Monero is read by its own local service, not by this refresh: with the service off the
+            // row must say so rather than inherit "the server did not answer".
+            MarkMoneroUnreadReason();
+
             // Show the total from native balances immediately, before the slower token/NFT/watch passes.
             RefreshHoldings();
             RecalcBalance();
