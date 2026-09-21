@@ -59,6 +59,12 @@ public partial class MainWindow : Window
             }
         };
         DataContextChanged += OnDataContextChanged;
+
+        // The home screen puts assets and transactions side by side only when the window has room.
+        SizeChanged += (_, e) =>
+        {
+            if (DataContext is MainViewModel vm) vm.WindowWidth = e.NewSize.Width;
+        };
     }
 
     // --- Title-bar dragging (custom chrome) ----------------------------------
