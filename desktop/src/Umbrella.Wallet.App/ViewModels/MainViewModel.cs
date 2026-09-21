@@ -332,6 +332,7 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.Theme = value;
             _uiSettings.Save();
             OnPropertyChanged();
+            OnPropertyChanged(nameof(ThemeSwatches));
             // Theme changes are not real wallet events — logging them spammed the activity feed with
             // "Theme Appearance changed" rows that read like a developer log, so they're no longer logged.
         }
@@ -2448,13 +2449,23 @@ public partial class MainViewModel : ViewModelBase
     };
     partial void OnIsBalanceHiddenChanged(bool value)
     {
+        OnPropertyChanged(nameof(HeroEndLabel));
         OnPropertyChanged(nameof(BalanceDisplayMain));
         OnPropertyChanged(nameof(BalanceDisplayCents));
         OnPropertyChanged(nameof(HideBalanceLabel));
         OnPropertyChanged(nameof(AreValuesVisible));
     }
-    partial void OnTotalBalanceMainChanged(string value) => OnPropertyChanged(nameof(BalanceDisplayMain));
-    partial void OnTotalBalanceCentsChanged(string value) => OnPropertyChanged(nameof(BalanceDisplayCents));
+    partial void OnTotalBalanceMainChanged(string value)
+    {
+        OnPropertyChanged(nameof(BalanceDisplayMain));
+        OnPropertyChanged(nameof(HeroEndLabel));
+    }
+
+    partial void OnTotalBalanceCentsChanged(string value)
+    {
+        OnPropertyChanged(nameof(BalanceDisplayCents));
+        OnPropertyChanged(nameof(HeroEndLabel));
+    }
     partial void OnSearchQueryChanged(string value) => RefreshHoldings();
 
     private void NotifySectionFlags()
@@ -3878,6 +3889,7 @@ public partial class MainViewModel : ViewModelBase
                 var series = await _rates.GetPriceSeriesAsync(
                     row.Symbol, ChartRange, CancellationToken.None);
                 if (series.Count < 2) continue;
+                RememberSeries(ChartRange, row.Symbol, series);   // the balance chart reuses it
                 var idx = Market.ToList().FindIndex(m => m.Symbol == row.Symbol);
                 if (idx < 0) continue;
                 Market[idx] = Market[idx] with
@@ -3892,6 +3904,9 @@ public partial class MainViewModel : ViewModelBase
 
             await Task.Delay(250);
         }
+
+        // The market list just fetched this window's history; the balance chart can draw from it.
+        if (MarketRangeFor(PortfolioRange) == ChartRange) _ = RefreshPortfolioChartAsync();
     }
 
     private const double SparkWidth = 110;
@@ -5160,6 +5175,7 @@ public partial class MainViewModel : ViewModelBase
         RebuildSendableAssets();
 
         RebuildStaking(); // keep the staking list driven by what the user actually holds
+        SchedulePortfolioChart(); // redraw the balance chart when what is held changes
     }
 
     /// <summary>How many shown assets have no balance reading at all right now.</summary>
