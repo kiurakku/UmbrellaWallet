@@ -81,7 +81,7 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 
 | # | Task | Source | Status |
 |---|---|---|---|
-| P2.1 | **Taproot (BIP-341/86)** — scanner `m/86'` + key-path spend, not derivation only | PRIVACY, coins | ✅ **Find, show, spend.** Addresses pinned to all three BIP-86 vectors; BTC scans `m/86'` beside `m/84'` (external + internal, same gap/partial rules); key-path inputs signed and consensus-verified, alone or mixed with SegWit; change returns to the inputs' own branch on its own index counter; restored Taproot history is read. **Receive stays BIP-84** — the wallet does not hand out `bc1p…` addresses, so nothing is issued that the old scan could miss. Cost, stated: an empty BTC scan now probes 80 addresses instead of 40 |
+| P2.1 | **Taproot (BIP-341/86)** — scanner `m/86'` + key-path spend, not derivation only | PRIVACY, coins | ✅ **Find, show, spend.** Addresses pinned to all three BIP-86 vectors; BTC scans `m/86'` beside `m/84'` (external + internal, same gap/partial rules); key-path inputs signed and consensus-verified, alone or mixed with SegWit; change returns to the inputs' own branch on its own index counter; restored Taproot history is read. **Receive stays BIP-84** — the wallet does not hand out `bc1p…` addresses, so nothing is issued that the old scan could miss. Cost, stated: an empty BTC scan now probes 80 addresses instead of 40. Verify a first spend with a small amount |
 | P2.2 | **PayJoin (BIP-78)** | PRIVACY, threat model | 📅 |
 | P2.3 | **CoinJoin** (after PayJoin) | PRIVACY | 📅 |
 | P2.4 | **Dandelion++** (broadcast timing privacy) | coins roadmap | 📅 |
@@ -156,12 +156,12 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | LTC | ✅ | ✅ | ✅ | ✅ | |
 | BCH | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7 |
 | DOGE | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7 |
-| ETH | ✅ | ✅ | ✅ | ✅ | general ERC-20 send still 📅 |
+| ETH | ✅ | ✅ | ✅ | ✅ | any held ERC-20 (N.1) |
 | Arb / Base / OP / Linea | ✅ | ✅ | ✅ | 🟡 | |
 | zkSync Era | ✅ | ✅ | ❌ | 🟡 | Receive only (gas) |
-| TRX + USDT TRC-20 | ✅ | ✅ | ✅ | ✅ | other TRC-20 — 📅 |
+| TRX | ✅ | ✅ | ✅ | ✅ | any held TRC-20, USDT included (N.2) |
 | SOL | ✅ | ✅ | ✅ | ✅ | arbitrary SPL send — 📅 |
-| TON | ✅ | ✅ | ✅ | ✅ | Jetton balance ✅; Jetton send — 📅 |
+| TON | ✅ | ✅ | ✅ | ✅ | jettons: balance ✅, send ✅ (N.3) |
 | ADA | ✅ | ✅ | ✅ | ✅ | |
 | XMR | ✅ | ✅ | ✅ | ✅ | full private |
 | AVAX / BNB / MATIC / FTM / CRO | ✅ | ✅ | ✅ | 🟡 | EVM family |

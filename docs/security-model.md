@@ -191,24 +191,21 @@ named as a deliberate exception. Proven by removing the address book from the wi
 way transaction notes are encrypted (a key derived from the seed) is the next step; until then, the
 honest statement is that anything running as the user can read it.
 
-## Code that exists but is not reachable
+## Code that waited for proof, and what it took
 
-Three pieces of the wallet are written, tested against published vectors, and deliberately not wired
-to anything the user can press:
+Three pieces of the wallet were once written and tested against published vectors but deliberately
+left unwired. All three are wired now. What had to be true first:
 
-| | State |
+| | Now |
 |---|---|
-| `TaprootDerivation` | Addresses reproduce all three BIP-86 vectors, internal keys included. No scanner for the `m/86'` account and no key-path signer, so showing a `bc1p…` address would break the cardinal rule. |
-| `Erc20Transfer` | Calldata encoding is pinned to the standard's own selector. Flipping it on needs a small real mainnet send first. |
-| `DeniableVaultFormat` | Two-slot constant-size vault for a duress password. Migrating a live vault is the risky half and is not done. |
+| Taproot (BIP-86) | **Found, shown and spent; not issued.** `m/86'` is scanned beside `m/84'`, and key-path inputs pass NBitcoin's consensus check before anything is broadcast. Receive addresses stay BIP-84, so the wallet still hands out nothing an older scan could miss. `TaprootSupportTests` pins all three BIP-86 vectors. No Taproot spend has been broadcast from this build yet — make the first one small. |
+| `Erc20Transfer` | Sends any held ERC-20, routed by contract and never by ticker, scaled by the decimals the contract reports (unknown decimals refuse the send). No mainnet send has been made from this build — make the first one small. |
+| `DeniableVaultFormat` | The vault format for **every** wallet, so setting a decoy password does not change the file's shape. A legacy vault is migrated on unlock: written to a temporary file, reopened, compared seed-for-seed, and only then moved over the original. |
 
-This is the pattern on purpose. The half that is hard to get right — encoding, derivation, a storage
-format — is finished and reviewable on its own, while the half that touches somebody's money waits for
-proof. Shipping derivation alone would mean a user receiving Bitcoin to an address the wallet cannot
-see.
-
-`TaprootDerivationTests` asserts the *absence* of the wiring as well as the correctness of the maths:
-Bitcoin must still report purpose 84 and `ScriptPubKeyType.Segwit` everywhere the user can act.
+The pattern stays. The half that is hard to get right — encoding, derivation, a storage format — is
+finished and reviewable on its own; the half that touches somebody's money waits until its whole path
+is proven. Shipping Taproot derivation without the scanner would have meant a user receiving Bitcoin to
+an address the wallet could not see.
 
 ## What this does not protect you from
 
