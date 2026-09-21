@@ -227,3 +227,69 @@ public static class NearRpc
                BigInteger.TryParse(p.GetString(), NumberStyles.None, CultureInfo.InvariantCulture, out value);
     }
 }
+
+/// <summary>What became of a NEAR transaction handed to the RPC.</summary>
+public enum NearSubmitOutcome
+{
+    /// <summary>Executed and the transfer succeeded.</summary>
+    Included,
+
+    /// <summary>Refused or failed, with the reason. The transfer did not happen.</summary>
+    Rejected,
+
+    /// <summary>
+    /// No answer that says either way. A NEAR transaction stays valid for about a day (its block
+    /// hash's validity period), so this is never offered as a retry.
+    /// </summary>
+    Unknown,
+}
+
+public sealed record NearSubmitResult(NearSubmitOutcome Outcome, string? Reason);
+
+public static class NearSubmit
+{
+    /// <summary>Reads the answer to <c>send_tx</c> / <c>tx</c> (waited until executed).</summary>
+    public static NearSubmitResult Parse(string? body)
+    {
+        JsonElement root;
+        try { root = JsonDocument.Parse(body ?? "").RootElement; }
+        catch (JsonException) { return new NearSubmitResult(NearSubmitOutcome.Unknown, null); }
+        if (root.ValueKind != JsonValueKind.Object) return new NearSubmitResult(NearSubmitOutcome.Unknown, null);
+
+        if (root.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Object &&
+            result.TryGetProperty("status", out var status) && status.ValueKind == JsonValueKind.Object)
+        {
+            if (status.TryGetProperty("SuccessValue", out _)) return new NearSubmitResult(NearSubmitOutcome.Included, null);
+            if (status.TryGetProperty("Failure", out var failure))
+                return new NearSubmitResult(NearSubmitOutcome.Rejected, Explain(failure.GetRawText()));
+        }
+
+        if (root.TryGetProperty("error", out var error) && error.ValueKind == JsonValueKind.Object)
+        {
+            var raw = error.GetRawText();
+            // A timeout says nothing about whether the transaction will execute.
+            if (raw.Contains("TIMEOUT_ERROR", StringComparison.Ordinal)) return new NearSubmitResult(NearSubmitOutcome.Unknown, null);
+            if (raw.Contains("INVALID_TRANSACTION", StringComparison.Ordinal) ||
+                raw.Contains("REQUEST_VALIDATION_ERROR", StringComparison.Ordinal))
+                return new NearSubmitResult(NearSubmitOutcome.Rejected, Explain(raw));
+        }
+
+        return new NearSubmitResult(NearSubmitOutcome.Unknown, null);
+    }
+
+    /// <summary>The network's reason, in words a person can act on.</summary>
+    public static string Explain(string raw)
+    {
+        if (raw.Contains("NotEnoughBalance", StringComparison.Ordinal) || raw.Contains("LackBalanceForState", StringComparison.Ordinal))
+            return "Not enough NEAR once the storage this account must keep paid for is left behind. Nothing was sent.";
+        if (raw.Contains("AccountDoesNotExist", StringComparison.Ordinal))
+            return "The destination account does not exist. The transfer failed and the NEAR came back, less the gas.";
+        if (raw.Contains("InvalidNonce", StringComparison.Ordinal))
+            return "Another transaction was sent from this account in the meantime. Review the send again.";
+        if (raw.Contains("Expired", StringComparison.Ordinal))
+            return "The transaction expired before it was included. Nothing was sent.";
+        if (raw.Contains("InvalidSignature", StringComparison.Ordinal) || raw.Contains("InvalidAccessKeyError", StringComparison.Ordinal))
+            return "The network did not accept this key's signature. Nothing was sent.";
+        return "NEAR refused the transaction. Nothing was sent.";
+    }
+}

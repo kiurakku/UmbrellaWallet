@@ -454,6 +454,23 @@ public sealed class HdAddressDeriver
     }
 
     /// <summary>
+    /// NEAR ed25519 seed (32 bytes) at m/44'/397'/0' — the near-seed-phrase path <see cref="DeriveNear"/>
+    /// shows the implicit account for, so the key signs for exactly the account on screen.
+    /// </summary>
+    public byte[] DeriveNearPrivateKey(string mnemonic, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var validation = _mnemonicService.Validate(mnemonic);
+        if (!validation.IsValid || validation.NormalizedMnemonic is null)
+        {
+            throw new ArgumentException(validation.Error ?? "Invalid mnemonic.", nameof(mnemonic));
+        }
+
+        var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
+        return Slip10Ed25519.DerivePrivateKey(parsed.DeriveSeed(passphrase), new[] { 44u, 397u, 0u });
+    }
+
+    /// <summary>
     /// TON ed25519 secret scalar (32 bytes) at m/44'/607'/0', for signing v4R2 transfers locally.
     /// </summary>
     public byte[] DeriveTonPrivateKey(string mnemonic, string? passphrase = null)

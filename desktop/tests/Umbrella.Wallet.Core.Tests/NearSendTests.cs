@@ -164,3 +164,47 @@ public sealed class NearSendTests
         Assert.False(NearRpc.IsUnknownAccount(Json("""{"jsonrpc":"2.0","id":1,"error":{"name":"TIMEOUT_ERROR"}}""")));
     }
 }
+
+/// <summary>
+/// NEAR's answer to <c>send_tx</c>, read the way the Send screen must act on it: executed, refused with
+/// a reason, or unknown. Unknown is never a retry — a NEAR transaction stays valid for about a day.
+/// </summary>
+public sealed class NearSubmitTests
+{
+    [Fact]
+    public void A_successful_status_is_a_transfer_that_happened()
+    {
+        var r = NearSubmit.Parse("""{"jsonrpc":"2.0","id":"u","result":{"final_execution_status":"EXECUTED_OPTIMISTIC","status":{"SuccessValue":""}}}""");
+        Assert.Equal(NearSubmitOutcome.Included, r.Outcome);
+    }
+
+    [Fact]
+    public void A_failed_status_is_not_a_payment_and_says_why()
+    {
+        var r = NearSubmit.Parse("""{"jsonrpc":"2.0","id":"u","result":{"status":{"Failure":{"ActionError":{"index":0,"kind":{"AccountDoesNotExist":{"account_id":"nobody.near"}}}}}}}""");
+        Assert.Equal(NearSubmitOutcome.Rejected, r.Outcome);
+        Assert.Contains("does not exist", r.Reason);
+    }
+
+    [Theory]
+    [InlineData("InvalidNonce", "in the meantime")]
+    [InlineData("NotEnoughBalance", "Not enough NEAR")]
+    [InlineData("Expired", "expired")]
+    public void An_invalid_transaction_is_refused_with_its_reason(string kind, string expected)
+    {
+        var body = "{\"jsonrpc\":\"2.0\",\"id\":\"u\",\"error\":{\"name\":\"HANDLER_ERROR\",\"cause\":{\"name\":\"INVALID_TRANSACTION\",\"info\":{\"" + kind + "\":{}}}}}";
+        var r = NearSubmit.Parse(body);
+        Assert.Equal(NearSubmitOutcome.Rejected, r.Outcome);
+        Assert.Contains(expected, r.Reason);
+    }
+
+    [Theory]
+    [InlineData("""{"jsonrpc":"2.0","id":"u","error":{"name":"HANDLER_ERROR","cause":{"name":"TIMEOUT_ERROR"}}}""")]
+    [InlineData("""{"jsonrpc":"2.0","id":"u","error":{"name":"INTERNAL_ERROR"}}""")]
+    [InlineData("not json")]
+    [InlineData(null)]
+    public void No_clear_answer_is_unknown_never_a_refusal(string? body)
+    {
+        Assert.Equal(NearSubmitOutcome.Unknown, NearSubmit.Parse(body).Outcome);
+    }
+}
