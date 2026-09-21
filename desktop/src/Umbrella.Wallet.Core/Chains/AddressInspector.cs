@@ -67,6 +67,10 @@ public static class AddressInspector
         if (a.StartsWith('r') && a.Length is >= 25 and <= 35)
             return new("XRP", XrpAddress.IsValid(a) ? AddressValidity.Valid : AddressValidity.Invalid);
 
+        // Stellar: StrKey carries a CRC16 checksum, so this is definitive too.
+        if (a.StartsWith('G') && a.Length == 56)
+            return new("XLM", StellarKeys.IsValidAccountId(a) ? AddressValidity.Valid : AddressValidity.Invalid);
+
         // Recognised by shape, but a deep check needs a chain-specific library we do not bundle.
         if (a.StartsWith("addr1", OIC)) return new("ADA", AddressValidity.Unverified);
         if (a.Length == 48 && (a.StartsWith("UQ") || a.StartsWith("EQ") || a.StartsWith("kQ") || a.StartsWith("0Q")))

@@ -57,6 +57,10 @@ public static class NetworkCounterpartyCatalog
             "TON, Jettons"),
         new("api.koios.rest", "Koios", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "ADA"),
+        new("horizon.stellar.org", "Stellar Development Foundation", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, Chain, "XLM"),
+        new("horizon.stellar.lobstr.co", "LOBSTR", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, Chain, "XLM"),
         new("xrplcluster.com", "XRPL Labs", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, Chain, "XRP"),
         // Offered in the endpoint picker: contacted for real once chosen.

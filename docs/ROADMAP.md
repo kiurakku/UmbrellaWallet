@@ -98,7 +98,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | N.2 | Send **any TRC-20** (not only USDT) | ✅ the same shape as N.1 — routed by contract, scaled by the decimals the contract reports, balance read from the contract with `triggerconstantcontract`. USDT is now just the TRC-20 whose contract was already known, and it gained the exact-scaling refusal the old path lacked (it multiplied through `Math.Pow` and truncated). Fee in TRX, said before Confirm |
 | N.3 | Send **any SPL** / full Jetton send (Jetton balances already exist) | 🟡 **Jetton send done** — TEP-74 body pinned cell-hash-for-cell-hash against `@ton/core`, message addressed to the sender's own jetton wallet with TON attached for gas, and a row whose jetton-wallet address is unknown still says “Receive only”. **SPL not started**: the wallet does not read SPL token balances yet, so there is nothing to send |
 | N.4 | **XRP** | 🟡 **Receive + balance.** `m/44'/144'/0'/0/0`, the path Xaman, Ledger and Trust use — the key pinned to xrpl.js's own `fromMnemonic` test, the encoding to XRPL's documented example. Balance from `account_info` at the last *validated* ledger through a user-choosable server (XRPL Labs cluster, or Ripple's); an address the ledger does not have yet is a real zero, anything else is unknown. **Send off** until a signed Payment is pinned against the reference library |
-| N.5 | **Stellar (XLM)** | 📅 |
+| N.5 | **Stellar (XLM)** | 🟡 **Receive + balance.** SEP-0005 (SLIP-0010 ed25519, `m/44'/148'/0'`) pinned to the SEP's own three vectors; StrKey `G…` with its CRC16 checked, so a typo'd Stellar address is refused on paste. Balance from Horizon through a choosable server (SDF, LOBSTR); a 404 is an unfunded address — a real zero — anything else is unknown. **Send off** until a signed transaction is pinned against the reference SDK |
 | N.6 | **Cosmos (ATOM)** / IBC | 📅 |
 | N.7 | **NEAR** | 📅 |
 | N.8 | **Polkadot (DOT)** | 📅 |
@@ -167,7 +167,8 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | AVAX / BNB / MATIC / FTM / CRO | ✅ | ✅ | ✅ | 🟡 | EVM family |
 | ZEC | ✅ | ✅ | ❌ | 🟡 | transparent `t1…` only |
 | XRP | ✅ | ✅ | ❌ | ❌ | receive + balance (N.4); send once a signed Payment is proven |
-| XLM / ATOM / NEAR / DOT | — | — | — | — | 📅 Planned |
+| XLM | ✅ | ✅ | ❌ | ❌ | receive + balance (N.5); send once a signed transaction is proven |
+| ATOM / NEAR / DOT | — | — | — | — | 📅 Planned |
 
 ---
 

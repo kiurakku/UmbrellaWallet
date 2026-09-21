@@ -33,6 +33,7 @@
 | **ETH** | zkSync Era | — | ✅ | — | **Balance and receive only.** Its fee model is not Ethereum's, so sending is not enabled yet |
 | **ZEC** | Zcash | — | ✅ | — | Receive only for now |
 | **XRP** | XRP Ledger | — | ✅ | — | **Receive and balance only.** An address becomes an account once it receives the network's reserve |
+| **XLM** | Stellar | — | ✅ | — | **Receive and balance only.** An address becomes an account once someone funds it with the minimum balance |
 
 > Any ERC-20 token (LINK, UNI, AAVE, SHIB, PEPE, etc.) is automatically detected and its
 > balance shown when you link an Ethereum address. Same for TRC-20 on Tron and SPL on Solana.
@@ -494,7 +495,7 @@ threat model names each one as an open gap rather than implying it away.
 | 20 | Linea | ETH | ✅ Working | Send, receive, balance, ERC-20 |
 | 21 | zkSync Era | ETH | ⚠️ Partial | Receive + balance only |
 | 22 | XRP Ledger | XRP | ⚠️ Partial | Receive + balance only |
-| 23 | Stellar | XLM | 📅 Planned | — |
+| 23 | Stellar | XLM | ⚠️ Partial | Receive + balance only |
 | 24 | Cosmos | ATOM | 📅 Planned | — |
 | 25 | Near | NEAR | 📅 Planned | — |
 | 26 | Polkadot | DOT | 📅 Planned | — |

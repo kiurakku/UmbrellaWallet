@@ -96,6 +96,12 @@ public static class ChainEndpoints
             ],
             // XRP Ledger JSON-RPC. The XRPL Labs cluster load-balances community nodes; Ripple runs the
             // other two. Any rippled or Clio server you run yourself works the same way.
+            // Horizon, Stellar's REST API. SDF runs the default; LOBSTR runs a public one too.
+            ["XLM"] =
+            [
+                new("https://horizon.stellar.org", "Stellar Development Foundation"),
+                new("https://horizon.stellar.lobstr.co", "LOBSTR"),
+            ],
             ["XRP"] =
             [
                 new("https://xrplcluster.com", "XRPL Labs cluster"),

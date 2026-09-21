@@ -69,7 +69,7 @@ public sealed class ChainEndpointWiringTests : IDisposable
     public void Every_configurable_chain_is_one_the_wallet_really_reads()
     {
         // Offering to redirect a chain the wallet does not fetch would be a control that does nothing.
-        var known = new[] { "BTC", "LTC", "BCH", "DOGE", "ETH", "SOL", "TON", "TRX", "ADA", "XRP" };
+        var known = new[] { "BTC", "LTC", "BCH", "DOGE", "ETH", "SOL", "TON", "TRX", "ADA", "XRP", "XLM" };
 
         foreach (var symbol in ChainEndpoints.Configurable)
         {

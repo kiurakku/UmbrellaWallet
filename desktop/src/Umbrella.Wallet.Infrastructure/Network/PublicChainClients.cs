@@ -336,6 +336,7 @@ public sealed class PublicChainBalanceClient
                 ChainId.Ton => await GetTonAsync(address, cancellationToken),
                 ChainId.Ada => await GetAdaAsync(address, cancellationToken),
                 ChainId.Xrp => await GetXrpAsync(address, cancellationToken),
+                ChainId.Xlm => await GetXlmAsync(address, cancellationToken),
                 _ => null,
             };
         }
@@ -363,6 +364,34 @@ public sealed class PublicChainBalanceClient
         return XrpLedger.ParseAccountInfo(result) is { } xrp
             ? new ChainBalance(ChainId.Xrp, address, xrp, "XRP")
             : null;
+    }
+
+    /// <summary>Stellar's Horizon root: the user's chosen server, or the SDF's.</summary>
+    private static string XlmRoot => ChainEndpoints.Resolve("XLM", "https://horizon.stellar.org");
+
+    /// <summary>
+    /// Native XLM balance from Horizon (roadmap N.5). A 404 is an address nobody has funded yet — a
+    /// real zero; any other failure is unknown. See <see cref="StellarHorizon.ParseAccount"/>.
+    /// </summary>
+    private static async Task<ChainBalance?> GetXlmAsync(string address, CancellationToken ct)
+    {
+        if (!StellarKeys.IsValidAccountId(address)) return null;
+
+        using var res = await Http.GetAsync($"{XlmRoot}/accounts/{address}", ct);
+        JsonDocument? doc = null;
+        try
+        {
+            if (res.IsSuccessStatusCode)
+                doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+
+            return StellarHorizon.ParseAccount((int)res.StatusCode, doc?.RootElement) is { } xlm
+                ? new ChainBalance(ChainId.Xlm, address, xlm, "XLM")
+                : null;
+        }
+        finally
+        {
+            doc?.Dispose();
+        }
     }
 
     /// <summary>The TON index root: the user's chosen server, or toncenter.</summary>

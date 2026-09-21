@@ -42,6 +42,16 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### Stellar: receive and balance
+
+- A Stellar (XLM) address from the same phrase, derived by SEP-0005 — the standard LOBSTR, Solar and
+  Ledger follow — and checked against the three test vectors the SEP itself publishes.
+- The balance comes from Horizon, on a server you can change (the Stellar Development Foundation's by
+  default, or LOBSTR's). An address nobody has funded yet is a real zero: on Stellar an address only
+  becomes an account once it receives the minimum balance. Anything else is "could not read".
+- A pasted `G…` address is now recognised as Stellar, and its checksum catches a mistyped character.
+- **Not yet:** sending XLM.
+
 ### XRP: receive and balance
 
 - The wallet now has an XRP Ledger address, at `m/44'/144'/0'/0/0` — the path Xaman, Ledger and

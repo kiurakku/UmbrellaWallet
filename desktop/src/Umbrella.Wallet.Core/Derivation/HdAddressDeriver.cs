@@ -94,6 +94,7 @@ public sealed class HdAddressDeriver
                 addressIndex),
             ChainId.Zec => DeriveZcashTransparent(masterKey, addressIndex),
             ChainId.Xrp => DeriveXrp(masterKey, addressIndex),
+            ChainId.Xlm => DeriveStellar(parsed, addressIndex, passphrase),
             ChainId.Eth => DeriveEthereum(masterKey, addressIndex),
             ChainId.Tron => DeriveTron(masterKey, addressIndex),
             ChainId.Sol => DeriveSolana(parsed, addressIndex, passphrase),
@@ -121,6 +122,20 @@ public sealed class HdAddressDeriver
         var address = Encoders.Base58.EncodeData(pub);
         var path = $"44'/501'/0'/{addressIndex}'";
         return new ReceiveAddress(ChainId.Sol, address, "m/" + path, addressIndex);
+    }
+
+    /// <summary>
+    /// Stellar: SEP-0005 — SLIP-0010 ed25519 at m/44'/148'/{index}', every level hardened, encoded as
+    /// a "G…" StrKey (roadmap N.5). Pinned to the SEP's published test vectors, which is what makes the
+    /// phrase restore in LOBSTR, Solar or a Ledger.
+    /// </summary>
+    private static ReceiveAddress DeriveStellar(Mnemonic parsed, uint addressIndex, string passphrase = "")
+    {
+        var seed = parsed.DeriveSeed(passphrase);
+        var priv = Slip10Ed25519.DerivePrivateKey(seed, new[] { 44u, 148u, addressIndex });
+        var address = StellarKeys.EncodeAccountId(Slip10Ed25519.PublicKey(priv));
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
+        return new ReceiveAddress(ChainId.Xlm, address, $"m/44'/148'/{addressIndex}'", addressIndex);
     }
 
     /// <summary>

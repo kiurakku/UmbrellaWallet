@@ -93,6 +93,14 @@ public static class ChainCatalog
                 CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. An XRP address only becomes an account once it has received the network's reserve, which then stays locked while the account exists — a smaller first payment is refused by the network."),
+            // Stellar — receive and balance (roadmap N.5). SEP-0005: SLIP-0010 ed25519 at m/44'/148'/0',
+            // the scheme LOBSTR, Solar and Ledger use, pinned to the SEP's own test vectors. One account
+            // per seed for the same reason as XRP: an account locks a minimum balance.
+            new ChainInfo(
+                ChainId.Xlm, "XLM", "Stellar", ChainSupportLevel.Supported, "SEP-0005 · ed25519", "m/44'/148'/0'",
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                HasTokens: false, Maturity: ChainMaturity.Beta,
+                PrivacyNote: "Public ledger. A Stellar address only becomes an account once someone funds it with the network's minimum balance, which stays locked while the account exists."),
         ];
 
         ById = All.ToDictionary(c => c.Id);
