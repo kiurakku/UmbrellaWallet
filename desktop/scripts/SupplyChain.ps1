@@ -21,6 +21,14 @@
 
 Set-StrictMode -Version Latest
 
+<#
+.SYNOPSIS
+    A path as gpg should be handed it: forward slashes. Git for Windows' gpg 2.4.9 does not read a
+    backslashed "C:\..." as absolute — it prefixed its working directory to the keyring and to every
+    key file, so on the release runner nothing imported. "C:/..." is absolute to every gpg build.
+#>
+function ConvertTo-GpgPath([string]$Path) { $Path -replace '\\', '/' }
+
 function Get-GpgCommand {
     foreach ($name in @('gpg', 'gpg2')) {
         $cmd = Get-Command $name -ErrorAction SilentlyContinue
@@ -86,7 +94,7 @@ function Assert-PinnedBySignedSums {
     else {
         $keyring = Join-Path $WorkDir 'gnupg'
         New-Item -ItemType Directory -Force -Path $keyring | Out-Null
-        $env:GNUPGHOME = $keyring
+        $env:GNUPGHOME = ConvertTo-GpgPath $keyring
 
         # GnuPG 2.4 gives a NEW home directory a common.conf with "use-keyboxd", which moves the keyring
         # into a daemon that a CI runner does not start: the key "imports" and then cannot be found.
@@ -110,7 +118,7 @@ function Assert-PinnedBySignedSums {
                 # A key kept in the repository is read from disk; anything else is downloaded.
                 if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination $keyPath -Force }
                 else { Invoke-WebRequest -Uri $source -OutFile $keyPath -UseBasicParsing }
-                $importLog = & $gpg --batch --import $keyPath 2>&1
+                $importLog = & $gpg --batch --import (ConvertTo-GpgPath $keyPath) 2>&1
 
                 # Imported is not the same as usable. keys.openpgp.org returns key material with no
                 # user ID unless the owner verified an address there, and gpg imports that happily
@@ -137,11 +145,11 @@ function Assert-PinnedBySignedSums {
             if ($SignatureUrl) {
                 $sigPath = Join-Path $WorkDir 'upstream-sums.asc'
                 Invoke-WebRequest -Uri $SignatureUrl -OutFile $sigPath -UseBasicParsing
-                $output = & $gpg --batch --status-fd 1 --verify $sigPath $sumsPath 2>&1
+                $output = & $gpg --batch --status-fd 1 --verify (ConvertTo-GpgPath $sigPath) (ConvertTo-GpgPath $sumsPath) 2>&1
             }
             else {
                 # Clearsigned: the signature is inside the file itself.
-                $output = & $gpg --batch --status-fd 1 --verify $sumsPath 2>&1
+                $output = & $gpg --batch --status-fd 1 --verify (ConvertTo-GpgPath $sumsPath) 2>&1
             }
 
             $text = ($output | Out-String)
