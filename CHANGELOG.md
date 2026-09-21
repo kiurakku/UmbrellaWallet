@@ -4,7 +4,7 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased] — Stellar sends, and the home screen from the gold design
+## [Unreleased] — Stellar and NEAR send, and the home screen from the gold design
 
 ### Stellar (XLM) can send
 
@@ -22,6 +22,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
   could pay twice.
 - **Limits:** muxed `M…` addresses are refused for now (use the `G…` address and a memo); only native
   XLM, not Stellar tokens.
+
+### NEAR can send
+
+- NEAR from your implicit account to any `.near` name or implicit account, signed on this PC. The
+  transaction is byte-for-byte what near-api-js builds (pinned to its own signed-transfer test).
+- Checked before anything is signed: a named destination must exist (a transfer to a missing one
+  fails on chain and costs gas), a new implicit account needs at least 0.002 NEAR to pay for its
+  storage, and what you can send leaves your own account's storage paid for.
+- Submitted once; an unclear answer is checked by the transaction's hash and never offered as a
+  retry. **Limits:** sending to a `0x…` account that does not exist yet is refused; staked NEAR and
+  your own named accounts are not shown.
 
 ### The home screen
 

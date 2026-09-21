@@ -651,6 +651,29 @@ public partial class MainViewModel
                     break;
                 }
 
+                case "NEAR":
+                {
+                    // The implicit account IS the public key in hex; the sender checks the account, its
+                    // access key and the destination before anything is signed (roadmap N.7).
+                    byte[] publicKey;
+                    try { publicKey = Convert.FromHexString(from.Address); }
+                    catch { SendError = Loc.Instance["send.errPrepareFailed"]; return; }
+
+                    var (quote, error) = await _nearSender.PrepareAsync(from.Address, publicKey, SendTo.Trim(), amount);
+                    if (quote is null) { SendError = error ?? Loc.Instance["send.errPrepareFailed"]; return; }
+                    _nearQuote = quote;
+                    SendQuoteSummary = $"Send {Fmt(quote.AmountNear)} NEAR  →  {quote.To}";
+                    SendQuoteFee = quote.CreatesAccount
+                        ? string.Format(Loc.Instance["send.nearFeeCreates"], Fmt(quote.FeeCapNear))
+                        : string.Format(Loc.Instance["send.nearFee"], Fmt(quote.FeeCapNear));
+                    BuildSendSimulation(
+                        balance: (decimal)from.Amount,
+                        amount: quote.AmountNear,
+                        networkFee: quote.FeeCapNear,
+                        symbol: "NEAR");
+                    break;
+                }
+
                 case "ADA":
                 {
                     var (quote, error) = await _adaSender.PrepareAsync(from.Address, SendTo.Trim(), amount);
@@ -962,7 +985,7 @@ public partial class MainViewModel
     {
         var haveQuote = _sendQuote is not null || _btcQuote is not null || _solQuote is not null
                         || _tonQuote is not null || _tronQuote is not null || _adaQuote is not null
-                        || _xlmQuote is not null
+                        || _xlmQuote is not null || _nearQuote is not null
                         || (_sendSymbol == "XMR" && _moneroAmount > 0);
         if (_unlockedMnemonic is null || !haveQuote)
         {
@@ -1196,6 +1219,40 @@ public partial class MainViewModel
                     break;
                 }
 
+                case "NEAR" when _nearQuote is not null:
+                {
+                    var quote = _nearQuote;
+                    var seed = _deriver.DeriveNearPrivateKey(_unlockedMnemonic!);
+                    try
+                    {
+                        var outcome = await _nearSender.SignAndBroadcastAsync(quote, seed);
+                        var explorer = outcome.Hash is null ? "" : $"nearblocks.io/txns/{outcome.Hash}";
+
+                        if (outcome.Outcome == NearSubmitOutcome.Unknown)
+                        {
+                            // It may still execute (a NEAR transaction stays valid for about a day), so it
+                            // is never offered as a retry: a fresh send could pay twice.
+                            ClearSendQuotes();
+                            SendTo = string.Empty;
+                            SendAmount = string.Empty;
+                            SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
+                            StatusMessage = Loc.Instance["status.broadcastFailed"];
+                            PushActivity("Sent", "NEAR", $"-{Fmt(quote.AmountNear)}", Shorten(quote.To), "now",
+                                explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
+                            break;
+                        }
+
+                        await FinishSendAsync(outcome.Outcome == NearSubmitOutcome.Included, outcome.Hash,
+                            outcome.Message, "NEAR", quote.AmountNear, quote.To, explorer);
+                    }
+                    finally
+                    {
+                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(seed);
+                    }
+
+                    break;
+                }
+
                 case "ADA" when _adaQuote is not null:
                 {
                     var quote = _adaQuote;
@@ -1284,6 +1341,7 @@ public partial class MainViewModel
         _tonQuote = null;
         _adaQuote = null;
         _xlmQuote = null;
+        _nearQuote = null;
         SendReviewMemo = string.Empty;
         // Cleared with the rest: a stale token marker would route the NEXT quote — possibly a plain
         // ETH send — down the contract-call path.
