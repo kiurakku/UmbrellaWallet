@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:app="clr-namespace:Umbrella.Wallet.App"
+        xmlns:controls="using:Umbrella.Wallet.App.Controls"
         x:Class="Umbrella.Wallet.App.Views.SplashWindow"
         Width="480" Height="400"
         SystemDecorations="None"
@@ -14,13 +15,12 @@
   <!-- Small animated intro window. Transparent window + a rounded Border give real rounded corners
        (the sharp square edges came from a solid window). The brand mark scales + fades in over a
        breathing blue glow, then App.axaml.cs reveals the main window and closes this one. -->
-  <Border CornerRadius="28" Background="#070B14" BorderBrush="#1E2A3D" BorderThickness="1"
+  <Border CornerRadius="28" Background="#070707" BorderBrush="{DynamicResource UmTileEdge}" BorderThickness="1"
           BoxShadow="0 26 70 -22 #B3000000" ClipToBounds="True">
     <Panel>
       <Ellipse Width="560" Height="560" HorizontalAlignment="Center" VerticalAlignment="Center" Classes="splashGlow"/>
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="22">
-        <Image Source="avares://Umbrella.Wallet.App/Assets/umbrellaLoadlogo.png"
-               Width="132" HorizontalAlignment="Center" Classes="splashLogo"/>
+        <controls:BrandMark Kind="Canopy" Width="136" Height="131" HorizontalAlignment="Center" Classes="splashLogo"/>
         <TextBlock Text="UMBRELLA WALLET" FontSize="23" FontWeight="SemiBold" LetterSpacing="6"
                    HorizontalAlignment="Center" Foreground="#F7F9FC" Classes="splashTitle"/>
         <TextBlock Text="{Binding [splash.tagline], Source={x:Static app:Loc.Instance}}" FontSize="13" HorizontalAlignment="Center"

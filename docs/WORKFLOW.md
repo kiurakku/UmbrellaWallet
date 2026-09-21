@@ -77,6 +77,20 @@ Run before merging doc-heavy PRs, or weekly.
 
 ---
 
+## Other repo self-checks
+
+| Check | Command | What it stops |
+|---|---|---|
+| Pinned third-party binaries | `bash scripts/check-pinned-binaries.sh` | The fetch scripts and [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) describing different downloads (a pinned Tor version had already been pruned upstream, so a fresh clone got a 404) |
+| Version consistency | `bash scripts/check-version-consistency.sh` | `VERSION`, the csproj, the installer, README and CHANGELOG disagreeing |
+| Reproducible build | `bash scripts/verify-reproducible-build.sh` | A build that cannot be reproduced from the tag, which is what makes a published checksum mean anything |
+| Published release | `bash scripts/verify-published-release.sh [tag]` | A release whose served assets no longer match the `SHA256SUMS` attached to it |
+
+The first three run in CI on every pull request. The last one needs `gh` and a published release, so it
+is run by hand (or on demand) after cutting one.
+
+---
+
 ## PR expectations (short)
 
 - Prefer small, phase-isolated PRs.

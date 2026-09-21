@@ -1,7 +1,7 @@
 # Repository hardening status
 
 **Last verified:** 2026-09-15  
-**Repo:** [kiurakku/UmbrellaWallet](https://github.com/kiurakku/UmbrellaWallet)
+**Repo:** [thefear078/UmbrellaWallet](https://github.com/thefear078/UmbrellaWallet)
 
 Closes stale audits that claim “missing LICENSE / CODEOWNERS / Dependabot / trademark”. Those items
 are **present**. Do **not** replace [LICENSE](../LICENSE) with GPL — Umbrella is **Free-Use,
@@ -97,7 +97,7 @@ No-Derivatives** (source-available for audit).
 
 - **GPL / MIT LICENSE** — rejected.
 - **“Fork then PR” CONTRIBUTING** — rejected.
-- **Fake CODEOWNERS teams** — not created; sole owner `@kiurakku`.
+- **Fake CODEOWNERS teams** — not created; sole owner `@thefear078`.
 - **Dependabot Docker** — no Dockerfile in this repo.
 
 ---

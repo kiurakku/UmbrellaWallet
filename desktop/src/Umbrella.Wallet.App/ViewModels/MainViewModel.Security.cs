@@ -52,6 +52,16 @@ public partial class MainViewModel
     [ObservableProperty] private string _privacyGradeColor = "#8FCB9B";
     [ObservableProperty] private string _privacyTopFix = string.Empty;
 
+    /// <summary>
+    /// Every signal behind the grade, each with what it does NOT do underneath it (roadmap P1.11).
+    ///
+    /// A grade on its own is the kind of reassurance MANIFESTO §2 exists to forbid: "Strong" reads as
+    /// "I am anonymous", when what it means is that the servers being asked see an exit node instead
+    /// of a home address — and nothing at all about the addresses those servers were handed, which
+    /// stay on the chain forever.
+    /// </summary>
+    public ObservableCollection<PrivacyFindingVm> PrivacyFindings { get; } = [];
+
     private const string SecGood = "#8FCB9B";
     private const string SecWarn = "#E7CA83";
     private const string SecInfo = "#8B909A";
@@ -133,7 +143,7 @@ public partial class MainViewModel
         // --- Recovery & trust ---
         Note("💾", L["sec.backup"], L["sec.backupBody"], L["sec.openSettings"], "Settings");
         Note("🧾", L["sec.verify"], L["sec.verifyBody"], L["sec.openGuide"],
-            "https://github.com/kiurakku/umbrella-wallet/blob/main/docs/BUILD_VERIFY.md");
+            "https://github.com/thefear078/UmbrellaWallet/blob/main/docs/BUILD_VERIFY.md");
 
         SecurityScoreDone = good;
         SecurityScoreTotal = scored;
@@ -153,6 +163,15 @@ public partial class MainViewModel
             _ => "#E09A9A",
         };
         PrivacyTopFix = privacy.TopFixCode is { } fix ? L["pscore.fix." + fix] : L["pscore.allGood"];
+
+        // Each finding renders with its limit. Never one without the other: a protection shown alone
+        // is how somebody ends up trusting it for something it does not do.
+        PrivacyFindings.Clear();
+        foreach (var f in privacy.Findings)
+        {
+            PrivacyFindings.Add(new PrivacyFindingVm(
+                L["pscore.f." + f.Code], L["pscore.lim." + f.LimitCode], f.IsStrength));
+        }
     }
 
     /// <summary>Follows a Security Center row: a section name navigates, an https link opens outside.</summary>

@@ -83,6 +83,47 @@ public static class ChainCatalog
                 CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Transparent address — this is Zcash's PUBLIC ledger, not a shielded z-address. Use Tor and a fresh address per receive."),
+            // XRP Ledger — receive and balance (roadmap N.4). BIP44 coin type 144, secp256k1, the same
+            // m/44'/144'/0'/0/0 that Xaman, Ledger and Trust derive, so the phrase restores there. One
+            // address, like ETH: every XRP account locks a reserve, so a fresh address per receive
+            // would cost real money rather than just privacy. CanSend stays off until a signed Payment
+            // has been proven against the reference library.
+            new ChainInfo(
+                ChainId.Xrp, "XRP", "XRP Ledger", ChainSupportLevel.Supported, "BIP44 · secp256k1", "m/44'/144'/0'/0/0",
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                HasTokens: false, Maturity: ChainMaturity.Beta,
+                PrivacyNote: "Public ledger. An XRP address only becomes an account once it has received the network's reserve, which then stays locked while the account exists — a smaller first payment is refused by the network."),
+            // Stellar — receive and balance (roadmap N.5). SEP-0005: SLIP-0010 ed25519 at m/44'/148'/0',
+            // the scheme LOBSTR, Solar and Ledger use, pinned to the SEP's own test vectors. One account
+            // per seed for the same reason as XRP: an account locks a minimum balance.
+            new ChainInfo(
+                ChainId.Xlm, "XLM", "Stellar", ChainSupportLevel.Supported, "SEP-0005 · ed25519", "m/44'/148'/0'",
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                HasTokens: false, Maturity: ChainMaturity.Beta,
+                PrivacyNote: "Public ledger. A Stellar address only becomes an account once someone funds it with the network's minimum balance, which stays locked while the account exists."),
+            // Cosmos Hub — receive and balance (roadmap N.6). BIP44 coin type 118, secp256k1, the
+            // m/44'/118'/0'/0/0 that Keplr, Leap and Ledger derive, pinned to cosmjs's own wallet test.
+            new ChainInfo(
+                ChainId.Atom, "ATOM", "Cosmos Hub", ChainSupportLevel.Supported, "BIP44 · secp256k1", "m/44'/118'/0'/0/0",
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                HasTokens: false, Maturity: ChainMaturity.Beta,
+                PrivacyNote: "Public ledger. The balance shown is available ATOM only — ATOM you have staked with a validator is not included."),
+            // NEAR — receive and balance (roadmap N.7). SLIP-0010 ed25519 at m/44'/397'/0', the path
+            // near-seed-phrase (and so MyNearWallet, Meteor, Ledger) use; the address is the implicit
+            // account — the hex of the public key — so nothing has to be registered to receive.
+            new ChainInfo(
+                ChainId.Near, "NEAR", "NEAR Protocol", ChainSupportLevel.Supported, "SLIP-0010 · ed25519", "m/44'/397'/0'",
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                HasTokens: false, Maturity: ChainMaturity.Beta,
+                PrivacyNote: "Public ledger. This is your implicit account — the 64-character id is your public key. Named accounts (you.near) and NEAR staked with a pool are not shown."),
+            // Polkadot — receive and balance (roadmap N.8). substrate-bip39 + sr25519, the scheme of
+            // Polkadot.js, Talisman, SubWallet and Nova — NOT BIP-44 — so the phrase shows the same
+            // account there. The root key, no derivation path. Balance from Asset Hub and the relay chain.
+            new ChainInfo(
+                ChainId.Dot, "DOT", "Polkadot", ChainSupportLevel.Supported, "substrate-bip39 · sr25519", "root key (no derivation path)",
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                HasTokens: false, Maturity: ChainMaturity.Beta,
+                PrivacyNote: "Public ledger. The balance adds up DOT on Asset Hub and on the relay chain — Polkadot moved balances to Asset Hub in 2025 — and includes DOT locked for staking or governance, which may not all be spendable."),
         ];
 
         ById = All.ToDictionary(c => c.Id);

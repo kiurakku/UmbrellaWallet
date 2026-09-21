@@ -75,8 +75,10 @@ public partial class MainViewModel
         foreach (var c in StaticCommands)
             if (Match(c.Label) || Match(c.Hint)) CommandResults.Add(c);
         // Type a ticker/name to jump straight to that coin's chart.
+        // Snapshot first: the market refresh mutates Market on its own schedule, and enumerating it
+        // mid-update threw "collection was modified" — the same race already fixed in Assets.
         if (q.Length > 0)
-            foreach (var m in Market.Where(m => Match(m.Symbol) || Match(m.Name)).Take(8))
+            foreach (var m in Market.ToList().Where(m => Match(m.Symbol) || Match(m.Name)).Take(8))
                 CommandResults.Add(new PaletteCommand("◎", m.Name, $"{m.Symbol} · open chart", "coin:" + m.Symbol));
 
         // A new query always re-homes the highlight on the best match.

@@ -14,6 +14,7 @@ no account and no backend: nothing about a user exists anywhere except on their 
 - [Trust boundaries](#trust-boundaries)
 - [Vector 1 — Malware running as the user](#vector-1--malware-running-as-the-user-infostealer-keylogger-rat)
 - [Vector 2 — Someone at the keyboard](#vector-2--someone-at-the-keyboard-of-an-unlocked-or-locked-machine)
+- [Vector 2b — Someone standing over you](#vector-2b--someone-standing-over-you-while-you-unlock-it)
 - [Vector 3 — Offline brute force of `vault.json`](#vector-3--offline-brute-force-of-a-stolen-vaultjson)
 - [Vector 4 — The network operator](#vector-4--the-network-operator-isp-café-wi-fi-hostile-country)
 - [Vector 5 — The block explorer or RPC node](#vector-5--the-block-explorer-or-rpc-node)
@@ -90,14 +91,37 @@ the cost of guessing at the keyboard and nothing more.
 
 ---
 
+## Vector 2b — Someone standing over you while you unlock it
+
+**Attacker.** A person who can compel the password: a border official, a robbery, anybody the owner
+cannot simply refuse.
+
+**What the wallet does.** A **duress password** opens a different, real wallet — its own seed, its own
+addresses, its own history. The vault file holds two slots and is the same size whether one wallet is
+stored or two, the unused slot is random bytes, and the real slot's position is chosen at random, so
+the file cannot be used to argue that something else is in there. A wrong password and an empty slot
+fail identically, and removing a decoy leaves a file indistinguishable from one that never had one.
+
+**Where the defence ends.** It does not hide that OTHER wallets exist on the machine — a coercer who
+looks at the data directory sees the list. It does nothing about being watched while typing, or about
+somebody who compares a copy of the file taken before and after (a slot that was noise and is now
+ciphertext proves a wallet was added). And changing the vault password rewrites the file, which
+removes the decoy; the app says so beside the feature.
+
+**Residual risk: MEDIUM.** The wallet can make the money unreachable with the password that was
+given. It cannot make a determined person stop asking.
+
+---
+
 ## Vector 3 — Offline brute force of a stolen `vault.json`
 
 **Attacker.** Someone who copied the vault file — from a backup, a stolen disk, a synced folder.
 
 **What the wallet does.** Argon2id with 64 MiB of memory per guess, 4 iterations, 2 lanes. Memory-hard
-by design: GPU and ASIC parallelism buys far less than it does against PBKDF2 or bcrypt. The envelope
-carries its own parameters and is range-checked before being fed to the KDF, so a tampered file cannot
-ask for a trivially cheap derivation.
+by design: GPU and ASIC parallelism buys far less than it does against PBKDF2 or bcrypt. The vault file
+is a fixed-size binary with two slots; its parameters are not read from the file at all, so a tampered
+vault cannot ask for a trivially cheap derivation. (Older JSON vaults are still read, with their
+parameters range-checked, and are rewritten in the new format the first time they are opened.)
 
 **Where the defence ends.** At the password. A short or reused password falls regardless of the KDF,
 and no parameter choice fixes that. The wallet enforces a minimum length and shows a strength meter;
@@ -244,6 +268,8 @@ and is the operating system's job.
 - **Protecting against the recipient.** Whoever you pay knows they were paid by you.
 - **Making a transparent chain private.** It cannot be done from the wallet side.
 - **Defending a rooted or malware-infected machine.** See Vector 1.
+- **Hiding that this computer holds a wallet at all.** A duress password hides which wallet the
+  password opens, not the fact that the program is installed (see Vector 2b).
 
 ---
 

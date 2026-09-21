@@ -44,9 +44,19 @@ public sealed class AddressInspectorTests
     [Fact]
     public void A_chain_we_cannot_deeply_verify_is_recognised_but_unverified()
     {
+        var r = AddressInspector.Inspect("UQ" + new string('A', 46));
+        Assert.Equal("TON", r.Network);
+        Assert.Equal(AddressValidity.Unverified, r.Validity);
+    }
+
+    [Fact]
+    public void A_made_up_Cardano_address_is_recognised_and_called_invalid()
+    {
+        // It used to be "unverified" — and the send path would have decoded and paid it. The bech32
+        // checksum is now checked, so a string that merely looks like addr1… is caught.
         var r = AddressInspector.Inspect("addr1q9abcdefghijklmnopqrstuvwxyz");
         Assert.Equal("ADA", r.Network);
-        Assert.Equal(AddressValidity.Unverified, r.Validity);
+        Assert.Equal(AddressValidity.Invalid, r.Validity);
     }
 
     [Theory]

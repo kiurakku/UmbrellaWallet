@@ -1,16 +1,16 @@
 # Contact
 
-**Umbrella Wallet** is an independent project by **the fear** (kiurakku).
+**Umbrella Wallet** is an independent project by **the fear** (thefear078).
 
 | Channel | Link |
 |---|---|
-| **GitHub (source & releases)** | [github.com/kiurakku/UmbrellaWallet](https://github.com/kiurakku/UmbrellaWallet) |
-| **GitHub profile** | [github.com/kiurakku](https://github.com/kiurakku) |
-| **GitHub Sponsors** | [github.com/sponsors/kiurakku](https://github.com/sponsors/kiurakku) |
+| **GitHub (source & releases)** | [github.com/thefear078/UmbrellaWallet](https://github.com/thefear078/UmbrellaWallet) |
+| **GitHub profile** | [github.com/thefear078](https://github.com/thefear078) |
+| **GitHub Sponsors** | [github.com/sponsors/thefear078](https://github.com/sponsors/thefear078) |
 | **Telegram (official product)** | [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet) |
 | **TikTok** | [@thefear078](https://www.tiktok.com/@thefear078) |
 | **Reddit** | [u/Particular_Lime_7004](https://www.reddit.com/user/Particular_Lime_7004) |
-| **Security (private)** | [Security advisories](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new) |
+| **Security (private)** | [Security advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) |
 
 ## Rules
 

@@ -93,6 +93,30 @@ public static class TonTransfer
         return b.EndCell();
     }
 
+    /// <summary>
+    /// An internal message whose body is a whole cell, referenced rather than inlined — a jetton
+    /// transfer body does not fit in what is left of the message cell (roadmap N.3).
+    /// </summary>
+    public static TonCell BuildInternalMessageWithBody(
+        int destWorkchain, byte[] destHash, BigInteger amountNano, bool bounce, TonCell body) =>
+        new TonCellBuilder()
+            .StoreBit(false)                 // int_msg_info$0
+            .StoreBit(true)                  // ihr_disabled
+            .StoreBit(bounce)                // bounce
+            .StoreBit(false)                 // bounced
+            .StoreBit(false).StoreBit(false) // src: addr_none
+            .StoreAddressStd(destWorkchain, destHash)
+            .StoreCoins(amountNano)          // value.grams
+            .StoreBit(false)                 // value.other: empty
+            .StoreCoins(0)                   // ihr_fee
+            .StoreCoins(0)                   // fwd_fee
+            .StoreUInt(0, 64)                // created_lt
+            .StoreUInt(0, 32)                // created_at
+            .StoreBit(false)                 // init: none
+            .StoreBit(true)                  // body: ^Cell
+            .StoreRef(body)
+            .EndCell();
+
     /// <summary>The v4 signing message: subwallet, valid-until, seqno, op 0, then each (mode, ^order).</summary>
     public static TonCell BuildSigningMessage(
         uint validUntil, uint seqno, IReadOnlyList<(byte Mode, TonCell Order)> messages)
@@ -158,6 +182,31 @@ public static class TonTransfer
         var (destWc, destHash, destBounceable) = ParseFriendlyAddress(destFriendly);
         var bounce = bounceOverride ?? destBounceable;
         var order = BuildInternalMessage(destWc, destHash, amountNano, bounce, comment);
+        var signing = BuildSigningMessage(validUntil, seqno, new[] { (sendMode, order) });
+        var signature = Sign(seed32, signing.Hash());
+        var signedBody = BuildSignedBody(signature, signing);
+        var stateInit = seqno == 0 ? StateInit(publicKey) : null;
+        var ext = BuildExternalMessage(fromWorkchain, fromHash, stateInit, signedBody);
+        return Convert.ToBase64String(ext.ToBoc());
+    }
+
+    /// <summary>
+    /// The same signed external message, but the order carries a jetton transfer body and is
+    /// addressed to the SENDER's own jetton wallet (roadmap N.3).
+    ///
+    /// <paramref name="attachedNano"/> is TON, not jettons: it pays the jetton wallet's gas and the
+    /// forward fee. The jetton amount itself lives inside <paramref name="body"/>.
+    /// </summary>
+    public static string BuildSignedJettonBoc(
+        byte[] seed32, byte[] publicKey, int fromWorkchain, byte[] fromHash,
+        uint seqno, uint validUntil, string jettonWalletFriendly, BigInteger attachedNano,
+        TonCell body, byte sendMode)
+    {
+        var (walletWc, walletHash, _) = ParseFriendlyAddress(jettonWalletFriendly);
+
+        // Bounceable on purpose: if the jetton wallet rejects the message — wrong contract,
+        // not enough gas — the TON comes back instead of being burnt at a dead address.
+        var order = BuildInternalMessageWithBody(walletWc, walletHash, attachedNano, bounce: true, body);
         var signing = BuildSigningMessage(validUntil, seqno, new[] { (sendMode, order) });
         var signature = Sign(seed32, signing.Hash());
         var signedBody = BuildSignedBody(signature, signing);

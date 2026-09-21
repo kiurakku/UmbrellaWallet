@@ -12,12 +12,27 @@
 param(
     # Pinned version + SHA-256 of the expert bundle, from
     # https://dist.torproject.org/torbrowser/<Version>/sha256sums-unsigned-build.txt (see THIRD_PARTY_NOTICES.md).
-    [string]$Version = '15.0.22',
+    #
+    # The version is part of the URL, and the Tor Project PRUNES old releases from the mirror — a pin
+    # left behind becomes a 404 rather than an old-but-working download. That is exactly what had
+    # happened here: 15.0.22 no longer exists upstream, while the hash below is the one Tor's own
+    # signed sums file publishes for 15.0.23.
+    [string]$Version = '15.0.23',
     [string]$ExpectedSha256 = '231dad6b9cb401a54c260db7046965ef04e4f72ff071b140d423fb5da281ab1e',
     [string]$Destination = (Join-Path $PSScriptRoot '..\src\Umbrella.Wallet.App\tor'),
+    # The Tor Browser Developers signing key. The pinned hash is only worth as much as the file it
+    # came from, and that file is signed — checking the signature is what makes the pin mean "what
+    # the Tor Project published" rather than "what some server served me".
+    [string]$SigningKeyFingerprint = 'EF6E286DDA85EA2A4BA7DE684E2C6E8793298290',
+    # Fail when the signature cannot be checked (no gpg, no key, bad signature) instead of falling
+    # back to the hash alone. Release builds pass this.
+    [switch]$RequireSignature,
     # Escape hatch for staging an unpinned version locally; never use it for a release build.
     [switch]$AllowUnverified
 )
+
+# Shared supply-chain helpers (gpg verification, honest reporting of what was actually checked).
+. (Join-Path $PSScriptRoot 'SupplyChain.ps1')
 
 $ErrorActionPreference = 'Stop'
 
@@ -39,6 +54,15 @@ Write-Host "Downloading $url"
 New-Item -ItemType Directory -Force -Path $work | Out-Null
 $archivePath = Join-Path $work $archive
 Invoke-WebRequest -Uri $url -OutFile $archivePath -UseBasicParsing
+
+# Check the pin against the Tor Project's OWN signed sums file before trusting it. A hash that only
+# ever agrees with itself proves nothing — it says the download matches what this script expects, not
+# what Tor published. The signature is what connects the two.
+$sumsUrl = "https://dist.torproject.org/torbrowser/$Version/sha256sums-unsigned-build.txt"
+Assert-PinnedBySignedSums -SumsUrl $sumsUrl -SignatureUrl "$sumsUrl.asc" `
+    -FileName $archive -ExpectedSha256 $ExpectedSha256 `
+    -KeyFingerprint $SigningKeyFingerprint -WorkDir $work `
+    -Required:$RequireSignature -What 'Tor expert bundle'
 
 # Verify the archive against the pinned SHA-256 BEFORE extracting anything from it.
 $expected = $ExpectedSha256.Trim().ToLowerInvariant()

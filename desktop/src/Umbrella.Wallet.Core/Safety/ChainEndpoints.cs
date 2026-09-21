@@ -94,6 +94,46 @@ public static class ChainEndpoints
             [
                 new("https://api.koios.rest", "Koios"),
             ],
+            // XRP Ledger JSON-RPC. The XRPL Labs cluster load-balances community nodes; Ripple runs the
+            // other two. Any rippled or Clio server you run yourself works the same way.
+            // Cosmos SDK REST (LCD), two independent operators. cosmos.directory also answers, but it is
+            // already the THORChain swap route; keeping balances off it keeps the two apart.
+            ["ATOM"] =
+            [
+                new("https://cosmos-rest.publicnode.com", "PublicNode (Allnodes)"),
+                new("https://lcd-cosmoshub.keplr.app", "Keplr"),
+            ],
+            // Polkadot. Since the 2025 migration balances live on Asset Hub, so that is "DOT"; the relay
+            // chain is read too and has its own choice. All five answered state_getStorage over HTTPS.
+            ["DOT"] =
+            [
+                new("https://polkadot-asset-hub-rpc.polkadot.io", "Parity (Asset Hub)"),
+                new("https://statemint.api.onfinality.io/public", "OnFinality (Asset Hub)"),
+            ],
+            ["DOT-RELAY"] =
+            [
+                new("https://rpc.polkadot.io", "Parity (relay chain)"),
+                new("https://polkadot-rpc.publicnode.com", "PublicNode (relay chain)"),
+                new("https://polkadot.api.onfinality.io/public", "OnFinality (relay chain)"),
+            ],
+            // NEAR JSON-RPC. near.lava.build was discontinued in 2025 — these two answered view_account.
+            ["NEAR"] =
+            [
+                new("https://rpc.mainnet.near.org", "NEAR Foundation"),
+                new("https://free.rpc.fastnear.com", "FastNEAR"),
+            ],
+            // Horizon, Stellar's REST API. SDF runs the default; LOBSTR runs a public one too.
+            ["XLM"] =
+            [
+                new("https://horizon.stellar.org", "Stellar Development Foundation"),
+                new("https://horizon.stellar.lobstr.co", "LOBSTR"),
+            ],
+            ["XRP"] =
+            [
+                new("https://xrplcluster.com", "XRPL Labs cluster"),
+                new("https://s1.ripple.com:51234", "Ripple"),
+                new("https://s2.ripple.com:51234", "Ripple (full history)"),
+            ],
         };
 
     /// <summary>The chains whose endpoint this build can actually redirect.</summary>
@@ -167,6 +207,27 @@ public static class ChainEndpoints
     /// <summary>True when a chain is being read through something other than the shipped default —
     /// worth showing, because it is the user's own decision and they should be able to see it.</summary>
     public static bool IsCustomised(string symbol) => OverrideFor(symbol) is not null;
+
+    /// <summary>
+    /// The servers to try, in order. A user who picked a server gets exactly that one — their
+    /// addresses are never sent anywhere they did not choose. Otherwise every listed server is a
+    /// fallback for the one before it: public endpoints go down and rate-limit, and a balance that
+    /// reads "could not read" because the first of three answered 429 is a worse answer than asking
+    /// the second (every one of them is declared in the network catalog).
+    /// </summary>
+    public static IReadOnlyList<string> Candidates(string symbol, string fallback)
+    {
+        if (OverrideFor(symbol) is { } chosen) return [chosen];
+        if (!Known.TryGetValue(symbol, out var options) || options.Count == 0) return [fallback];
+
+        var list = new List<string> { fallback };
+        foreach (var option in options)
+        {
+            if (!list.Contains(option.BaseUrl, StringComparer.OrdinalIgnoreCase)) list.Add(option.BaseUrl);
+        }
+
+        return list;
+    }
 
     /// <summary>Every override, as "SYMBOL=url" pairs, for persisting to settings.</summary>
     public static string Serialise() =>

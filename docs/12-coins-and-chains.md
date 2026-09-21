@@ -32,13 +32,31 @@
 | **ETH** | Arbitrum, Base, Optimism, Linea | ✅ | ✅ | All ERC-20 | Layer 2 — same 0x address, far cheaper |
 | **ETH** | zkSync Era | — | ✅ | — | **Balance and receive only.** Its fee model is not Ethereum's, so sending is not enabled yet |
 | **ZEC** | Zcash | — | ✅ | — | Receive only for now |
+| **XRP** | XRP Ledger | — | ✅ | — | **Receive and balance only.** An address becomes an account once it receives the network's reserve |
+| **XLM** | Stellar | — | ✅ | — | **Receive and balance only.** An address becomes an account once someone funds it with the minimum balance |
+| **ATOM** | Cosmos Hub | — | ✅ | — | **Receive and balance only.** The balance is *available* ATOM — staked ATOM is not counted |
+| **NEAR** | NEAR Protocol | — | ✅ | — | **Receive and balance only.** Your implicit account (the 64-character hex id); named `.near` accounts and staked NEAR are not shown |
+| **DOT** | Polkadot | — | ✅ | — | **Receive and balance only.** sr25519 like Polkadot.js / Nova; balance adds Asset Hub and the relay chain |
 
 > Any ERC-20 token (LINK, UNI, AAVE, SHIB, PEPE, etc.) is automatically detected and its
 > balance shown when you link an Ethereum address. Same for TRC-20 on Tron and SPL on Solana.
 >
-> **Detected is not the same as sendable.** Token balances appear for every chain above;
-> sending a token is implemented for USDT on Tron only. Everything else in the Send column
-> above is a NATIVE coin.
+> **ERC-20 tokens on Ethereum can now be sent** — the Send picker lists the ones you actually hold,
+> and the transfer goes to the token's contract with the fee paid in ETH, not in the token. The
+> wallet routes on the CONTRACT, never the ticker, because two contracts can call themselves USDC.
+> A token whose contract never reported its decimals is refused rather than guessed at.
+>
+> **TRC-20 tokens on Tron can be sent too** — same rule, and the fee comes out of TRX
+> (energy/bandwidth) rather than out of the token.
+>
+> **Jettons on TON can be sent** when the wallet knows their jetton-wallet contract — the message
+> goes to that contract with about 0.05 TON attached for gas, part of which comes back. A jetton
+> whose wallet address is unknown still says **Receive only** rather than offering a send.
+>
+> **Read but not yet sendable:** SPL tokens on Solana. Their balances are read under both token
+> programs (the original and Token-2022), named for the well-known mints — each checked on-chain — and
+> otherwise shown by mint address as *unverified*, folded away with suspected spam until they have a
+> market price. Sending them is roadmap N.3's remaining half.
 
 ---
 
@@ -440,8 +458,8 @@ threat model names each one as an open gap rather than implying it away.
 | **Signed releases** (GPG / Sigstore) | Checksums prove integrity against accidental corruption, not against a replaced release. |
 | ~~Tor stream isolation~~ | **Done.** Chain data, broadcasts, prices, swaps, exchange accounts and maintenance each get their own circuit. |
 | **Dandelion++** | Broadcasting by flood lets an observer tie an IP to a transaction by propagation timing. A stem phase breaks that. |
-| **Taproot (BIP-341)** | Derivation done and pinned to BIP-86's published vectors; still needs the scanner to walk the `m/86'` account and a key-path signer before an address can be shown. Cheaper, and indistinguishable from a script spend at the chain level. |
-| **PayJoin (BIP-78)** | Breaks the "all inputs belong to the sender" assumption chain analysis is built on. |
+| ~~Taproot (BIP-341)~~ | **Found and spent; not yet issued.** A seed used in a Taproot wallet shows its `m/86'` coins and history and can spend them (key-path, alone or mixed with SegWit inputs). The wallet still hands out native SegWit receive addresses: switching the default is a separate decision, and an empty BTC scan already costs twice the probes it did. |
+| ~~PayJoin (BIP-78)~~ | **Sending done.** When a payment link offers it, the receiver adds a coin of its own, which breaks the "all inputs belong to the sender" assumption chain analysis is built on. The wallet cannot *receive* a PayJoin: that needs an endpoint reachable whenever someone pays, which a desktop app is not. |
 | **CoinJoin** | The heavier answer to UTXO linkage; worth doing after PayJoin. |
 | **Hardware wallets** (Ledger / Trezor) | The only real answer to Vector 1 of the threat model — malware on the user's own machine. |
 
@@ -481,8 +499,8 @@ threat model names each one as an open gap rather than implying it away.
 | 19 | Zcash | ZEC | ⚠️ Partial | Receive + balance only |
 | 20 | Linea | ETH | ✅ Working | Send, receive, balance, ERC-20 |
 | 21 | zkSync Era | ETH | ⚠️ Partial | Receive + balance only |
-| 22 | XRP Ledger | XRP | 📅 Planned | — |
-| 23 | Stellar | XLM | 📅 Planned | — |
-| 24 | Cosmos | ATOM | 📅 Planned | — |
-| 25 | Near | NEAR | 📅 Planned | — |
-| 26 | Polkadot | DOT | 📅 Planned | — |
+| 22 | XRP Ledger | XRP | ⚠️ Partial | Receive + balance only |
+| 23 | Stellar | XLM | ⚠️ Partial | Receive + balance only |
+| 24 | Cosmos | ATOM | ⚠️ Partial | Receive + available balance only |
+| 25 | Near | NEAR | ⚠️ Partial | Receive + balance of the implicit account only |
+| 26 | Polkadot | DOT | ⚠️ Partial | Receive + balance (Asset Hub + relay) only |

@@ -66,6 +66,9 @@ public static class PublicHttp
         /// the most identity-linked traffic the wallet makes, and the last thing that should share a
         /// circuit with address lookups.</summary>
         ExchangeAccount,
+        /// <summary>A PayJoin receiver's endpoint (BIP-78). It is handed a signed payment naming every
+        /// input, so it gets a circuit of its own rather than the one the explorer sees broadcasts on.</summary>
+        Payjoin,
     }
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<NetworkPurpose, HttpClient>
@@ -332,12 +335,199 @@ public sealed class PublicChainBalanceClient
                 ChainId.Sol => await GetSolAsync(address, cancellationToken),
                 ChainId.Ton => await GetTonAsync(address, cancellationToken),
                 ChainId.Ada => await GetAdaAsync(address, cancellationToken),
+                ChainId.Xrp => await GetXrpAsync(address, cancellationToken),
+                ChainId.Xlm => await GetXlmAsync(address, cancellationToken),
+                ChainId.Atom => await GetAtomAsync(address, cancellationToken),
+                ChainId.Near => await GetNearAsync(address, cancellationToken),
+                ChainId.Dot => await GetDotAsync(address, cancellationToken),
                 _ => null,
             };
         }
         catch
         {
             return null;
+        }
+    }
+
+    /// <summary>The XRP Ledger JSON-RPC root: the user's chosen server, or the XRPL Labs cluster.</summary>
+    private static string XrpRoot => ChainEndpoints.Resolve("XRP", "https://xrplcluster.com");
+
+    /// <summary>
+    /// XRP balance from <c>account_info</c> at the last validated ledger (roadmap N.4). An address the
+    /// ledger does not know yet is a real zero; any other failure is unknown — see
+    /// <see cref="XrpLedger.ParseAccountInfo"/>.
+    /// </summary>
+    private static Task<ChainBalance?> GetXrpAsync(string address, CancellationToken ct) =>
+        FirstAnswerAsync("XRP", XrpRoot, root => ReadXrpAsync(root, address, ct), ct);
+
+    private static async Task<ChainBalance?> ReadXrpAsync(string root, string address, CancellationToken ct)
+    {
+        using var res = await Http.PostAsJsonAsync(root, XrpLedger.AccountInfoRequest(address), ct);
+        if (!res.IsSuccessStatusCode) return null;
+        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+        if (!doc.RootElement.TryGetProperty("result", out var result)) return null;
+
+        return XrpLedger.ParseAccountInfo(result) is { } xrp
+            ? new ChainBalance(ChainId.Xrp, address, xrp, "XRP")
+            : null;
+    }
+
+    private static string DotAssetHubRoot => ChainEndpoints.Resolve("DOT", "https://polkadot-asset-hub-rpc.polkadot.io");
+    private static string DotRelayRoot => ChainEndpoints.Resolve("DOT-RELAY", "https://rpc.polkadot.io");
+
+    /// <summary>
+    /// DOT on the account, Asset Hub and relay chain together (roadmap N.8). Both must answer: half a
+    /// balance is not a balance, so one failed read makes the whole thing unknown.
+    /// </summary>
+    private static async Task<ChainBalance?> GetDotAsync(string address, CancellationToken ct)
+    {
+        if (!Umbrella.Wallet.Core.Polkadot.Ss58.TryDecode(address, out var prefix, out var accountId) ||
+            prefix != Umbrella.Wallet.Core.Polkadot.Ss58.PolkadotPrefix)
+            return null;
+
+        var key = Umbrella.Wallet.Core.Polkadot.PolkadotAccounts.SystemAccountKey(accountId);
+        var hub = await FirstAnswerAsync("DOT", DotAssetHubRoot, root => BoxAsync(ReadDotAccountAsync(root, key, ct)), ct);
+        if (hub is null) return null;
+        var relay = await FirstAnswerAsync("DOT-RELAY", DotRelayRoot, root => BoxAsync(ReadDotAccountAsync(root, key, ct)), ct);
+        if (relay is null) return null;
+
+        return new ChainBalance(ChainId.Dot, address, hub.Value + relay.Value, "DOT");
+    }
+
+    private static async Task<Box<decimal>?> BoxAsync(Task<decimal?> read) =>
+        await read is { } value ? new Box<decimal>(value) : null;
+
+    private sealed record Box<T>(T Value) where T : struct;
+
+    /// <summary>
+    /// The first server that answers, among <see cref="ChainEndpoints.Candidates"/>. A server that
+    /// fails or times out hands over to the next; only when all have failed is the balance unknown.
+    /// Cancellation by the caller is never swallowed.
+    /// </summary>
+    private static async Task<T?> FirstAnswerAsync<T>(
+        string symbol, string defaultRoot, Func<string, Task<T?>> read, CancellationToken ct) where T : class
+    {
+        foreach (var root in ChainEndpoints.Candidates(symbol, defaultRoot))
+        {
+            try
+            {
+                if (await read(root) is { } answer) return answer;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                // This server failed; the next one is asked.
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>System.Account at the FINALIZED head of one chain — never a block that can still be
+    /// reorganised away.</summary>
+    private static async Task<decimal?> ReadDotAccountAsync(string root, string storageKey, CancellationToken ct)
+    {
+        using var headRes = await Http.PostAsJsonAsync(root,
+            new { id = 1, jsonrpc = "2.0", method = "chain_getFinalizedHead", @params = Array.Empty<string>() }, ct);
+        if (!headRes.IsSuccessStatusCode) return null;
+        using var headDoc = await JsonDocument.ParseAsync(await headRes.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+        if (!headDoc.RootElement.TryGetProperty("result", out var h) || h.ValueKind != JsonValueKind.String) return null;
+
+        using var res = await Http.PostAsJsonAsync(root,
+            new { id = 2, jsonrpc = "2.0", method = "state_getStorage", @params = new[] { storageKey, h.GetString()! } }, ct);
+        if (!res.IsSuccessStatusCode) return null;
+        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+
+        // An "error" member instead of "result" is a failed read, not an empty account.
+        if (!doc.RootElement.TryGetProperty("result", out var r)) return null;
+        return r.ValueKind switch
+        {
+            JsonValueKind.Null => Umbrella.Wallet.Core.Polkadot.PolkadotAccounts.ParseAccountInfo(null, entryMissing: true),
+            JsonValueKind.String => Umbrella.Wallet.Core.Polkadot.PolkadotAccounts.ParseAccountInfo(r.GetString(), entryMissing: false),
+            _ => null,
+        };
+    }
+
+    /// <summary>The NEAR JSON-RPC root: the user's chosen server, or the NEAR Foundation's.</summary>
+    private static string NearRoot => ChainEndpoints.Resolve("NEAR", "https://rpc.mainnet.near.org");
+
+    /// <summary>NEAR balance of the implicit account at final finality (roadmap N.7).</summary>
+    private static Task<ChainBalance?> GetNearAsync(string address, CancellationToken ct) =>
+        NearAccounts.IsImplicitAccountId(address)
+            ? FirstAnswerAsync("NEAR", NearRoot, root => ReadNearAsync(root, address, ct), ct)
+            : Task.FromResult<ChainBalance?>(null);
+
+    private static async Task<ChainBalance?> ReadNearAsync(string root, string address, CancellationToken ct)
+    {
+        using var res = await Http.PostAsJsonAsync(root, NearAccounts.ViewAccountRequest(address), ct);
+        if (!res.IsSuccessStatusCode) return null;
+        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+
+        return NearAccounts.ParseViewAccount(doc.RootElement) is { } near
+            ? new ChainBalance(ChainId.Near, address, near, "NEAR")
+            : null;
+    }
+
+    /// <summary>The Cosmos Hub REST root: the user's chosen server, or PublicNode.</summary>
+    private static string AtomRoot => ChainEndpoints.Resolve("ATOM", "https://cosmos-rest.publicnode.com");
+
+    /// <summary>Available (not staked) ATOM from the bank module (roadmap N.6).</summary>
+    private static Task<ChainBalance?> GetAtomAsync(string address, CancellationToken ct) =>
+        CosmosHub.IsValidAddress(address)
+            ? FirstAnswerAsync("ATOM", AtomRoot, root => ReadAtomAsync(root, address, ct), ct)
+            : Task.FromResult<ChainBalance?>(null);
+
+    private static async Task<ChainBalance?> ReadAtomAsync(string root, string address, CancellationToken ct)
+    {
+        using var res = await Http.GetAsync(
+            $"{root}/cosmos/bank/v1beta1/balances/{address}/by_denom?denom={CosmosHub.Denom}", ct);
+        JsonDocument? doc = null;
+        try
+        {
+            if (res.IsSuccessStatusCode)
+                doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+
+            return CosmosHub.ParseBalance((int)res.StatusCode, doc?.RootElement) is { } atom
+                ? new ChainBalance(ChainId.Atom, address, atom, "ATOM")
+                : null;
+        }
+        finally
+        {
+            doc?.Dispose();
+        }
+    }
+
+    /// <summary>Stellar's Horizon root: the user's chosen server, or the SDF's.</summary>
+    private static string XlmRoot => ChainEndpoints.Resolve("XLM", "https://horizon.stellar.org");
+
+    /// <summary>
+    /// Native XLM balance from Horizon (roadmap N.5). A 404 is an address nobody has funded yet — a
+    /// real zero; any other failure is unknown. See <see cref="StellarHorizon.ParseAccount"/>.
+    /// </summary>
+    private static Task<ChainBalance?> GetXlmAsync(string address, CancellationToken ct) =>
+        StellarKeys.IsValidAccountId(address)
+            ? FirstAnswerAsync("XLM", XlmRoot, root => ReadXlmAsync(root, address, ct), ct)
+            : Task.FromResult<ChainBalance?>(null);
+
+    private static async Task<ChainBalance?> ReadXlmAsync(string root, string address, CancellationToken ct)
+    {
+        using var res = await Http.GetAsync($"{root}/accounts/{address}", ct);
+        JsonDocument? doc = null;
+        try
+        {
+            if (res.IsSuccessStatusCode)
+                doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+
+            return StellarHorizon.ParseAccount((int)res.StatusCode, doc?.RootElement) is { } xlm
+                ? new ChainBalance(ChainId.Xlm, address, xlm, "XLM")
+                : null;
+        }
+        finally
+        {
+            doc?.Dispose();
         }
     }
 
@@ -366,11 +556,32 @@ public sealed class PublicChainBalanceClient
             $"{ChainEndpoints.Resolve("ADA", "https://api.koios.rest")}/api/v1/address_info", body, ct);
         if (!res.IsSuccessStatusCode) return null;
         using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-        if (doc.RootElement.ValueKind != JsonValueKind.Array || doc.RootElement.GetArrayLength() == 0) return null;
-        if (!doc.RootElement[0].TryGetProperty("balance", out var b)) return null;
-        var lovelace = b.ValueKind == JsonValueKind.String ? b.GetString() : b.GetRawText();
-        if (!decimal.TryParse(lovelace, NumberStyles.Any, CultureInfo.InvariantCulture, out var raw)) return null;
-        return new ChainBalance(ChainId.Ada, address, raw / 1_000_000m, "ADA");
+        return ParseKoiosBalance(doc.RootElement) is { } ada ? new ChainBalance(ChainId.Ada, address, ada, "ADA") : null;
+    }
+
+    /// <summary>
+    /// Reads Koios's <c>address_info</c> answer. Koios answers <c>[]</c> — with a 200 — for an address
+    /// that has never appeared on chain, and that is a real zero: every new Cardano wallet read as
+    /// "balance unavailable" because this empty list was taken for "no answer". Anything that is not
+    /// an array, or a row without a readable balance, is still unknown.
+    /// </summary>
+    public static decimal? ParseKoiosBalance(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Array) return null;
+        if (root.GetArrayLength() == 0) return 0m;
+
+        var row = root[0];
+        if (row.ValueKind != JsonValueKind.Object || !row.TryGetProperty("balance", out var b)) return null;
+        var lovelace = b.ValueKind switch
+        {
+            JsonValueKind.String => b.GetString(),
+            JsonValueKind.Number => b.GetRawText(),
+            _ => null,
+        };
+
+        return decimal.TryParse(lovelace, NumberStyles.None, CultureInfo.InvariantCulture, out var raw)
+            ? raw / 1_000_000m
+            : null;
     }
 
     private static async Task<ChainBalance?> GetBtcAsync(string address, CancellationToken ct)
@@ -419,28 +630,29 @@ public sealed class PublicChainBalanceClient
     }
 
     /// <summary>
-    /// Zcash transparent balance. There is no single reliable keyless ZEC endpoint (Haskoin has no ZEC,
-    /// and Blockchair rate-limits), so we try Trezor's public Blockbook first and fall back to Blockchair.
-    /// If both are unreachable the balance simply reads as unknown (null) rather than wrong — never 0.
+    /// Zcash transparent balance, from Blockchair's keyless API — the only keyless ZEC source left:
+    /// Haskoin has no ZEC, and Trezor's Blockbook now refuses everything but Trezor Suite (403).
+    ///
+    /// Blockchair's free tier blacklists an IP that asks too often (HTTP 430), and the wallet itself
+    /// earned that by reading ZEC on every sixty-second refresh — about 1,400 requests a day for one
+    /// address. A successful answer is now reused for <see cref="SlowSourceReuse"/>; unreachable still
+    /// reads as unknown (null), never as 0.
     /// </summary>
-    private static async Task<ChainBalance?> GetZecAsync(string address, CancellationToken ct) =>
-        await GetBlockbookAsync("https://zec1.trezor.io", ChainId.Zec, "ZEC", address, 8, ct)
-        ?? await GetBlockchairAsync("zcash", ChainId.Zec, "ZEC", address, address, ct);
-
-    /// <summary>Balance from a Blockbook v2 explorer (Trezor's public instances). The balance is a
-    /// string in the coin's smallest unit; unconfirmed is reported separately and not counted here.</summary>
-    private static async Task<ChainBalance?> GetBlockbookAsync(
-        string baseUrl, ChainId chain, string symbol, string address, int decimals, CancellationToken ct)
+    private static async Task<ChainBalance?> GetZecAsync(string address, CancellationToken ct)
     {
-        using var res = await Http.GetAsync(
-            $"{baseUrl}/api/v2/address/{Uri.EscapeDataString(address)}?details=basic", ct);
-        if (!res.IsSuccessStatusCode) return null;
-        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-        if (!doc.RootElement.TryGetProperty("balance", out var b)) return null;
-        var raw = b.ValueKind == JsonValueKind.String ? b.GetString() : b.GetRawText();
-        if (!System.Numerics.BigInteger.TryParse(raw, out var sats)) return null;
-        return new ChainBalance(chain, address, (decimal)sats / (decimal)Math.Pow(10, decimals), symbol);
+        var key = $"ZEC:{address}";
+        if (SlowSourceCache.TryGetValue(key, out var cached) && DateTimeOffset.UtcNow - cached.At < SlowSourceReuse)
+            return cached.Balance;
+
+        var fresh = await GetBlockchairAsync("zcash", ChainId.Zec, "ZEC", address, address, ct);
+        if (fresh is not null) SlowSourceCache[key] = (DateTimeOffset.UtcNow, fresh);
+        return fresh;
     }
+
+    /// <summary>How long an answer from a strictly rate-limited free source is reused before asking again.</summary>
+    public static readonly TimeSpan SlowSourceReuse = TimeSpan.FromMinutes(10);
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTimeOffset At, ChainBalance Balance)> SlowSourceCache = new();
 
     /// <summary>
     /// Native balance from Blockchair's keyless dashboards endpoint. Kept only as a FALLBACK (for ZEC):
@@ -827,6 +1039,48 @@ public sealed class PublicChainBalanceClient
     }
 
     /// <summary>
+    /// Every SPL token held at a Solana address, under both token programs (roadmap N.3). An error
+    /// reading EITHER program returns nothing rather than half a list — the caller keeps what it
+    /// showed before instead of dropping rows that are really there.
+    /// </summary>
+    public async Task<IReadOnlyList<TokenBalance>?> GetSolTokensAsync(
+        string address, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(address)) return [];
+
+        var holdings = new List<Umbrella.Wallet.Core.Chains.SplHolding>();
+        foreach (var program in new[] { Umbrella.Wallet.Core.Chains.SolanaTokens.TokenProgram, Umbrella.Wallet.Core.Chains.SolanaTokens.Token2022Program })
+        {
+            var box = await FirstAnswerAsync("SOL", "https://api.mainnet-beta.solana.com",
+                async root =>
+                {
+                    using var res = await Http.PostAsJsonAsync(root,
+                        Umbrella.Wallet.Core.Chains.SolanaTokens.TokenAccountsRequest(address.Trim(), program), cancellationToken);
+                    if (!res.IsSuccessStatusCode) return null;
+                    using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
+                    return Umbrella.Wallet.Core.Chains.SolanaTokens.ParseTokenAccounts(doc.RootElement) is { } list
+                        ? new SplList(list)
+                        : null;
+                },
+                cancellationToken);
+
+            if (box is null) return null;
+            holdings.AddRange(box.Items);
+        }
+
+        return holdings.Select(h =>
+        {
+            var known = Umbrella.Wallet.Core.Chains.SolanaTokens.KnownMints.TryGetValue(h.Mint, out var id);
+            return new TokenBalance(
+                known ? id.Symbol : "SPL",
+                known ? id.Name : $"Unverified token {h.Mint[..4]}…{h.Mint[^4..]}",
+                h.Amount, h.Mint, h.Decimals, Unverified: !known);
+        }).ToList();
+    }
+
+    private sealed record SplList(IReadOnlyList<Umbrella.Wallet.Core.Chains.SplHolding> Items);
+
+    /// <summary>
     /// Every Jetton held at a TON address — USD&#8377; on TON above all, which is how a great many people
     /// actually hold dollars on Telegram's chain. Keyless, via toncenter's v3 index.
     /// </summary>
@@ -920,9 +1174,21 @@ public sealed class PublicChainBalanceClient
                     contract = friendly.GetString() ?? master!;
                 }
 
+                // The wallet row's own address is this owner's jetton wallet — the contract a
+                // transfer is sent to (roadmap N.3). Without it the token is display-only.
+                var jettonWallet = wallet.TryGetProperty("address", out var wa) ? wa.GetString() ?? "" : "";
+                if (jettonWallet.Length > 0 &&
+                    addressBook.ValueKind == JsonValueKind.Object &&
+                    addressBook.TryGetProperty(jettonWallet, out var walletEntry) &&
+                    walletEntry.TryGetProperty("user_friendly", out var walletFriendly) &&
+                    walletFriendly.ValueKind == JsonValueKind.String)
+                {
+                    jettonWallet = walletFriendly.GetString() ?? jettonWallet;
+                }
+
                 result.Add(new TokenBalance(
                     NormaliseJettonSymbol(symbol!), string.IsNullOrWhiteSpace(name) ? symbol! : name!,
-                    amount, contract, decimals));
+                    amount, contract, decimals, jettonWallet));
             }
         }
         catch
@@ -984,7 +1250,17 @@ public sealed class PublicChainBalanceClient
 }
 
 /// <summary>A fungible token balance (TRC-20 / ERC-20) held at an address.</summary>
-public sealed record TokenBalance(string Symbol, string Name, decimal Amount, string Contract, int Decimals);
+public sealed record TokenBalance(
+    string Symbol, string Name, decimal Amount, string Contract, int Decimals,
+    /// <summary>
+    /// For a jetton: the SENDER's own jetton-wallet contract, which is what a transfer message is
+    /// addressed to. The master in <see cref="Contract"/> identifies the token; it cannot receive a
+    /// transfer, and sending to it would be sending tokens to the issuer.
+    /// </summary>
+    string TokenWallet = "",
+    /// <summary>True when the wallet cannot vouch for the token's identity (an SPL mint it does not
+    /// know): shown by its mint, and folded away with suspected spam unless it has a market price.</summary>
+    bool Unverified = false);
 
 /// <summary>An NFT collection held at an address (name + count only — no image fetch, for privacy).</summary>
 public sealed record NftHolding(string Name, string Symbol, int Count, string Standard, string Network);
@@ -1021,6 +1297,9 @@ public sealed class PublicMarketRatesClient
         ["UNI"] = "uniswap",
         ["XRP"] = "ripple",
         ["DOT"] = "polkadot",
+        ["XLM"] = "stellar",
+        ["ATOM"] = "cosmos",
+        ["NEAR"] = "near",
         ["BCH"] = "bitcoin-cash",
         ["ZEC"] = "zcash",
         // Tether trades a cent either side of $1; quoting it beats assuming exactly 1.00.
@@ -1046,11 +1325,18 @@ public sealed class PublicMarketRatesClient
         ["UNI"] = "UNIUSDT",
         ["XRP"] = "XRPUSDT",
         ["DOT"] = "DOTUSDT",
+        ["XLM"] = "XLMUSDT",
+        ["ATOM"] = "ATOMUSDT",
+        ["NEAR"] = "NEARUSDT",
         ["BCH"] = "BCHUSDT",
         ["ZEC"] = "ZECUSDT",
         ["USDC"] = "USDCUSDT",
         // CRO has no Binance USDT pair — it prices via CoinGecko only.
     };
+
+    /// <summary>True when a coin has somewhere to get a price from. A chain without one shows its
+    /// fiat value as $0.00 — the ChainPriceCoverage test keeps a new chain from shipping like that.</summary>
+    public static bool HasPriceSource(string symbol) => CoinIds.ContainsKey(symbol) || BinancePairs.ContainsKey(symbol);
 
     /// <summary>Chart windows offered in the Market view.</summary>
     public static IReadOnlyList<string> ChartRanges { get; } = ["1H", "24H", "7D", "30D", "1Y"];

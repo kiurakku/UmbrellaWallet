@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Numerics;
 using System.Text.Json;
 using Nethereum.Signer;
+using Umbrella.Wallet.Core.Chains;
 
 namespace Umbrella.Wallet.Infrastructure.Network;
 
@@ -332,12 +333,127 @@ public sealed class EthTransactionSender
         return (null, "All public Ethereum RPCs are unreachable — check your connection (or Tor).");
     }
 
+    /// <summary>
+    /// Quotes an ERC-20 transfer (roadmap N.1): a transaction TO the token contract, carrying zero
+    /// ether, with the real recipient and amount in the calldata.
+    ///
+    /// Two things here lose money if they are wrong, so neither is taken on trust:
+    ///
+    /// <list type="number">
+    /// <item>The <b>decimals</b> come from the caller, and the amount is converted in exact integer
+    /// arithmetic by <see cref="Erc20Transfer"/>, which REFUSES an amount finer than the token can
+    /// represent rather than rounding it.</item>
+    /// <item>The <b>token balance</b> is read from the contract itself with an <c>eth_call</c> to
+    /// <c>balanceOf</c>, not from whatever the wallet last displayed. A cached row that is a minute
+    /// old is not a reason to build a transaction that will revert and burn the fee.</item>
+    /// </list>
+    ///
+    /// The fee is paid in the chain's native coin, so the ether balance has to cover it even though
+    /// the transfer itself moves none.
+    /// </summary>
+    public async Task<(EthSendQuote? Quote, string? Error)> PrepareTokenAsync(
+        string fromAddress,
+        string contract,
+        string toAddress,
+        decimal amount,
+        int decimals,
+        EvmChain? chain = null,
+        CancellationToken ct = default)
+    {
+        chain ??= Chains["ETH"];
+        if (!IsHexAddress(contract)) return (null, "That token's contract address is not a 0x… address.");
+        if (!IsHexAddress(toAddress)) return (null, "Destination must be a 0x… (EVM) address of 42 characters.");
+        if (amount <= 0) return (null, "Amount must be positive.");
+        if (decimals is < 0 or > 36)
+        {
+            // A token whose decimals the wallet could not read is a token whose amounts it cannot
+            // compute. Refusing is the only safe answer: a guess here is wrong by powers of ten.
+            return (null, "This token did not report how many decimals it uses, so the amount cannot be computed safely.");
+        }
+
+        BigInteger baseUnits;
+        string data;
+        try
+        {
+            baseUnits = Erc20Transfer.ToBaseUnits(amount, decimals);
+            data = Erc20Transfer.EncodeCallData(toAddress, baseUnits);
+        }
+        catch (Exception ex)
+        {
+            return (null, ex.Message);
+        }
+
+        foreach (var rpc in chain.Rpcs)
+        {
+            try
+            {
+                var nonceHex = await CallAsync(rpc, "eth_getTransactionCount", new object[] { fromAddress, "pending" }, ct);
+                var gasHex = await CallAsync(rpc, "eth_gasPrice", Array.Empty<object>(), ct);
+                var feeBalanceHex = await CallAsync(rpc, "eth_getBalance", new object[] { fromAddress, "latest" }, ct);
+                var tokenBalanceHex = await CallAsync(
+                    rpc,
+                    "eth_call",
+                    new object[]
+                    {
+                        new Dictionary<string, string>
+                        {
+                            ["to"] = contract,
+                            ["data"] = Erc20Transfer.EncodeBalanceOf(fromAddress),
+                        },
+                        "latest",
+                    },
+                    ct);
+
+                if (nonceHex is null || gasHex is null || feeBalanceHex is null || tokenBalanceHex is null) continue;
+
+                var nonce = FromHex(nonceHex);
+                var paddedGasPrice = FromHex(gasHex) * 105 / 100;
+                var maxFeeWei = paddedGasPrice * Erc20Transfer.DefaultGasLimit;
+                var feeBalance = FromHex(feeBalanceHex);
+                var tokenBalance = FromHex(tokenBalanceHex);
+
+                if (tokenBalance < baseUnits)
+                {
+                    var have = Erc20Transfer.FromBaseUnits(tokenBalance, decimals);
+                    return (null, $"Insufficient token balance: the contract reports {have:0.########}, you asked to send {amount:0.########}.");
+                }
+
+                if (feeBalance < maxFeeWei)
+                {
+                    var haveFee = (decimal)feeBalance / 1_000_000_000_000_000_000m;
+                    return (null,
+                        $"A token transfer is paid for in {chain.Symbol}: balance {haveFee:0.######} {chain.Symbol}, " +
+                        $"need ~{(decimal)maxFeeWei / 1_000_000_000_000_000_000m:0.######} {chain.Symbol} for the fee.");
+                }
+
+                return (new EthSendQuote(
+                    fromAddress, contract, 0m, BigInteger.Zero, nonce, paddedGasPrice,
+                    (decimal)maxFeeWei / 1_000_000_000_000_000_000m, rpc,
+                    chain.ChainId, chain.Symbol, chain.Rpcs, data, Erc20Transfer.DefaultGasLimit), null);
+            }
+            catch
+            {
+                // try next RPC
+            }
+        }
+
+        return (null, $"All public {chain.Name} RPCs are unreachable — check your connection (or Tor).");
+    }
+
     /// <summary>Signs and broadcasts a prepared router-call (swap) quote, using its data + gas-limit.</summary>
     public async Task<EthSendResult> SignAndBroadcastSwapAsync(
+        EthSendQuote quote, byte[] privateKey, CancellationToken ct = default) =>
+        await SignAndBroadcastContractAsync(quote, privateKey, ct);
+
+    /// <summary>
+    /// Signs and broadcasts any quote that carries calldata — a swap deposit or an ERC-20 transfer.
+    /// One path, so a token send cannot drift away from the signing that was already proven.
+    /// </summary>
+    public async Task<EthSendResult> SignAndBroadcastContractAsync(
         EthSendQuote quote, byte[] privateKey, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(quote.Data))
-            return new EthSendResult(false, null, "This quote carries no swap calldata.");
+            return new EthSendResult(false, null, "This quote carries no contract calldata.");
 
         string signedHex;
         try

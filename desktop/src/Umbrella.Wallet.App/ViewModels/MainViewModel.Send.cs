@@ -15,6 +15,7 @@ using QRCoder;
 using Umbrella.Wallet.Core.Chains;
 using Umbrella.Wallet.Core.Derivation;
 using Umbrella.Wallet.Core.Amounts;
+using Umbrella.Wallet.Core.Safety;
 using Umbrella.Wallet.Core.Seed;
 using Umbrella.Wallet.Core.Utxo;
 using Umbrella.Wallet.Infrastructure;
@@ -30,8 +31,46 @@ namespace Umbrella.Wallet.App.ViewModels;
 /// </summary>
 public partial class MainViewModel
 {
+    // ---- Transport gate (roadmap P0.7) ------------------------------------------------------------
+
+    /// <summary>
+    /// The live routing state, as the gate wants it: what the user asked for beside what the network
+    /// layer is actually doing. <see cref="PublicHttp.ActiveProxy"/> is the live value, not a setting,
+    /// which is the whole point — a setting cannot tell you Tor died five minutes ago.
+    /// </summary>
+    private SendTransportState CurrentTransportState() => new(
+        TorRequested: TorEnabled,
+        TorConnected: _tor.IsRunning && _tor.BootstrapPercent >= 100,
+        KillSwitchOn: TorOnly,
+        TorProxy: _tor.ProxyUri,
+        CustomProxyRequested: CustomProxyEnabled,
+        RequestedProxy: EffectiveCustomProxy(),
+        ActiveProxy: PublicHttp.ActiveProxy);
+
+    /// <summary>
+    /// Null when this send may proceed; otherwise the reason it may not, in the user's language.
+    ///
+    /// Refusing is the point. A mismatch here means somebody is about to publish a transaction from
+    /// an IP they believe is hidden — the one privacy failure in this wallet that cannot be undone
+    /// afterwards, because the broadcast is permanent and the observer is somebody else's server.
+    /// </summary>
+    private string? TransportGateError()
+    {
+        var check = SendTransportGate.Evaluate(CurrentTransportState());
+        if (check.Allowed) return null;
+
+        return Loc.Instance[check.Reason switch
+        {
+            SendTransportReason.TorNotConnected => "gate.torNotConnected",
+            SendTransportReason.TorNotInUse => "gate.torNotInUse",
+            SendTransportReason.KillSwitchWithoutProxy => "gate.killNoProxy",
+            SendTransportReason.CustomProxyNotInUse => "gate.proxyNotInUse",
+            _ => "gate.torNotConnected",
+        }];
+    }
+
     // ---- Coin control (roadmap §3.4) --------------------------------------------------------------
-    // Opt-in manual UTXO selection for BTC/LTC/DOGE. OFF by default, and while off the send path is
+    // Opt-in manual UTXO selection on every UTXO chain. OFF by default, and while off the send path is
     // byte-identical to automatic selection. When on, only the coins the user ticks may fund the
     // spend: the planner is handed exactly that subset and never reaches outside it, so a spend can
     // avoid pulling in (and thus publicly linking) coins that belong to a different identity.
@@ -52,10 +91,23 @@ public partial class MainViewModel
     // The chain the loaded coin list belongs to, so a stale list is never applied to another chain.
     private string? _coinControlChain;
 
-    private static bool IsUtxoSendChain(string s) => s is "BTC" or "LTC" or "DOGE";
+    /// <summary>
+    /// The UTXO chains, as ONE list (roadmap P1.5).
+    ///
+    /// There were three of these, and they had drifted: the balance scan walked BTC/LTC/BCH/DOGE, the
+    /// fee selector offered all four, and coin control — plus the private-send plan that reads it —
+    /// quietly left Bitcoin Cash out. So on BCH the panel that lets you avoid linking your addresses
+    /// was simply absent, and the privacy checklist did not mention linkage at all, on a chain where
+    /// it is exactly as real as on Bitcoin.
+    ///
+    /// They all mean the same thing, so they are now the same list: the chains this wallet scans
+    /// across every address and can spend from.
+    /// </summary>
+    private static bool IsUtxoSendChain(string s) =>
+        UtxoScanChains.Contains(s, StringComparer.OrdinalIgnoreCase);
 
     // ---- Fee level (network speed) ----------------------------------------------------------------
-    // A slow/standard/fast selector for the UTXO chains (BTC/LTC/DOGE/BCH). Standard is exactly the
+    // A slow/standard/fast selector for the UTXO chains. Standard is exactly the
     // economical rate the wallet has always used, so an untouched selector never changes the fee. Only
     // the sat/vB handed to PlanSpend changes — the signing/broadcast path is completely unaffected, and
     // every level stays inside the chain's safe fee band (never below the relay floor). See FeeLevels.
@@ -66,7 +118,7 @@ public partial class MainViewModel
     /// <summary>0 = Economy, 1 = Standard, 2 = Priority. Standard by default, which equals today's fee.</summary>
     [ObservableProperty] private int _feeLevelIndex = 1;
 
-    private static bool IsUtxoFeeChain(string s) => s is "BTC" or "LTC" or "DOGE" or "BCH";
+    private static bool IsUtxoFeeChain(string s) => IsUtxoSendChain(s);
 
     private FeeLevel SelectedFeeLevel => FeeLevelIndex switch
     {
@@ -140,10 +192,7 @@ public partial class MainViewModel
         {
             if (!_utxoScans.TryGetValue(chain, out var scan) || scan is null)
             {
-                var state = _addrIndex.GetState(walletId, chain);
-                var floors = new UtxoScanFloors(
-                    state.LastIssuedExternalIndex, state.LastSeenUsedExternalIndex,
-                    state.LastIssuedInternalIndex, state.LastSeenUsedInternalIndex);
+                var floors = _addrIndex.FloorsFor(walletId, chain);
                 scan = await _utxoScanner.ScanAsync(_unlockedMnemonic!, chainId.Value, UtxoExplorerFor(chain), floors);
                 if (!scan.Partial) _utxoScans[chain] = scan;
             }
@@ -224,6 +273,16 @@ public partial class MainViewModel
         HasSendPrivacy = false;
         _sendQuote = null;
         _tonQuote = null;
+        _sendTokenSymbol = null;
+        _sendTokenAmount = 0m;
+        _payjoinPlanned = false;
+
+        // A plan belongs to the review that made it. Left over from an earlier one, it could be
+        // exported as a PSBT beside a quote for a different chain or amount.
+        _btcQuote = null;
+        _btcPlan = null;
+        _btcRequest = null;
+        _btcPlanSymbol = null;
 
         if (!IsUnlocked || _unlockedMnemonic is null)
         {
@@ -242,6 +301,14 @@ public partial class MainViewModel
         if (!AmountInput.TryParsePositive(SendAmount, out var amount))
         {
             SendError = Loc.Instance["send.errAmount"];
+            return;
+        }
+
+        // An ERC-20 picker entry carries its contract, not a ticker, so it branches before any of
+        // the chain-name normalisation below can mangle it (roadmap N.1).
+        if (ContractFromSendKey(SendChain.Trim()) is not null)
+        {
+            await PrepareTokenSendAsync(SendChain.Trim(), amount);
             return;
         }
 
@@ -317,6 +384,14 @@ public partial class MainViewModel
                 return;
             }
 
+            // The last thing before the network: is the route the user chose the route that exists?
+            // Preparing already hands a public server this wallet's address (roadmap P0.7).
+            if (TransportGateError() is { } tronRouteError)
+            {
+                SendError = tronRouteError;
+                return;
+            }
+
             _sendSymbol = symbol;
             await RunBusyAsync(async () =>
             {
@@ -353,6 +428,15 @@ public partial class MainViewModel
         if (from is null || !IsRealAddress(from.Address))
         {
             SendError = string.Format(Loc.Instance["send.errNoAccount"], chain);
+            return;
+        }
+
+        // The last thing before the network. Local problems — a malformed address, a coin this
+        // build cannot send — are reported as themselves above; from here on the wallet is about to
+        // talk to somebody, so the route has to be the one that was chosen (roadmap P0.7).
+        if (TransportGateError() is { } routeError)
+        {
+            SendError = routeError;
             return;
         }
 
@@ -421,12 +505,9 @@ public partial class MainViewModel
                     if (!_utxoScans.TryGetValue(chain, out var scan) || scan is null)
                     {
                         var chainId0 = ParseChain(chain)!.Value;
-                        var state0 = _addrIndex.GetState(walletId, chain);
-                        var floors0 = new UtxoScanFloors(
-                            state0.LastIssuedExternalIndex, state0.LastSeenUsedExternalIndex,
-                            state0.LastIssuedInternalIndex, state0.LastSeenUsedInternalIndex);
                         scan = await _utxoScanner.ScanAsync(
-                            _unlockedMnemonic!, chainId0, UtxoExplorerFor(chain), floors0);
+                            _unlockedMnemonic!, chainId0, UtxoExplorerFor(chain),
+                            _addrIndex.FloorsFor(walletId, chain));
                         if (!scan.Partial) _utxoScans[chain] = scan;
                     }
 
@@ -476,6 +557,23 @@ public partial class MainViewModel
                         : $"Network fee ≈ {Fmt(quote.FeeAmount)} {chain} · {quote.InputCount} input(s) · change returns to a fresh internal address";
                     if (CoinControlOn && _coinControlChain == chain)
                         SendQuoteFee += $" · coin control: funded from {plan.Inputs.Count} of your selected coin(s)";
+
+                    // PayJoin (P2.2): said here, with its upper bound, so Confirm never does something
+                    // the review did not describe.
+                    if (PayjoinEndpointFor(chain) is not null)
+                    {
+                        if (BitcoinTransactionSender.CanAttemptPayjoin(chain, plan))
+                        {
+                            _payjoinPlanned = true;
+                            SendQuoteFee += "\n" + string.Format(
+                                Loc.Instance["send.payjoinReview"],
+                                BitcoinTransactionSender.PayjoinOfferCapSat(plan, request));
+                        }
+                        else
+                        {
+                            SendQuoteFee += "\n" + Loc.Instance["send.payjoinNotAttempted"];
+                        }
+                    }
 
                     // "What will happen", from the plan rather than the request: the plan is the source
                     // of truth for what is actually signed, including the change coming back to us.
@@ -579,10 +677,27 @@ public partial class MainViewModel
     /// </summary>
     private static TimeSpan UtxoScanCooldown(string symbol) => symbol.ToUpperInvariant() switch
     {
-        "DOGE" => TimeSpan.FromMinutes(10),   // BlockCypher, keyless: ~100 requests an hour
+        "DOGE" => TimeSpan.FromMinutes(15),   // BlockCypher, keyless: ~100 requests an hour
         "BCH" => TimeSpan.FromMinutes(4),     // Haskoin, more generous but still somebody's server
-        _ => TimeSpan.Zero,                   // Esplora — unchanged from before
+        // Esplora. Every sixty seconds was enough for Blockstream to start answering 429 — and a
+        // rate-limited explorer is an unreadable balance on the user's screen.
+        _ => TimeSpan.FromMinutes(2),
     };
+
+    /// <summary>When each chain last had a FULL gap-limit walk, as opposed to a refresh.</summary>
+    private readonly Dictionary<string, DateTimeOffset> _lastFullUtxoScan = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// How often a chain gets a full gap-limit walk. In between, a refresh re-reads every address the
+    /// wallet has issued or seen used plus <see cref="UtxoAccountScanner.RefreshGapLimit"/> past them —
+    /// roughly a fifth of the requests. The first scan after unlock is always full.
+    /// </summary>
+    private static TimeSpan FullUtxoScanInterval(string symbol) =>
+        symbol.Equals("DOGE", StringComparison.OrdinalIgnoreCase) ? TimeSpan.FromHours(2) : TimeSpan.FromMinutes(30);
+
+    private bool DueForFullUtxoScan(string symbol) =>
+        !_lastFullUtxoScan.TryGetValue(symbol, out var last) ||
+        DateTimeOffset.UtcNow - last >= FullUtxoScanInterval(symbol);
 
     /// <summary>True when this chain should be walked now. Always true until it has been walked once:
     /// a cooldown must never be the reason a balance has never been read at all.</summary>
@@ -623,19 +738,20 @@ public partial class MainViewModel
             targets.Add((symbol, account, chain.Value));
         }
 
+        var fullWalk = targets.ToDictionary(t => t.Symbol, t => DueForFullUtxoScan(t.Symbol), StringComparer.OrdinalIgnoreCase);
+
         async Task<UtxoScanResult?> ScanOrNullAsync(string symbol, ChainId chain)
         {
             try
             {
-                var state = _addrIndex.GetState(walletId, symbol);
-                var floors = new UtxoScanFloors(
-                    state.LastIssuedExternalIndex, state.LastSeenUsedExternalIndex,
-                    state.LastIssuedInternalIndex, state.LastSeenUsedInternalIndex);
-
                 return await _utxoScanner.ScanAsync(
-                    _unlockedMnemonic!, chain, UtxoExplorerFor(symbol), floors, ct: ct);
+                    _unlockedMnemonic!, chain, UtxoExplorerFor(symbol),
+                    _addrIndex.FloorsFor(walletId, symbol), ct: ct,
+                    gapLimit: fullWalk[symbol] ? null : UtxoAccountScanner.RefreshGapLimit);
             }
-            catch (OperationCanceledException) { throw; }
+            // Only our own cancel ends the refresh. A request that timed out used to arrive here as a
+            // cancel too, and rethrowing it aborted every other chain's refresh along with this one.
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch
             {
                 // Leave the prior amount in place; the next refresh retries.
@@ -649,15 +765,28 @@ public partial class MainViewModel
         {
             var (symbol, account, _) = targets[i];
             var scan = scans[i];
-            if (scan is null) continue;
-            if (!scan.Partial) _lastUtxoScan[symbol] = DateTimeOffset.UtcNow;
+            if (scan is null)
+            {
+                // The walk failed outright. Whatever is on the row is the last thing we knew, and it
+                // must stop presenting itself as current — a rate-limited explorer is not a zero
+                // balance (MANIFESTO §4 / P0.6).
+                var (_, failedState) = BalanceReadout.Apply(null, account.Amount, account.Balance);
+                var at = Accounts.IndexOf(account);
+                if (at >= 0) Accounts[at] = account with { Balance = failedState };
+                continue;
+            }
+
+            if (!scan.Partial)
+            {
+                _lastUtxoScan[symbol] = DateTimeOffset.UtcNow;
+                if (fullWalk[symbol]) _lastFullUtxoScan[symbol] = DateTimeOffset.UtcNow;
+            }
 
             // A partial (network-degraded) scan must not lower a balance we already trust.
             if (scan.Partial && _utxoScans.ContainsKey(symbol)) continue;
 
             _utxoScans[symbol] = scan;
-            if (scan.HighestUsedExternalIndex is { } he) _addrIndex.RecordSeenUsed(walletId, symbol, 0, he);
-            if (scan.HighestUsedInternalIndex is { } hi) _addrIndex.RecordSeenUsed(walletId, symbol, 1, hi);
+            _addrIndex.RecordScan(walletId, symbol, scan);
 
             var amount = scan.TotalSat / 100_000_000m;
             var (usd, change) = prices.GetValueOrDefault(symbol);
@@ -669,6 +798,9 @@ public partial class MainViewModel
                     Amount = (double)amount,
                     Price = (double)usd,
                     Change24h = (double)change,
+                    // A partial scan reached some addresses and not others: the figure is a floor,
+                    // not the balance, so it is labelled as the last known one rather than current.
+                    Balance = scan.Partial ? BalanceRead.Cached : BalanceRead.Live,
                 };
             }
         }
@@ -679,6 +811,125 @@ public partial class MainViewModel
 
     private static string Fmt(decimal value) =>
         value.ToString("0.########", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Quotes an ERC-20 transfer: to the token's contract, carrying no ether, with the recipient and
+    /// amount in the calldata (roadmap N.1).
+    ///
+    /// Everything fund-critical is read rather than assumed — the contract from the holdings row, the
+    /// decimals that contract reported, and the token balance from the contract itself at quote time.
+    /// A row whose decimals were never read is refused: a guess there is wrong by powers of ten.
+    /// </summary>
+    private async Task PrepareTokenSendAsync(string sendKey, decimal amount)
+    {
+        var token = TokenAccountFor(sendKey);
+        if (token is null)
+        {
+            SendError = Loc.Instance["send.errTokenGone"];
+            return;
+        }
+
+        var onTron = IsTronTokenKey(sendKey);
+        var onTon = IsJettonKey(sendKey);
+        var fundingSymbol = onTon ? "TON" : onTron ? "TRX" : "ETH";
+        var fundingChain = onTon ? "TON" : onTron ? "TRON" : "Ethereum";
+
+        var from = Accounts.FirstOrDefault(a => a.Symbol == fundingSymbol && a.SupportStatus is "Ready" or "Receive only");
+        if (from is null || !IsRealAddress(from.Address))
+        {
+            SendError = string.Format(Loc.Instance["send.errNoAccount"], fundingChain);
+            return;
+        }
+
+        // The review says what will happen before anything is signed: the token amount, and that the
+        // fee comes out of ETH rather than out of the token being sent.
+        SendReviewTo = SendTo.Trim();
+        SendReviewAmount = $"{Fmt(amount)} {token.Symbol}";
+        SendReviewFiat = FiatEquivalentLabel(token.Symbol, amount);
+        SendReviewDebit = string.Format(Loc.Instance["send.debitToken"], SendReviewAmount);
+
+        if (TransportGateError() is { } routeError)
+        {
+            SendError = routeError;
+            return;
+        }
+
+        _sendSymbol = token.Symbol;
+        await RunBusyAsync(async () =>
+        {
+            StatusMessage = Loc.Instance["status.reviewTransfer"];
+
+            if (onTon)
+            {
+                // The message goes to the sender's OWN jetton wallet with TON attached for gas; that
+                // contract credits the recipient's jetton wallet. Two addresses, not one.
+                var (jettonQuote, jettonError) = await _tonSender.PrepareJettonAsync(
+                    from.Address, token.TokenWallet, SendTo.Trim(), amount, token.TokenDecimals, token.Symbol);
+
+                if (jettonQuote is null)
+                {
+                    SendError = jettonError ?? Loc.Instance["send.errPrepareFailed"];
+                    return;
+                }
+
+                _tonQuote = jettonQuote;
+                _sendTokenAmount = amount;
+                HasSendQuote = true;
+                SendQuoteSummary = $"Send {Fmt(amount)} {token.Symbol}  →  {SendTo.Trim()}";
+                SendQuoteFee = Loc.Instance["send.jettonFee"];
+                StatusMessage = Loc.Instance["status.reviewTransfer"];
+                return;
+            }
+
+            if (onTron)
+            {
+                // TRON builds the unsigned transaction server-side and the wallet signs its txID;
+                // the fee comes out of TRX energy/bandwidth, never out of the token.
+                var (tronQuote, tronError) = await _tronSender.PrepareTokenAsync(
+                    from.Address, token.Contract, SendTo.Trim(), amount, token.TokenDecimals, token.Symbol);
+
+                if (tronQuote is null)
+                {
+                    SendError = tronError ?? Loc.Instance["send.errPrepareFailed"];
+                    return;
+                }
+
+                _tronQuote = tronQuote;
+                _sendTokenAmount = amount;
+                HasSendQuote = true;
+                SendQuoteSummary = $"Send {Fmt(amount)} {token.Symbol}  →  {SendTo.Trim()}";
+                SendQuoteFee = Loc.Instance["send.trc20Fee"];
+                StatusMessage = Loc.Instance["status.reviewTransfer"];
+                return;
+            }
+
+            var (quote, error) = await _ethSender.PrepareTokenAsync(
+                from.Address, token.Contract, SendTo.Trim(), amount, token.TokenDecimals);
+
+            if (quote is null)
+            {
+                SendError = error ?? Loc.Instance["send.errPrepareFailed"];
+                return;
+            }
+
+            _sendQuote = quote;
+            _sendTokenSymbol = token.Symbol;
+            _sendTokenAmount = amount;
+            HasSendQuote = true;
+            SendQuoteSummary = $"Send {Fmt(amount)} {token.Symbol}  →  {SendTo.Trim()}";
+            SendQuoteFee = string.Format(
+                Loc.Instance["send.erc20Fee"], Fmt(quote.MaxFeeEth), new Uri(quote.Rpc).Host);
+            StatusMessage = Loc.Instance["status.reviewTransfer"];
+        });
+    }
+
+    /// <summary>The ticker of the ERC-20 being sent, so Confirm can route the quote to the contract
+    /// path and the activity row can name the token rather than "ETH".</summary>
+    private string? _sendTokenSymbol;
+
+    /// <summary>The token amount the review showed. The transaction itself carries zero ether, so
+    /// this is the only place the real figure survives to the activity feed.</summary>
+    private decimal _sendTokenAmount;
 
     /// <summary>
     /// Step 2: the user explicitly confirms — derive the key, sign locally, broadcast, zero the key.
@@ -695,11 +946,46 @@ public partial class MainViewModel
             return;
         }
 
+        // Checked AGAIN at the last moment, not only at Review: Tor can drop, or the proxy can be
+        // changed, between reading a quote and confirming it. A broadcast is the one request that
+        // ties an IP to specific coins permanently, so it fails closed (roadmap P0.7).
+        if (TransportGateError() is { } routeError)
+        {
+            SendError = routeError;
+            return;
+        }
+
         await RunBusyAsync(async () =>
         {
             StatusMessage = Loc.Instance["status.signingBroadcast"];
             switch (_sendSymbol)
             {
+                // An ERC-20 transfer, matched FIRST: its quote carries calldata and goes to the
+                // token contract, so it must never fall into the native-send case below, which would
+                // sign a plain transfer to the contract address and burn the fee for nothing.
+                case not null when _sendTokenSymbol is not null && _sendQuote is not null:
+                {
+                    var quote = _sendQuote;
+                    var token = _sendTokenSymbol;
+                    var priv = _deriver.DeriveEthereumPrivateKey(_unlockedMnemonic!);
+                    try
+                    {
+                        var result = await _ethSender.SignAndBroadcastContractAsync(quote, priv);
+                        var explorer = EthTransactionSender.ExplorerTxForChainId(quote.ChainId) + result.TxHash;
+
+                        // The activity row names the TOKEN and its amount — the transaction's own
+                        // value is zero ether, which would otherwise be recorded as a 0 ETH send.
+                        await FinishSendAsync(result.Ok, result.TxHash, result.Error,
+                            token, _sendTokenAmount, SendReviewTo, explorer);
+                    }
+                    finally
+                    {
+                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
+                    }
+
+                    break;
+                }
+
                 case "ETH" or "BNB" or "MATIC" or "AVAX" or "FTM" or "CRO"
                      or "ARB" or "BASE" or "OP" when _sendQuote is not null:
                 {
@@ -729,14 +1015,49 @@ public partial class MainViewModel
                 {
                     var quote = _btcQuote;
                     var walletId = _registry.Active?.Id ?? "default";
-                    // Signs across every input address in the plan and reserves the internal change
-                    // index (persisted before broadcast) — no key #0 assumption.
-                    var (ok, txid, error) = await _btcSender.SignAndBroadcastHdAsync(
-                        _unlockedMnemonic!, walletId, _addrIndex, _btcPlanSymbol ?? quote.Symbol, _btcPlan, _btcRequest);
+                    var spentSymbol = _btcPlanSymbol ?? quote.Symbol;
+
+                    bool ok;
+                    string? txid, error;
+                    string? payjoinNote = null;
+
+                    if (_payjoinPlanned && PayjoinEndpointFor(spentSymbol) is { } endpoint)
+                    {
+                        var outcome = await _btcSender.SignAndBroadcastPayjoinAsync(
+                            _unlockedMnemonic!, walletId, _addrIndex, spentSymbol, _btcPlan, _btcRequest, endpoint);
+                        (ok, txid, error) = (outcome.Ok, outcome.TxId, outcome.Error);
+
+                        if (!ok && outcome.OriginalLeftDevice)
+                        {
+                            // The receiver holds a signed copy: this is NOT a send that never left, and
+                            // it must not be offered as a retry — that could pay twice.
+                            _utxoScans.Remove(spentSymbol);
+                            _lastUtxoScan.Remove(spentSymbol);
+                            ClearSendQuotes();
+                            SendTo = string.Empty;
+                            SendAmount = string.Empty;
+                            SendError = string.Format(Loc.Instance["send.payjoinOriginalOut"], error);
+                            StatusMessage = Loc.Instance["status.broadcastFailed"];
+                            break;
+                        }
+
+                        payjoinNote = outcome.UsedPayjoin
+                            ? string.Format(Loc.Instance["send.payjoinDone"], outcome.FeeContributionSat)
+                            : outcome.PayjoinFailure is { } why
+                                ? string.Format(Loc.Instance["send.payjoinFellBack"], why)
+                                : null;
+                    }
+                    else
+                    {
+                        // Signs across every input address in the plan and reserves the internal change
+                        // index (persisted before broadcast) — no key #0 assumption.
+                        (ok, txid, error) = await _btcSender.SignAndBroadcastHdAsync(
+                            _unlockedMnemonic!, walletId, _addrIndex, spentSymbol, _btcPlan, _btcRequest);
+                    }
+
                     // Force a fresh scan next time so the spent inputs and new change are reflected.
                     // The cooldown stamp goes with it: change landing on an internal address is exactly
                     // the case the user must not have to wait ten minutes to see.
-                    var spentSymbol = _btcPlanSymbol ?? quote.Symbol;
                     _utxoScans.Remove(spentSymbol);
                     _lastUtxoScan.Remove(spentSymbol);
                     var explorer = _sendSymbol switch
@@ -747,6 +1068,7 @@ public partial class MainViewModel
                         _ => $"litecoinspace.org/tx/{txid}",
                     };
                     await FinishSendAsync(ok, txid, error, quote.Symbol, quote.Amount, quote.To, explorer);
+                    if (ok && payjoinNote is not null) SendSuccess += "\n" + payjoinNote;
                     break;
                 }
 
@@ -768,7 +1090,10 @@ public partial class MainViewModel
                     break;
                 }
 
-                case "TRX" or "USDT" when _tronQuote is not null:
+                // Any TRON quote — native TRX or a TRC-20 of any ticker (roadmap N.2). Matching on
+                // the quote rather than on a list of symbols is what stops a newly-sendable token
+                // from falling through to "prepare first" with a perfectly good quote in hand.
+                case not null when _tronQuote is not null:
                 {
                     var quote = _tronQuote;
                     var key = _deriver.DeriveTronKey(_unlockedMnemonic!);
@@ -778,7 +1103,10 @@ public partial class MainViewModel
                     break;
                 }
 
-                case "TON" when _tonQuote is not null:
+                // Any TON quote — native TON or a jetton (roadmap N.3). Matching on the quote rather
+                // than on the ticker is what lets a jetton of any symbol reach its own signer instead
+                // of falling through to "prepare first" with a good quote in hand.
+                case not null when _tonQuote is not null:
                 {
                     var quote = _tonQuote;
                     // A TON-native wallet signs with the TON-mnemonic seed; a BIP39 wallet uses its
@@ -788,9 +1116,17 @@ public partial class MainViewModel
                         : _deriver.DeriveTonPrivateKey(_unlockedMnemonic!);
                     try
                     {
-                        var (ok, _, error) = await _tonSender.SignAndBroadcastAsync(quote, priv);
+                        // A jetton quote carries the token's own wallet and units, and signs a
+                        // different message; the TON amount on it is gas, not the transfer.
+                        var isJetton = quote.JettonWallet is not null;
+                        var (ok, _, error) = isJetton
+                            ? await _tonSender.SignAndBroadcastJettonAsync(quote, priv)
+                            : await _tonSender.SignAndBroadcastAsync(quote, priv);
+
                         await FinishSendAsync(ok, ok ? quote.To : null, error,
-                            "TON", quote.AmountTon, quote.To, $"tonviewer.com/{quote.From}");
+                            isJetton ? quote.JettonSymbol ?? "TON" : "TON",
+                            isJetton ? _sendTokenAmount : quote.AmountTon,
+                            quote.To, $"tonviewer.com/{quote.From}");
                     }
                     finally
                     {
@@ -850,6 +1186,9 @@ public partial class MainViewModel
     {
         if (ok && reference is not null)
         {
+            // Built BEFORE the quotes are cleared: the plan is what knows how many of the user's own
+            // addresses funded this spend, and it is about to be thrown away (roadmap P1.12).
+            BuildSendLeakReport(symbol);
             ClearSendQuotes();
             SendTo = string.Empty;
             SendAmount = string.Empty;
@@ -875,6 +1214,7 @@ public partial class MainViewModel
     private void ClearSendQuotes()
     {
         HasSendQuote = false;
+        _payjoinPlanned = false;
         ClearSendSimulation();
         _sendQuote = null;
         _btcQuote = null;
@@ -882,6 +1222,10 @@ public partial class MainViewModel
         _tronQuote = null;
         _tonQuote = null;
         _adaQuote = null;
+        // Cleared with the rest: a stale token marker would route the NEXT quote — possibly a plain
+        // ETH send — down the contract-call path.
+        _sendTokenSymbol = null;
+        _sendTokenAmount = 0m;
     }
 
     [RelayCommand]

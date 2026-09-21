@@ -16,4 +16,9 @@ public enum ChainId
     Xmr,
     Bch,
     Zec,
+    Xrp,
+    Xlm,
+    Atom,
+    Near,
+    Dot,
 }

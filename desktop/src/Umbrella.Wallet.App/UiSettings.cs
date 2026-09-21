@@ -85,6 +85,15 @@ public sealed class UiSettings
     public string BannerPath { get; set; } = "";
     public string SidebarBackgroundPath { get; set; } = "";
 
+    /// <summary>
+    /// Which version of the first-run disclaimer the user has accepted (0 = none yet).
+    ///
+    /// Versioned rather than a bare flag: if what the wallet has to say about custody, anonymity or
+    /// the terms ever changes materially, raising <see cref="FirstRunConsent.CurrentVersion"/> asks
+    /// again instead of relying on a tick somebody gave to different words (roadmap L.1/L.3/L.8).
+    /// </summary>
+    public int AcceptedTermsVersion { get; set; }
+
     /// <summary>The user's own lock-screen (unlock) background; blank uses the bundled default.</summary>
     public string LockBackgroundPath { get; set; } = "";
     /// <summary>When true, the lock screen shows no background image at all (flat).</summary>

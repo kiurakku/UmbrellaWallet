@@ -74,8 +74,46 @@ public sealed record WalletAccountViewModel(
     /// <summary>True when this row is an unsolicited airdrop token rather than an asset the user
     /// chose to hold — see <see cref="Umbrella.Wallet.Core.Safety.SpamTokenInspector"/>. The row is
     /// kept, never deleted; Holdings simply folds it away behind a count the user can open.</summary>
-    bool IsSuspectedSpam = false)
+    bool IsSuspectedSpam = false,
+    /// <summary>
+    /// How much the wallet knows about <see cref="Amount"/>. A freshly derived account starts
+    /// <see cref="BalanceRead.Unknown"/> — zero is what it holds in the absence of an answer, not
+    /// what the chain said — and only a successful read promotes it (roadmap P0.6).
+    /// </summary>
+    BalanceRead Balance = BalanceRead.Unknown,
+    /// <summary>The token's contract address, for a token row; empty for a native coin. A ticker does
+    /// not identify a token — two contracts can call themselves USDC — so the send path routes on
+    /// this, never on the symbol (roadmap N.1).</summary>
+    string Contract = "",
+    /// <summary>The token's decimals as its own contract reports them. Sending with the wrong value
+    /// is wrong by powers of ten, so a row whose decimals were never read stays at -1 and the send
+    /// path refuses rather than assuming 18.</summary>
+    int TokenDecimals = -1,
+    /// <summary>For a jetton: the sender's OWN jetton-wallet contract, which is where a transfer
+    /// message is addressed. <see cref="Contract"/> holds the master, which identifies the token and
+    /// cannot receive one (roadmap N.3).</summary>
+    string TokenWallet = "",
+    /// <summary>Why an unread balance is unread, when the wallet knows better than "the server did not
+    /// answer" — the Monero service being off is not a server failing.</summary>
+    string UnreadNote = "")
 {
+    /// <summary>The amount as the row may honestly state it: a dash while nothing has been read.</summary>
+    public string AmountLabel => BalanceReadout.AmountText(Amount, Balance, Symbol);
+
+    /// <summary>True when this row has no reading at all, so the UI can say so instead of showing 0.</summary>
+    public bool IsBalanceUnknown => Balance == BalanceRead.Unknown;
+
+    /// <summary>True when the number on screen is the last known one rather than a current one.</summary>
+    public bool IsBalanceStale => Balance == BalanceRead.Cached;
+
+    /// <summary>True for a token row the wallet knows enough about to spend: a contract and the
+    /// decimals that contract reports.</summary>
+    public bool IsSpendableToken => Contract.Length > 0 && TokenDecimals >= 0;
+
+    /// <summary>A jetton can only be sent when the wallet also knows which jetton-wallet contract
+    /// holds it — the master cannot receive a transfer.</summary>
+    public bool IsSpendableJetton => IsSpendableToken && TokenWallet.Length > 0;
+
     /// <summary>Colour hint for the Receive list so status reads at a glance.</summary>
     public string StatusColor => SupportStatus switch
     {
@@ -253,11 +291,32 @@ public sealed record HoldingRowViewModel(
     double Value,
     double Change24h,
     string Address,
-    string SupportStatus)
+    string SupportStatus,
+    /// <summary>What the wallet knows about this amount — see <see cref="BalanceRead"/> (P0.6).
+    /// Defaults to <see cref="BalanceRead.Live"/> so a row built from a real reading reads normally;
+    /// the account list passes its own state through.</summary>
+    BalanceRead Balance = BalanceRead.Live,
+    /// <summary>Why an unread balance is unread, when that is known (see WalletAccountViewModel).</summary>
+    string UnreadNote = "")
 {
     public string PriceLabel => Fx.Price(Price);
-    public string AmountLabel => $"{Amount.ToString("N6", CultureInfo.InvariantCulture)} {Symbol}";
-    public string ValueLabel => Fx.Money(Value);
+    public string AmountLabel => BalanceReadout.AmountText(Amount, Balance, Symbol);
+    public string ValueLabel => Balance == BalanceRead.Unknown ? "—" : Fx.Money(Value);
+
+    /// <summary>No reading at all: the row says so rather than showing a confident zero.</summary>
+    public bool IsBalanceUnknown => Balance == BalanceRead.Unknown;
+
+    /// <summary>A number from the last successful read, not from now.</summary>
+    public bool IsBalanceStale => Balance == BalanceRead.Cached;
+
+    /// <summary>The short note under an unread or stale amount, in the user's language.</summary>
+    public string BalanceNote => Balance switch
+    {
+        BalanceRead.Unknown when UnreadNote.Length > 0 => UnreadNote,
+        BalanceRead.Unknown => Loc.Instance["balance.unavailable"],
+        BalanceRead.Cached => Loc.Instance["balance.stale"],
+        _ => string.Empty,
+    };
     public string ChangeLabel =>
         $"{(Change24h > 0 ? "▲" : Change24h < 0 ? "▼" : "·")} {Math.Abs(Change24h):0.00}%";
     public string ChangeColor =>
@@ -356,12 +415,16 @@ public static class CoinBadge
         _ => "#6E5FB8",
     };
 
-    // Round coin logos sliced from the brand sheet (Assets/coins/*.png). Symbols not here fall back
-    // to the coloured glyph badge, so a coin without a logo still renders cleanly.
+    // Coin logos in Assets/coins/<SYMBOL>.png. A symbol NOT here falls back to the coloured glyph
+    // badge, which renders cleanly — a symbol here with no file renders an empty square, so
+    // CoinLogoAssetTests pins the two to each other.
     private static readonly HashSet<string> LogoSymbols = new(StringComparer.OrdinalIgnoreCase)
     {
         "BTC", "ETH", "LTC", "DOGE", "TRX", "SOL", "TON", "ADA", "XMR", "USDT",
         "BCH", "DOT", "XRP", "UNI", "LINK", "USDC", "CRO", "FTM", "AVAX", "MATIC", "BNB",
+        // Zcash shipped as a supported chain with no logo, so it drew a letter glyph next to
+        // eleven real brand marks.
+        "ZEC",
     };
     private static readonly Dictionary<string, Bitmap> LogoCache = new(StringComparer.OrdinalIgnoreCase);
 
@@ -385,10 +448,20 @@ public static class CoinBadge
     }
 }
 
-/// <summary>One entry in an asset / network picker.</summary>
-public sealed record SendOption(string Symbol, string Name, string Network)
+/// <summary>
+/// One entry in an asset / network picker.
+///
+/// <paramref name="Symbol"/> is the KEY the send path switches on. For a native coin that is the
+/// ticker; for an ERC-20 it is <c>ERC20:0x…</c>, because a ticker does not identify a token — two
+/// contracts can call themselves USDC, and only one of them is the one you hold.
+/// <paramref name="Ticker"/> is what the user reads.
+/// </summary>
+public sealed record SendOption(string Symbol, string Name, string Network, string? Ticker = null)
 {
-    public string Display => $"{Symbol} · {Name}";
+    /// <summary>What to show for this asset: the ticker, never the routing key.</summary>
+    public string DisplayTicker => Ticker ?? Symbol;
+
+    public string Display => $"{DisplayTicker} · {Name}";
 }
 
 public sealed record ActivityRowViewModel(
@@ -570,3 +643,17 @@ public sealed record SendSimulationRow(string Label, string Amount, string Hint,
 {
     public bool HasHint => Hint.Length > 0;
 }
+
+/// <summary>
+/// One line of the Privacy Radar: what is on (or off), and — always, never optionally — what that
+/// does not do. Roadmap P1.11 / MANIFESTO §2: both halves render together or neither does.
+/// </summary>
+public sealed record PrivacyFindingVm(string Text, string Limit, bool IsStrength)
+{
+    public string Glyph => IsStrength ? "✓" : "!";
+    public string Color => IsStrength ? "#8FCB9B" : "#E7CA83";
+}
+
+/// <summary>One address the wallet has handed out, and what the last complete scan found on it
+/// (roadmap P0.1, §3.4). <see cref="Address"/> is what Copy copies — never the status text.</summary>
+public sealed record ReceiveHistoryRow(string Address, string Status);

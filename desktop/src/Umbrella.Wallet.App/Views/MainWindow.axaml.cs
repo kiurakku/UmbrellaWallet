@@ -150,15 +150,18 @@ public partial class MainWindow : Window
         {
             var storage = StorageProvider;
             var isCsv = string.Equals(kind, "csv", StringComparison.OrdinalIgnoreCase);
+            var isPsbt = string.Equals(kind, "psbt", StringComparison.OrdinalIgnoreCase);
             var (ext, typeName) = isCsv
                 ? ("csv", "CSV spreadsheet")
-                : ("json", "Umbrella backup");
+                : isPsbt
+                    ? ("psbt", "Partially signed Bitcoin transaction")
+                    : ("json", "Umbrella backup");
 
             if (save)
             {
                 var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
                 {
-                    Title = isCsv ? "Export transaction history" : "Save Umbrella backup",
+                    Title = isCsv ? "Export transaction history" : isPsbt ? "Save PSBT" : "Save Umbrella backup",
                     SuggestedFileName = suggested,
                     DefaultExtension = ext,
                     FileTypeChoices = [new FilePickerFileType(typeName) { Patterns = [$"*.{ext}"] }],
@@ -168,7 +171,7 @@ public partial class MainWindow : Window
 
             var opened = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Restore Umbrella backup",
+                Title = isPsbt ? "Open a PSBT" : "Restore Umbrella backup",
                 AllowMultiple = false,
                 FileTypeFilter = [new FilePickerFileType(typeName) { Patterns = [$"*.{ext}"] }],
             });
@@ -196,6 +199,13 @@ public partial class MainWindow : Window
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Every section shares one scroll view. Without this a page opened wherever the previous page
+        // had been scrolled to — Security opened halfway down, below its own summary.
+        if (e.PropertyName is nameof(MainViewModel.ActiveSection))
+        {
+            PageScroll.Offset = default;
+        }
+
         if (e.PropertyName is nameof(MainViewModel.IsBackupStage)
             or nameof(MainViewModel.IsSettingsPhraseVisible)
             or nameof(MainViewModel.IsMoneroKeysVisible))

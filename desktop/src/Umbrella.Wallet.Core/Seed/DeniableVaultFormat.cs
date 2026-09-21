@@ -93,6 +93,26 @@ public static class DeniableVaultFormat
     }
 
     /// <summary>
+    /// Puts the OTHER slot back to noise — removing a second wallet without changing the file's size
+    /// or shape, so "there was never one" and "there was one and it is gone" look identical.
+    ///
+    /// Called with the password of the wallet being KEPT. It cannot be used to find out whether a
+    /// second wallet existed: the result is the same either way, which is the point.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The password does not open this vault.</exception>
+    public static byte[] RemoveOtherSecret(byte[] file, string password, VaultKeyDerivation kdf)
+    {
+        Validate(file);
+        var keep = FindSlot(file, password, kdf)
+                   ?? throw new InvalidOperationException("That password does not open this vault.");
+
+        var copy = (byte[])file.Clone();
+        var other = keep == 0 ? 1 : 0;
+        RandomNumberGenerator.GetBytes(SlotSize).CopyTo(copy.AsSpan(SlotOffset(other), SlotSize));
+        return copy;
+    }
+
+    /// <summary>
     /// Opens whichever slot this password unlocks. Every slot is attempted whatever happens, so how
     /// long the call takes does not say which slot succeeded — or whether any did.
     /// </summary>

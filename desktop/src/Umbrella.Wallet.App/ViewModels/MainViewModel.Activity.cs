@@ -111,6 +111,41 @@ public partial class MainViewModel
 
     public bool HasFilteredActivity => FilteredActivity.Count > 0;
 
+    // --- Honest coverage (roadmap P1.10) --------------------------------------------------------
+    // The feed shows what this wallet did plus whatever history an explorer will give us. For a chain
+    // with no history reader, a transaction made anywhere else — or before this wallet existed — is
+    // simply not here. An empty feed then reads as "nothing happened" when it means "nobody asked",
+    // which is the same shape of lie as a zero balance on an unreachable explorer.
+
+    /// <summary>"DOGE, ZEC" — the coins this wallet holds whose history is not read.</summary>
+    [ObservableProperty] private string _historyGapCoins = string.Empty;
+
+    public bool HasHistoryGaps => HistoryGapCoins.Length > 0;
+
+    /// <summary>The sentence shown under the Activity header, naming those coins.</summary>
+    public string HistoryGapNote =>
+        HasHistoryGaps ? string.Format(Loc.Instance["activity.partial"], HistoryGapCoins) : string.Empty;
+
+    partial void OnHistoryGapCoinsChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasHistoryGaps));
+        OnPropertyChanged(nameof(HistoryGapNote));
+    }
+
+    /// <summary>
+    /// Recomputes which held coins have no history reader, from the capability catalog — so this can
+    /// never claim coverage the code does not have, and never keep warning about a chain once one is
+    /// wired up.
+    /// </summary>
+    private void RefreshHistoryCoverage()
+    {
+        var held = Accounts
+            .Where(a => a.SupportStatus is "Ready" or "Receive only" && IsRealAddress(a.Address))
+            .Select(a => a.Symbol);
+
+        HistoryGapCoins = string.Join(", ", HistoryCoverage.WithoutHistory(held));
+    }
+
     /// <summary>The merged feed (roadmap §6): local events plus real on-chain history, deduped by explorer
     /// link, newest first — the single source the Activity screen renders and every filter narrows.</summary>
     private IEnumerable<ActivityRowViewModel> MergedActivity()
@@ -201,29 +236,39 @@ public partial class MainViewModel
         // Decrypt this wallet's private transaction notes first, so each row is built with its note.
         await LoadTxNotesAsync();
         HistoryLoading = true;
+        RefreshHistoryCoverage();                       // say up front which coins are not being read
         OnPropertyChanged(nameof(HasFilteredActivity)); // let the "loading" state show immediately
         try
         {
             var rows = new List<(long Ts, ActivityRowViewModel Row)>();
             var walletId = _registry.Active?.Id ?? "default";
 
-            // BTC / LTC / BCH: every issued external address (0..last issued), so a rotated-address
-            // history is not lost. Capped defensively so a huge index never fans out to hundreds of calls.
+            // BTC / LTC / BCH: every address the wallet has used — receive AND change, every branch
+            // (Taproot included) — each transaction judged against the whole set, so change coming back
+            // is netted out of "sent" and a spend funded only by change still appears (roadmap P0.1).
+            // Capped per branch so a huge index never fans out into hundreds of calls.
             foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc), ("BCH", ChainId.Bch) })
             {
-                uint lastIssued = 0;
-                try { lastIssued = _addrIndex.GetState(walletId, sym).LastIssuedExternalIndex ?? 0; } catch { }
-                var cap = (uint)Math.Min(lastIssued, 25);
-                for (uint i = 0; i <= cap; i++)
+                HistoryAddressPlan plan;
+                try
                 {
-                    string addr;
-                    try { addr = _deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, chain, 0, i).Address; }
-                    catch { continue; }
+                    var floors = _addrIndex.FloorsFor(walletId, sym);
+                    var own = Umbrella.Wallet.Core.Psbt.OwnScripts.For(_deriver, _unlockedMnemonic!, chain, floors);
+                    var (_, _, network, _) = HdAddressDeriver.BitcoinLikeParams(chain);
+                    plan = HistoryAddresses.Plan(own, floors, network);
+                }
+                catch
+                {
+                    continue;
+                }
+
+                foreach (var addr in plan.Query)
+                {
                     var txs = sym switch
                     {
-                        "BTC" => await _history.GetBitcoinAsync(addr),
-                        "LTC" => await _history.GetLitecoinAsync(addr),
-                        _ => await _history.GetBitcoinCashAsync(addr),
+                        "BTC" => await _history.GetBitcoinAsync(addr, plan.Own),
+                        "LTC" => await _history.GetLitecoinAsync(addr, plan.Own),
+                        _ => await _history.GetBitcoinCashAsync(addr, plan.Own),
                     };
                     foreach (var t in txs) rows.Add((t.UnixMs, ToActivityRow(t)));
                 }

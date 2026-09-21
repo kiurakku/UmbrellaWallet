@@ -52,8 +52,9 @@ public sealed class AddressReuseInspector
             var activity = await explorer.GetActivityAsync(address, ct).ConfigureAwait(false);
             return activity.Used || activity.TxCount > 0 ? AddressUseState.Used : AddressUseState.Fresh;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
+            // Our cancel. A request that merely timed out falls through to "unknown" below.
             throw;
         }
         catch

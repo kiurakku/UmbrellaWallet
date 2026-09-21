@@ -12,13 +12,13 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 
 <br/>
 
-![CI](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/ci.yml/badge.svg)
-![CodeQL](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/codeql.yml/badge.svg)
-![Security](https://github.com/kiurakku/UmbrellaWallet/actions/workflows/security.yml/badge.svg)
-![Release](https://img.shields.io/github/v/release/kiurakku/UmbrellaWallet?label=release)
+![CI](https://github.com/thefear078/UmbrellaWallet/actions/workflows/ci.yml/badge.svg)
+![CodeQL](https://github.com/thefear078/UmbrellaWallet/actions/workflows/codeql.yml/badge.svg)
+![Security](https://github.com/thefear078/UmbrellaWallet/actions/workflows/security.yml/badge.svg)
+![Release](https://img.shields.io/github/v/release/thefear078/UmbrellaWallet?label=release)
 ![License](https://img.shields.io/badge/license-Free--Use%20No--Derivatives-4B3F86)
-![Version](https://img.shields.io/badge/version-4.7.0-4B3F86)
-![Tests](https://img.shields.io/badge/tests-526%20offline-7DCF8F)
+![Version](https://img.shields.io/badge/version-4.8.0-E9B22E)
+![Tests](https://img.shields.io/badge/tests-1190%2B%20offline-7DCF8F)
 ![Platform fee](https://img.shields.io/badge/platform%20fee-none-7DCF8F)
 
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
@@ -27,7 +27,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 ![Tor](https://img.shields.io/badge/Tor-bundled-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
-**[⬇ Download](https://github.com/kiurakku/UmbrellaWallet/releases/latest)** ·
+**[⬇ Download](https://github.com/thefear078/UmbrellaWallet/releases/latest)** ·
 [Verify your download](#verify-what-you-downloaded) ·
 [Build it yourself](docs/building.md) ·
 [Security](SECURITY.md) ·
@@ -38,7 +38,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 
 <br/>
 
-<img src="docs/assets/screenshot-portfolio-v46.png" width="88%" alt="Umbrella Wallet portfolio"/>
+<img src="docs/assets/screenshot-portfolio-v48.png" width="88%" alt="Umbrella Wallet portfolio"/>
 
 </div>
 
@@ -83,9 +83,10 @@ Your 24-word seed is generated on your machine, encrypted into a local vault wit
 is no account to create, nothing to verify, and no way for us — or anyone holding this software — to
 freeze, seize, or recover your funds.
 
-It supports ten chains in one vault, including Monero as a **full** wallet rather than a receive-only
-stub, and ships Tor inside the binary so your balance lookups don't hand your IP address to a block
-explorer.
+It holds sixteen chains in one vault — plus the Ethereum networks that share your 0x address —
+including Monero as a **full** wallet rather than a receive-only stub, and ships Tor inside the binary
+so your balance lookups don't hand your IP address to a block explorer. What each chain can do today,
+receive, balance or send, is in [Coins](#coins) — nothing is listed as working before it does.
 
 ## Why it exists
 
@@ -117,7 +118,7 @@ It reads live settings and reports what is *actually* protecting the wallet righ
 it says your IP is visible to every explorer you use. It will not flatter you.
 
 <div align="center">
-<img src="docs/assets/screenshot-security-v46.png" width="80%" alt="Security Center"/>
+<img src="docs/assets/screenshot-security-v48.png" width="80%" alt="Security Center"/>
 </div>
 
 **You choose which server sees your addresses.**
@@ -125,7 +126,7 @@ A wallet cannot read a chain by itself — it has to ask somebody, and on a tran
 means *saying the address*. Tor hides your IP; it does not un-send an address. So Settings → Privacy
 names every server the wallet talks to and what each one learns, and lets you point any chain
 somewhere else — a different company, or a node you run. Monero, Bitcoin, Litecoin, Bitcoin Cash,
-Dogecoin, Ethereum, Solana, TON, Tron and Cardano.
+Dogecoin, Ethereum, Solana, TON, Tron, Cardano, XRP, Stellar, Cosmos, NEAR and Polkadot.
 
 Two rules are enforced rather than suggested: a `.onion` node is never used without Tor and is never
 silently swapped for a clearnet one, and a plain `http://` endpoint is refused outright — choosing
@@ -141,11 +142,15 @@ You pay the network's miner/validator fee and nothing else. See [What this costs
 
 ## Screenshots
 
-| Receive | Settings |
+| Market | Receive |
 |---|---|
-| <img src="docs/assets/screenshot-receive-v46.png" alt="Receive"/> | <img src="docs/assets/screenshot-settings-v46.png" alt="Settings"/> |
+| <img src="docs/assets/screenshot-market-v48.png" alt="Market"/> | <img src="docs/assets/screenshot-receive-v48.png" alt="Receive"/> |
+| **Settings** | |
+| <img src="docs/assets/screenshot-settings-v48.png" alt="Settings"/> | |
 
-**19 themes**, each with its own character rather than one accent swapped around:
+The default look is gold light on black: charts drawn as lines of light, and every Umbrella logo in the
+app tinted to the theme you pick — only the desktop icon keeps its own colours. **20 themes**, each with
+its own character rather than one accent swapped around (the original navy is still there):
 
 | Kraken · abyssal violet | Void · electric OLED |
 |---|---|
@@ -161,7 +166,7 @@ is the most common way people lose money.
 | Coin | Receive | Balance | Send | History | Swap | Notes |
 |---|:---:|:---:|:---:|:---:|:---:|---|
 | Bitcoin (BTC) | ✅ | ✅ | ✅ | ✅ | ✅ | BIP84 native SegWit, full HD scan |
-| Ethereum (ETH) | ✅ | ✅ | ✅ | ✅ | ✅ | + every ERC-20 at the same address |
+| Ethereum (ETH) | ✅ | ✅ | ✅ | ✅ | ✅ | + every ERC-20 at the same address — **and now sendable**, fee in ETH |
 | Litecoin (LTC) | ✅ | ✅ | ✅ | ✅ | ✅ | BIP84, full HD scan |
 | Dogecoin (DOGE) | ✅ | ✅ | ✅ | ✅ | ✅ | real UTXO spend |
 | Bitcoin Cash (BCH) | ✅ | ✅ | ✅ | ✅ | — | CashAddr, SIGHASH_FORKID |
@@ -172,6 +177,11 @@ is the most common way people lose money.
 | TON | ✅ | ✅ | ✅ | ✅ | — | wallet v4R2, pinned to `@ton/ton` |
 | Cardano (ADA) | ✅ | ✅ | ✅ | ✅ | — | CIP-1852, BIP32-Ed25519 |
 | Zcash (ZEC) | ✅ | ✅ | — | — | — | **transparent `t1…` only** — not shielded |
+| XRP Ledger (XRP) | ✅ | ✅ | — | — | — | **receive + balance only** — an address becomes an account once it receives the network's reserve |
+| Stellar (XLM) | ✅ | ✅ | — | — | — | **receive + balance only** — SEP-0005, restores in LOBSTR / Solar / Ledger |
+| Cosmos Hub (ATOM) | ✅ | ✅ | — | — | — | **receive + available balance only** — staked ATOM is not counted |
+| NEAR Protocol (NEAR) | ✅ | ✅ | — | — | — | **receive + balance only** — implicit account; `.near` names not shown |
+| Polkadot (DOT) | ✅ | ✅ | — | — | — | **receive + balance only** — sr25519, same account as Polkadot.js / Nova; Asset Hub + relay |
 | Linea (ETH) | ✅ | ✅ | ✅ | 🟡 | — | same `0x` as mainnet |
 | zkSync Era (ETH) | ✅ | ✅ | — | 🟡 | — | **receive + balance only** (send not safe yet) |
 
@@ -184,18 +194,18 @@ network delivers to your own address. Nobody holds your funds in between.
 
 ## Download
 
-<img src="docs/assets/logo-umbrella.png" width="64" align="left" alt="" hspace="14"/>
+<img src="docs/assets/logo-umbrella-v48.png" width="64" align="left" alt="" hspace="14"/>
 
-Builds are published on the [releases page](https://github.com/kiurakku/UmbrellaWallet/releases/latest).
+Builds are published on the [releases page](https://github.com/thefear078/UmbrellaWallet/releases/latest).
 This is the icon you will see once it is installed.
 
 <br clear="left"/>
 
 | | |
 |---|---|
-| **Windows installer** | `UmbrellaWallet-Setup-4.7.0.exe` |
-| **Windows portable** | `UmbrellaWallet-4.7.0-win-x64-portable.exe` — one file, no install, leaves nothing behind |
-| **Linux** | `UmbrellaWallet-4.7.0-linux-x64.tar.gz` |
+| **Windows installer** | `UmbrellaWallet-Setup-4.8.0.exe` |
+| **Windows portable** | `UmbrellaWallet-4.8.0-win-x64-portable.exe` — one file, no install, leaves nothing behind |
+| **Linux** | `UmbrellaWallet-4.8.0-linux-x64.tar.gz` |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
@@ -206,12 +216,12 @@ Every release ships `SHA256SUMS-<version>.txt`. Check it before you run anything
 
 ```bash
 # Linux / macOS — run in the folder with the download and the sums file
-sha256sum -c SHA256SUMS-4.7.0.txt
+sha256sum -c SHA256SUMS-4.8.0.txt
 ```
 
 ```powershell
 # Windows PowerShell — compare against the matching line in the sums file
-Get-FileHash .\UmbrellaWallet-Setup-4.7.0.exe -Algorithm SHA256
+Get-FileHash .\UmbrellaWallet-Setup-4.8.0.exe -Algorithm SHA256
 ```
 
 If the hash does not match, do not run it. Better still, [build it yourself](docs/building.md) — the
@@ -321,7 +331,7 @@ docs/                                everything in this README's Docs section
 You need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). Nothing else.
 
 ```bash
-git clone https://github.com/kiurakku/UmbrellaWallet.git
+git clone https://github.com/thefear078/UmbrellaWallet.git
 cd UmbrellaWallet
 dotnet build desktop/Umbrella.Wallet.sln -c Release
 ```
@@ -341,8 +351,8 @@ Producing installers, the portable build and checksums is documented in
 
 ## Tests
 
-526 offline tests, run on every push by [CI](.github/workflows/ci.yml). They are not there for a
-badge — several classes of them exist because the alternative is losing money:
+More than 1,190 offline tests, run on every push by [CI](.github/workflows/ci.yml). They are not there
+for a badge — several classes of them exist because the alternative is losing money:
 
 - **Derivation** is pinned byte-for-byte to official test vectors and to the reference libraries
   (`@ton/ton` for TON, `cardano-serialization-lib` for ADA). An address the wallet shows you is an
@@ -353,9 +363,14 @@ badge — several classes of them exist because the alternative is losing money:
 - **Localization parity** fails if any language is missing a key, so a feature cannot silently render
   in English inside a translated wallet.
 - **Theme contrast** fails if body text, muted text, or a button label falls below WCAG AA.
+- **Signing** for every new format — Taproot, PSBT, PayJoin, Stellar — is pinned to transactions the
+  reference implementations build (BIP test vectors, NBitcoin, the Stellar Go SDK), never to the
+  wallet's own output.
+- **Busy explorers** are pinned too: a timeout is not a cancel, a 429 is waited out, and an unread
+  balance is never shown as zero.
 
-The `LiveExplorer` filter excludes the handful of tests that hit real explorers, so the default run is
-fully offline and deterministic.
+`--filter "Category!=Live"` excludes the handful of tests that hit real explorers, so the default run
+is fully offline and deterministic.
 
 ## Diagnostics
 
@@ -377,7 +392,7 @@ own keys should not charge you for touching your own money.
 
 It is funded instead by:
 
-- **[GitHub Sponsors](https://github.com/sponsors/kiurakku)**
+- **[GitHub Sponsors](https://github.com/sponsors/thefear078)**
 - **Bounties** — anyone can fund a specific coin or feature
 - **A small swap spread**, later and only on swaps, which are optional in a way a send is not
 
@@ -399,7 +414,7 @@ The short version:
 The long version, including the threat model and what Umbrella explicitly does **not** protect you
 from, is in **[SECURITY.md](SECURITY.md)**.
 
-Found a vulnerability? [Report it privately](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new).
+Found a vulnerability? [Report it privately](https://github.com/thefear078/UmbrellaWallet/security/advisories/new).
 Please don't open a public issue for anything that could put funds at risk.
 
 ## Roadmap
@@ -409,9 +424,9 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 
 | | |
 |---|---|
-| ✅ Shipped | 11+ chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages |
-| 🔜 Next | **Duress password** · transaction simulation · supply-chain pin for Tor/Monero · capability matrix as single source of truth |
-| 🗓 Planned | Android · Taproot/PayJoin · hardware wallets · reproducible attestations · external security audit |
+| ✅ Shipped | 11+ chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations |
+| 🔜 Next | **Seedless watch-only mode** · Ledger / Trezor |
+| 🗓 Planned | Android · reproducible builds · SPL token send · XRP / XLM / ATOM / NEAR / DOT send · external security audit |
 | ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 
 ## Documentation
@@ -495,7 +510,7 @@ which is exactly why there is no tracking and no cut of your transfers.</sub>
 </a>
 
 **[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)** ·
-[GitHub](https://github.com/kiurakku/UmbrellaWallet) ·
+[GitHub](https://github.com/thefear078/UmbrellaWallet) ·
 [TikTok @thefear078](https://www.tiktok.com/@thefear078) ·
 [Reddit u/Particular_Lime_7004](https://www.reddit.com/user/Particular_Lime_7004)
 
@@ -504,7 +519,7 @@ Nobody there will ever ask you for your seed phrase.</sub>
 
 <br/>
 
-[💖 Sponsor this work](https://github.com/sponsors/kiurakku) ·
+[💖 Sponsor this work](https://github.com/sponsors/thefear078) ·
 [Terms](TERMS_OF_SERVICE.md) ·
 [Privacy Policy](PRIVACY_POLICY.md) ·
 [Audit status](AUDIT_STATUS.md)

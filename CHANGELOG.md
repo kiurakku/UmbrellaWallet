@@ -4,6 +4,425 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.8.0] — 2026-09-21 — the gold design, Taproot and PayJoin, and balances you can trust
+
+A new look, and a lot underneath it. The wallet is gold light on black, its logos follow whichever
+theme you pick, and its charts are lines of light. Underneath: Taproot wallets are found and spent,
+PayJoin and PSBT arrive for Bitcoin, any ERC-20, TRC-20 or jetton you hold can be sent, and XRP,
+Stellar, Cosmos, NEAR and Polkadot can receive and show a balance. And the reason so many balances
+said "server did not respond" — a timeout treated as a cancel, and a refresh that asked too much —
+is fixed.
+
+The fund-safety and honesty work from the roadmap's P0 queue is below it: a balance the wallet could
+not read never reads as zero, and a send never leaves by a route you did not choose.
+
+### A balance the wallet could not read no longer reads as zero
+
+- An explorer that rate-limits, a node that is down, a request the kill-switch refused: each used to
+  leave the row showing **0.000000** at **$0.00**, with exactly the confidence of a genuinely empty
+  address. That is the wallet telling somebody their money is gone. Unread balances now show **—**
+  with the reason underneath.
+- A number from the last successful read is kept and labelled as such rather than blanked or passed
+  off as current. A real zero from the chain is still a real zero — an empty address is an answer.
+- The portfolio total leaves out what it could not read **and says how many assets that was**, instead
+  of quietly summing the rest into a wrong number that looks like a right one.
+
+### A send whose route is not the one you chose is refused
+
+- Tor on in Settings but not connected, Tor connected but the traffic routed elsewhere, a proxy typed
+  and never applied, or the Tor-only kill-switch armed with nothing to route through: each now blocks
+  the send, at Review **and** again at Confirm, because Tor can drop in between. A broadcast is the one
+  request that ties an IP to specific coins permanently.
+- Asking for nothing still sends over the open internet — that is your choice, and the review already
+  says what it costs.
+
+### First run says the things that cannot be said later
+
+- Before a seed exists: non-custodial software by **the fear**, not a financial institution; no
+  guarantee of anonymity on a transparent chain; and nobody — including the author — who can restore
+  a lost recovery phrase. Plus 18+ and the Terms and Privacy Policy, in all six languages.
+- It gates create, import and unlock. Acceptance is recorded against a version of the wording, so
+  changed wording asks again.
+
+### Honest wording
+
+- The wallet called itself an "anonymous crypto wallet" and offered "Tor · anonymous traffic". Tor
+  hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
+  "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
+
+### The gold design
+
+- **Umbrella**, the theme every new wallet starts on, is now gold light on black: near-neutral blacks,
+  cards a step up from the page with hairline borders, white type, and long arcs of gold light behind
+  the window. The previous look is still there as **Navy · the classic blue** (Settings → Appearance).
+- **The sidebar has names.** The sections are listed with their labels; the page you are on sits on a
+  warm wash of the accent. The panel carries the Umbrella mark, the open wallet, and at its foot where
+  requests are going, the version and the lock.
+- **The action keys are flat tiles** — dark, with the accent in the icon.
+- **Charts are lines of light.** The market chart, its sparklines and the movers use a smooth line in
+  the accent with a soft glow and a wash under it, and a lit dot where it ends. The curve passes through
+  every price and never overshoots a high or low the data did not reach. Up or down is still said in
+  green or red, by the figures.
+- **Every logo follows the theme** — the mark, the wordmark, the umbrella and the canopy, gold on the
+  default theme, blue on Navy, and so on. Only the desktop icon keeps fixed colours, and it is new.
+- The Market lists show each coin's mark, price and change, and the table no longer runs the 24h change
+  into the status column on a narrower window.
+
+### Fixed — balances that read "server did not respond"
+
+- A request that **timed out** was treated as if you had cancelled it: one slow explorer aborted the
+  whole Bitcoin scan, the backup servers were never asked, and the other chains' refresh stopped too.
+  Bitcoin, Litecoin and Dogecoin showed as unreadable while a server that would have answered sat unused.
+- Busy explorers (429) are now waited out and asked again, a few requests at a time per server; a
+  definite answer — refused, unknown host, a 4xx — is returned at once.
+- A refresh no longer re-walks twenty addresses on every branch: a full walk runs on unlock and every
+  30 minutes (Dogecoin every 2 hours), and in between the wallet re-reads every address it has issued or
+  seen used plus three past it. **Limit:** money sent to an address far beyond those, by another wallet
+  on the same phrase, appears at the next full walk rather than the next refresh.
+- Locking now forgets the previous wallet's scans, so the next wallet — or the hidden one — can never
+  have a send planned from someone else's coins.
+- **Cardano** read as unavailable on every new wallet: Koios answers an empty list for an address that
+  has never been used, and that was taken for "no answer". It is a real zero, and now reads as one.
+- **Zcash** asked Blockchair on every sixty-second refresh — about 1,400 requests a day — until
+  Blockchair blacklisted the IP. An answer is now reused for ten minutes. Trezor's server, which now
+  refuses everything but Trezor Suite, is no longer asked.
+- **Monero** with its service off said the server did not respond. It now says the service is off.
+
+### Fixed — Activity overstated Bitcoin you sent
+
+- A payment that returned change to the wallet showed the change as money sent: paying 0.001 BTC from
+  an address holding 0.01 appeared as **0.00999 BTC sent**. A later payment funded only by that change
+  did not appear at all.
+- Each transaction is now judged against every address the wallet has — receiving and change, SegWit
+  and Taproot — so "sent" is exactly what left the wallet, and the change addresses' own history is
+  read. Bitcoin, Litecoin and Bitcoin Cash.
+- **Previous addresses** on the Receive screen now say what each one holds, from the last complete
+  scan — or "not checked yet", rather than a number the wallet has not confirmed.
+
+### Solana tokens are shown
+
+- The wallet now reads the SPL tokens at your Solana address — USDC, USDT, PayPal USD, JUP, BONK and
+  the rest — under both of Solana's token programs, with the decimals each token's mint reports.
+- A token account does not say what the token is called, and names on Solana are free to invent, so
+  the wallet names only mints it knows (each checked on-chain before it went on the list). Any other
+  token is shown by its mint address as **unverified** and folded away with suspected spam — airdropped
+  lure tokens are common there.
+- If the read fails, the tokens you already saw stay on screen rather than vanishing.
+- **Not yet:** sending SPL tokens.
+
+### Fixed — new chains: prices, and a balance server that is down
+
+- Stellar, Cosmos and NEAR shipped without a price source, so their fiat value read **$0.00** —
+  right only while the balance was also zero. They are priced now, and a test fails if any chain the
+  wallet shows has nowhere to get a price from.
+- Public servers go down: during testing Polkadot Asset Hub's default server stopped answering minutes
+  after it had worked, and the wallet (correctly) said "could not read". Now, if you have not chosen a
+  server, the XRP, Stellar, Cosmos, NEAR and Polkadot balances try each listed server in turn before
+  giving up. If you **have** chosen one, only that one is asked — your addresses never go to a server
+  you did not pick.
+
+### Polkadot: receive and balance
+
+- A Polkadot (DOT) account that is **the same one Polkadot.js, Talisman, SubWallet and Nova show** for
+  your phrase. Polkadot does not use the BIP-44 scheme every other coin here uses: it derives an
+  sr25519 key from the phrase's entropy. The wallet does the same, and each step is checked against
+  published output — the curve arithmetic against RFC 9496's own values, the full phrase-to-address
+  path against Parity's `subkey` tool, the address format against Polkadot.js.
+- The balance is read directly from chain storage, with no indexer and no API key, at the finalized
+  block of **both Polkadot Asset Hub and the relay chain**, and the two are added. Since the 2025
+  migration most DOT lives on Asset Hub — a wallet reading only the relay chain would show most people
+  close to nothing. If either read fails, the balance shows as "could not read", never as half of it.
+- DOT locked for staking or governance is included in the number; not all of it may be spendable.
+  Both chains' servers can be changed in *Settings → Privacy*.
+- **Not yet:** sending DOT.
+
+### NEAR: receive and balance
+
+- A NEAR account from the same phrase, at `m/44'/397'/0'` — the path NEAR's own seed-phrase library
+  uses, checked against that library's test. It is an *implicit* account: the 64-character id is your
+  public key, so it can receive without registering anything.
+- The balance is read at final finality from a server you can change (the NEAR Foundation's RPC by
+  default, or FastNEAR's). An account nobody has funded yet is a real zero. Large balances read
+  correctly — NEAR counts in 10⁻²⁴ units, more digits than the wallet's number type holds directly.
+- Named accounts (`you.near`) and NEAR staked with a pool are not shown.
+- **Not yet:** sending NEAR.
+- The four new balance readers (XRP, Stellar, Cosmos, NEAR) now treat a malformed server answer as
+  "could not read" in every shape the tests throw at them, instead of relying on an outer catch.
+
+### Cosmos Hub: receive and balance
+
+- A Cosmos Hub (ATOM) address at `m/44'/118'/0'/0/0` — what Keplr, Leap and Ledger derive — checked
+  against cosmjs's own wallet test, key and address.
+- The balance is your **available** ATOM, read from a server you can change (PublicNode by default, or
+  Keplr's). ATOM you have staked with a validator is not part of that number, and the wallet says so
+  rather than let the figure look like everything you own.
+- A pasted `cosmos1…` address is recognised and its checksum verified; an address for another Cosmos
+  chain (`osmo1…` and the like) is not taken for a Hub one.
+- **Not yet:** sending ATOM, staking, IBC.
+
+### Fixed — a mistyped Cardano address could have been paid
+
+- The Cardano send path decoded the destination without checking its bech32 checksum. One wrong
+  character produced a different but structurally valid address — key hashes nobody holds — and a
+  payment to it would have been accepted by the network and lost. The checksum is now verified before
+  anything is built, and every single-character typo of a real address is refused in the tests.
+- The address inspector now calls a mistyped `addr1…` address **invalid** instead of "unverified", and a
+  testnet (`addr_test`) address is refused on mainnet.
+- One shared Bech32 codec, checked against BIP-173's own test strings, replaces the two private copies
+  the Cardano code carried.
+
+### Stellar: receive and balance
+
+- A Stellar (XLM) address from the same phrase, derived by SEP-0005 — the standard LOBSTR, Solar and
+  Ledger follow — and checked against the three test vectors the SEP itself publishes.
+- The balance comes from Horizon, on a server you can change (the Stellar Development Foundation's by
+  default, or LOBSTR's). An address nobody has funded yet is a real zero: on Stellar an address only
+  becomes an account once it receives the minimum balance. Anything else is "could not read".
+- A pasted `G…` address is now recognised as Stellar, and its checksum catches a mistyped character.
+- **Not yet:** sending XLM.
+
+### XRP: receive and balance
+
+- The wallet now has an XRP Ledger address, at `m/44'/144'/0'/0/0` — the path Xaman, Ledger and
+  Trust Wallet use, so the same phrase finds these funds there. The key is checked against xrpl.js's
+  own test and the address encoding against the example in XRPL's documentation, not against this
+  wallet's output.
+- The balance is read at the last **validated** ledger, never an open one that can still change. An
+  address the ledger has never seen is shown as a real zero — on the XRP Ledger an address only
+  becomes an account once it receives the network's reserve, which then stays locked. Any other
+  failure shows as "could not read", not as zero.
+- The server is yours to choose in *Settings → Privacy*: the XRPL Labs cluster by default, or
+  Ripple's own, or any rippled or Clio server you run. It learns your XRP address, like every
+  balance server learns what it is asked about; the network screen says so.
+- **Not yet:** sending XRP. It stays off until a signed payment is checked byte for byte against the
+  reference library, as every other coin's was.
+
+### PSBT: check a payment somewhere else, or sign someone else's
+
+- **Export.** On the Bitcoin review screen, *Export as PSBT* gives the exact unsigned transaction — as
+  text to copy or a `.psbt` file — for reading in Sparrow or Electrum before you confirm, or for
+  signing elsewhere. It names this wallet's key fingerprint and each coin's path (Taproot coins
+  included, under the fields BIP-371 defines), and it reserves the change address as a real send
+  would, so the change is found whichever wallet signs it.
+- **Sign.** *Settings → Security → Sign a PSBT* reads base64, hex or a `.psbt` file and shows every
+  input and output, which are yours, the fee when it can be known, and exactly what the transaction
+  takes out of this wallet. Other people's inputs are allowed — PayJoin, CoinJoin and multi-party
+  payments look like that — and are pointed out.
+- The wallet signs **only coins its own scan found on-chain, at the value it read there**. A PSBT that
+  misstates what one of your coins holds is refused; so is one that spends from your address a coin
+  the wallet cannot see. That closes the known SegWit trick of lying about an input's amount to make a
+  signer overpay the fee. The price: signing needs a synced wallet — this is not an air-gapped signer.
+- A fully signed PSBT can be broadcast from the same card, through the same Tor/route check as a send.
+- **Verify screen:** Bitcoin now exports two watch-only keys, SegWit and Taproot. The balance counts
+  both, so a scanner given only the first would have reported less than the wallet shows.
+- **Not yet:** a watch-only wallet with no seed on this machine. It is the same groundwork hardware
+  wallets need, and will come with them.
+
+### PayJoin: a payment that does not look like it came only from you
+
+- Paste a `bitcoin:` payment link into Send and the address and amount fill themselves in. If the
+  link offers PayJoin (BIP-78), the receiver is asked to add a coin of its own to the payment — so
+  "every input belongs to the payer", the assumption most chain analysis starts from, is wrong about
+  this transaction.
+- The review says it before you confirm, with the most the receiver may take from your change toward
+  the fee. Nothing beyond that is possible: the proposal is signed only after the full BIP-78 sender
+  checklist passes, plus a separate check that your total cost did not rise past that number. The
+  receiver can never redirect the payment — output substitution is always refused.
+- If the receiver does not answer, or its answer fails any check, the payment is sent exactly as you
+  reviewed it, and the result says which one happened.
+- If even that fails to broadcast, the wallet says so **without** offering a retry: the receiver
+  already holds a signed copy and may still broadcast it, and paying again could pay twice.
+- Only for endpoints on HTTPS or a `.onion`, over its own Tor circuit when Tor is on. A link with a
+  plaintext endpoint still pays; it just says PayJoin will not be used.
+- **Limits:** sending only — the wallet cannot receive a PayJoin. Tested against a simulated receiver
+  with real keys and full signature checks, not yet against a live one; make the first one small.
+
+### A seed from a Taproot wallet is no longer shown as empty
+
+- Bitcoin coins on `m/86'` (BIP-86, `bc1p…`) were invisible: the scan walked only the SegWit account,
+  so a phrase restored from a Taproot wallet read as **0 BTC** while the coins sat on another branch
+  of the same seed. BTC now walks both, with the same gap-limit and "an error is unknown, not empty"
+  rules on each.
+- Those coins can be spent — alone, or in one transaction with SegWit inputs, each signed from the
+  path it was found on and checked against consensus rules before anything is broadcast. Fees are
+  estimated per input type, so a Taproot input is not charged as a SegWit one.
+- Change goes back to the branch the inputs came from, on that branch's own index counter. Sending
+  a Taproot spend's change to a SegWit address would mark the recipient's output as yours to anyone
+  running the usual heuristic.
+- Restored Taproot history now shows in Activity next to the balance it explains.
+- **What did not change:** receive addresses are still native SegWit. The wallet does not hand out
+  `bc1p…` yet. **What it costs:** an empty Bitcoin wallet now asks the explorer about 80 addresses per
+  scan instead of 40. Other chains are unchanged.
+
+### Tokens can be sent, not just watched — ERC-20, TRC-20 and jettons
+
+- The Send picker now lists every ERC-20 this wallet actually holds. Until now it could send native
+  coins and exactly one token — USDT on Tron, hardcoded — so every other token was money you could
+  see and not move.
+- It routes on the **contract**, never the ticker: two contracts can call themselves USDC, and only
+  one of them is the one you hold. The amount is scaled by the decimals that contract reports, and a
+  token whose decimals were never read is **refused** rather than assumed to be 18 — a wrong guess
+  there is off by a factor of a trillion.
+- The token balance is read from the contract itself at quote time, not from a row that might be a
+  minute old, and the review says plainly that the fee comes out of ETH rather than out of the token.
+- Unsolicited airdrop tokens stay out of the picker. They remain visible in Holdings behind the spam
+  fold; what they do not get is a promotion into the screen that moves money.
+- **Tron tokens too.** USDT on Tron stops being a special case and becomes the TRC-20 whose
+  contract the wallet already knew; every other TRC-20 you hold appears in the picker beside it,
+  with the fee paid in TRX. That path also gained the exact-scaling refusal it never had — it
+  used to multiply through `Math.Pow` and truncate, silently dropping the remainder of an
+  over-precise amount.
+- **Jettons on TON too.** A jetton moves by a message to your OWN jetton wallet — a separate
+  contract that then credits the recipient's — so the destination of the message and the
+  destination of the money are different addresses, and swapping them sends the tokens
+  nowhere recoverable. The message body is pinned cell-hash-for-cell-hash against the
+  reference `@ton/core` library, the way the wallet's TON transfers already were. About
+  0.05 TON is attached for gas and partly returned; a jetton whose wallet contract the
+  wallet does not know still says **Receive only** instead of offering a send it cannot make.
+- SPL tokens on Solana are **not** included: their balances are not read yet, so there is
+  nothing to send. Saying so beats a picker entry that does nothing.
+- **Verify a first send with a small amount** — the encoding and the refusals are covered by tests,
+  but no token transfer from this build has yet been confirmed on-chain with real funds.
+
+### Releases are signed, without a signing key
+
+- Every artifact **and** the checksum manifest now carry a build attestation: GitHub signs, keylessly
+  through OIDC, a statement that these exact bytes came out of this repository's release workflow at
+  a named commit, recorded in a public transparency log.
+
+  ```bash
+  gh attestation verify UmbrellaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
+  ```
+
+- A checksum only ever proved that a download matches the manifest on the release page — and whoever
+  can replace the artifacts can replace the manifest beside them. This is the half that was missing.
+  There is no signing key involved, which means there is no signing key for anybody to steal.
+- Releases published before this have checksums only. An attestation cannot be added to a build after
+  the fact, and a page claiming otherwise would be worth nothing.
+
+### Check this wallet against something that is not this wallet
+
+- **Settings → Security** exports a **watch-only key** for each UTXO chain. Paste it into an explorer
+  you chose and it derives the same addresses and reports the same balance — or it does not, and that
+  answer is worth more than our reassurance. It cannot spend a coin; it does reveal every address on
+  that account, past and future, and the screen says so before it shows you anything.
+- **[VERIFY_YOUR_WALLET.md](docs/VERIFY_YOUR_WALLET.md)** was a stub. It is now the actual guide: the
+  balance from a third party, where the traffic really goes, the download, the build, who the wallet
+  talks to — and a closing section on what none of it proves.
+
+### Coin logos
+
+- Bitcoin, Ethereum, Litecoin, Dogecoin, Bitcoin Cash, Monero, Solana, TRON, Polygon and BNB use a
+  new, consistent icon set, and **Zcash finally has one** — it shipped as a supported chain drawing a
+  letter glyph beside eleven real brand marks. A test now pins the logo registry to the files on
+  disk, in both directions: a registration with no file renders an empty square, which is worse than
+  the letter it replaced.
+
+### The hidden wallet has a way in
+
+- A BIP39 passphrase opens a **separate** wallet from the same recovery phrase, with its own
+  addresses. The derivation, the balance scan and the spender all honoured one already — the unlock
+  screen simply had no field to type it into, so the feature existed and nobody could reach it. It is
+  there now, folded behind **Advanced** so the unlock screen does not advertise to somebody watching
+  that hidden wallets are a thing this wallet does.
+
+### Activity says which coins it is not reading
+
+- The feed shows what this wallet did plus whatever history an explorer will give us. For a coin with
+  no history reader — Dogecoin and transparent Zcash today — a transfer made anywhere else, or before
+  this wallet existed, was simply absent, and an empty feed read as "nothing happened" when it meant
+  "nobody asked". Those coins are now named above the list, computed from the capability catalog so
+  the note cannot claim coverage the code does not have — or keep warning after one is wired up.
+- The empty-state hint used to list the covered chains by name and had gone stale (BCH, SOL, TON and
+  ADA all gained history since it was written). It now points at that computed note instead.
+
+### Coin control on Bitcoin Cash
+
+- There were three lists of "the UTXO chains" and they had drifted: the balance scan walked
+  BTC/LTC/BCH/DOGE, the fee selector offered all four, and coin control — with the private-send
+  checklist that reads it — quietly left Bitcoin Cash out. So on BCH the panel that lets you avoid
+  linking your own addresses was missing, and the privacy checklist never mentioned linkage, on a
+  chain where it is exactly as real as on Bitcoin. One list now.
+
+### Where your requests are going, without asking
+
+- A connection chip in the sidebar (and in the top/bottom nav): **TOR**, **PROXY**, **DIRECT** or
+  **BLOCKED**, read from the live route rather than from a setting. Click it and you are in the
+  screen that can change it.
+- It turns amber for the state that looks like the good one: Tor switched on in Settings, Tor not
+  actually carrying the traffic, every request going out in the clear. It reads the same state the
+  send gate does, so the chip and a refused send can never tell different stories.
+
+### The project's GitHub account is now `thefear078`
+
+- Every link in the app, the docs, the installer and the release scripts follows it. GitHub redirects
+  the old ones, which is exactly why a stale link survives unnoticed — it works, and it is wrong. A
+  test now fails if one comes back.
+
+### A password that opens a different wallet
+
+- **Duress password** (Settings → Security). If you are ever made to unlock this wallet in front of
+  somebody, the password you hand over works — a real wallet opens, with its own addresses and its own
+  history — and it is not the one holding your money.
+- The vault file is now the same two-slot shape for **every** wallet, whether a duress password is set
+  or not: same size, unused slot full of random bytes, real slot in a random position. A file that
+  only became two-slot when its owner asked for a decoy would announce, by its own size, that they had
+  asked. Existing vaults are rewritten into that shape the first time their password opens them —
+  verified to give back the identical seed before anything is replaced.
+- The wallet will never tell you whether a duress password is set. That is the entire point, so
+  Settings offers to set one and to remove one and reports neither state — and removing one leaves a
+  file indistinguishable from one that never had it.
+- What it does not do is printed beside it: it does not hide that other wallets exist on this
+  computer, does nothing about somebody watching you type, and cannot help against a copy of the file
+  taken before and after. Changing your vault password removes the decoy.
+- The decoy is a fresh wallet with its own recovery phrase, shown once — a decoy with nothing in it is
+  not convincing, and anything you put there is real money.
+
+### What a send actually cost, said afterwards
+
+- A short report under the send result: whether the node you broadcast to saw your IP, whether the
+  kill-switch was armed, that the ledger keeps the amount and both addresses forever — and, when the
+  spend drew on more than one of your addresses, **how many**, because "several" is exactly the
+  vagueness that lets somebody assume it was two when it was nine.
+- It credits what went right too (a single input, change to a fresh address, coins you picked
+  yourself), and ends with the one nobody can fix: the person you paid knows you paid them.
+
+### Privacy Radar states its limits
+
+- Every signal behind the grade now carries what it does **not** do, directly underneath. "Tor is on"
+  reads to most people as "I am anonymous"; what it means is that the servers being asked see an exit
+  node instead of your address, and nothing at all about the addresses they were handed.
+
+### Supply chain: the pins are checked against what upstream signed
+
+- A SHA-256 written into this repository only ever agreed with itself. Both fetch scripts now verify
+  the project's own **signed** sums file — Tor's detached signature, Monero's clearsigned hashes —
+  against a pinned key fingerprint before trusting the hash, and release builds refuse to proceed
+  when that check cannot run.
+- **The Tor pin was already broken:** the pinned version had been pruned from the mirror, so a fresh
+  clone got a 404 while the hash beside it belonged to a version that still exists. A repo check now
+  keeps the scripts and THIRD_PARTY_NOTICES describing the same download.
+- A published release can be re-checked against its own manifest at any time
+  (`scripts/verify-published-release.sh`) — the workflow verifies before publishing; this verifies
+  what the page serves afterwards.
+- The README's coin table and the roadmap's matrix are now checked against the same source of truth
+  the Send picker reads, like the coins document already was.
+
+### Who published this build
+
+- Settings → Guide gains **About this build**: version, publisher and copyright read from the
+  assembly, the licence in one line, and links to the only official repository, releases and channel.
+  The .exe's own properties and the installer now name **the fear** too, from one source.
+
+### Proof
+
+- The restore scenario runs end to end offline for BTC, LTC, BCH and DOGE: twenty addresses issued,
+  payment on #15, local state deleted, then found **and spent** from the phrase alone — and the
+  past-the-gap-limit case is pinned as the limit it is, rather than hidden.
+- A CI job proves the kill-switch opens no socket at all, with the kill-switch off as the
+  counter-proof, plus a scan for any HTTP client built outside the one place that wires it.
+- 837 offline tests.
+
 ## [4.7.0] — you choose which server sees your addresses
 
 Your keys never leave your device. That is true, and every wallet says it.

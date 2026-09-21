@@ -27,8 +27,10 @@ jobs:
       - name: Stage bundled Tor + Monero
         shell: pwsh
         run: |
-          ./desktop/scripts/fetch-tor.ps1
-          ./desktop/scripts/fetch-monero.ps1
+          # -RequireSignature: a release is exactly where "we could not check the upstream
+          # signature" must not quietly become "checked" (roadmap P0.2).
+          ./desktop/scripts/fetch-tor.ps1 -RequireSignature
+          ./desktop/scripts/fetch-monero.ps1 -RequireSignature
 
       - name: Publish (app folder + portable single-file)
         shell: pwsh
@@ -89,6 +91,10 @@ jobs:
     name: checksums
     needs: [windows, linux]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # attach the manifest to the release
+      id-token: write        # OIDC, so the attestation is keyless — no signing key to lose or leak
+      attestations: write    # record it against this repository
     steps:
       - uses: actions/checkout@v4
 
@@ -148,3 +154,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: SHA256SUMS-${{ steps.v.outputs.version }}.txt
+
+      # Roadmap R.3. A checksum proves a download matches the manifest on the release page. It says
+      # nothing about who put that page there — and an attacker who can replace the artifacts can
+      # replace the manifest beside them. An attestation is the missing half: GitHub signs a
+      # statement, keylessly through OIDC, that THESE bytes came out of THIS workflow at THIS commit,
+      # and `gh attestation verify` checks it against a transparency log rather than against us.
+      #
+      # Deliberately after the upload: a release that is complete and attached must not fail because
+      # a signing service had a bad minute. A missing attestation is visible and re-runnable; a
+      # half-published release is not.
+      - name: Attest the release artifacts
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            assets/UmbrellaWallet-*
+            SHA256SUMS-${{ steps.v.outputs.version }}.txt

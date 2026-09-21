@@ -1,17 +1,17 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability (private)
-    url: https://github.com/kiurakku/UmbrellaWallet/security/advisories/new
+    url: https://github.com/thefear078/UmbrellaWallet/security/advisories/new
     about: Report security bugs privately — do not open a public issue
   - name: Documentation hub
-    url: https://github.com/kiurakku/UmbrellaWallet/blob/main/docs/INDEX.md
+    url: https://github.com/thefear078/UmbrellaWallet/blob/main/docs/INDEX.md
     about: Map of all official docs
   - name: Development workflow
-    url: https://github.com/kiurakku/UmbrellaWallet/blob/main/docs/WORKFLOW.md
+    url: https://github.com/thefear078/UmbrellaWallet/blob/main/docs/WORKFLOW.md
     about: How we add coins and update the ROADMAP
   - name: Support / community
     url: https://t.me/UmbrellaWallet
     about: Product questions (never share seeds)
   - name: Sponsor the project
-    url: https://github.com/sponsors/kiurakku
+    url: https://github.com/sponsors/thefear078
     about: Support Umbrella Wallet development

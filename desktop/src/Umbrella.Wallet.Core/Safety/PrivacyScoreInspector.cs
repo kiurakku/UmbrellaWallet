@@ -18,9 +18,17 @@ public readonly record struct PrivacySignals(
     bool TorOnly,
     bool RichMarketDataLeak);
 
-/// <summary>One reason the score is what it is: a strength to keep, or a weakness that's dragging it down.
-/// A language-neutral <c>Code</c> so the UI builds the localized sentence (roadmap §8.2).</summary>
-public sealed record PrivacyScoreFinding(string Code, bool IsStrength);
+/// <summary>
+/// One reason the score is what it is: a strength to keep, or a weakness that's dragging it down.
+///
+/// <c>LimitCode</c> is the half that MANIFESTO §2 makes mandatory — what this protection does not do,
+/// or what the weakness actually costs. A privacy feature shown without its limits is how somebody
+/// ends up trusting more than they should, and "Tor: on" reads to most people as "I am anonymous"
+/// when it means "the servers I query see an exit node instead of my address" — and nothing else.
+///
+/// Both are language-neutral codes so the UI builds the localized sentence (roadmap §8.2).
+/// </summary>
+public sealed record PrivacyScoreFinding(string Code, bool IsStrength, string LimitCode);
 
 /// <summary>The graded result: a 0–100 value, its band, the single most valuable fix (null when nothing
 /// is left to improve), and every finding behind it.</summary>
@@ -51,16 +59,16 @@ public static class PrivacyScoreInspector
         var value = 0;
 
         // Network anonymity — the biggest lever.
-        if (s.TorEnabled) { value += TorWeight; findings.Add(new PrivacyScoreFinding("torOn", true)); }
-        else findings.Add(new PrivacyScoreFinding("torOff", false));
+        if (s.TorEnabled) { value += TorWeight; findings.Add(new PrivacyScoreFinding("torOn", true, "torOn")); }
+        else findings.Add(new PrivacyScoreFinding("torOff", false, "torOff"));
 
         // Kill switch: block all clearnet if Tor drops, so nothing quietly falls back to a bare connection.
-        if (s.TorOnly) { value += KillSwitchWeight; findings.Add(new PrivacyScoreFinding("killOn", true)); }
-        else findings.Add(new PrivacyScoreFinding("killOff", false));
+        if (s.TorOnly) { value += KillSwitchWeight; findings.Add(new PrivacyScoreFinding("killOn", true, "killOn")); }
+        else findings.Add(new PrivacyScoreFinding("killOff", false, "killOff"));
 
         // Third-party market data is an opt-in metadata leak: price lookups tell a server which coins you hold.
-        if (!s.RichMarketDataLeak) { value += NoMarketLeakWeight; findings.Add(new PrivacyScoreFinding("marketOff", true)); }
-        else findings.Add(new PrivacyScoreFinding("marketOn", false));
+        if (!s.RichMarketDataLeak) { value += NoMarketLeakWeight; findings.Add(new PrivacyScoreFinding("marketOff", true, "marketOff")); }
+        else findings.Add(new PrivacyScoreFinding("marketOn", false, "marketOn"));
 
         var grade = value >= StrongFrom ? PrivacyGrade.Strong
                   : value >= ModerateFrom ? PrivacyGrade.Moderate

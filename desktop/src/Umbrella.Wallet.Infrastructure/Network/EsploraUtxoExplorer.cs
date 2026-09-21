@@ -76,21 +76,40 @@ public sealed class EsploraUtxoExplorer : IUtxoExplorer
     /// working server towards its own rate limit.</summary>
     private int _preferred;
 
+    /// <summary>How many times the whole list of servers is tried when every one of them said
+    /// "not now". Between rounds the wallet waits (<see cref="ExplorerHttp.Backoff"/>).</summary>
+    private const int Rounds = 3;
+
     private async Task<T> TryEachAsync<T>(Func<string, Task<T>> request, CancellationToken ct)
     {
         Exception? last = null;
-        for (var attempt = 0; attempt < _bases.Count; attempt++)
+        for (var round = 1; round <= Rounds; round++)
         {
-            ct.ThrowIfCancellationRequested();
-            var index = (_preferred + attempt) % _bases.Count;
-            try
+            var anyTransient = false;
+            for (var attempt = 0; attempt < _bases.Count; attempt++)
             {
-                var result = await request(_bases[index]);
-                _preferred = index;   // stay here for the rest of this scan
-                return result;
+                ct.ThrowIfCancellationRequested();
+                var index = (_preferred + attempt) % _bases.Count;
+                try
+                {
+                    var result = await request(_bases[index]);
+                    _preferred = index;   // stay here for the rest of this scan
+                    return result;
+                }
+                // Only the caller's cancel stops here. A server that timed out is reported by
+                // HttpClient as a cancel too, and treating it as one meant the fallback servers were
+                // never asked — Bitcoin read as unavailable while mempool.space would have answered.
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                catch (Exception ex)
+                {
+                    last = ex;
+                    anyTransient |= ExplorerHttp.IsTransient(ex);
+                }
             }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception ex) { last = ex; }
+
+            // Every server gave a definite "no" — asking again will not change it.
+            if (!anyTransient || round == Rounds) break;
+            await Task.Delay(ExplorerHttp.Backoff(round, null), ct);
         }
 
         throw last ?? new HttpRequestException("No Esplora server answered.");
@@ -99,7 +118,7 @@ public sealed class EsploraUtxoExplorer : IUtxoExplorer
     public Task<AddressActivity> GetActivityAsync(string address, CancellationToken ct) =>
         TryEachAsync(async host =>
         {
-            using var res = await Http.GetAsync($"{host}/address/{Uri.EscapeDataString(address)}", ct);
+            using var res = await ExplorerHttp.GetAsync(Http, $"{host}/address/{Uri.EscapeDataString(address)}", ct, attempts: 1);
             res.EnsureSuccessStatusCode();
             using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
             var root = doc.RootElement;
@@ -110,7 +129,7 @@ public sealed class EsploraUtxoExplorer : IUtxoExplorer
     public Task<IReadOnlyList<ExplorerUtxo>> GetUtxosAsync(string address, CancellationToken ct) =>
         TryEachAsync<IReadOnlyList<ExplorerUtxo>>(async host =>
         {
-            using var res = await Http.GetAsync($"{host}/address/{Uri.EscapeDataString(address)}/utxo", ct);
+            using var res = await ExplorerHttp.GetAsync(Http, $"{host}/address/{Uri.EscapeDataString(address)}/utxo", ct, attempts: 1);
             res.EnsureSuccessStatusCode();
             using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
 

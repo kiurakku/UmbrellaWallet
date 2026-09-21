@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
+using Umbrella.Wallet.App;
 using Umbrella.Wallet.Core.Safety;
+using Umbrella.Wallet.Infrastructure;
 using Umbrella.Wallet.Infrastructure.Network;
 
 namespace Umbrella.Wallet.Core.Tests;
@@ -87,13 +89,27 @@ internal static class TestDataIsolation
     /// Tor-only user gets, and means a view-model can be constructed as many times as a test likes
     /// without reopening the network.
     /// </summary>
+    /// <summary>
+    /// Restores the run's baseline settings, including the first-run acknowledgement.
+    ///
+    /// Needed because "delete everything" genuinely deletes the settings file — that is the behaviour
+    /// DataWiperTests exist to prove — and a wiped install is a first run again, disclaimer and all.
+    /// A test about unlocking that happened to run after a wipe would otherwise open on the
+    /// acknowledgement screen and fail for a reason that has nothing to do with it.
+    /// </summary>
+    internal static void RestoreBaselineSettings() => WriteOfflineSettings(AppPaths.DataRoot);
+
     private static void WriteOfflineSettings(string directory)
     {
         try
         {
+            // AcceptedTermsVersion stands the run up as an install that has already seen the
+            // first-run disclaimer (roadmap L.1/L.3/L.8) — otherwise every screen behind that gate
+            // would be unreachable in tests about something else. The gate itself is proved by
+            // FirstRunDisclaimerTests, which puts a view model in front of an unaccepted install.
             File.WriteAllText(
                 Path.Combine(directory, "ui-settings.json"),
-                """{"TorOnlyMode":true,"Language":"en"}""");
+                $$"""{"TorOnlyMode":true,"Language":"en","AcceptedTermsVersion":{{FirstRunConsent.CurrentVersion}}}""");
         }
         catch
         {

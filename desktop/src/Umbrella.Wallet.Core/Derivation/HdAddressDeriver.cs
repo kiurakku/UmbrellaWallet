@@ -93,6 +93,11 @@ public sealed class HdAddressDeriver
                 coinType: 145,
                 addressIndex),
             ChainId.Zec => DeriveZcashTransparent(masterKey, addressIndex),
+            ChainId.Xrp => DeriveXrp(masterKey, addressIndex),
+            ChainId.Xlm => DeriveStellar(parsed, addressIndex, passphrase),
+            ChainId.Atom => DeriveCosmos(masterKey, addressIndex),
+            ChainId.Near => DeriveNear(parsed, addressIndex, passphrase),
+            ChainId.Dot => DerivePolkadot(parsed, passphrase),
             ChainId.Eth => DeriveEthereum(masterKey, addressIndex),
             ChainId.Tron => DeriveTron(masterKey, addressIndex),
             ChainId.Sol => DeriveSolana(parsed, addressIndex, passphrase),
@@ -121,6 +126,56 @@ public sealed class HdAddressDeriver
         var path = $"44'/501'/0'/{addressIndex}'";
         return new ReceiveAddress(ChainId.Sol, address, "m/" + path, addressIndex);
     }
+
+    /// <summary>
+    /// Stellar: SEP-0005 — SLIP-0010 ed25519 at m/44'/148'/{index}', every level hardened, encoded as
+    /// a "G…" StrKey (roadmap N.5). Pinned to the SEP's published test vectors, which is what makes the
+    /// phrase restore in LOBSTR, Solar or a Ledger.
+    /// </summary>
+    private static ReceiveAddress DeriveStellar(Mnemonic parsed, uint addressIndex, string passphrase = "")
+    {
+        var seed = parsed.DeriveSeed(passphrase);
+        var priv = Slip10Ed25519.DerivePrivateKey(seed, new[] { 44u, 148u, addressIndex });
+        var address = StellarKeys.EncodeAccountId(Slip10Ed25519.PublicKey(priv));
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
+        return new ReceiveAddress(ChainId.Xlm, address, $"m/44'/148'/{addressIndex}'", addressIndex);
+    }
+
+    /// <summary>
+    /// Polkadot root account: substrate-bip39 mini secret from the phrase's ENTROPY (+ passphrase), an
+    /// sr25519 key, SS58 with the Polkadot prefix (roadmap N.8). Pinned to subkey's documented output.
+    /// </summary>
+    private static ReceiveAddress DerivePolkadot(Mnemonic parsed, string passphrase = "")
+    {
+        var entropy = AdaKeys.EntropyFromMnemonic(parsed.ToString());
+        var mini = Umbrella.Wallet.Core.Polkadot.PolkadotKeys.MiniSecretFromEntropy(entropy, passphrase);
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(entropy);
+        var publicKey = Umbrella.Wallet.Core.Polkadot.PolkadotKeys.PublicKeyFromMiniSecret(mini);
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(mini);
+        return new ReceiveAddress(ChainId.Dot, Umbrella.Wallet.Core.Polkadot.Ss58.Encode(publicKey), "sr25519 root", 0);
+    }
+
+    /// <summary>
+    /// NEAR implicit account at m/44'/397'/{index}' (SLIP-0010 ed25519): the account id is the hex of
+    /// the public key (roadmap N.7). Pinned to near-seed-phrase's own parse test.
+    /// </summary>
+    private static ReceiveAddress DeriveNear(Mnemonic parsed, uint addressIndex, string passphrase = "")
+    {
+        var pub = DeriveNearPublicKey(parsed, addressIndex, passphrase);
+        return new ReceiveAddress(ChainId.Near, NearAccounts.ImplicitAccountId(pub), $"m/44'/397'/{addressIndex}'", addressIndex);
+    }
+
+    private static byte[] DeriveNearPublicKey(Mnemonic parsed, uint addressIndex, string passphrase)
+    {
+        var priv = Slip10Ed25519.DerivePrivateKey(parsed.DeriveSeed(passphrase), new[] { 44u, 397u, addressIndex });
+        var pub = Slip10Ed25519.PublicKey(priv);
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
+        return pub;
+    }
+
+    /// <summary>The NEAR ed25519 public key, for tests and for a future signer.</summary>
+    public byte[] DeriveNearPublicKey(string mnemonic, uint addressIndex = 0, string? passphrase = null) =>
+        DeriveNearPublicKey(Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic)), addressIndex, Resolve(passphrase));
 
     /// <summary>
     /// TON: SLIP-0010 ed25519 at m/44'/607'/0', wallet v4R2 address (non-bounceable / UQ form).
@@ -211,20 +266,107 @@ public sealed class HdAddressDeriver
     /// to a fresh internal address instead of re-using a public one. Address, key and scriptPubKey
     /// all come from this one method so they can never drift apart.
     /// </summary>
-    public DerivedUtxoAccount DeriveBitcoinLikeAt(string mnemonic, ChainId chain, uint change, uint index, string? passphrase = null) =>
-        DeriveUtxoAccount(mnemonic, new UtxoDerivationPath(chain, change, index), passphrase);
+    public DerivedUtxoAccount DeriveBitcoinLikeAt(
+        string mnemonic, ChainId chain, uint change, uint index, string? passphrase = null,
+        UtxoScriptKind kind = UtxoScriptKind.Default) =>
+        DeriveUtxoAccount(mnemonic, new UtxoDerivationPath(chain, change, index, kind), passphrase);
 
     /// <summary>Derives the signing account for an explicit <see cref="UtxoDerivationPath"/>.</summary>
     public DerivedUtxoAccount DeriveUtxoAccount(string mnemonic, UtxoDerivationPath path, string? passphrase = null)
     {
         passphrase = Resolve(passphrase);
-        var (purpose, coinType, network, scriptType) = BitcoinLikeParams(path.Chain);
+        var (_, _, network, _) = BitcoinLikeParams(path.Chain);
+        var (_, scriptType) = BranchParams(path.Chain, path.Kind);
+
         var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
-        var keyPath = new KeyPath($"{purpose}'/{coinType}'/0'/{path.Change}/{path.Index}");
+        var keyPath = KeyPathFor(path);
         var key = parsed.DeriveExtKey(passphrase).Derive(keyPath).PrivateKey;
         var address = key.PubKey.GetAddress(scriptType, network).ToString();
         var scriptPubKey = key.PubKey.GetAddress(scriptType, network).ScriptPubKey;
         return new DerivedUtxoAccount(path, address, key, scriptPubKey);
+    }
+
+    /// <summary>BIP86: the purpose Taproot accounts live at.</summary>
+    public const int TaprootPurpose = 86;
+
+    /// <summary>The full BIP32 path of a UTXO leaf, <c>purpose'/coin'/0'/change/index</c>. The one
+    /// place it is spelled, so the key that signs and the path a PSBT names cannot disagree.</summary>
+    public static KeyPath KeyPathFor(UtxoDerivationPath path)
+    {
+        var (_, coinType, _, _) = BitcoinLikeParams(path.Chain);
+        var (purpose, _) = BranchParams(path.Chain, path.Kind);
+        return new KeyPath($"{purpose}'/{coinType}'/0'/{path.Change}/{path.Index}");
+    }
+
+    /// <summary>
+    /// Purpose and script type for one branch of a UTXO chain. Taproot is a different purpose AND a
+    /// different script type on the same coin; both move together or the address and the key belong
+    /// to different wallets (roadmap P2.1). Bitcoin only — any other chain throws rather than invent
+    /// an address nothing scans.
+    /// </summary>
+    public static (int Purpose, ScriptPubKeyType ScriptType) BranchParams(ChainId chain, UtxoScriptKind kind)
+    {
+        var (purpose, _, _, scriptType) = BitcoinLikeParams(chain);
+        if (kind != UtxoScriptKind.Taproot) return (purpose, scriptType);
+        if (chain != ChainId.Btc) throw new UnsupportedChainException(chain);
+        return (TaprootPurpose, ScriptPubKeyType.TaprootBIP86);
+    }
+
+    /// <summary>
+    /// The account-level extended public key of one branch (<c>m/purpose'/coin'/0'</c>). Derived
+    /// once, its children give every address on that branch without re-running the BIP39 seed
+    /// stretch per address — which is what makes recognising "is this output ours?" across a few
+    /// hundred addresses cheap (roadmap H.1).
+    /// </summary>
+    public ExtPubKey DeriveAccountExtPubKey(
+        string mnemonic, ChainId chain, UtxoScriptKind kind = UtxoScriptKind.Default, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var (_, coinType, _, _) = BitcoinLikeParams(chain);
+        var (purpose, _) = BranchParams(chain, kind);
+        var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
+        return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"{purpose}'/{coinType}'/0'")).Neuter();
+    }
+
+    /// <summary>The BIP32 fingerprint of the wallet's master key — what a PSBT names so another tool
+    /// (Sparrow, a hardware wallet) can recognise which of its inputs it holds keys for. It is a
+    /// 4-byte hash, not a key; it identifies the wallet to whoever sees the PSBT.</summary>
+    public HDFingerprint MasterFingerprint(string mnemonic, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
+        return parsed.DeriveExtKey(passphrase).Neuter().PubKey.GetHDFingerPrint();
+    }
+
+    /// <summary>
+    /// The account-level EXTENDED PUBLIC KEY for a UTXO chain — everything a third party needs to
+    /// list this wallet's addresses and its balance, and nothing that can spend a satoshi
+    /// (roadmap P1.20).
+    ///
+    /// This is what "verify, don't trust" needs to mean something. A user who has to take the
+    /// wallet's word for their balance is trusting the program that also tells them it is safe; an
+    /// xpub lets them ask an independent scanner the same question and compare answers.
+    ///
+    /// It is also the most privacy-revealing thing the wallet can export: it discloses EVERY address
+    /// on the account, past and future, to whoever receives it. The UI says so before showing it.
+    /// </summary>
+    public string DeriveAccountXpub(
+        string mnemonic, ChainId chain, string? passphrase = null, UtxoScriptKind kind = UtxoScriptKind.Default)
+    {
+        var (_, _, network, _) = BitcoinLikeParams(chain);
+
+        // The ACCOUNT level (m/purpose'/coin'/0'), exactly the level the addresses hang off — so what
+        // a scanner derives from it is the same set the wallet scans and spends from.
+        return DeriveAccountExtPubKey(mnemonic, chain, kind, passphrase).ToString(network);
+    }
+
+    /// <summary>The BIP32 path that <see cref="DeriveAccountXpub"/> exports, for the UI to show
+    /// beside it — a key without its path is a key somebody has to guess at.</summary>
+    public static string AccountXpubPath(ChainId chain, UtxoScriptKind kind = UtxoScriptKind.Default)
+    {
+        var (_, coinType, _, _) = BitcoinLikeParams(chain);
+        var (purpose, _) = BranchParams(chain, kind);
+        return $"m/{purpose}'/{coinType}'/0'";
     }
 
     /// <summary>Validates a mnemonic and returns its normalized form, or throws with the reason.</summary>
@@ -339,6 +481,47 @@ public sealed class HdAddressDeriver
         Buffer.BlockCopy(hash160, 0, payload, 2, 20);
         var address = EncodeBase58Check(payload);
         return new ReceiveAddress(ChainId.Zec, address, FormatPath(path), addressIndex);
+    }
+
+    /// <summary>
+    /// XRP Ledger classic address at m/44'/144'/0'/0/{index}: the account id is
+    /// RIPEMD160(SHA256(compressed secp256k1 public key)), encoded with XRPL's base58 (roadmap N.4).
+    /// Pinned end to end: the public key against xrpl.js's own <c>fromMnemonic</c> test, the
+    /// encoding against the worked example and sentinel accounts in XRPL's documentation.
+    /// </summary>
+    private static ReceiveAddress DeriveXrp(ExtKey masterKey, uint addressIndex)
+    {
+        var path = new KeyPath($"44'/144'/0'/0/{addressIndex}");
+        var pubKey = masterKey.Derive(path).PrivateKey.PubKey;   // compressed, 33 bytes
+        var accountId = XrpAddress.AccountIdFromPublicKey(pubKey.ToBytes());
+        return new ReceiveAddress(ChainId.Xrp, XrpAddress.Encode(accountId), FormatPath(path), addressIndex);
+    }
+
+    /// <summary>
+    /// Cosmos Hub address at m/44'/118'/0'/0/{index}: bech32("cosmos", RIPEMD160(SHA256(compressed
+    /// key))) (roadmap N.6). Pinned to cosmjs's DirectSecp256k1HdWallet test — key and address.
+    /// </summary>
+    private static ReceiveAddress DeriveCosmos(ExtKey masterKey, uint addressIndex)
+    {
+        var path = new KeyPath($"44'/118'/0'/0/{addressIndex}");
+        var accountId = masterKey.Derive(path).PrivateKey.PubKey.Hash.ToBytes();   // RIPEMD160(SHA256(pubkey))
+        return new ReceiveAddress(ChainId.Atom, CosmosHub.AddressFromAccountId(accountId), FormatPath(path), addressIndex);
+    }
+
+    /// <summary>The compressed public key behind the Cosmos address, for tests and for a future signer.</summary>
+    public PubKey DeriveCosmosPublicKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
+        return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"44'/118'/0'/0/{addressIndex}")).PrivateKey.PubKey;
+    }
+
+    /// <summary>The compressed public key behind the XRP address, for tests and for a future signer.</summary>
+    public PubKey DeriveXrpPublicKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
+        return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"44'/144'/0'/0/{addressIndex}")).PrivateKey.PubKey;
     }
 
     private static ReceiveAddress DeriveTron(ExtKey masterKey, uint addressIndex)

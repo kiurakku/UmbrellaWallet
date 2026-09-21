@@ -7,8 +7,8 @@ Umbrella Wallet is an independent, best-effort project. There is no SLA and **no
 | Need | Where |
 |---|---|
 | Product questions, releases | [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet) |
-| Bugs (non-security) | [GitHub Issues](https://github.com/kiurakku/UmbrellaWallet/issues) |
-| Security vulnerabilities | [Private advisories](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new) — **not** public issues |
+| Bugs (non-security) | [GitHub Issues](https://github.com/thefear078/UmbrellaWallet/issues) |
+| Security vulnerabilities | [Private advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) — **not** public issues |
 | Docs map | [docs/INDEX.md](../docs/INDEX.md) |
 | All contacts | [CONTACT.md](../CONTACT.md) |
 

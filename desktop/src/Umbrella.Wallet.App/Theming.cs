@@ -25,7 +25,8 @@ public static class Theming
     /// </summary>
     public static IReadOnlyList<ThemeOption> Themes { get; } =
     [
-        new("umbrella", "Umbrella · signature navy"),
+        new("umbrella", "Umbrella · honey gold"),
+        new("navy", "Navy · the classic blue"),
         new("purple", "The fear · monochrome noir"),
         new("signal", "Ember · crimson editorial"),
         new("black", "Void · electric OLED"),
@@ -58,10 +59,22 @@ public static class Theming
 
     private static readonly Dictionary<string, string[]> Palettes = new()
     {
-        // Umbrella premium — the signature look: deep navy/graphite base (never pure black), matte
-        // glass cards, cool-white text, and the cyan→blue→violet brand accent. This is the default.
+        // Umbrella — the signature look, and the default: gold light on black. Near-neutral blacks with
+        // only a breath of warmth, so the gold reads as light on the surface rather than a tint over it;
+        // cards a step up from the page with hairline borders; clean white type; gains in a clear green
+        // that sits beside gold without competing. Accent buttons take dark labels.
         // bg        bgAlt      card       input      cardAlt    hover      bd         bd2        bd3        accent     accentBr   accentHv   accentSel  accentDim  text       textSoft   textDim    textMut    pos        inverse    inverseHv  inverseTx
         ["umbrella"] =
+        [
+            "#070707", "#0A0A0A", "#101010", "#0C0C0C", "#161615", "#1D1C19",
+            "#1F1E1B", "#2A2825", "#3B3830",
+            "#E9B22E", "#F7C531", "#FFD75A", "#3A2C0A", "#2C220A",
+            "#F7F7F5", "#DAD7D0", "#A7A299", "#85807A", "#37D67A",
+            "#F7F7F5", "#FFFFFF", "#070707",
+        ],
+        // Navy — the original signature: deep navy/graphite base (never pure black), matte glass cards,
+        // cool-white text and the cyan→blue→violet accent. Kept for everyone who chose it.
+        ["navy"] =
         [
             "#080D16", "#0B1220", "#111927", "#0F1826", "#151E2D", "#1B2740",
             "#1E2A3D", "#26344A", "#33455F",
@@ -250,15 +263,20 @@ public static class Theming
 
     /// <summary>The themes whose page background is a sweep rather than a flat fill. Solana is here
     /// because its brand identity IS a gradient; Sunset because dusk has no single colour.</summary>
-    private static readonly HashSet<string> GradientThemes = new(StringComparer.Ordinal) { "sunset", "solana" };
+    private static readonly HashSet<string> GradientThemes = new(StringComparer.Ordinal) { "sunset", "solana", "umbrella" };
 
     /// <summary>Gradient themes paint the page as a sweep instead of a flat fill.</summary>
     private static IBrush GradientBackground(string id)
     {
-        var stops = id == "sunset"
-            ? [("#2A0F1B", 0.0), ("#1C1020", 0.5), ("#120C18", 1.0)]
+        var stops = id switch
+        {
+            "sunset" => [("#2A0F1B", 0.0), ("#1C1020", 0.5), ("#120C18", 1.0)],
+            // Gold: the faintest warmth in the top-left corner, black everywhere else — the glow comes
+            // from the arcs of light behind the window, not from a brown page.
+            "umbrella" => [("#14100A", 0.0), ("#0A0908", 0.35), ("#070707", 0.7), ("#070707", 1.0)],
             // Solana's purple → teal sweep, darkened to stay a background rather than a poster.
-            : new[] { ("#1A0B33", 0.0), ("#120C28", 0.5), ("#07211D", 1.0) };
+            _ => new[] { ("#1A0B33", 0.0), ("#120C28", 0.5), ("#07211D", 1.0) },
+        };
 
         var brush = new LinearGradientBrush
         {
@@ -364,6 +382,47 @@ public static class Theming
         // A soft translucent wash of the accent, for hover fills and glows that follow the theme.
         resources["UmAccentWash"] = new SolidColorBrush(accent) { Opacity = 0.16 };
 
+        // Glow colours for the splash and aurora effects, which used to be a fixed brand blue and
+        // showed as blue smudges on every other theme. GradientStops take Colors, not brushes.
+        var bg = Color.Parse(palette[Array.IndexOf(Keys, "UmBg")]);
+        resources["UmGlow"] = accent;
+        resources["UmGlowSoft"] = Color.FromArgb(0x55, accent.R, accent.G, accent.B);
+        resources["UmGlowFaint"] = Color.FromArgb(0x1A, accent.R, accent.G, accent.B);
+        resources["UmGlowClear"] = Color.FromArgb(0x00, accent.R, accent.G, accent.B);
+        resources["UmBgClear"] = Color.FromArgb(0x00, bg.R, bg.G, bg.B);
+
+        // The Umbrella mark in this theme's colours (Controls/BrandMark): light where the fold catches
+        // the light, the accent through the middle, deeper at the far edge. Only the desktop icon keeps
+        // fixed colours.
+        var markFill = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+        };
+        markFill.GradientStops.Add(new GradientStop(Color.Parse(palette[Array.IndexOf(Keys, "UmAccentHover")]), 0.0));
+        markFill.GradientStops.Add(new GradientStop(accent, 0.45));
+        markFill.GradientStops.Add(new GradientStop(Color.Parse(palette[Array.IndexOf(Keys, "UmAccent")]), 1.0));
+        resources["UmMarkFill"] = markFill;
+
+        // Under every chart line: a wash of the accent fading to nothing, so the line reads as light.
+        var chartArea = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+        };
+        chartArea.GradientStops.Add(new GradientStop(Color.FromArgb(0x55, accent.R, accent.G, accent.B), 0.0));
+        chartArea.GradientStops.Add(new GradientStop(Color.FromArgb(0x16, accent.R, accent.G, accent.B), 0.55));
+        chartArea.GradientStops.Add(new GradientStop(Color.FromArgb(0x00, accent.R, accent.G, accent.B), 1.0));
+        resources["UmChartArea"] = chartArea;
+
+        // The mark's tile: a hairline of the accent and a glow of it, like the app icon's own edge.
+        resources["UmTileEdge"] = new SolidColorBrush(accent) { Opacity = 0.6 };
+        resources["UmTileGlow"] = new BoxShadows(new BoxShadow
+        {
+            Blur = 22,
+            Color = Color.FromArgb(0x40, accent.R, accent.G, accent.B),
+        });
+
         // Hero balance-card gradient, DERIVED from the theme so the card never clashes with the palette.
         // A fixed violet gradient used to sit under every theme, which "spoiled" the reds/greens/etc.
         // Card → a dark tint of the theme accent → card-alt, on a diagonal — a premium, on-theme surface.
@@ -380,7 +439,51 @@ public static class Theming
         hero.GradientStops.Add(new GradientStop(heroEnd, 1.0));
         resources["UmHeroGradient"] = hero;
 
+        PublishSignature(resources, palette, hero, accent);
+
         Current = id;
+    }
+
+    /// <summary>
+    /// The balance card, the action tiles and the active navigation item: one treatment on every theme,
+    /// in that theme's colours — dark surfaces, with the accent used as light. Every theme publishes
+    /// every one of these, so nothing from the previous theme can linger after a switch.
+    /// </summary>
+    private static void PublishSignature(
+        Avalonia.Controls.IResourceDictionary resources, string[] palette, IBrush hero, Color accent)
+    {
+        IBrush Solid(string key) => new SolidColorBrush(Color.Parse(palette[Array.IndexOf(Keys, key)]));
+
+        resources["UmHeroSurface"] = hero;
+        resources["UmHeroWash"] = new SolidColorBrush(accent) { Opacity = 0.16 };
+        resources["UmHeroEdge"] = Solid("UmBorder");
+        resources["UmHeroText"] = Solid("UmText");
+        resources["UmHeroTextSoft"] = Solid("UmTextDim");
+        resources["UmHeroAccent"] = Solid("UmAccentBright");
+        resources["UmHeroUnderlay"] = Brushes.Transparent;
+        resources["UmHeroShade"] = Color.Parse("#B3060B14");
+        resources["UmHeroShadeClear"] = Color.Parse("#00060B14");
+        resources["UmHeroVideoOpacity"] = 0.6;
+
+        // Action tiles: dark, with the accent only in the icon — and a hairline of it on hover.
+        resources["UmDiscFill"] = Solid("UmCard");
+        resources["UmDiscEdge"] = Solid("UmBorder2");
+        resources["UmDiscIcon"] = Solid("UmAccentBright");
+        resources["UmDiscFillHover"] = Solid("UmCardAlt");
+        resources["UmDiscEdgeHover"] = new SolidColorBrush(accent) { Opacity = 0.45 };
+        resources["UmDiscIconHover"] = Solid("UmAccentHover");
+
+        // The page you are on: a warm wash of the accent fading to the right, the icon lit in it.
+        var navFill = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
+        };
+        navFill.GradientStops.Add(new GradientStop(Color.FromArgb(0x38, accent.R, accent.G, accent.B), 0.0));
+        navFill.GradientStops.Add(new GradientStop(Color.FromArgb(0x0C, accent.R, accent.G, accent.B), 1.0));
+        resources["UmNavActiveFill"] = navFill;
+        resources["UmNavActiveIcon"] = Solid("UmAccentBright");
+        resources["UmNavActiveText"] = Solid("UmText");
     }
 
     /// <summary>Perceptual-ish brightness in 0..1, to decide dark-vs-light text on a colour.</summary>

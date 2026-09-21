@@ -19,7 +19,19 @@ description = "Password literal in config-like assignment"
 regex = '''(?i)password\s*[=:]\s*['"][^'"]{8,}['"]'''
 
 [allowlist]
-description = "test vectors, docs, and example env files"
+description = "test vectors, docs, example env files, and PUBLIC key fingerprints"
+# Match against the whole LINE, not the extracted secret: what identifies these as public
+# fingerprints is the variable they are assigned to, and the secret alone is just forty hex digits.
+regexTarget = "line"
+regexes = [
+  # PGP public-key FINGERPRINTS of the upstream projects whose binaries this wallet bundles: the Tor
+  # Browser Developers and Monero's binaryFate. Forty hex characters of high entropy looks exactly
+  # like an API key to the generic rule, but a fingerprint is a public identifier — it is published
+  # so that anyone can check a signature, and pinning it in the fetch scripts is the whole point of
+  # roadmap P0.2. Matched by variable name, so a real secret assigned elsewhere is not waved through
+  # along with it.
+  '''SigningKeyFingerprint\s*=\s*.[0-9A-Fa-f]{40}''',
+]
 paths = [
   '''desktop/tests/''',
   '''backend/test/''',

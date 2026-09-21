@@ -121,7 +121,7 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _receiveAddressReused;
     [ObservableProperty] private bool _receiveAddressCheckPending;
     private System.Threading.CancellationTokenSource? _reuseCheckCts;
-    public System.Collections.ObjectModel.ObservableCollection<string> ReceiveHistory { get; } = new();
+    public System.Collections.ObjectModel.ObservableCollection<ReceiveHistoryRow> ReceiveHistory { get; } = new();
     /// <summary>True once more than the base address has been issued, so the "Previous addresses" list is worth showing.</summary>
     public bool HasReceiveHistory => ReceiveHistory.Count > 1;
     /// <summary>Requested-amount is only encoded where the payment-URI scheme is a recognised standard (BIP21).</summary>
@@ -143,7 +143,55 @@ public partial class MainViewModel : ViewModelBase
     /// the live Tor/proxy status, e.g. "Tor connected" / "Direct connection" (roadmap §7.1).</summary>
     public string ConnectionLabel => (TorStatus ?? string.Empty).Split('·')[0].Trim();
 
-    partial void OnTorStatusChanged(string value) => OnPropertyChanged(nameof(ConnectionLabel));
+    partial void OnTorStatusChanged(string value)
+    {
+        OnPropertyChanged(nameof(ConnectionLabel));
+        RefreshConnectionChip();
+    }
+
+    // --- Connection chip (roadmap P1.6) ---------------------------------------------------------
+    // Where requests are actually going, in the primary interface rather than three screens deep.
+    // The state worth showing most is the one that looks like the good one: Tor switched on in
+    // Settings, Tor not actually running, everything going out in the clear.
+
+    [ObservableProperty] private string _connectionChipLabel = string.Empty;
+    [ObservableProperty] private string _connectionChipColor = "#8A9099";
+    [ObservableProperty] private string _connectionChipTooltip = string.Empty;
+
+    /// <summary>Recomputes the chip from the same live signals the send gate reads, so the two can
+    /// never tell different stories.</summary>
+    public void RefreshConnectionChip()
+    {
+        var state = Umbrella.Wallet.Core.Safety.ConnectionStatus.Evaluate(CurrentTransportState());
+        var L = Loc.Instance;
+
+        // A route the user did not ask for is a warning, not a status line.
+        var warn = state.TorExpectedButNotUsed;
+
+        (ConnectionChipLabel, ConnectionChipColor) = state.Route switch
+        {
+            Umbrella.Wallet.Core.Safety.ConnectionRoute.Tor => (L["conn.tor"], "#8FCB9B"),
+            Umbrella.Wallet.Core.Safety.ConnectionRoute.CustomProxy => (L["conn.proxy"], warn ? "#E7CA83" : "#8FB8CB"),
+            Umbrella.Wallet.Core.Safety.ConnectionRoute.Blocked => (L["conn.blocked"], "#E09A9A"),
+            _ => (L["conn.direct"], warn ? "#E7CA83" : "#8A9099"),
+        };
+
+        ConnectionChipTooltip = state.Route switch
+        {
+            Umbrella.Wallet.Core.Safety.ConnectionRoute.Tor => L["conn.torHint"],
+            Umbrella.Wallet.Core.Safety.ConnectionRoute.CustomProxy => L["conn.proxyHint"],
+            Umbrella.Wallet.Core.Safety.ConnectionRoute.Blocked => L["conn.blockedHint"],
+            _ => warn ? L["conn.directTorOffHint"] : L["conn.directHint"],
+        };
+    }
+
+    /// <summary>The chip is a button: it opens the screen that can change what it reports.</summary>
+    [RelayCommand]
+    private void OpenConnectionSettings()
+    {
+        SettingsTab = "Privacy";
+        SelectSection("Settings");
+    }
 
     /// <summary>True when a broadcast would go over clearnet — Tor is off and the Tor-only kill-switch
     /// isn't forcing it. Shown as an anonymity reminder on the Send review: the node you broadcast to
@@ -153,6 +201,7 @@ public partial class MainViewModel : ViewModelBase
     partial void OnTorEnabledChanged(bool value)
     {
         OnPropertyChanged(nameof(ShowSendClearnetNote));
+        RefreshConnectionChip();
         RefreshPrivateSendPlan();    // the private-send plan is a read of this state
         RefreshMoneroNodeStatus();   // an .onion node becomes usable (or not) with Tor
     }
@@ -283,7 +332,6 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.Theme = value;
             _uiSettings.Save();
             OnPropertyChanged();
-            OnPropertyChanged(nameof(LogoImage));
             // Theme changes are not real wallet events — logging them spammed the activity feed with
             // "Theme Appearance changed" rows that read like a developer log, so they're no longer logged.
         }
@@ -483,6 +531,7 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.Save();
             OnPropertyChanged();
             PublicHttp.SetRequireProxy(value);
+            RefreshConnectionChip();
             OnPropertyChanged(nameof(TorOnlyStatus));
             OnPropertyChanged(nameof(ShowSendClearnetNote));
             if (IsUnlocked) PushActivity("Security", "Tor-only", value ? "on" : "off",
@@ -572,6 +621,7 @@ public partial class MainViewModel : ViewModelBase
         {
             // Hand routing back to Tor (its proxy if on, else direct).
             PublicHttp.SetProxy(TorEnabled ? _tor.ProxyUri : null);
+            RefreshConnectionChip();
             ProxyStatus = string.Empty;
             _ = RefreshMarketAsync();
             return;
@@ -595,6 +645,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         PublicHttp.SetProxy(normalized);
+        RefreshConnectionChip();
         ProxyStatus = $"Routing through {normalized}";
         ProxyStatusColor = "#8FCB9B";
         if (IsUnlocked) PushActivity("Security", "Proxy", "on", normalized, "now");
@@ -759,16 +810,8 @@ public partial class MainViewModel : ViewModelBase
     /// labels don't clip; four across on the desktop.</summary>
     public int QuickActionColumns => MobileMode ? 2 : 4;
 
-    /// <summary>
-    /// The in-app wordmark on the welcome and unlock screens — the ORIGINAL Umbrella Wallet logo,
-    /// swapped for the dark version on light themes (the solid-white one is invisible on white). The
-    /// new full-colour umbrella art is used only for the desktop app / taskbar icon (umbrella.ico),
-    /// not inside the app.
-    /// </summary>
-    public Bitmap LogoImage => LoadAsset(
-        Theming.IsLightTheme(Theming.Current)
-            ? "umbrella-logo-black.png"
-            : "umbrella-logo-solidwhite.png");
+    // The in-app logos are Controls/BrandMark, tinted by the theme; only the desktop icon
+    // (umbrella.ico) keeps fixed colours.
 
     /// <summary>The "the fear" maker's mark — the gold ghost (transparent background).</summary>
     public Bitmap FearMark => LoadAsset("thefear-ghost.png");
@@ -845,6 +888,7 @@ public partial class MainViewModel : ViewModelBase
         new("Tor / network privacy", "Privacy", "tor onion routing ip"),
         new("Screenshot protection", "Privacy", "hide seed capture screen"),
         new("Guide & docs", "Guide", "help documentation how to"),
+        new("About & licence", "Guide", "version publisher the fear licence trademark notices"),
         new("Delete wallet", "Danger", "erase wipe remove everything"),
         new("Clear history", "Danger", "activity transactions log"),
         new("Disconnect all", "Danger", "watch addresses exchanges unlink"),
@@ -889,6 +933,9 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Version shown in the status bar — read from the assembly so it never drifts from the csproj.</summary>
     public string AppVersionLabel =>
         $"Umbrella Wallet v{CurrentVersion} · the fear";
+
+    /// <summary>Just the version, for the sidebar's foot.</summary>
+    public string AppVersionShort => $"v{CurrentVersion}";
 
     private static string CurrentVersion =>
         typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.8.0";
@@ -1211,7 +1258,7 @@ public partial class MainViewModel : ViewModelBase
 
         RestoreMarketCache(); // show last-seen prices instantly; the live refresh corrects them
 
-        SelectedSendAsset = SendableAssets[0];
+        RebuildSendableAssets();   // native coins now; tokens as soon as balances land
         SelectedWatchNetwork = WatchableNetworks[0];
         BuildGuide();
         LoadProfileImages();
@@ -1231,6 +1278,7 @@ public partial class MainViewModel : ViewModelBase
         if (EffectiveCustomProxy() is { } startupProxy)
         {
             PublicHttp.SetProxy(startupProxy);
+            RefreshConnectionChip();
             ProxyStatus = $"Routing through {startupProxy}";
             ProxyStatusColor = "#8FCB9B";
         }
@@ -1833,10 +1881,13 @@ public partial class MainViewModel : ViewModelBase
     public bool IsActivityGroup => IsActivity || IsTransactions;
 
     // --- Onboarding state machine: each is a full-screen page, sidebar only in the workspace ---
-    public bool IsWelcomeStage => !HasVault && SetupStage == "Welcome";
-    public bool IsCreateStage => !HasVault && SetupStage == "Create";
-    public bool IsImportStage => !HasVault && SetupStage == "Import";
-    public bool IsUnlockStage => HasVault && !IsUnlocked;
+    // Every stage below is gated on the first-run acknowledgement (roadmap L.1/L.3/L.8): no create,
+    // no import, no unlock until it is given. A disclaimer the user can walk around is a disclaimer
+    // for the developer's benefit rather than theirs.
+    public bool IsWelcomeStage => !NeedsDisclaimer && !HasVault && SetupStage == "Welcome";
+    public bool IsCreateStage => !NeedsDisclaimer && !HasVault && SetupStage == "Create";
+    public bool IsImportStage => !NeedsDisclaimer && !HasVault && SetupStage == "Import";
+    public bool IsUnlockStage => !NeedsDisclaimer && HasVault && !IsUnlocked;
     public bool IsBackupStage => IsUnlocked && PendingPhraseBackup;
     public bool IsWorkspace => IsUnlocked && !PendingPhraseBackup;
     public bool ShowSidebar => IsWorkspace;
@@ -1941,6 +1992,10 @@ public partial class MainViewModel : ViewModelBase
     private WalletAccountViewModel? SelectedSendAccount()
     {
         var symbol = SelectedSendAsset?.Symbol ?? string.Empty;
+
+        // An ERC-20 is identified by its contract, not its ticker (roadmap N.1).
+        if (ContractFromSendKey(symbol) is not null) return TokenAccountFor(symbol);
+
         var requiredChain = TokenSendChain.GetValueOrDefault(symbol);
 
         return Accounts.FirstOrDefault(a => a.Symbol == symbol
@@ -1959,7 +2014,7 @@ public partial class MainViewModel : ViewModelBase
 
     public string SelectedSendBalanceLabel => SelectedSendAsset is null
         ? string.Empty
-        : $"{Loc.Instance["send.available"]}: {Fmt(SelectedSendBalance)} {SelectedSendAsset.Symbol}";
+        : $"{Loc.Instance["send.available"]}: {Fmt(SelectedSendBalance)} {SelectedSendAsset.DisplayTicker}";
 
     // --- Send review breakdown (§4): full destination, amount + fiat, kept separate from the fee. ---
     /// <summary>The destination shown in review, ALWAYS in full (never shortened) so the user can verify
@@ -2102,6 +2157,12 @@ public partial class MainViewModel : ViewModelBase
     partial void OnSendToChanged(string value)
     {
         HasSendQuote = false;
+
+        // A pasted bitcoin: link is unpacked into address + amount (roadmap P2.2); the raw link text
+        // is not an address and is not validated as one.
+        if (TryApplyPaymentLink(value)) return;
+        ForgetPayjoinIfDestinationChanged(value);
+
         ValidateSendAddress();
         EvaluateSendSafety();
     }
@@ -2418,6 +2479,7 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsDiscoverGroup));
         OnPropertyChanged(nameof(IsWalletGroup));
         OnPropertyChanged(nameof(IsActivityGroup));
+        OnPropertyChanged(nameof(IsDisclaimerStage));
         OnPropertyChanged(nameof(IsWelcomeStage));
         OnPropertyChanged(nameof(IsCreateStage));
         OnPropertyChanged(nameof(IsImportStage));
@@ -2781,10 +2843,30 @@ public partial class MainViewModel : ViewModelBase
         await RefreshMoneroAsync();
     }
 
+    /// <summary>
+    /// With the Monero service off nothing was asked, so nothing failed: the XMR row says the service is
+    /// off rather than blaming a server, which sent people looking for a network problem that was not
+    /// there. Returns true when the row changed.
+    /// </summary>
+    private bool MarkMoneroUnreadReason()
+    {
+        if (_monero.IsRunning) return false;
+        var row = Accounts.FirstOrDefault(a => a.Symbol == "XMR");
+        var note = Loc.Instance["balance.xmrOff"];
+        if (row is null || row.Balance != BalanceRead.Unknown || row.UnreadNote == note) return false;
+
+        Accounts[Accounts.IndexOf(row)] = row with { UnreadNote = note };
+        return true;
+    }
+
     /// <summary>Pulls the Monero balance and reports scan progress rather than a misleading 0.</summary>
     private async Task RefreshMoneroAsync()
     {
-        if (!_monero.IsRunning) return;
+        if (!_monero.IsRunning)
+        {
+            if (MarkMoneroUnreadReason()) RefreshHoldings();
+            return;
+        }
 
         var balance = await _monero.GetBalanceAsync();
         if (balance is null) return;
@@ -2808,6 +2890,10 @@ public partial class MainViewModel : ViewModelBase
                 Amount = (double)balance.Total,
                 Price = (double)usd,
                 Change24h = (double)change,
+                // A synced daemon is a real reading; a still-scanning one is a partial view of the
+                // chain, so it is presented as the last known figure rather than the current one.
+                Balance = balance.Synced ? BalanceRead.Live : BalanceRead.Cached,
+                UnreadNote = "",
             };
             RefreshHoldings();
             RecalcBalance();
@@ -2858,6 +2944,7 @@ public partial class MainViewModel : ViewModelBase
             // Fall back to the custom proxy if the user has one, otherwise go direct.
             var fallback = EffectiveCustomProxy();
             PublicHttp.SetProxy(fallback);
+            RefreshConnectionChip();
             TorStatus = fallback is null
                 ? "Direct connection · traffic is NOT anonymised"
                 : $"Off · using your custom proxy ({fallback})";
@@ -2893,10 +2980,12 @@ public partial class MainViewModel : ViewModelBase
             TorStatusColor = "#E09A9A";
             TorEnabled = false;
             PublicHttp.SetProxy(null);
+            RefreshConnectionChip();
             return;
         }
 
         PublicHttp.SetProxy(_tor.ProxyUri);
+        RefreshConnectionChip();
         TorStatus = $"{resultMessage} · your IP is hidden from explorers";
         TorStatusColor = "#8FCB9B";
         if (IsUnlocked) PushActivity("Security", "Tor", "on", "IP hidden from explorers", "now");
@@ -3041,6 +3130,13 @@ public partial class MainViewModel : ViewModelBase
         ExchangeApiSecret = string.Empty;
         ExchangePassphrase = string.Empty;
         ClearSendQuotes();
+        // What the last session's scans found belongs to the last session's wallet. Kept across a
+        // lock, the next wallet — another wallet, or the hidden one behind a passphrase — could have
+        // its Send planned from someone else's coins, and its first refresh skipped by the previous
+        // wallet's cooldown. Under duress that would put the real wallet's coins in the decoy's review.
+        _utxoScans.Clear();
+        _lastUtxoScan.Clear();
+        _lastFullUtxoScan.Clear();
         HideMoneroKeys();
         SendSuccess = string.Empty;
         RecoveryPhrase = string.Empty;
@@ -3599,13 +3695,13 @@ public partial class MainViewModel : ViewModelBase
         {
             if (!bySym.TryGetValue(chain.Symbol, out var e)) continue;
             var idx = Market.ToList().FindIndex(m => m.Symbol == chain.Symbol);
-            if (idx >= 0) Market[idx] = MarketRowViewModel.Live(chain, e.Price, e.Change) with { Spark = Market[idx].Spark };
+            if (idx >= 0) Market[idx] = MarketRowViewModel.Live(chain, e.Price, e.Change) with { Spark = Market[idx].Spark, IsWatched = Market[idx].IsWatched };
         }
         foreach (var (sym, name, holdable) in ExtraMarketCoins)
         {
             if (!bySym.TryGetValue(sym, out var e)) continue;
             var idx = Market.ToList().FindIndex(m => m.Symbol == sym);
-            if (idx >= 0) Market[idx] = MarketRowViewModel.LiveCoin(sym, name, e.Price, e.Change, holdable) with { Spark = Market[idx].Spark };
+            if (idx >= 0) Market[idx] = MarketRowViewModel.LiveCoin(sym, name, e.Price, e.Change, holdable) with { Spark = Market[idx].Spark, IsWatched = Market[idx].IsWatched };
         }
 
         ApplyWatchlist();
@@ -3634,11 +3730,14 @@ public partial class MainViewModel : ViewModelBase
                 var idx = Market.ToList().FindIndex(m => m.Symbol == chain.Symbol);
                 if (idx < 0) continue;
                 var (usd, change) = prices.GetValueOrDefault(chain.Symbol);
-                // Keep any sparkline we already fetched so the row doesn't blink empty on refresh.
-                var existingSpark = Market[idx].Spark;
+                // Keep any sparkline we already fetched so the row doesn't blink empty on refresh —
+                // and the watch star, so the row never passes through "unwatched" between here and
+                // ApplyWatchlist below.
+                var existing = Market[idx];
                 Market[idx] = MarketRowViewModel.Live(chain, (double)usd, (double)change) with
                 {
-                    Spark = existingSpark,
+                    Spark = existing.Spark,
+                    IsWatched = existing.IsWatched,
                 };
             }
 
@@ -3647,10 +3746,11 @@ public partial class MainViewModel : ViewModelBase
                 var idx = Market.ToList().FindIndex(m => m.Symbol == sym);
                 if (idx < 0) continue;
                 var (usd, change) = prices.GetValueOrDefault(sym);
-                var existingSpark = Market[idx].Spark;
+                var existing = Market[idx];
                 Market[idx] = MarketRowViewModel.LiveCoin(sym, name, (double)usd, (double)change, holdable) with
                 {
-                    Spark = existingSpark,
+                    Spark = existing.Spark,
+                    IsWatched = existing.IsWatched,
                 };
             }
 
@@ -3689,6 +3789,7 @@ public partial class MainViewModel : ViewModelBase
         HasChart = true;
         IsChartLoading = true;
         ChartPoints = new System.Collections.Generic.List<Avalonia.Point>();
+        HasChartEnd = false;
 
         try
         {
@@ -3847,7 +3948,12 @@ public partial class MainViewModel : ViewModelBase
             var a = Accounts[i];
             if (byKey.TryGetValue(CacheKey(a.Symbol, a.Address, a.Chain), out var e))
             {
-                Accounts[i] = a with { Amount = e.Amount, Price = e.Price, Change24h = e.Change };
+                // Marked CACHED, not live: this is the last number the wallet saw, and until the
+                // refresh answers it is not entitled to be presented as the current one (P0.6).
+                Accounts[i] = a with
+                {
+                    Amount = e.Amount, Price = e.Price, Change24h = e.Change, Balance = BalanceRead.Cached,
+                };
                 touched = true;
             }
         }
@@ -3919,19 +4025,28 @@ public partial class MainViewModel : ViewModelBase
             for (var k = 0; k < balanceTargets.Count; k++)
             {
                 var account = balanceTargets[k];
-                var amount = balanceResults[k] is { } bal ? bal.NativeAmount : (decimal)account.Amount;
+                // A null result is a FAILED READ, never a zero balance — the client only returns null
+                // when nobody answered. Keeping the old number and marking the row is the difference
+                // between "we could not ask" and "there is nothing there" (MANIFESTO §4 / P0.6).
+                var (amount, state) = BalanceReadout.Apply(
+                    balanceResults[k]?.NativeAmount, account.Amount, account.Balance);
                 var (usd, change) = prices.GetValueOrDefault(account.Symbol);
                 var idx = Accounts.IndexOf(account);
                 if (idx >= 0)
                 {
                     Accounts[idx] = account with
                     {
-                        Amount = (double)amount,
+                        Amount = amount,
                         Price = (double)usd,
                         Change24h = (double)change,
+                        Balance = state,
                     };
                 }
             }
+            // Monero is read by its own local service, not by this refresh: with the service off the
+            // row must say so rather than inherit "the server did not answer".
+            MarkMoneroUnreadReason();
+
             // Show the total from native balances immediately, before the slower token/NFT/watch passes.
             RefreshHoldings();
             RecalcBalance();
@@ -3961,11 +4076,17 @@ public partial class MainViewModel : ViewModelBase
             // Jettons on our OWN TON account. USD-tether on TON is how a great many people hold
             // dollars on Telegram's chain, and until now the wallet showed the native TON and nothing
             // else — so that balance simply was not there.
+            // SPL tokens at the wallet's Solana address (roadmap N.3). Balance only in this build.
+            var solAccount = Accounts.FirstOrDefault(a => a.Symbol == "SOL" && a.SupportStatus == "Ready");
+            if (solAccount is not null && IsRealAddress(solAccount.Address))
+                await AddSolTokenRowsAsync(solAccount.Address, "Receive only", prices, ct);
+
             var tonAccount = Accounts.FirstOrDefault(a => a.Symbol == "TON" && a.SupportStatus == "Ready");
             if (tonAccount is not null && IsRealAddress(tonAccount.Address))
             {
-                // "Receive only", not "Ready": this build reads Jetton balances and does not send
-                // them, and the row is the only place that difference is visible to the user.
+                // Jettons are sendable now (roadmap N.3), but only when the wallet knows their
+                // jetton-wallet contract; AddTokenRows marks each row accordingly, so a token it
+                // cannot send still says "Receive only" rather than promising one.
                 await AddTonJettonRowsAsync(tonAccount.Address, "Receive only", prices, ct);
             }
 
@@ -3991,6 +4112,9 @@ public partial class MainViewModel : ViewModelBase
                 var existing = Accounts.FirstOrDefault(a =>
                     a.Address.Equals(watch.Address, StringComparison.OrdinalIgnoreCase) &&
                     a.Symbol == nativeSymbol);
+                // Same rule as the wallet's own accounts: an unanswered lookup is not a zero balance.
+                var (watchAmount, watchState) = BalanceReadout.Apply(
+                    bal?.NativeAmount, existing?.Amount ?? 0, existing?.Balance ?? BalanceRead.Unknown);
                 var row = new WalletAccountViewModel(
                     nativeSymbol,
                     string.IsNullOrWhiteSpace(watch.Label) ? $"Watch · {nativeSymbol}" : watch.Label,
@@ -3998,9 +4122,10 @@ public partial class MainViewModel : ViewModelBase
                     watch.Address,
                     "external",
                     (double)usd,
-                    bal is null ? 0 : (double)bal.NativeAmount,
+                    watchAmount,
                     nativeSymbol,
-                    (double)change);
+                    (double)change,
+                    Balance: watchState);
                 if (existing is null) Accounts.Add(row);
                 else
                 {
@@ -4074,6 +4199,16 @@ public partial class MainViewModel : ViewModelBase
         AddTokenRows(await _balances.GetTonJettonsAsync(address, ct),
             address, status, prices, marker: "Jetton on TON", chain: "TON", suffix: "Jetton");
 
+    /// <summary>Adds/refreshes a Holdings row for every SPL token at a Solana address. A failed read
+    /// leaves the previous rows in place — "could not read" must not look like "sold everything".</summary>
+    private async Task AddSolTokenRowsAsync(
+        string address, string status,
+        IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct)
+    {
+        if (await _balances.GetSolTokensAsync(address, ct) is { } tokens)
+            AddTokenRows(tokens, address, status, prices, marker: "SPL on Solana", chain: "Solana", suffix: "SPL");
+    }
+
     /// <summary>Refreshes the NFT list from the wallet's Ethereum address (names + counts only).</summary>
     private async Task RefreshNftsAsync(string address, CancellationToken ct)
     {
@@ -4101,9 +4236,10 @@ public partial class MainViewModel : ViewModelBase
             // "Ready" is a claim that the coin can be moved. A network this build can read but not
             // broadcast on says "Receive only" instead, so the holdings list never promises a send the
             // Send screen will not offer.
+            // These rows exist only because the read succeeded, so their amount is a live reading.
             Accounts.Add(new WalletAccountViewModel(
                 symbol, $"{symbol} · {network}", canSend ? "Ready" : "Receive only", address, "EVM side-chain",
-                (double)usd, (double)amount, network, (double)change));
+                (double)usd, (double)amount, network, (double)change, Balance: BalanceRead.Live));
         }
     }
 
@@ -4135,11 +4271,24 @@ public partial class MainViewModel : ViewModelBase
             // them away; a priced token is never flagged, so this can't hide a real asset.
             var spam = Umbrella.Wallet.Core.Safety.SpamTokenInspector
                 .Inspect(tok.Name, tok.Symbol, hasMarketPrice: usd > 0);
+            // An SPL mint the wallet cannot identify, with no market price, folds away with the
+            // suspected spam — it stays one tap from view, but not beside the real holdings.
+            var suspected = spam.IsSuspected || (tok.Unverified && usd <= 0);
+
+            // A jetton this build can actually send says "Ready"; one with no jetton-wallet address
+            // keeps the honest "Receive only", because the row would otherwise promise a send the
+            // picker will not offer (roadmap N.3).
+            var rowStatus = marker.StartsWith("Jetton", StringComparison.OrdinalIgnoreCase)
+                ? (tok.TokenWallet.Length > 0 ? "Ready" : status)
+                : status;
 
             Accounts.Add(new WalletAccountViewModel(
-                tok.Symbol, $"{tok.Name} · {suffix}", status,
+                tok.Symbol, $"{tok.Name} · {suffix}", rowStatus,
                 address, marker, usd, (double)tok.Amount, chain, 0,
-                IsSuspectedSpam: spam.IsSuspected));
+                IsSuspectedSpam: suspected, Balance: BalanceRead.Live,
+                // Carried so a send can route on the CONTRACT and scale by the decimals that
+                // contract reports — a ticker identifies neither (roadmap N.1).
+                Contract: tok.Contract, TokenDecimals: tok.Decimals, TokenWallet: tok.TokenWallet));
         }
     }
 
@@ -4188,7 +4337,9 @@ public partial class MainViewModel : ViewModelBase
                     (double)usd,
                     (double)asset.Amount,
                     credential.Exchange,
-                    (double)change));
+                    (double)change,
+                    // The row only exists because the exchange answered.
+                    Balance: BalanceRead.Live));
             }
         }
     }
@@ -4489,7 +4640,7 @@ public partial class MainViewModel : ViewModelBase
                 verdict = await _reuseInspector.InspectAsync(
                     UtxoExplorerFor(symbol), address, index, floor, cts.Token);
             }
-            catch (OperationCanceledException) { return; }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested) { return; }
             catch { verdict = AddressUseState.Unknown; }
 
             await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -4618,8 +4769,30 @@ public partial class MainViewModel : ViewModelBase
 
         var walletId = _registry.Active?.Id ?? "default";
         var lastIssued = _addrIndex.GetState(walletId, symbol).LastIssuedExternalIndex ?? 0;
+
+        // What each address holds, from the last COMPLETE scan only: a partial one would present a
+        // floor as a fact, so without a complete scan the row says it has not been checked.
+        var scan = _utxoScans.TryGetValue(symbol, out var s) && s is { Partial: false } ? s : null;
+
         for (uint i = 0; i <= lastIssued; i++)
-            ReceiveHistory.Add(_deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, _receiveChain.Value, 0, i).Address);
+        {
+            var address = _deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, _receiveChain.Value, 0, i).Address;
+            string status;
+            if (scan is null)
+            {
+                status = Loc.Instance["receive.prevUnchecked"];
+            }
+            else
+            {
+                var sat = scan.Utxos.Where(u => u.Address == address).Sum(u => u.ValueSat);
+                status = sat > 0
+                    ? string.Format(Loc.Instance["receive.prevHolds"], $"{Fmt(sat / 100_000_000m)} {symbol}")
+                    : Loc.Instance["receive.prevEmpty"];
+            }
+
+            ReceiveHistory.Add(new ReceiveHistoryRow(address, status));
+        }
+
         OnPropertyChanged(nameof(HasReceiveHistory));
     }
 
@@ -4643,7 +4816,9 @@ public partial class MainViewModel : ViewModelBase
             SelectedReceiveAddress = addr;
             ReceiveQr = BuildQr(BuildReceivePayload(addr));
             ReceivePathLabel = $"{symbol} receive address #{index}";
-            if (!ReceiveHistory.Contains(addr)) ReceiveHistory.Add(addr);
+            // Reserved a moment ago and shown to nobody yet: there is nothing on it.
+            if (ReceiveHistory.All(r => r.Address != addr))
+                ReceiveHistory.Add(new ReceiveHistoryRow(addr, Loc.Instance["receive.prevEmpty"]));
             OnPropertyChanged(nameof(HasReceiveHistory));
             _receiveIndex = index;
             QueueReuseCheck(addr, index);
@@ -4761,6 +4936,11 @@ public partial class MainViewModel : ViewModelBase
         if (a.StartsWith('D') && a.Length == 34) return "DOGE";
         if (a.StartsWith("bitcoincash:", StringComparison.OrdinalIgnoreCase)) return "BCH";
         if (a.StartsWith("t1", StringComparison.Ordinal) && a.Length == 35) return "ZEC"; // Zcash transparent
+        // XRP classic address: the checksum makes an 'r…' string unambiguous, so no length guessing.
+        if (a.StartsWith('r') && Umbrella.Wallet.Core.Chains.XrpAddress.IsValid(a)) return "XRP";
+        if (a.StartsWith('G') && Umbrella.Wallet.Core.Chains.StellarKeys.IsValidAccountId(a)) return "XLM";
+        if (a.StartsWith("cosmos1", StringComparison.OrdinalIgnoreCase) && Umbrella.Wallet.Core.Chains.CosmosHub.IsValidAddress(a)) return "ATOM";
+        if (a.StartsWith('1') && a.Length is 47 or 48 && Umbrella.Wallet.Core.Polkadot.Ss58.IsPolkadotAddress(a)) return "DOT";
         if ((a.StartsWith('1') || a.StartsWith('3')) && a.Length is >= 26 and <= 35) return "BTC";
         return null; // Solana / other base58 is ambiguous — keep the selected network
     }
@@ -4967,17 +5147,45 @@ public partial class MainViewModel : ViewModelBase
         SpamTokenCount = visible.Count(a => a.IsSuspectedSpam);
         if (!ShowSpamTokens) visible = visible.Where(a => !a.IsSuspectedSpam).ToList();
 
+        // An unread balance contributes no value to the total — a row whose amount nobody could
+        // confirm must not be priced as if it were zero, nor as if it were known (P0.6).
         var built = visible.Select(a => new HoldingRowViewModel(
             a.Symbol, a.Name, a.Chain, a.Price, a.Amount,
-            a.Price * a.Amount, a.Change24h, a.Address, a.SupportStatus));
+            a.Balance == BalanceRead.Unknown ? 0 : a.Price * a.Amount,
+            a.Change24h, a.Address, a.SupportStatus, a.Balance, a.UnreadNote));
         foreach (var h in HoldingsSorter.Order(built, HoldingsSort))
             Holdings.Add(h);
+
+        // A token that arrived becomes sendable; one spent to zero drops off (roadmap N.1).
+        RebuildSendableAssets();
 
         RebuildStaking(); // keep the staking list driven by what the user actually holds
     }
 
+    /// <summary>How many shown assets have no balance reading at all right now.</summary>
+    [ObservableProperty] private int _unreadableAssetCount;
+
+    /// <summary>True when the portfolio total is missing at least one asset the wallet could not read.</summary>
+    public bool IsTotalIncomplete => UnreadableAssetCount > 0;
+
+    /// <summary>"3 assets could not be read — this total is incomplete", in the user's language.</summary>
+    public string TotalIncompleteLabel =>
+        UnreadableAssetCount > 0
+            ? string.Format(Loc.Instance["balance.incomplete"], UnreadableAssetCount)
+            : string.Empty;
+
+    partial void OnUnreadableAssetCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsTotalIncomplete));
+        OnPropertyChanged(nameof(TotalIncompleteLabel));
+    }
+
     private void RecalcBalance()
     {
+        // The total is a sum of what the wallet actually knows. Anything it could not read is counted
+        // separately and said out loud, because a number quietly missing an asset is a wrong number
+        // that looks exactly like a right one (MANIFESTO §4 / roadmap P0.6).
+        UnreadableAssetCount = Holdings.Count(h => h.Balance == BalanceRead.Unknown);
         var total = Holdings.Sum(h => h.Value);                 // USD
         var displayTotal = total * (double)Fx.Rate;             // in the chosen currency
 
@@ -5214,6 +5422,11 @@ public partial class MainViewModel : ViewModelBase
         "ADA" or "CARDANO" => ChainId.Ada,
         "BCH" or "BITCOIN CASH" or "BITCOINCASH" => ChainId.Bch,
         "ZEC" or "ZCASH" => ChainId.Zec,
+        "XRP" or "RIPPLE" or "XRP LEDGER" => ChainId.Xrp,
+        "XLM" or "STELLAR" or "LUMENS" => ChainId.Xlm,
+        "ATOM" or "COSMOS" or "COSMOS HUB" => ChainId.Atom,
+        "NEAR" or "NEAR PROTOCOL" => ChainId.Near,
+        "DOT" or "POLKADOT" => ChainId.Dot,
         _ => null,
     };
 
@@ -5275,6 +5488,11 @@ public partial class MainViewModel : ViewModelBase
         ChainId.Ada => "ADA",
         ChainId.Bch => "BCH",
         ChainId.Zec => "ZEC",
+        ChainId.Xrp => "XRP",
+        ChainId.Xlm => "XLM",
+        ChainId.Atom => "ATOM",
+        ChainId.Near => "NEAR",
+        ChainId.Dot => "DOT",
         _ => chain.ToString().ToUpperInvariant(),
     };
 

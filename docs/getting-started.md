@@ -20,7 +20,7 @@ safely.
 ## 1. Download
 
 Get the latest build from
-**[GitHub Releases](https://github.com/kiurakku/UmbrellaWallet/releases/latest)**.
+**[GitHub Releases](https://github.com/thefear078/UmbrellaWallet/releases/latest)**.
 
 Typical assets:
 
@@ -38,12 +38,12 @@ Do not run an unsigned copy you cannot check.
 
 ```powershell
 # Windows PowerShell — compare to the matching line in SHA256SUMS
-Get-FileHash .\UmbrellaWallet-Setup-4.7.0.exe -Algorithm SHA256
+Get-FileHash .\UmbrellaWallet-Setup-4.8.0.exe -Algorithm SHA256
 ```
 
 ```bash
 # Linux / macOS
-sha256sum -c SHA256SUMS-4.7.0.txt
+sha256sum -c SHA256SUMS-4.8.0.txt
 ```
 
 Details: [SECURITY.md — Verifying what you run](../SECURITY.md#verifying-what-you-run).

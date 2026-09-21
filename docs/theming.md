@@ -1,6 +1,6 @@
 # Theming
 
-19 themes. Adding one is about twenty lines of colour — but the tests will hold you to a standard,
+20 themes. Adding one is about twenty lines of colour — but the tests will hold you to a standard,
 and the standard exists because a wallet you cannot read is a wallet that loses you money.
 
 ## Where
@@ -95,8 +95,31 @@ The difference between a theme and a recoloured default is the **base**, not the
 | Abyss | sunless-zone water |
 | Solarized | the only theme whose base is a colour rather than a near-black |
 
-If your palette is the default navy with a different `UmAccentBright`, the distinctness test may pass
-but you have not really added a theme.
+If your palette is Navy with a different `UmAccentBright`, the distinctness test may pass but you have
+not really added a theme.
+
+## One signature, every theme
+
+The home screen, the navigation and the charts use the same treatment on every theme, in that theme's
+own colours: dark surfaces, and the accent used as light. `Theming.PublishSignature` writes the tokens
+for it — the active sidebar page is a wash of the accent fading to the right, the action tiles are dark
+with accent icons and an accent hairline on hover — and every theme sets every one of them, so nothing
+from the previous theme lingers after a switch.
+
+**Logos follow the theme.** The in-app logos are `Controls/BrandMark`: the artwork's silhouette used as a
+mask over `UmMarkFill` (a gradient of the theme's accent), plus a layer that shades it or stays dark.
+Four kinds, all from the original artwork — the folded mark (the sidebar tile), the wordmark (welcome,
+unlock), the umbrella glyph (the sidebar card) and the canopy seen from above (the splash). Only the
+desktop icon, `umbrella.ico`, keeps fixed colours. The masks are drawn with high-quality scaling; the
+default sampling turned their edges into steps.
+
+**Chart lines are light.** Every price line — the market chart, its row sparklines, the balance chart —
+is a smooth curve (`ChartGeometry`: Catmull-Rom through every sample, clamped so it never overshoots a
+high or a low the data did not reach) in the accent, with a soft glow and a wash of it underneath.
+Up or down is said by the change figures in green or red, not by the line.
+
+**Light behind the window.** Two long arcs of the accent sit behind every card (`UmGlow` stops), static
+and never hit-testable.
 
 ## Gradients
 
@@ -104,7 +127,7 @@ A theme can paint the page as a sweep instead of a flat fill:
 
 ```csharp
 private static readonly HashSet<string> GradientThemes =
-    new(StringComparer.Ordinal) { "sunset", "solana" };
+    new(StringComparer.Ordinal) { "sunset", "solana", "umbrella" };
 ```
 
 Add your id and a stop list in `GradientBackground`. Keep it dark enough to stay a background — a
@@ -116,8 +139,8 @@ gradient that competes with the content makes every number harder to read.
 a light theme it is detected automatically, and the card sheen inverts so it darkens instead of
 blowing out to white.
 
-Be aware the brand logo assets are light-on-transparent, so a genuinely light theme needs dark
-artwork. That is why there is no light theme shipped yet.
+The logos follow the theme (see above), but coin tiles and some illustrations are still
+light-on-transparent, which is why there is no full light theme shipped yet.
 
 ## The one thing that is never themed
 

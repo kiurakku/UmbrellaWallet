@@ -56,7 +56,9 @@ public sealed class WatchBalanceTests : IDisposable
         vm.Accounts.Add(new WalletAccountViewModel(
             "ETH", "Linked wallet", "Watch",
             "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", "external",
-            Price: 2000, Amount: 1.5, Chain: "ETH", Change24h: 0));
+            Price: 2000, Amount: 1.5, Chain: "ETH", Change24h: 0,
+            // Stands in for a row built from a successful balance read (P0.6).
+            Balance: Umbrella.Wallet.App.BalanceRead.Live));
 
         vm.RecomputeHoldingsForTest();
 

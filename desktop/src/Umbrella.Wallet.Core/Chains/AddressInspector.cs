@@ -50,6 +50,13 @@ public static class AddressInspector
             };
         }
 
+        // Polkadot (SS58, prefix 0): checked before the Bitcoin family, which also starts addresses with
+        // '1'. The length and the BLAKE2b checksum make it unambiguous.
+        if (a.StartsWith('1') && a.Length is 47 or 48 && Umbrella.Wallet.Core.Polkadot.Ss58.TryDecode(a, out var ss58Prefix, out _))
+            return ss58Prefix == Umbrella.Wallet.Core.Polkadot.Ss58.PolkadotPrefix
+                ? new("DOT", AddressValidity.Valid)
+                : new(string.Empty, AddressValidity.Unverified);
+
         // Bitcoin-family: NBitcoin validates the base58check / bech32 checksum against the network.
         var (sym, net) = BitcoinLikeNetwork(a);
         if (net is not null)
@@ -67,8 +74,23 @@ public static class AddressInspector
         if (a.StartsWith('r') && a.Length is >= 25 and <= 35)
             return new("XRP", XrpAddress.IsValid(a) ? AddressValidity.Valid : AddressValidity.Invalid);
 
+        // Cosmos Hub: bech32 with the cosmos prefix — checksum verified.
+        if (a.StartsWith("cosmos1", OIC))
+            return new("ATOM", CosmosHub.IsValidAddress(a) ? AddressValidity.Valid : AddressValidity.Invalid);
+
+        // NEAR named accounts: recognisable by suffix, but a name carries no checksum to verify.
+        if (a.EndsWith(".near", OIC) && a.Length > 5)
+            return new("NEAR", AddressValidity.Unverified);
+
+        // Stellar: StrKey carries a CRC16 checksum, so this is definitive too.
+        if (a.StartsWith('G') && a.Length == 56)
+            return new("XLM", StellarKeys.IsValidAccountId(a) ? AddressValidity.Valid : AddressValidity.Invalid);
+
+        // Cardano: a bech32 checksum, verified — one mistyped character is caught, not paid.
+        if (a.StartsWith("addr1", OIC))
+            return new("ADA", Umbrella.Wallet.Core.Cardano.AdaTransfer.IsValidAddress(a) ? AddressValidity.Valid : AddressValidity.Invalid);
+
         // Recognised by shape, but a deep check needs a chain-specific library we do not bundle.
-        if (a.StartsWith("addr1", OIC)) return new("ADA", AddressValidity.Unverified);
         if (a.Length == 48 && (a.StartsWith("UQ") || a.StartsWith("EQ") || a.StartsWith("kQ") || a.StartsWith("0Q")))
             return new("TON", AddressValidity.Unverified);
         if ((a.StartsWith('4') || a.StartsWith('8')) && a.Length is 95 or 106)

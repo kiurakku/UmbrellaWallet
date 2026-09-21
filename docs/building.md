@@ -76,7 +76,7 @@ No Node, no Python, no Docker. The UI is Avalonia, not a web view.
 ## Clone, build, run
 
 ```bash
-git clone https://github.com/kiurakku/UmbrellaWallet.git
+git clone https://github.com/thefear078/UmbrellaWallet.git
 cd UmbrellaWallet
 dotnet build desktop/Umbrella.Wallet.sln -c Release
 ```
@@ -228,7 +228,7 @@ Reproducible builds are on the roadmap, not done. Today you can get close:
 3. Compare the *payload* — DLLs, assets — rather than the installer, which embeds a timestamp.
 
 If you find a discrepancy you cannot explain, please
-[report it privately](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new) rather than
+[report it privately](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) rather than
 opening a public issue. See [BUILD_VERIFY.md](BUILD_VERIFY.md) for the current verification notes.
 
 ## Common build problems

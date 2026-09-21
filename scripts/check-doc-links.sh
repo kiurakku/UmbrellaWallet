@@ -22,7 +22,11 @@ for f in "${files[@]}"; do
   dir="$(dirname "$f")"
   # Extract markdown links: ](path) excluding http(s), mailto, anchors-only, #
   while IFS= read -r raw; do
-    link="${raw#*(}"
+    # Split at the LAST "](" — link TEXT may contain brackets of its own, and cutting at the first
+    # "(" turned "[6. Turn on Tor (recommended)](#6-turn-on-tor-recommended)" into nonsense and
+    # reported a perfectly good link as broken on every run. A checker with a permanent false
+    # positive is a checker people learn to ignore.
+    link="${raw##*](}"
     link="${link%)}"
     # strip optional title "..." 
     link="${link%% \"*}"

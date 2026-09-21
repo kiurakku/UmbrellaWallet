@@ -154,7 +154,8 @@ public sealed class ThorchainSwapClient
                 if (error is not null && error.StartsWith("THORChain:", StringComparison.Ordinal))
                     return (null, error);
             }
-            catch (OperationCanceledException) { throw; }
+            // Our cancel stops the search; a host that timed out is just one host that did not answer.
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)
             {
                 lastError = ex.Message;

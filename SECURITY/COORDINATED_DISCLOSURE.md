@@ -8,7 +8,7 @@ How Umbrella Wallet handles privately reported vulnerabilities.
 
 | Channel | Use |
 |---------|-----|
-| [GitHub Security Advisories](https://github.com/kiurakku/UmbrellaWallet/security/advisories/new) | **Preferred** — private by default |
+| [GitHub Security Advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) | **Preferred** — private by default |
 | Public GitHub Issues | **Forbidden** for security bugs |
 
 ## Timeline (targets)

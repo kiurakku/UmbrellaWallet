@@ -1,7 +1,7 @@
 # Pre-beta checklist
 
-**Last verified:** 2026-09-15 · Wallet [4.7.0](../VERSION)  
-**Repo:** [kiurakku/UmbrellaWallet](https://github.com/kiurakku/UmbrellaWallet)
+**Last verified:** 2026-09-20 · Wallet [4.7.0](../VERSION)  
+**Repo:** [thefear078/UmbrellaWallet](https://github.com/thefear078/UmbrellaWallet)
 
 This replaces stale audits that still claim “missing LICENSE / CODEOWNERS / CoC / Dependabot”.
 Those items are **done**. What remains before a **public beta** is mostly **code** (P0 fund-safety)
@@ -81,11 +81,11 @@ Do **not** call a public beta “fund-safe” until these are green:
 
 | ID | Task | Status |
 |----|------|--------|
-| **P0.0** | Full restore proof (seed-only recover past gap) | ⏳ |
-| **P0.6** | Fail-closed balance (no fake `0.0000` on network error) | ⏳ |
-| **P0.7** | Send-path transport gate (Tor settings enforced) | ⏳ |
-| **P0.8** | Network isolation CI (Tor-only cannot clearnet) | ⏳ |
-| L.1–L.3, L.8 | First-run disclaimer + 18+ + ToS/Privacy accept in UI | ⏳ docs ready |
+| **P0.0** | Full restore proof (seed-only recover past gap) | ✅ `RestoreFromSeedProofTests` — finds **and spends** funds on issued address #15 after the local state is deleted |
+| **P0.6** | Fail-closed balance (no fake `0.0000` on network error) | ✅ unread balances read “—” with a reason; the total says what it is missing |
+| **P0.7** | Send-path transport gate (Tor settings enforced) | ✅ refused at Review **and** Confirm when the live route is not the chosen one |
+| **P0.8** | Network isolation CI (Tor-only cannot clearnet) | ✅ own CI job; a loopback listener proves no socket is opened |
+| L.1–L.3, L.8 | First-run disclaimer + 18+ + ToS/Privacy accept in UI | ✅ shipped — gates create/import/unlock, versioned acceptance, 6 languages |
 | Tests | `dotnet test` green on CI | ✅ on `main` PRs |
 
 Track in [ROADMAP.md](ROADMAP.md) §3.
@@ -106,8 +106,8 @@ Track in [ROADMAP.md](ROADMAP.md) §3.
 |-------|-------------------------|
 | Docs / legal / GitHub hardening | **Yes** |
 | Philosophy consistency | **Yes** |
-| Fund-safety P0 code + first-run UI | **Not yet** — finish E before calling it a public beta |
-| Store submission (Apple/Play/MS) | **Not yet** — needs entity, signing, UI disclaimers |
+| Fund-safety P0 code + first-run UI | **Yes** for P0.0 / P0.6–P0.8 and the first-run UI; P0.1–P0.5 (supply-chain pins, checksum CI, capability matrix) remain |
+| Store submission (Apple/Play/MS) | **Not yet** — the in-app disclaimers are done; a legal entity and code signing are not |
 
 **Private / friends beta** on GitHub Releases is fine **today** if testers accept experimental risk and never put more than they can lose — and if CONTACT / SECURITY channels are used for bugs.
 

@@ -65,7 +65,7 @@ Suggested short body (EN) — same spirit as ROADMAP §9.3.
 | Question | Approved answer |
 |----------|-----------------|
 | Who holds the user’s funds? | **Nobody except the user.** Keys never leave the device. Umbrella cannot freeze, reverse, or recover funds. |
-| How does Umbrella make money? | **No cut of transfers.** Optional sponsorship ([GitHub Sponsors](https://github.com/sponsors/kiurakku)). Any future in-app service fee (if added) must be disclosed in UI and still non-custodial — see [LICENSE](LICENSE) §3. |
+| How does Umbrella make money? | **No cut of transfers.** Optional sponsorship ([GitHub Sponsors](https://github.com/sponsors/thefear078)). Any future in-app service fee (if added) must be disclosed in UI and still non-custodial — see [LICENSE](LICENSE) §3. |
 | Is there fiat on-ramp / card buy? | **Not planned** without proper licensing. Do not advertise “buy crypto with card” in the listing. |
 | Are swaps custody? | **No.** If present, swaps are user-signed transactions to third-party protocols; Umbrella never takes possession. |
 | Demo account for review? | Provide a **test vault / dry-run path** if requested. **Never** ship a backdoor, hardcoded seed, or bypass of Tor/kill-switch for reviewers. |
@@ -168,8 +168,8 @@ Include at least one frame where:
 ## 9. Support URL for stores
 
 - Community: https://t.me/UmbrellaWallet  
-- Source / releases: https://github.com/kiurakku/UmbrellaWallet  
-- Security: https://github.com/kiurakku/UmbrellaWallet/security/advisories/new  
+- Source / releases: https://github.com/thefear078/UmbrellaWallet  
+- Security: https://github.com/thefear078/UmbrellaWallet/security/advisories/new  
 - Trademark / brand: [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md)  
 - Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)  
 - Pre-beta gate: [docs/PRE_BETA_CHECKLIST.md](docs/PRE_BETA_CHECKLIST.md)

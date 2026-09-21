@@ -6,7 +6,7 @@
 #   pwsh .github/scripts/apply-repo-hardening.ps1
 
 $ErrorActionPreference = "Stop"
-$repo = "kiurakku/UmbrellaWallet"
+$repo = "thefear078/UmbrellaWallet"
 
 Write-Host "Patching repository settings…" -ForegroundColor Cyan
 gh api --method PATCH "repos/$repo" `

@@ -150,6 +150,17 @@ public sealed class ThemingTests
     }
 
     [Fact]
+    public void The_default_is_gold_and_the_old_navy_is_still_offered()
+    {
+        // The default theme became gold light on black; everyone who liked the original look can
+        // still pick it.
+        var gold = Color.Parse(Theming.PaletteOf("umbrella")!["UmAccentBright"]);
+        Assert.True(gold.R > 0xE0 && gold.G > 0xB0 && gold.B < 0x70, $"the default accent is not gold: {gold}");
+        Assert.True(Theming.IsKnown("navy"));
+        Assert.Equal("umbrella", Theming.Current);
+    }
+
+    [Fact]
     public void Gradient_themes_name_real_themes()
     {
         // "gradient" used to be checked for here and matched nothing, so that branch was dead code.

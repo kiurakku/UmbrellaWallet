@@ -1,7 +1,7 @@
 # Umbrella Wallet — unified roadmap
 
-**Product version:** see [`VERSION`](../VERSION) (currently **4.7.0**).  
-**Consolidation date:** 2026-09-15 (updated: UI honesty / fail-closed / verify-yourself from the audit vs [`MANIFESTO.md`](../MANIFESTO.md)).  
+**Product version:** see [`VERSION`](../VERSION) (currently **4.8.0**).  
+**Consolidation date:** 2026-09-15 · **last status pass:** 2026-09-20 (P0.0, P0.2–P0.4, P0.6–P0.8, P1.1, P1.2, P1.4–P1.7, P1.9–P1.13 and L.1/L.2/L.3/L.8 closed).  
 **Purpose:** one document for “what remains to do” — compiled from README, CHANGELOG, `SECURE_ANON_ROADMAP`, `CLAUDE_IMPLEMENTATION_ROADMAP_UK`, `12-coins-and-chains`, `PRIVACY`, `THREAT_MODEL`, `security-model`, `BUILD_VERIFY`, and notes on alignment with the manifesto philosophy.
 
 Legend: ✅ done · 🟡 partial · ⏳ next · 📅 planned · ❌ not planned / blocked.
@@ -9,7 +9,7 @@ Legend: ✅ done · 🟡 partial · ⏳ next · 📅 planned · ❌ not planned 
 Long technical implementation phases remain in [`CLAUDE_IMPLEMENTATION_ROADMAP_UK.md`](CLAUDE_IMPLEMENTATION_ROADMAP_UK.md).  
 Privacy details — in [`SECURE_ANON_ROADMAP.md`](SECURE_ANON_ROADMAP.md).  
 Network matrix — in [`12-coins-and-chains.md`](12-coins-and-chains.md).  
-How to verify yourself — planned as [`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md) (not written yet; see §10 and P1.20).
+How to verify yourself — [`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md).
 
 ---
 
@@ -48,41 +48,41 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 
 | # | Task | Source | Status |
 |---|---|---|---|
-| **P0.0** | **Full restore proof (critical).** Test: new wallet → ≥20 receive addresses → funds to address **#15** → delete local state → restore **from seed only** + BIP44/gap limit → full balance found. Without state — full HD scan only. Without this, self-custody is fiction. | Audit vs MANIFESTO §6 | 🏆 ⏳ |
-| P0.1 | Close HD UTXO edge-case gaps (gap scan, change not lost in UI) — after / together with P0.0 | Claude §3 | 🟡 partial in 4.5–4.7 |
-| P0.2 | Pin + SHA/PGP verification for **Tor** and **monero-wallet-rpc** in fetch scripts (fail-closed) | Claude §4.2, BUILD_VERIFY | ⏳ |
-| P0.3 | CI: verify `SHA256SUMS` ↔ attached artifacts byte-for-byte | Claude §4.1 | ⏳ |
-| P0.4 | Single machine-readable **capability matrix** → UI + README + tests (no discrepancies) | Claude §5.1, coins doc | ⏳ |
-| P0.5 | zkSync Era **send** or honestly leave Receive-only with gas explanation (not “Ready”) | coins / CHANGELOG 4.7 | 🟡 |
-| **P0.6** | **Fail-closed balance.** If all RPC/nodes are unreachable (e.g. 3+ attempts) → UI: “Balance unavailable (network error)” + Refresh. **Do not** show cache as the current balance; cache only with an explicit “last synced …” / “unknown” label, never as a live `0.0000` caused by an error. Offline test mandatory. | MANIFESTO §4, audit | ⏳ |
-| **P0.7** | **Send-path transport gate.** Before Send/Review, verify that the actual path (Tor / Clearnet / Custom) matches the user’s settings (+ kill-switch). Violation → **FAIL**, send blocked; no silent clearnet fallback. | MANIFESTO §3–4, audit | ⏳ |
-| **P0.8** | **Network isolation CI.** Run in a sandbox / firewall without clearnet: with Tor-only enabled, the wallet process **must not** attempt clearnet connections. Without this, the kill-switch is not proven in production. | Audit | ⏳ |
+| **P0.0** | **Full restore proof (critical).** Test: new wallet → ≥20 receive addresses → funds to address **#15** → delete local state → restore **from seed only** + BIP44/gap limit → full balance found. Without state — full HD scan only. Without this, self-custody is fiction. | Audit vs MANIFESTO §6 | ✅ (`RestoreFromSeedProofTests`, BTC/LTC/BCH/DOGE: 20 issued, funds on #15, state deleted, rediscovered **and spent**; the past-gap limit is pinned too) |
+| P0.1 | Close HD UTXO edge-case gaps (gap scan, change not lost in UI) — after / together with P0.0 | Claude §3 | ✅ The last §3 gaps: **history** was judged one address at a time, so change back to the wallet counted as "sent" (a 0.001 BTC payment showed as 0.00999) and a spend funded only by change never appeared — now every transaction is judged against the wallet's whole address set (receive + change, SegWit + Taproot) and the used change addresses are queried too, for BTC, LTC and BCH; the old behaviour is kept as a failing counter-example in the tests. **Previous addresses** on Receive now show what each holds from the last complete scan ("not checked yet" otherwise). Gap scan, partial-never-zero and change to a fresh internal address were already in place |
+| P0.2 | Pin + SHA/PGP verification for **Tor** and **monero-wallet-rpc** in fetch scripts (fail-closed) | Claude §4.2, BUILD_VERIFY | ✅ the fetch scripts verify each project's SIGNED sums file (Tor `.asc`, Monero clearsigned) against a pinned key fingerprint before trusting the hash; release builds pass `-RequireSignature`; `scripts/check-pinned-binaries.sh` keeps the scripts and THIRD_PARTY_NOTICES from drifting (they had: the pinned Tor version was gone from the mirror) |
+| P0.3 | CI: verify `SHA256SUMS` ↔ attached artifacts byte-for-byte | Claude §4.1 | ✅ the release job already self-verifies before publishing; `scripts/verify-published-release.sh` now checks what the page **serves afterwards**, including that no attached artifact is missing from the manifest |
+| P0.4 | Single machine-readable **capability matrix** → UI + README + tests (no discrepancies) | Claude §5.1, coins doc | ✅ `SendableSymbols` is the one source the picker, the send guard, the coins doc, the README table and §4 below are all checked against (`CapabilityMatrixTests`) |
+| P0.5 | zkSync Era **send** or honestly leave Receive-only with gas explanation (not “Ready”) | coins / CHANGELOG 4.7 | ✅ **Honest receive-only.** The row reads "Receive only" (never "Ready"), the coins doc and README say why — zkSync's fee model is not Ethereum's, so a send built the Ethereum way is not safe — and `CoinsDocumentAccuracyTests` / `CapabilityMatrixTests` fail if any table or the send guard claims otherwise. A real zkSync send is a separate future item |
+| **P0.6** | **Fail-closed balance.** If all RPC/nodes are unreachable (e.g. 3+ attempts) → UI: “Balance unavailable (network error)” + Refresh. **Do not** show cache as the current balance; cache only with an explicit “last synced …” / “unknown” label, never as a live `0.0000` caused by an error. Offline test mandatory. | MANIFESTO §4, audit | ✅ (`BalanceReadout`: unread → “—” + reason, cache marked “last known”, unread rows excluded from the total and counted out loud) |
+| **P0.7** | **Send-path transport gate.** Before Send/Review, verify that the actual path (Tor / Clearnet / Custom) matches the user’s settings (+ kill-switch). Violation → **FAIL**, send blocked; no silent clearnet fallback. | MANIFESTO §3–4, audit | ✅ (`SendTransportGate` at Review **and** Confirm: Tor on-but-down, routed elsewhere, unapplied proxy or armed kill-switch with no proxy all refuse) |
+| **P0.8** | **Network isolation CI.** Run in a sandbox / firewall without clearnet: with Tor-only enabled, the wallet process **must not** attempt clearnet connections. Without this, the kill-switch is not proven in production. | Audit | ✅ (`Category=Isolation` CI job: a loopback listener proves no socket is opened at all, with the kill-switch off as the counter-proof; plus a scan for any HttpClient built outside `PublicHttp`) |
 
 ### P1 — privacy, trust, core UX (UI honesty)
 
 | # | Task | Source | Status |
 |---|---|---|---|
-| P1.1 | **Duress / decoy password** (second password → decoy vault) | README, SECURE 4.4–4.5, MANIFESTO | ⏳ wipe/passphrase code partial |
-| P1.2 | Restore/finish **hidden wallet** unlock UI (BIP39 passphrase), if the product promises it | SECURE 4.4 | 🟡 |
+| P1.1 | **Duress / decoy password** (second password → decoy vault) | README, SECURE 4.4–4.5, MANIFESTO | ✅ the vault is now the two-slot deniable file for **every** wallet (so setting one does not change the file's shape); Settings → Security sets or removes a decoy, and never reports whether one exists |
+| P1.2 | Restore/finish **hidden wallet** unlock UI (BIP39 passphrase), if the product promises it | SECURE 4.4 | ✅ the derivation, scan and spend paths already honoured a passphrase; the unlock screen had no field to type one into, so the feature existed and nobody could use it. Folded behind “Advanced”, and pinned by a test |
 | P1.3 | **Panic / duress wipe** with an explicit trigger | SECURE 4.5 | 🟡 DataWiper without UX |
-| P1.4 | Transaction **simulation** before Confirm (what exactly changes on-chain) | README Next | ⏳ |
-| P1.5 | One-switch private send — bring UX to “one toggle = full checklist” on all UTXO chains | README / CHANGELOG 4.7 | 🟡 |
-| P1.6 | Connection status in primary UI: Tor / Direct / Custom / Offline | Claude §7 | ⏳ |
-| P1.7 | Mark screenshot-guard honestly as **Windows-only** until Linux exists | Claude §7 | ⏳ |
+| P1.4 | Transaction **simulation** before Confirm (what exactly changes on-chain) | README Next | ✅ already shipped — the Send review renders `SendSimulation` rows (what leaves, what returns as change, what the fee costs) |
+| P1.5 | One-switch private send — bring UX to “one toggle = full checklist” on all UTXO chains | README / CHANGELOG 4.7 | ✅ the three UTXO chain lists (balance scan, fee selector, coin control + private-send plan) had drifted and left Bitcoin Cash out of coin control and out of the linkage checklist; they are now one list |
+| P1.6 | Connection status in primary UI: Tor / Direct / Custom / Offline | Claude §7 | ✅ a chip in the sidebar (and in the top/bottom nav) reading TOR / PROXY / DIRECT / BLOCKED from the same live state the send gate uses — amber when Tor is on in Settings but is not carrying the traffic |
+| P1.7 | Mark screenshot-guard honestly as **Windows-only** until Linux exists | Claude §7 | ✅ already honest — the Security Center says capture blocking is a Windows feature and is unavailable elsewhere, and does not score it |
 | P1.8 | Verify backup (without revealing seed) + guided restore dry-run | Claude §6.5 | 🟡 verify exists partially |
-| P1.9 | Address book: local, with format-check, confirm on first send | Claude §6.3 | 🟡 / verify state |
-| P1.10 | Consolidate Activity into one screen + filters + honest partial-history labels | Claude §6.4 | ⏳ |
-| **P1.11** | **Privacy Radar — limits under every status.** Mandatory text: *what is protected* and *what is not* (e.g. “Tor hides your IP, but the selected explorer sees your addresses”). Difference: “Tor works” ≠ “IP is hidden from whoever already received your address.” Without this, Radar violates MANIFESTO §1–2. | MANIFESTO, audit | ⏳ |
-| **P1.12** | **“What leaked?” after send.** Short report: IP hidden yes/no · addresses seen by Node X · broadcast via Tor/Direct · coin control / fresh change on or off. The user sees the privacy cost of that operation. | MANIFESTO §1–2, audit | ⏳ |
-| **P1.13** | **Duress test scenario.** QA scenario: “inspector coerces” → decoy vault opens, real funds remain inaccessible with the decoy password. Without this, P1.1–P1.3 are features, not verified solutions. | MANIFESTO intro, audit | ⏳ |
-| **P1.20** | **Self-verify mode** (long, but required by philosophy). CLI or Debug panel: verify no clearnet in wallet connections; export xpub → balance in a third-party scanner; Tor via `curl --socks5-hostname`; cross-check with `VERIFY_YOUR_WALLET.md`. | MANIFESTO, audit | 📅 Long |
+| P1.9 | Address book: local, with format-check, confirm on first send | Claude §6.3 | ✅ already shipped — local encrypted book on the Send screen, wrong-network shape check, and a first-time-to-this-address confirmation (`SendSafetyIntegrationTests`) |
+| P1.10 | Consolidate Activity into one screen + filters + honest partial-history labels | Claude §6.4 | ✅ one screen with filters, a last-synced line, and a note naming the held coins whose history this build does not read — computed from the capability catalog, so it cannot claim coverage the code lacks |
+| **P1.11** | **Privacy Radar — limits under every status.** Mandatory text: *what is protected* and *what is not* (e.g. “Tor hides your IP, but the selected explorer sees your addresses”). Difference: “Tor works” ≠ “IP is hidden from whoever already received your address.” Without this, Radar violates MANIFESTO §1–2. | MANIFESTO, audit | ✅ every Privacy Radar finding renders its limit underneath (`PrivacyScoreFinding.LimitCode`), so no status can appear as a bare reassurance |
+| **P1.12** | **“What leaked?” after send.** Short report: IP hidden yes/no · addresses seen by Node X · broadcast via Tor/Direct · coin control / fresh change on or off. The user sees the privacy cost of that operation. | MANIFESTO §1–2, audit | ✅ `SendLeakReport` renders under the send result: IP, kill-switch, ledger, input linkage **with the count**, change freshness, coin control, and the one nobody can fix (the recipient knows) |
+| **P1.13** | **Duress test scenario.** QA scenario: “inspector coerces” → decoy vault opens, real funds remain inaccessible with the decoy password. Without this, P1.1–P1.3 are features, not verified solutions. | MANIFESTO intro, audit | ✅ `DuressWalletScenarioTests` — coercion opens the decoy, the real phrase stays unreachable, the two wallets share no address, the file's size is identical with and without a decoy, and removal is as deniable as adding |
+| **P1.20** | **Self-verify mode** (long, but required by philosophy). CLI or Debug panel: verify no clearnet in wallet connections; export xpub → balance in a third-party scanner; Tor via `curl --socks5-hostname`; cross-check with `VERIFY_YOUR_WALLET.md`. | MANIFESTO, audit | ✅ watch-only account xpub export in Settings → Security (pinned by a test that the addresses it yields are the wallet's own, external **and** change), and [`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md) written in full: balance from a third party, live route, download, build, counterparties — and what none of it proves |
 
 ### P2 — on-chain privacy “heavy artillery”
 
 | # | Task | Source | Status |
 |---|---|---|---|
-| P2.1 | **Taproot (BIP-341/86)** — scanner `m/86'` + key-path spend, not derivation only | PRIVACY, coins | 📅 |
-| P2.2 | **PayJoin (BIP-78)** | PRIVACY, threat model | 📅 |
+| P2.1 | **Taproot (BIP-341/86)** — scanner `m/86'` + key-path spend, not derivation only | PRIVACY, coins | ✅ **Find, show, spend.** Addresses pinned to all three BIP-86 vectors; BTC scans `m/86'` beside `m/84'` (external + internal, same gap/partial rules); key-path inputs signed and consensus-verified, alone or mixed with SegWit; change returns to the inputs' own branch on its own index counter; restored Taproot history is read. **Receive stays BIP-84** — the wallet does not hand out `bc1p…` addresses, so nothing is issued that the old scan could miss. Cost, stated: an empty BTC scan now probes 80 addresses instead of 40. Verify a first spend with a small amount |
+| P2.2 | **PayJoin (BIP-78)** | PRIVACY, threat model | ✅ **Sender side.** A pasted `bitcoin:` link with `pj=` (HTTPS or `.onion` only) is used: the signed original goes to the receiver on its own Tor circuit, and its proposal is signed only after the full BIP-78 sender checklist plus an independent "your cost did not rise beyond the stated offer" check; output substitution is always refused. On any failure the reviewed payment is broadcast instead, and if even that fails the wallet says the receiver holds a signed copy rather than offering a retry that could pay twice. Every checklist rule has its own adversarial test against a simulated receiver with real keys. **Not done:** receiving a PayJoin (needs an always-reachable endpoint), and no send against a live receiver yet — make the first one small |
 | P2.3 | **CoinJoin** (after PayJoin) | PRIVACY | 📅 |
 | P2.4 | **Dandelion++** (broadcast timing privacy) | coins roadmap | 📅 |
 | P2.5 | **Silent Payments** (BTC) | coins long-term | 📅 |
@@ -94,27 +94,27 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 
 | # | Task | Status |
 |---|---|---|
-| N.1 | Send **any ERC-20** (not only native ETH / separate USDT) | 📅 near |
-| N.2 | Send **any TRC-20** (not only USDT) | 📅 near |
-| N.3 | Send **any SPL** / full Jetton send (Jetton balances already exist) | 📅 near / 🟡 |
-| N.4 | **XRP** | 📅 |
-| N.5 | **Stellar (XLM)** | 📅 |
-| N.6 | **Cosmos (ATOM)** / IBC | 📅 |
-| N.7 | **NEAR** | 📅 |
-| N.8 | **Polkadot (DOT)** | 📅 |
+| N.1 | Send **any ERC-20** (not only native ETH / separate USDT) | ✅ the picker lists every held ERC-20 and routes on the **contract**, never the ticker; the amount is scaled by the decimals that contract reports (a row without them is refused, not assumed to be 18), the token balance is read from the contract at quote time rather than from a cached row, and the review says the fee comes out of ETH. Verify a first send with a small amount |
+| N.2 | Send **any TRC-20** (not only USDT) | ✅ the same shape as N.1 — routed by contract, scaled by the decimals the contract reports, balance read from the contract with `triggerconstantcontract`. USDT is now just the TRC-20 whose contract was already known, and it gained the exact-scaling refusal the old path lacked (it multiplied through `Math.Pow` and truncated). Fee in TRX, said before Confirm |
+| N.3 | Send **any SPL** / full Jetton send (Jetton balances already exist) | 🟡 **Jetton send done** — TEP-74 body pinned cell-hash-for-cell-hash against `@ton/core`, message addressed to the sender's own jetton wallet with TON attached for gas, and a row whose jetton-wallet address is unknown still says “Receive only”. 🟡 **SPL balances done** — `getTokenAccountsByOwner` under both the Token and Token-2022 programs (PayPal USD is on the latter), summed per mint, decimals from the chain; eleven major mints named after an on-chain check of each, every other mint shown by address as unverified and folded with suspected spam; a failed read keeps the previous rows instead of dropping real holdings. **SPL send not yet** (needs associated-token-account derivation, pinned against `@solana/spl-token`) |
+| N.4 | **XRP** | 🟡 **Receive + balance.** `m/44'/144'/0'/0/0`, the path Xaman, Ledger and Trust use — the key pinned to xrpl.js's own `fromMnemonic` test, the encoding to XRPL's documented example. Balance from `account_info` at the last *validated* ledger through a user-choosable server (XRPL Labs cluster, or Ripple's); an address the ledger does not have yet is a real zero, anything else is unknown. **Send off** until a signed Payment is pinned against the reference library |
+| N.5 | **Stellar (XLM)** | 🟡 **Receive + balance.** SEP-0005 (SLIP-0010 ed25519, `m/44'/148'/0'`) pinned to the SEP's own three vectors; StrKey `G…` with its CRC16 checked, so a typo'd Stellar address is refused on paste. Balance from Horizon through a choosable server (SDF, LOBSTR); a 404 is an unfunded address — a real zero — anything else is unknown. **Send off** until a signed transaction is pinned against the reference SDK |
+| N.6 | **Cosmos (ATOM)** / IBC | 🟡 **Receive + available balance.** `m/44'/118'/0'/0/0` pinned to cosmjs's own wallet test (key and address); the address checksum is verified by the shared BIP-173 codec, so a typo'd or wrong-prefix (e.g. `osmo1…`) address is refused. Balance: the bank module's uatom through a choosable server (PublicNode, Keplr) — **staked ATOM is not counted**, and the chain's note says so. **Send and IBC off** |
+| N.7 | **NEAR** | 🟡 **Receive + balance.** SLIP-0010 ed25519 `m/44'/397'/0'` pinned to near-seed-phrase's own parse test; the address is the implicit account (hex of the key), so nothing needs registering to receive. Balance: `view_account` at final finality through a choosable RPC (NEAR Foundation, FastNEAR — Lava's endpoint was found discontinued); `UNKNOWN_ACCOUNT` is a real zero; yocto amounts beyond `decimal` are split with BigInteger so a large holder never reads "unknown". Named `.near` accounts and staked NEAR are not shown. **Send off** |
+| N.8 | **Polkadot (DOT)** | 🟡 **Receive + balance.** substrate-bip39 (PBKDF2 over the phrase's *entropy*) → schnorrkel sr25519 expansion → ristretto255 public key → SS58 prefix 0 — the scheme of Polkadot.js, Talisman, SubWallet and Nova, not BIP-44. Ristretto255 written from RFC 9496 and checked against its 16 published encodings; the whole pipeline against `subkey`'s documented output (phrase → mini secret → key → address); SS58 against Polkadot.js's encode tests. Balance straight from chain storage (`System.Account`, SCALE) at the finalized head of **Asset Hub and the relay chain, added** — checked live: since the 2025 migration the treasury holds 24.3 M DOT on Asset Hub vs 2.7 k on the relay, so a relay-only reader would show most people ~0. Either read failing makes the balance unknown. Both chains' servers are choosable. **Send off** (sr25519 signing is a separate job) |
 | N.9 | THORChain expansion / swap reliability (expiry, slippage, refund, failed broadcast) | 📅 after core |
 
 ### P2 — hardware, platforms, release trust
 
 | # | Task | Status |
 |---|---|---|
-| H.1 | Bitcoin **PSBT** export/import + watch-only xpub | 📅 |
+| H.1 | Bitcoin **PSBT** export/import + watch-only xpub | ✅ **PSBT both ways.** Export: the reviewed payment as an unsigned PSBT naming the master fingerprint and every BIP32 path — BIP-371 Taproot fields filled by hand, because NBitcoin's `AddKeyPath` leaves a Taproot coin unnamed — with the change index reserved as for a real send. Import (base64, hex or `.psbt`): reviewed line by line with the cost to this wallet, and only coins the wallet's **own scan** found are signed, at the value read from the chain; a PSBT that misstates one of them, or spends from one of its addresses a coin the scan cannot see, is refused. Completed PSBTs broadcast through the same route gate. The xpub export now includes the Taproot account the balance counts. **Not done:** a seedless watch-only wallet (import an xpub, sign elsewhere) — the app is built around an unlocked seed, and that mode is the same work H.2 needs, so they go together. Signing needs a synced wallet: this is not an air-gapped signer |
 | H.2 | **Ledger / Trezor** (sign on device, no seed in Umbrella) | 📅 |
 | H.3 | **Multisig** 2-of-3 | 📅 long |
 | H.4 | **Android** (separate mobile threat model + UX, not a desktop copy) | 📅 Planned |
 | R.1 | **Reproducible builds** + published attestations (honestly: .NET single-file installer is not bit-identical) | 🟡 docs / ⏳ attestations |
 | R.2 | **Code signing OV/EV (SmartScreen)** | ⏳ **start ≥60 days before store release**; legal entity required; ~$300–1000/year (see R.6) |
-| R.3 | Sign releases with **GPG / Sigstore** | 📅 |
+| R.3 | Sign releases with **GPG / Sigstore** | ✅ from the next release — every artifact **and** the sums file carry a keyless build attestation (GitHub OIDC → public transparency log), verified with `gh attestation verify`. No signing key exists, so none can be stolen. Earlier releases have checksums only, and the docs say so |
 | R.4 | SBOM / provenance as a release asset | 📅 |
 | R.5 | External **security audit** — status in [`../AUDIT_STATUS.md`](../AUDIT_STATUS.md) | 📅 Planned |
 | **R.6** | **EV Code Signing** (~$500–800/year) or OV for Windows build — without this SmartScreen / Store block unsigned exe | ⏳ |
@@ -125,14 +125,14 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | # | Task | Status |
 |---|---|---|
 | **L.0** | Legal docs in repo: TOS, Privacy Policy, APP_STORE_NOTES, GEO, CONTACT, TRADEMARK, CoC, LICENSE, LEGAL/, SECURITY/ | ✅ docs (2026-09-15) |
-| **L.1** | **Apple / first-run:** screen — “we do not store keys; you are responsible for backup” | ⏳ code |
-| **L.2** | **No “Fully Private” claims** in UI/listing — follow APP_STORE_NOTES | ⏳ audit UI strings |
-| **L.3** | **Age gate 18+** on first launch | ⏳ code |
+| **L.1** | **Apple / first-run:** screen — “we do not store keys; you are responsible for backup” | ✅ code (first-run page, gates create/import/unlock) |
+| **L.2** | **No “Fully Private” claims** in UI/listing — follow APP_STORE_NOTES | ✅ UI strings audited in all 6 languages; a test refuses absolute claims |
+| **L.3** | **Age gate 18+** on first launch | ✅ code (separate tick) |
 | **L.4** | **Google Play / store copy:** “Not a financial service…” | ⏳ at submission |
 | **L.5** | **Jurisdictional blocklist** — policy in GEO_BLOCKING.md | 📅 enforce |
 | **L.6** | **Linux package signing** (PGP for Flatpak/Snap / distro repos) | ⏳ |
 | **L.7** | **Geo-blocking** in store builds (IP/locale) after legal consultation | 📅 |
-| **L.8** | **ToS / Privacy Policy acceptance** on first launch | ⏳ code |
+| **L.8** | **ToS / Privacy Policy acceptance** on first launch | ✅ code (versioned acceptance; changed wording asks again) |
 
 ### P3 — product / maintainability
 
@@ -152,21 +152,25 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 
 | Symbol | Receive | Balance | Send | History | Note |
 |---|:---:|:---:|:---:|:---:|---|
-| BTC | ✅ | ✅ | ✅ | ✅ | coin control; Taproot spend not yet |
+| BTC | ✅ | ✅ | ✅ | ✅ | coin control; restored Taproot (`m/86'`) found and spent — receive stays SegWit |
 | LTC | ✅ | ✅ | ✅ | ✅ | |
 | BCH | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7 |
 | DOGE | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7 |
-| ETH | ✅ | ✅ | ✅ | ✅ | general ERC-20 send still 📅 |
+| ETH | ✅ | ✅ | ✅ | ✅ | any held ERC-20 (N.1) |
 | Arb / Base / OP / Linea | ✅ | ✅ | ✅ | 🟡 | |
 | zkSync Era | ✅ | ✅ | ❌ | 🟡 | Receive only (gas) |
-| TRX + USDT TRC-20 | ✅ | ✅ | ✅ | ✅ | other TRC-20 — 📅 |
+| TRX | ✅ | ✅ | ✅ | ✅ | any held TRC-20, USDT included (N.2) |
 | SOL | ✅ | ✅ | ✅ | ✅ | arbitrary SPL send — 📅 |
-| TON | ✅ | ✅ | ✅ | ✅ | Jetton balance ✅; Jetton send — 📅 |
+| TON | ✅ | ✅ | ✅ | ✅ | jettons: balance ✅, send ✅ (N.3) |
 | ADA | ✅ | ✅ | ✅ | ✅ | |
 | XMR | ✅ | ✅ | ✅ | ✅ | full private |
 | AVAX / BNB / MATIC / FTM / CRO | ✅ | ✅ | ✅ | 🟡 | EVM family |
 | ZEC | ✅ | ✅ | ❌ | 🟡 | transparent `t1…` only |
-| XRP / XLM / ATOM / NEAR / DOT | — | — | — | — | 📅 Planned |
+| XRP | ✅ | ✅ | ❌ | ❌ | receive + balance (N.4); send once a signed Payment is proven |
+| XLM | ✅ | ✅ | ❌ | ❌ | receive + balance (N.5); send once a signed transaction is proven |
+| ATOM | ✅ | ✅ | ❌ | ❌ | receive + available balance (N.6); staked ATOM not counted |
+| NEAR | ✅ | ✅ | ❌ | ❌ | receive + balance (N.7) — implicit account only |
+| DOT | ✅ | ✅ | ❌ | ❌ | receive + balance (N.8) — Asset Hub + relay chain |
 
 ---
 
@@ -175,12 +179,12 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | Gap | What to do |
 |---|---|
 | Malware on the user’s PC | Hardware wallet (H.1–H.2) |
-| Explorer sees the session address set | Already: node choice + Tor; next: fewer addresses per request, Silent Payments; **Radar must say this (P1.11)** |
-| UTXO linkage | PayJoin → CoinJoin; Silent Payments; post-send report (P1.12) |
+| Explorer sees the session address set | Already: node choice + Tor, and the Radar now says so under every status (P1.11); next: fewer addresses per request, Silent Payments |
+| UTXO linkage | PayJoin sending ✅ (P2.2) → CoinJoin; Silent Payments; the post-send report now names the count (P1.12 ✅) |
 | Broadcast timing ↔ IP | Dandelion++ |
-| Release substitution on GitHub | GPG/Sigstore + reproducible attestations |
-| $5 wrench | Duress / decoy (P1.1) + test scenario (P1.13) |
-| User forced to *trust* the client | Self-verify (P1.20) + `VERIFY_YOUR_WALLET.md` (§10) |
+| Release substitution on GitHub | ✅ keyless build attestations (R.3) + the reproducible-build check; what remains is that a user must still choose to verify |
+| $5 wrench | Duress / decoy password ✅ — with its limits stated in the app: it does not hide that other wallets exist on the machine, nor help against being watched typing |
+| User forced to *trust* the client | ✅ watch-only xpub export + [`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md) + release attestations (R.3) |
 | No external audit | Commission audit (R.5); until then do not write “audited” |
 | Docs drifted from code | Annual documentation audit (M.7) |
 | App Store / Play rejection | §9 compliance (L.1–L.8, wording) |
@@ -190,20 +194,20 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 
 ## 6. Execution order (user perspective + philosophy)
 
-1. **P0.0** — Full restore proof (without this, all self-custody security is in question).  
-2. **P0.6–P0.8** — fail-closed balance + send transport gate + network isolation CI.  
-3. **P0.2–P0.4** — supply chain helpers + checksum CI + capability matrix.  
-4. **P1.11 / P1.12** — Privacy Radar limits + “What leaked?” (UI honesty).  
-5. **P1.1 / P1.13** (+ P1.2–P1.3) — duress/decoy + verified “under coercion” scenario.  
-6. **P1.4–P1.6** — simulation + connection status + private-send polish.  
-7. **P1.20** + §10 — self-verify mode and a public guide “how to check you are not being lied to.”  
-8. **L.1 / L.3 / L.4 / L.8** (+ L.2 wording) — disclaimers / age / ToS **before** any store submission.  
-9. **R.6 / L.6** — EV signing for Windows + PGP for Linux packages.  
-10. **N.1–N.3** — universal tokens, only with a full cycle.  
-11. **P2.1–P2.2** — Taproot spend + PayJoin.  
-12. **H.1 → H.2** — PSBT, then Ledger/Trezor.  
+1. ✅ **P0.0** — Full restore proof (without this, all self-custody security is in question).  
+2. ✅ **P0.6–P0.8** — fail-closed balance + send transport gate + network isolation CI.  
+3. ✅ **P0.2–P0.4** — supply chain helpers + checksum CI + capability matrix.  
+4. ✅ **P1.11 / P1.12** — Privacy Radar limits + “What leaked?” (UI honesty).  
+5. ✅ **P1.1 / P1.13** — duress/decoy + verified “under coercion” scenario. **P1.2–P1.3** (hidden-wallet unlock UI, panic wipe) remain.  
+6. ✅ **P1.2, P1.4–P1.7, P1.9, P1.10** — hidden-wallet unlock, simulation, private-send parity across UTXO chains, connection status, honest capture wording, address book, Activity coverage. **P1.3** (panic wipe) is the last P1 open. ← **next**  
+7. ✅ **P1.20** + §10 — self-verify (xpub export) and the public guide “how to check you are not being lied to.”  
+8. ✅ **L.1 / L.3 / L.8** (+ L.2 wording) — disclaimers / age / ToS in the app; **L.4** is store-listing copy, written at submission.  
+9. **R.6 / L.6** — EV signing for Windows + PGP for Linux packages. R.3 attestations already cover “did this come from the project”; EV covers SmartScreen, which is a different problem and needs a legal entity and money. ← **next (human/process)**  
+10. ✅ **N.1 / N.2** ERC-20 and TRC-20, 🟡 **N.3** jettons (SPL still needs balance reading first).  
+11. ✅ **P2.1** Taproot find/show/spend, ✅ **P2.2** PayJoin (sender).  
+12. ✅ **H.1** PSBT export / review / sign. **H.2** Ledger/Trezor next — needs the seedless watch-only mode and the devices to test on.  
 13. **H.4** + L.5/L.7 — Android only after a mobile spec **and** store/geo compliance.  
-14. New L1s (XRP…) — only after a stable core + matrix.  
+14. 🟡 New L1s — **XRP, XLM, ATOM, NEAR, DOT all receive + balance**, each pinned to its reference library or spec; send for each is its own later step.  
 15. **R.7 / L.5** — Microsoft Store / geo-blocklist as needed.
 
 Detailed PR schedule — §12 in [`CLAUDE_IMPLEMENTATION_ROADMAP_UK.md`](CLAUDE_IMPLEMENTATION_ROADMAP_UK.md).
@@ -283,7 +287,7 @@ Difference: **how the wallet works technically** (Tor, duress, non-custodial) �
 | Requirement | Status | Comment |
 |---|---|---|
 | Formal TOS + Privacy Policy + App Store notes + Geo + Contact | ✅ | Root `.md` files (2026-09-15) |
-| App Store: non-custodial confirmation + L.1/L.3 in **UI** | ⏳ | Documents ready; first-run screen still needed |
+| App Store: non-custodial confirmation + L.1/L.3 in **UI** | ✅ | First-run screen shipped; listing copy still to be written at submission |
 | Google Play: crypto publisher rules + L.4 | ⏳ | Business verification; **no** KYC-less on-ramp in core |
 | Microsoft Store: code signing | ⏳ R.2/R.6 | Without EV — keep GitHub side-load |
 | Linux repos: PGP (L.6) | ⏳ | Fedora / Debian / Flathub |
@@ -292,11 +296,11 @@ Difference: **how the wallet works technically** (Tor, duress, non-custodial) �
 
 | Element | ID | Status |
 |---|---|---|
-| On-start: not a financial institution + 18+ + non-custodial | L.1, L.3 | ⏳ |
-| On-start: no guarantee of anonymity (transparent chains) | L.2, text below | ⏳ |
+| On-start: not a financial institution + 18+ + non-custodial | L.1, L.3 | ✅ |
+| On-start: no guarantee of anonymity (transparent chains) | L.2, text below | ✅ |
 | Privacy warning before Send (address forever on-chain; RPC may see metadata) | — / P1.12 | 📅 |
 | Geo-blocked list | L.5, L.7 | 📅 |
-| ToS / Privacy Policy acceptance | L.8 | ⏳ |
+| ToS / Privacy Policy acceptance | L.8 | ✅ |
 
 **On-start draft (EN, for implementing L.1/L.2/L.3):**
 
@@ -348,16 +352,19 @@ Monero may be described as a privacy coin **honestly**; Bitcoin/ETH and similar 
 
 ---
 
-## 10. How to verify you are not being lied to (document plan)
+## 10. How to verify you are not being lied to
 
-Separate file **`docs/VERIFY_YOUR_WALLET.md`** (create together with P1.20 / R.1–R.3):
+Written: **[`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md)** — the balance from a third party
+(watch-only xpub, with its privacy cost stated), the live route (`curl --socks5-hostname`, and the
+wallet's own connections), the download (`SHA256SUMS`), the build (reproducible-build check and the
+pinned third-party binaries), and who the wallet talks to.
 
-1. Commands to verify Tor connectivity (`curl --socks5-hostname`, no clearnet in netstat for the wallet process).  
-2. Export **xpub** (or watch-only) and cross-check balance in an independent scanner — without trusting the Umbrella UI.  
-3. Download verification: `SHA256SUMS` + (when available) GPG/Sigstore; build from source per [`BUILD_VERIFY.md`](BUILD_VERIFY.md).  
-4. Links to Settings → Privacy (“who can see addresses”) and to Privacy Radar limit text (P1.11).
+It ends with what none of it proves: a clean machine, a private transparent chain, or an audit that
+has not happened.
 
-Until the file exists, this section is a placeholder and a backlog item, not a finished guide.
+**Still missing from that page, and named there rather than glossed over:** a GPG/Sigstore signature
+over the checksum manifest (R.3), so a checksum proves the file matches the release page but not who
+published it.
 
 ---
 

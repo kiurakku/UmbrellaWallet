@@ -34,7 +34,7 @@ public sealed class MarketOverviewTests : IDisposable
     public void Starring_a_coin_adds_it_to_the_watchlist_and_unstarring_removes_it()
     {
         var vm = NewViewModel();
-        var btc = vm.Market.First(m => m.Symbol == "BTC");
+        var btc = vm.Market.ToList().First(m => m.Symbol == "BTC");
         var wasWatched = btc.IsWatched;
 
         try
@@ -42,18 +42,18 @@ public sealed class MarketOverviewTests : IDisposable
             if (wasWatched) vm.ToggleWatchCommand.Execute("BTC");
 
             vm.ToggleWatchCommand.Execute("BTC");
-            Assert.True(vm.Market.First(m => m.Symbol == "BTC").IsWatched);
+            Assert.True(vm.Market.ToList().First(m => m.Symbol == "BTC").IsWatched);
             Assert.Contains(vm.MarketWatchlist, r => r.Symbol == "BTC");
             Assert.True(vm.HasWatchlist);
 
             vm.ToggleWatchCommand.Execute("BTC");
-            Assert.False(vm.Market.First(m => m.Symbol == "BTC").IsWatched);
+            Assert.False(vm.Market.ToList().First(m => m.Symbol == "BTC").IsWatched);
             Assert.DoesNotContain(vm.MarketWatchlist, r => r.Symbol == "BTC");
         }
         finally
         {
             // Leave the user's real settings exactly as they were.
-            if (vm.Market.First(m => m.Symbol == "BTC").IsWatched != wasWatched)
+            if (vm.Market.ToList().First(m => m.Symbol == "BTC").IsWatched != wasWatched)
                 vm.ToggleWatchCommand.Execute("BTC");
         }
     }
@@ -63,18 +63,18 @@ public sealed class MarketOverviewTests : IDisposable
     public void The_watchlist_is_case_insensitive()
     {
         var vm = NewViewModel();
-        var wasWatched = vm.Market.First(m => m.Symbol == "LTC").IsWatched;
+        var wasWatched = vm.Market.ToList().First(m => m.Symbol == "LTC").IsWatched;
 
         try
         {
             if (wasWatched) vm.ToggleWatchCommand.Execute("LTC");
             vm.ToggleWatchCommand.Execute("ltc");
 
-            Assert.True(vm.Market.First(m => m.Symbol == "LTC").IsWatched);
+            Assert.True(vm.Market.ToList().First(m => m.Symbol == "LTC").IsWatched);
         }
         finally
         {
-            if (vm.Market.First(m => m.Symbol == "LTC").IsWatched != wasWatched)
+            if (vm.Market.ToList().First(m => m.Symbol == "LTC").IsWatched != wasWatched)
                 vm.ToggleWatchCommand.Execute("LTC");
         }
     }
