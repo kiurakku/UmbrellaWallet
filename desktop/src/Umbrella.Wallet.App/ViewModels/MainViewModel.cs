@@ -104,19 +104,30 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _sendTo = string.Empty;
     [ObservableProperty] private string _sendAmount = string.Empty;
 
-    /// <summary>The memo for a Stellar payment. Exchanges credit a deposit by it: sent without the one
-    /// they gave, the money reaches the exchange but not the account behind it.</summary>
+    /// <summary>The memo for a Stellar payment, or the destination tag for an XRP one. Exchanges credit a
+    /// deposit by it: sent without the one they gave, the money reaches the exchange but not the account
+    /// behind it.</summary>
     [ObservableProperty] private string _sendMemo = string.Empty;
 
     /// <summary>The memo as the review shows it, with its type — or a warning that there is none.</summary>
     [ObservableProperty] private string _sendReviewMemo = string.Empty;
 
+    /// <summary>What the review calls the memo line: "Memo" for Stellar, "Destination tag" for XRP.</summary>
+    [ObservableProperty] private string _sendReviewMemoCaption = string.Empty;
+
     /// <summary>True for the chains whose payments carry a memo (Stellar).</summary>
     public bool IsMemoChain => string.Equals(SendChain?.Trim(), "XLM", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>True for the chains whose payments carry a destination tag (XRP).</summary>
+    public bool IsDestinationTagChain => string.Equals(SendChain?.Trim(), "XRP", StringComparison.OrdinalIgnoreCase);
+
     public bool HasSendReviewMemo => SendReviewMemo.Length > 0;
 
-    partial void OnSendChainChanged(string value) => OnPropertyChanged(nameof(IsMemoChain));
+    partial void OnSendChainChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsMemoChain));
+        OnPropertyChanged(nameof(IsDestinationTagChain));
+    }
     partial void OnSendReviewMemoChanged(string value) => OnPropertyChanged(nameof(HasSendReviewMemo));
     [ObservableProperty] private Bitmap? _receiveQr;
     [ObservableProperty] private string _selectedReceiveAddress = string.Empty;
@@ -1083,6 +1094,7 @@ public partial class MainViewModel : ViewModelBase
     private AdaSendQuote? _adaQuote;
     private XlmSendQuote? _xlmQuote;
     private NearSendQuote? _nearQuote;
+    private XrpSendQuote? _xrpQuote;
     private string _sendSymbol = "ETH";
     private decimal _moneroAmount;
     private string _moneroTo = string.Empty;
@@ -1199,6 +1211,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly CardanoTransactionSender _adaSender = new();
     private readonly StellarTransactionSender _xlmSender = new();
     private readonly NearTransactionSender _nearSender = new();
+    private readonly XrpTransactionSender _xrpSender = new();
     private readonly EmbeddedTorService _tor = new();
     private readonly MoneroRpcService _monero = new();
     private CancellationTokenSource? _refreshCts;
@@ -1820,7 +1833,7 @@ public partial class MainViewModel : ViewModelBase
         "BTC", "LTC", "BCH", "DOGE",                 // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
         "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
         "ARB", "BASE", "OP", "LINEA",                // Ethereum L2 rollups — native ETH, same 0x address
-        "SOL", "TON", "ADA", "XLM", "NEAR",          // account-based (XLM: memo; NEAR: implicit account)
+        "SOL", "TON", "ADA", "XLM", "NEAR", "XRP",   // account-based (XLM: memo; NEAR: implicit account; XRP: tag)
         "TRX", "USDT",                               // TRON + TRC-20
         "XMR",                                       // Monero (local wallet-rpc)
     };
@@ -1845,6 +1858,7 @@ public partial class MainViewModel : ViewModelBase
         new("ADA", "Cardano", "Cardano network"),
         new("XLM", "Stellar", "Stellar network · memo for exchange deposits"),
         new("NEAR", "NEAR Protocol", "NEAR network · from your implicit account"),
+        new("XRP", "XRP", "XRP Ledger · destination tag for exchange deposits"),
         new("BNB", "BNB", "BNB Smart Chain (BEP-20 address)"),
         new("MATIC", "Polygon", "Polygon network"),
         new("AVAX", "Avalanche", "Avalanche C-Chain"),
@@ -2422,6 +2436,9 @@ public partial class MainViewModel : ViewModelBase
         // NEAR: up to 0.001 NEAR of gas, plus the storage an implicit account must keep paid for
         // (182 bytes at 0.00001 NEAR each, 0.00182). The review names the exact spendable figure.
         "NEAR" => 0.003m,
+        // XRP: the 1 XRP base reserve every account keeps, plus a fee. An account that owns objects
+        // (trust lines, offers) keeps 0.2 XRP more for each; the review names the exact figure.
+        "XRP" => 1.001m,
         _ => 0m,
     };
 

@@ -61,12 +61,14 @@ public sealed class XrpReceiveTests
     }
 
     [Fact]
-    public void XRP_is_receive_and_balance_only_until_a_signed_payment_is_proven()
+    public void XRP_receives_shows_a_balance_and_sends()
     {
+        // Send was switched on only once signed payments matched xrpl.js byte for byte
+        // (XrpSendTests); before that this test pinned it off.
         var info = ChainCatalog.Get(ChainId.Xrp);
         Assert.True(info.CanReceive);
         Assert.True(info.CanSyncBalance);
-        Assert.False(info.CanSend);
+        Assert.True(info.CanSend);
         Assert.True(ChainCatalog.HasRealAddress(ChainId.Xrp));
     }
 

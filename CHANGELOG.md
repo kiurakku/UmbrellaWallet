@@ -4,7 +4,7 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased] — Stellar and NEAR send, and the home screen from the gold design
+## [Unreleased] — Stellar, NEAR and XRP send, and the home screen from the gold design
 
 ### Stellar (XLM) can send
 
@@ -33,6 +33,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 - Submitted once; an unclear answer is checked by the transaction's hash and never offered as a
   retry. **Limits:** sending to a `0x…` account that does not exist yet is refused; staked NEAR and
   your own named accounts are not shown.
+
+### XRP can send
+
+- XRP to any classic `r…` address, signed on this PC. The payment is byte-for-byte what xrpl.js
+  signs (pinned to its own wallet tests, including one with a destination tag).
+- **A destination tag field**, right under the address: exchanges credit a deposit by it. The review
+  shows the tag that will be signed — or says there is none.
+- Checked before anything is signed: an address that requires a tag is not sent to without one; one
+  whose owner asked not to receive XRP, or that only takes approved senders, is refused; a
+  destination that is not an account yet needs at least the network's base reserve (read from the
+  server, 1 XRP today), which the review says stays locked there. What you can send leaves your
+  own account's reserve behind.
+- Submitted once. Only a validated ledger is final on the XRP Ledger, so the wallet waits for one:
+  included, failed (only the fee charged), or past the payment's last ledger and never included.
+  If it still cannot tell, it says so and never offers a retry that could pay twice.
+- **Limits:** X-addresses (`X…`) are refused for now — use the `r…` address and its tag; only XRP,
+  not issued tokens.
+
+### Privacy page
+
+- The Stellar, NEAR and XRP servers are now listed as learning where a transaction entered the
+  network, as every other chain that sends already was. A test fails the build if a chain can send
+  through a server the page does not say that about.
 
 ### The home screen
 

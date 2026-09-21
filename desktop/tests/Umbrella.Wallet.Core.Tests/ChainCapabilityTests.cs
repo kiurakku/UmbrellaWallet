@@ -15,6 +15,7 @@ public sealed class ChainCapabilityTests
         ChainId.Bch, // SIGHASH_FORKID spend via the shared spender; Haskoin UTXOs/broadcast
         ChainId.Xlm, // Payment / CreateAccount + memo, pinned to the Stellar Go SDK (StellarSendTests)
         ChainId.Near, // one Transfer from the implicit account, pinned to near-api-js (NearSendTests)
+        ChainId.Xrp, // a plain XRP Payment + destination tag, pinned to xrpl.js (XrpSendTests)
     };
 
     [Fact]
