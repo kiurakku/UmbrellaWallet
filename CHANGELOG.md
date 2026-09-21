@@ -42,6 +42,27 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### PSBT: check a payment somewhere else, or sign someone else's
+
+- **Export.** On the Bitcoin review screen, *Export as PSBT* gives the exact unsigned transaction — as
+  text to copy or a `.psbt` file — for reading in Sparrow or Electrum before you confirm, or for
+  signing elsewhere. It names this wallet's key fingerprint and each coin's path (Taproot coins
+  included, under the fields BIP-371 defines), and it reserves the change address as a real send
+  would, so the change is found whichever wallet signs it.
+- **Sign.** *Settings → Security → Sign a PSBT* reads base64, hex or a `.psbt` file and shows every
+  input and output, which are yours, the fee when it can be known, and exactly what the transaction
+  takes out of this wallet. Other people's inputs are allowed — PayJoin, CoinJoin and multi-party
+  payments look like that — and are pointed out.
+- The wallet signs **only coins its own scan found on-chain, at the value it read there**. A PSBT that
+  misstates what one of your coins holds is refused; so is one that spends from your address a coin
+  the wallet cannot see. That closes the known SegWit trick of lying about an input's amount to make a
+  signer overpay the fee. The price: signing needs a synced wallet — this is not an air-gapped signer.
+- A fully signed PSBT can be broadcast from the same card, through the same Tor/route check as a send.
+- **Verify screen:** Bitcoin now exports two watch-only keys, SegWit and Taproot. The balance counts
+  both, so a scanner given only the first would have reported less than the wallet shows.
+- **Not yet:** a watch-only wallet with no seed on this machine. It is the same groundwork hardware
+  wallets need, and will come with them.
+
 ### PayJoin: a payment that does not look like it came only from you
 
 - Paste a `bitcoin:` payment link into Send and the address and amount fill themselves in. If the

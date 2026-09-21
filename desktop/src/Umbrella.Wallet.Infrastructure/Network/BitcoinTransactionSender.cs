@@ -170,16 +170,46 @@ public sealed class BitcoinTransactionSender
     /// the scanner does not look for (roadmap P2.1). Reserved and persisted before anything is signed.
     /// </summary>
     private string? ReserveChangeAddress(
+        string mnemonic, string walletId, AddressIndexStore store, string symbol, UtxoSpendPlan plan) =>
+        ReserveChange(mnemonic, walletId, store, symbol, plan).Address;
+
+    private (string? Address, UtxoDerivationPath? Path) ReserveChange(
         string mnemonic, string walletId, AddressIndexStore store, string symbol, UtxoSpendPlan plan)
     {
-        if (!plan.NeedsChange) return null;
+        if (!plan.NeedsChange) return (null, null);
 
         var branch = AddressIndexStore.BranchKey(symbol, plan.ChangeKind);
         var index = store.ReserveNextChangeIndex(walletId, branch);
-        return _deriver
-            .DeriveBitcoinLikeAt(mnemonic, plan.Chain, change: 1, index: index, kind: plan.ChangeKind)
-            .Address;
+        var account = _deriver.DeriveBitcoinLikeAt(mnemonic, plan.Chain, change: 1, index: index, kind: plan.ChangeKind);
+        return (account.Address, account.Path);
     }
+
+    /// <summary>
+    /// The reviewed payment as an unsigned PSBT (roadmap H.1). The change index is reserved exactly as
+    /// for a real send: whichever wallet ends up signing and broadcasting this, the change lands on an
+    /// address this wallet's scan will find.
+    /// </summary>
+    public (PSBT? Psbt, string? Error) ExportUnsignedPsbt(
+        string mnemonic, string walletId, AddressIndexStore store, string symbol,
+        UtxoSpendPlan plan, UtxoSpendRequest request)
+    {
+        if (!symbol.Equals("BTC", StringComparison.OrdinalIgnoreCase))
+            return (null, "PSBT export is for Bitcoin.");
+
+        try
+        {
+            var (changeAddress, changePath) = ReserveChange(mnemonic, walletId, store, symbol, plan);
+            return _spender.BuildUnsignedPsbt(mnemonic, plan, request, changeAddress, changePath);
+        }
+        catch (Exception ex)
+        {
+            return (null, $"Export failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Broadcasts a transaction that was signed elsewhere in the app — a completed PSBT.</summary>
+    public Task<(bool Ok, string? TxId, string? Error)> BroadcastSignedAsync(
+        string symbol, Transaction tx, CancellationToken ct = default) => BroadcastAsync(symbol, tx, ct);
 
     /// <summary>
     /// True when a PayJoin can be attempted for this plan: Bitcoin, and every input of one script

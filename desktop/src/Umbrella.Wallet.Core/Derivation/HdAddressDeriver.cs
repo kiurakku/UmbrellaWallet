@@ -220,19 +220,11 @@ public sealed class HdAddressDeriver
     public DerivedUtxoAccount DeriveUtxoAccount(string mnemonic, UtxoDerivationPath path, string? passphrase = null)
     {
         passphrase = Resolve(passphrase);
-        var (purpose, coinType, network, scriptType) = BitcoinLikeParams(path.Chain);
-
-        // Taproot is a different purpose AND a different script type on the same coin. Both move
-        // together or the address and the key belong to different wallets (roadmap P2.1).
-        if (path.Kind == UtxoScriptKind.Taproot)
-        {
-            if (path.Chain != ChainId.Btc) throw new UnsupportedChainException(path.Chain);
-            purpose = TaprootPurpose;
-            scriptType = ScriptPubKeyType.TaprootBIP86;
-        }
+        var (_, _, network, _) = BitcoinLikeParams(path.Chain);
+        var (_, scriptType) = BranchParams(path.Chain, path.Kind);
 
         var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
-        var keyPath = new KeyPath($"{purpose}'/{coinType}'/0'/{path.Change}/{path.Index}");
+        var keyPath = KeyPathFor(path);
         var key = parsed.DeriveExtKey(passphrase).Derive(keyPath).PrivateKey;
         var address = key.PubKey.GetAddress(scriptType, network).ToString();
         var scriptPubKey = key.PubKey.GetAddress(scriptType, network).ScriptPubKey;
@@ -241,6 +233,55 @@ public sealed class HdAddressDeriver
 
     /// <summary>BIP86: the purpose Taproot accounts live at.</summary>
     public const int TaprootPurpose = 86;
+
+    /// <summary>The full BIP32 path of a UTXO leaf, <c>purpose'/coin'/0'/change/index</c>. The one
+    /// place it is spelled, so the key that signs and the path a PSBT names cannot disagree.</summary>
+    public static KeyPath KeyPathFor(UtxoDerivationPath path)
+    {
+        var (_, coinType, _, _) = BitcoinLikeParams(path.Chain);
+        var (purpose, _) = BranchParams(path.Chain, path.Kind);
+        return new KeyPath($"{purpose}'/{coinType}'/0'/{path.Change}/{path.Index}");
+    }
+
+    /// <summary>
+    /// Purpose and script type for one branch of a UTXO chain. Taproot is a different purpose AND a
+    /// different script type on the same coin; both move together or the address and the key belong
+    /// to different wallets (roadmap P2.1). Bitcoin only — any other chain throws rather than invent
+    /// an address nothing scans.
+    /// </summary>
+    public static (int Purpose, ScriptPubKeyType ScriptType) BranchParams(ChainId chain, UtxoScriptKind kind)
+    {
+        var (purpose, _, _, scriptType) = BitcoinLikeParams(chain);
+        if (kind != UtxoScriptKind.Taproot) return (purpose, scriptType);
+        if (chain != ChainId.Btc) throw new UnsupportedChainException(chain);
+        return (TaprootPurpose, ScriptPubKeyType.TaprootBIP86);
+    }
+
+    /// <summary>
+    /// The account-level extended public key of one branch (<c>m/purpose'/coin'/0'</c>). Derived
+    /// once, its children give every address on that branch without re-running the BIP39 seed
+    /// stretch per address — which is what makes recognising "is this output ours?" across a few
+    /// hundred addresses cheap (roadmap H.1).
+    /// </summary>
+    public ExtPubKey DeriveAccountExtPubKey(
+        string mnemonic, ChainId chain, UtxoScriptKind kind = UtxoScriptKind.Default, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var (_, coinType, _, _) = BitcoinLikeParams(chain);
+        var (purpose, _) = BranchParams(chain, kind);
+        var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
+        return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"{purpose}'/{coinType}'/0'")).Neuter();
+    }
+
+    /// <summary>The BIP32 fingerprint of the wallet's master key — what a PSBT names so another tool
+    /// (Sparrow, a hardware wallet) can recognise which of its inputs it holds keys for. It is a
+    /// 4-byte hash, not a key; it identifies the wallet to whoever sees the PSBT.</summary>
+    public HDFingerprint MasterFingerprint(string mnemonic, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
+        return parsed.DeriveExtKey(passphrase).Neuter().PubKey.GetHDFingerPrint();
+    }
 
     /// <summary>
     /// The account-level EXTENDED PUBLIC KEY for a UTXO chain — everything a third party needs to
@@ -254,23 +295,22 @@ public sealed class HdAddressDeriver
     /// It is also the most privacy-revealing thing the wallet can export: it discloses EVERY address
     /// on the account, past and future, to whoever receives it. The UI says so before showing it.
     /// </summary>
-    public string DeriveAccountXpub(string mnemonic, ChainId chain, string? passphrase = null)
+    public string DeriveAccountXpub(
+        string mnemonic, ChainId chain, string? passphrase = null, UtxoScriptKind kind = UtxoScriptKind.Default)
     {
-        passphrase = Resolve(passphrase);
-        var (purpose, coinType, network, _) = BitcoinLikeParams(chain);
-        var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
+        var (_, _, network, _) = BitcoinLikeParams(chain);
 
         // The ACCOUNT level (m/purpose'/coin'/0'), exactly the level the addresses hang off — so what
         // a scanner derives from it is the same set the wallet scans and spends from.
-        var account = parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"{purpose}'/{coinType}'/0'"));
-        return account.Neuter().ToString(network);
+        return DeriveAccountExtPubKey(mnemonic, chain, kind, passphrase).ToString(network);
     }
 
     /// <summary>The BIP32 path that <see cref="DeriveAccountXpub"/> exports, for the UI to show
     /// beside it — a key without its path is a key somebody has to guess at.</summary>
-    public static string AccountXpubPath(ChainId chain)
+    public static string AccountXpubPath(ChainId chain, UtxoScriptKind kind = UtxoScriptKind.Default)
     {
-        var (purpose, coinType, _, _) = BitcoinLikeParams(chain);
+        var (_, coinType, _, _) = BitcoinLikeParams(chain);
+        var (purpose, _) = BranchParams(chain, kind);
         return $"m/{purpose}'/{coinType}'/0'";
     }
 

@@ -108,7 +108,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 
 | # | Task | Status |
 |---|---|---|
-| H.1 | Bitcoin **PSBT** export/import + watch-only xpub | 📅 |
+| H.1 | Bitcoin **PSBT** export/import + watch-only xpub | ✅ **PSBT both ways.** Export: the reviewed payment as an unsigned PSBT naming the master fingerprint and every BIP32 path — BIP-371 Taproot fields filled by hand, because NBitcoin's `AddKeyPath` leaves a Taproot coin unnamed — with the change index reserved as for a real send. Import (base64, hex or `.psbt`): reviewed line by line with the cost to this wallet, and only coins the wallet's **own scan** found are signed, at the value read from the chain; a PSBT that misstates one of them, or spends from one of its addresses a coin the scan cannot see, is refused. Completed PSBTs broadcast through the same route gate. The xpub export now includes the Taproot account the balance counts. **Not done:** a seedless watch-only wallet (import an xpub, sign elsewhere) — the app is built around an unlocked seed, and that mode is the same work H.2 needs, so they go together. Signing needs a synced wallet: this is not an air-gapped signer |
 | H.2 | **Ledger / Trezor** (sign on device, no seed in Umbrella) | 📅 |
 | H.3 | **Multisig** 2-of-3 | 📅 long |
 | H.4 | **Android** (separate mobile threat model + UX, not a desktop copy) | 📅 Planned |
@@ -201,7 +201,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 9. **R.6 / L.6** — EV signing for Windows + PGP for Linux packages. R.3 attestations already cover “did this come from the project”; EV covers SmartScreen, which is a different problem and needs a legal entity and money. ← **next (human/process)**  
 10. ✅ **N.1 / N.2** ERC-20 and TRC-20, 🟡 **N.3** jettons (SPL still needs balance reading first).  
 11. ✅ **P2.1** Taproot find/show/spend, ✅ **P2.2** PayJoin (sender).  
-12. **H.1 → H.2** — PSBT, then Ledger/Trezor.  
+12. ✅ **H.1** PSBT export / review / sign. **H.2** Ledger/Trezor next — needs the seedless watch-only mode and the devices to test on.  
 13. **H.4** + L.5/L.7 — Android only after a mobile spec **and** store/geo compliance.  
 14. New L1s (XRP…) — only after a stable core + matrix.  
 15. **R.7 / L.5** — Microsoft Store / geo-blocklist as needed.

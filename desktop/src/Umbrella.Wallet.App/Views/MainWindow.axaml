@@ -1466,6 +1466,25 @@
                               Command="{Binding ConfirmSendCommand}"/>
                       <Button Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}" Command="{Binding CancelSendQuoteCommand}"/>
                     </StackPanel>
+
+                    <!-- PSBT export (roadmap H.1): the same payment, unsigned, for another wallet to check
+                         or sign. Bitcoin only — PSBT is Bitcoin's format. -->
+                    <StackPanel Spacing="6" IsVisible="{Binding CanExportSendPsbt}">
+                      <Button Classes="ghost" FontSize="12" HorizontalAlignment="Left" IsEnabled="{Binding !IsBusy}"
+                              Content="{Binding [send.exportPsbt], Source={x:Static app:Loc.Instance}}" Command="{Binding ExportSendPsbtCommand}"/>
+                      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11" LineHeight="16" TextWrapping="Wrap"
+                                 Text="{Binding [send.exportPsbtHint], Source={x:Static app:Loc.Instance}}"/>
+                      <StackPanel Spacing="6" IsVisible="{Binding HasPsbtExport}">
+                        <TextBox Classes="mono" FontSize="11" TextWrapping="Wrap" MaxHeight="120" IsReadOnly="True"
+                                 Text="{Binding PsbtExportText, Mode=OneWay}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <Button Classes="ghost" FontSize="11" Padding="9,4" MinHeight="0"
+                                  Content="{Binding [common.copy], Source={x:Static app:Loc.Instance}}" Command="{Binding CopyPsbtExportCommand}"/>
+                          <Button Classes="ghost" FontSize="11" Padding="9,4" MinHeight="0"
+                                  Content="{Binding [psbt.saveBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding SavePsbtExportCommand}"/>
+                        </StackPanel>
+                      </StackPanel>
+                    </StackPanel>
                   </StackPanel>
                 </Border>
 
@@ -3449,6 +3468,78 @@
                     <Border IsVisible="{Binding XpubError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                             Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="8" Padding="12,9">
                       <TextBlock Text="{Binding XpubError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+                    </Border>
+                  </StackPanel>
+                </Border>
+
+                <!-- Sign a PSBT (roadmap H.1). Only coins this wallet's own scan found are signed, at the
+                     value read from the chain — never at a value the PSBT states. -->
+                <Border Classes="card" IsVisible="{Binding IsTabSecurity}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="{Binding [psbt.title], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextSoft}" FontSize="12" LineHeight="18" TextWrapping="Wrap"
+                               Text="{Binding [psbt.hint], Source={x:Static app:Loc.Instance}}"/>
+
+                    <TextBox Classes="mono" FontSize="11" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70" MaxHeight="160"
+                             Text="{Binding PsbtInput}" Watermark="{Binding [psbt.paste], Source={x:Static app:Loc.Instance}}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <Button Classes="ghost" IsEnabled="{Binding !IsBusy}" Content="{Binding [psbt.loadBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding LoadPsbtFileCommand}"/>
+                      <Button Classes="primary" IsEnabled="{Binding !IsBusy}" Content="{Binding [psbt.reviewBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding ReviewPsbtCommand}"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6" IsVisible="{Binding HasPsbtReview}">
+                      <ItemsControl ItemsSource="{Binding PsbtLines}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="x:String">
+                            <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap" Text="{Binding}"/>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding PsbtSummary}"/>
+                    </StackPanel>
+
+                    <Border IsVisible="{Binding HasPsbtWarnings}" Background="#22000000" BorderBrush="#7A6230"
+                            BorderThickness="1" CornerRadius="8" Padding="12,9">
+                      <ItemsControl ItemsSource="{Binding PsbtWarnings}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="x:String">
+                            <TextBlock Foreground="#D8C79A" FontSize="11.5" TextWrapping="Wrap" Text="{Binding}"/>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </Border>
+
+                    <Border IsVisible="{Binding HasPsbtProblems}" Background="#2A1618" BorderBrush="#7A3034"
+                            BorderThickness="1" CornerRadius="8" Padding="12,9">
+                      <ItemsControl ItemsSource="{Binding PsbtProblems}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="x:String">
+                            <TextBlock Foreground="#E09A9A" FontSize="11.5" TextWrapping="Wrap" Text="{Binding}"/>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </Border>
+
+                    <Button Classes="danger" HorizontalAlignment="Left" IsVisible="{Binding CanSignPsbt}"
+                            IsEnabled="{Binding !IsBusy}" Content="{Binding [psbt.signBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding SignPsbtCommand}"/>
+
+                    <StackPanel Spacing="6" IsVisible="{Binding HasPsbtResult}">
+                      <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource UmPos}" Text="{Binding PsbtResultNote}"/>
+                      <TextBox Classes="mono" FontSize="11" TextWrapping="Wrap" MaxHeight="120" IsReadOnly="True"
+                               Text="{Binding PsbtResultText, Mode=OneWay}"/>
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Classes="ghost" FontSize="11" Padding="9,4" MinHeight="0"
+                                Content="{Binding [common.copy], Source={x:Static app:Loc.Instance}}" Command="{Binding CopyPsbtResultCommand}"/>
+                        <Button Classes="ghost" FontSize="11" Padding="9,4" MinHeight="0"
+                                Content="{Binding [psbt.saveBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding SavePsbtResultCommand}"/>
+                        <Button Classes="danger" FontSize="11" Padding="9,4" MinHeight="0" IsVisible="{Binding PsbtComplete}"
+                                IsEnabled="{Binding !IsBusy}" Content="{Binding [psbt.broadcastBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding BroadcastPsbtCommand}"/>
+                      </StackPanel>
+                    </StackPanel>
+
+                    <Border IsVisible="{Binding PsbtError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="8" Padding="12,9">
+                      <TextBlock Text="{Binding PsbtError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
                     </Border>
                   </StackPanel>
                 </Border>

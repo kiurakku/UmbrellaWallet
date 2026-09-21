@@ -310,6 +310,136 @@ public sealed class HdUtxoSpender
     }
 
     /// <summary>
+    /// The reviewed payment as an UNSIGNED PSBT, for checking in another wallet or signing elsewhere
+    /// (roadmap H.1). Each input and the change output carry this wallet's master fingerprint and
+    /// their BIP32 path, which is what lets Sparrow, Electrum or a hardware wallet recognise them.
+    ///
+    /// That is also what it discloses: whoever sees this file learns the fingerprint and which paths
+    /// the coins sit on. It cannot move anything.
+    /// </summary>
+    public (PSBT? Psbt, string? Error) BuildUnsignedPsbt(
+        string mnemonic, UtxoSpendPlan plan, UtxoSpendRequest request,
+        string? changeAddress, UtxoDerivationPath? changePath)
+    {
+        try
+        {
+            var (builder, builderError) = PrepareBuilder(mnemonic, plan, request, changeAddress);
+            if (builder is null) return (null, builderError);
+
+            var psbt = builder.BuildPSBT(sign: false);
+            var fingerprint = _deriver.MasterFingerprint(mnemonic);
+
+            foreach (var input in plan.Inputs)
+            {
+                var account = _deriver.DeriveUtxoAccount(mnemonic, input.Path);
+                var rooted = new RootedKeyPath(fingerprint, HdAddressDeriver.KeyPathFor(input.Path));
+                var outpoint = new OutPoint(uint256.Parse(input.TxId), (uint)input.Vout);
+
+                if (input.Path.IsTaproot)
+                    NameTaprootKey(psbt.Inputs.FindIndexedInput(outpoint)!, account.PrivateKey.PubKey, rooted);
+                else
+                    psbt.AddKeyPath(account.PrivateKey.PubKey, rooted, account.ScriptPubKey);
+            }
+
+            if (changePath is { } cp && changeAddress is not null)
+            {
+                var change = _deriver.DeriveUtxoAccount(mnemonic, cp);
+                if (change.Address != changeAddress)
+                    return (null, "The change path does not match the change address.");
+
+                var rooted = new RootedKeyPath(fingerprint, HdAddressDeriver.KeyPathFor(cp));
+                if (cp.IsTaproot)
+                    NameTaprootKey(psbt.Outputs.First(o => o.ScriptPubKey == change.ScriptPubKey), change.PrivateKey.PubKey, rooted);
+                else
+                    psbt.AddKeyPath(change.PrivateKey.PubKey, rooted, change.ScriptPubKey);
+            }
+
+            return (psbt, null);
+        }
+        catch (Exception ex)
+        {
+            return (null, $"Export failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// BIP-371: a BIP-86 key-path coin is named by its x-only INTERNAL key, under the Taproot
+    /// derivation field, with no leaf hashes. NBitcoin's <c>AddKeyPath</c> only fills the SegWit v0
+    /// field, which leaves a Taproot coin unrecognisable to the wallet that should sign it.
+    /// </summary>
+    private static void NameTaprootKey(PSBTCoin coin, PubKey pubKey, RootedKeyPath rooted)
+    {
+        var internalKey = pubKey.TaprootInternalKey;
+        coin.TaprootInternalKey = internalKey;
+        coin.HDTaprootKeyPaths[new TaprootPubKey(internalKey.ToBytes())] = new TaprootKeyPath(rooted);
+    }
+
+    /// <summary>
+    /// Signs this wallet's inputs in a PSBT from elsewhere (roadmap H.1) — only after
+    /// <see cref="Psbt.PsbtReviewer"/> found no problem with it.
+    ///
+    /// Each signed input is matched to a coin from <paramref name="owned"/> — the wallet's own scan —
+    /// and its UTXO data is REPLACED with the wallet's own record before signing, so the amount the
+    /// signature commits to is the one read from the chain, whatever the PSBT said. Inputs that are
+    /// not the wallet's are left exactly as they came.
+    ///
+    /// The PSBT comes back finalized only when every input is signed; otherwise it carries partial
+    /// signatures for whoever coordinates the rest.
+    /// </summary>
+    public (PSBT? Signed, int SignedCount, bool Complete, string? Error) SignOwnInputs(
+        string mnemonic, PSBT psbt, IReadOnlyList<OwnedUtxo> owned)
+    {
+        try
+        {
+            var signed = psbt.Clone();
+            var byOutpoint = new Dictionary<OutPoint, OwnedUtxo>();
+            foreach (var u in owned) byOutpoint[new OutPoint(uint256.Parse(u.TxId), (uint)u.Vout)] = u;
+
+            // Our UTXO data first, for every input of ours: a Taproot sighash reads all of them.
+            var ours = new List<(PSBTInput Input, DerivedUtxoAccount Account)>();
+            foreach (var input in signed.Inputs)
+            {
+                if (!byOutpoint.TryGetValue(input.PrevOut, out var mine) || input.IsFinalized()) continue;
+
+                var account = _deriver.DeriveUtxoAccount(mnemonic, mine.Path);
+                if (account.Address != mine.Address)
+                    return (null, 0, false, "A scanned coin does not match its own path — refusing to sign.");
+
+                input.WitnessUtxo = new TxOut(Money.Satoshis(mine.ValueSat), account.ScriptPubKey);
+                ours.Add((input, account));
+            }
+
+            if (ours.Count == 0) return (null, 0, false, "Nothing in this PSBT is yours to sign.");
+
+            foreach (var (input, account) in ours) input.Sign(account.PrivateKey);
+
+            var finalized = signed.Clone();
+            if (finalized.TryFinalize(out _))
+            {
+                var tx = finalized.ExtractTransaction();
+                var coins = finalized.Inputs.Select(i => i.GetCoin()).ToList();
+                if (coins.All(c => c is not null))
+                {
+                    var (_, _, network, _) = HdAddressDeriver.BitcoinLikeParams(ChainId.Btc);
+                    var builder = network.CreateTransactionBuilder();
+                    builder.DustPrevention = false;
+                    builder.AddCoins(coins!);
+                    if (!builder.Verify(tx, out var errors))
+                        return (null, 0, false, "Signature verification failed: " + string.Join("; ", errors.Select(e => e.ToString())));
+                }
+
+                return (finalized, ours.Count, true, null);
+            }
+
+            return (signed, ours.Count, false, null);
+        }
+        catch (Exception ex)
+        {
+            return (null, 0, false, $"Signing failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// The builder both signing paths share: every input with its own key, the recipient, the
     /// service fee and memo when present, the planned fee, and change. One place, so the PSBT a
     /// PayJoin receiver sees and the transaction a plain send broadcasts cannot drift apart.

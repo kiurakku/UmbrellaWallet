@@ -277,6 +277,13 @@ public partial class MainViewModel
         _sendTokenAmount = 0m;
         _payjoinPlanned = false;
 
+        // A plan belongs to the review that made it. Left over from an earlier one, it could be
+        // exported as a PSBT beside a quote for a different chain or amount.
+        _btcQuote = null;
+        _btcPlan = null;
+        _btcRequest = null;
+        _btcPlanSymbol = null;
+
         if (!IsUnlocked || _unlockedMnemonic is null)
         {
             SendError = Loc.Instance["send.errUnlock"];

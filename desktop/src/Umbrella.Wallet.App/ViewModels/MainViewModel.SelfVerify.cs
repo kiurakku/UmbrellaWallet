@@ -78,6 +78,19 @@ public partial class MainViewModel
                         symbol,
                         Umbrella.Wallet.Core.Derivation.HdAddressDeriver.AccountXpubPath(chain.Value),
                         _deriver.DeriveAccountXpub(mnemonic, chain.Value)));
+
+                    // Bitcoin's balance here includes the Taproot branch (P2.1). A scanner handed only
+                    // the SegWit key would report less than the wallet shows, and the check would
+                    // "fail" for a reason that is not a discrepancy at all.
+                    if (Umbrella.Wallet.Core.Utxo.UtxoAccountScanner.ScansTaproot(chain.Value))
+                    {
+                        const Umbrella.Wallet.Core.Derivation.UtxoScriptKind taproot =
+                            Umbrella.Wallet.Core.Derivation.UtxoScriptKind.Taproot;
+                        ExportedXpubs.Add(new XpubRowVm(
+                            symbol + " · Taproot",
+                            Umbrella.Wallet.Core.Derivation.HdAddressDeriver.AccountXpubPath(chain.Value, taproot),
+                            _deriver.DeriveAccountXpub(mnemonic, chain.Value, kind: taproot)));
+                    }
                 }
             }
             finally

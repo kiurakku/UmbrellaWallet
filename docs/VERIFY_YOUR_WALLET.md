@@ -29,6 +29,12 @@ What the key is: the account-level extended **public** key, at the path shown be
 this wallet's own addresses hang off, which is why a scanner sees the same set — including the
 internal change addresses, where money returns after a send.
 
+**Bitcoin has two.** The wallet also finds and spends coins on the Taproot account (`m/86'/0'/0'`)
+that a restored seed may have used, and its Bitcoin balance includes them. So the screen exports a
+second key, **BTC · Taproot**. Check both — in the scanner, choose the Taproot (P2TR / `tr()`)
+script type for that one — and add the two together. A scanner given only the SegWit key will report
+less than the wallet shows, and that difference is not a discrepancy.
+
 **What it costs.** A watch-only key cannot spend a single coin. It *does* reveal every address on
 that account, past and future, to whoever you give it to: how much you hold, when, and who you paid.
 Use a scanner you trust, over Tor, and do not leave the key lying around. This is the one check with
@@ -36,6 +42,13 @@ a real privacy price, and it is your call whether to pay it.
 
 Scanners that take an xpub without an account: [mempool.space](https://mempool.space) (Bitcoin),
 [blockchair.com](https://blockchair.com), or your own Electrum server if you run one.
+
+**A payment, before it is signed.** On the Bitcoin review screen, **Export as PSBT** gives the
+exact unsigned transaction. Open it in another wallet (Sparrow, Electrum) and read it there: the
+same recipient, the same amount, change back to an address of yours, the same fee. If a second
+program you chose agrees with this one about what is about to happen, you are no longer taking this
+wallet's word for it. The file names this wallet's key fingerprint and the paths of the coins it
+spends; it cannot move anything.
 
 ---
 
