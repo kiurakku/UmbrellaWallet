@@ -82,7 +82,7 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | # | Task | Source | Status |
 |---|---|---|---|
 | P2.1 | **Taproot (BIP-341/86)** — scanner `m/86'` + key-path spend, not derivation only | PRIVACY, coins | ✅ **Find, show, spend.** Addresses pinned to all three BIP-86 vectors; BTC scans `m/86'` beside `m/84'` (external + internal, same gap/partial rules); key-path inputs signed and consensus-verified, alone or mixed with SegWit; change returns to the inputs' own branch on its own index counter; restored Taproot history is read. **Receive stays BIP-84** — the wallet does not hand out `bc1p…` addresses, so nothing is issued that the old scan could miss. Cost, stated: an empty BTC scan now probes 80 addresses instead of 40. Verify a first spend with a small amount |
-| P2.2 | **PayJoin (BIP-78)** | PRIVACY, threat model | 📅 |
+| P2.2 | **PayJoin (BIP-78)** | PRIVACY, threat model | ✅ **Sender side.** A pasted `bitcoin:` link with `pj=` (HTTPS or `.onion` only) is used: the signed original goes to the receiver on its own Tor circuit, and its proposal is signed only after the full BIP-78 sender checklist plus an independent "your cost did not rise beyond the stated offer" check; output substitution is always refused. On any failure the reviewed payment is broadcast instead, and if even that fails the wallet says the receiver holds a signed copy rather than offering a retry that could pay twice. Every checklist rule has its own adversarial test against a simulated receiver with real keys. **Not done:** receiving a PayJoin (needs an always-reachable endpoint), and no send against a live receiver yet — make the first one small |
 | P2.3 | **CoinJoin** (after PayJoin) | PRIVACY | 📅 |
 | P2.4 | **Dandelion++** (broadcast timing privacy) | coins roadmap | 📅 |
 | P2.5 | **Silent Payments** (BTC) | coins long-term | 📅 |
@@ -176,7 +176,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 |---|---|
 | Malware on the user’s PC | Hardware wallet (H.1–H.2) |
 | Explorer sees the session address set | Already: node choice + Tor, and the Radar now says so under every status (P1.11); next: fewer addresses per request, Silent Payments |
-| UTXO linkage | PayJoin → CoinJoin; Silent Payments; the post-send report now names the count (P1.12 ✅) |
+| UTXO linkage | PayJoin sending ✅ (P2.2) → CoinJoin; Silent Payments; the post-send report now names the count (P1.12 ✅) |
 | Broadcast timing ↔ IP | Dandelion++ |
 | Release substitution on GitHub | ✅ keyless build attestations (R.3) + the reproducible-build check; what remains is that a user must still choose to verify |
 | $5 wrench | Duress / decoy password ✅ — with its limits stated in the app: it does not hide that other wallets exist on the machine, nor help against being watched typing |
@@ -200,7 +200,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 8. ✅ **L.1 / L.3 / L.8** (+ L.2 wording) — disclaimers / age / ToS in the app; **L.4** is store-listing copy, written at submission.  
 9. **R.6 / L.6** — EV signing for Windows + PGP for Linux packages. R.3 attestations already cover “did this come from the project”; EV covers SmartScreen, which is a different problem and needs a legal entity and money. ← **next (human/process)**  
 10. ✅ **N.1 / N.2** ERC-20 and TRC-20, 🟡 **N.3** jettons (SPL still needs balance reading first).  
-11. ✅ **P2.1** Taproot find/show/spend. **P2.2** PayJoin next.  
+11. ✅ **P2.1** Taproot find/show/spend, ✅ **P2.2** PayJoin (sender).  
 12. **H.1 → H.2** — PSBT, then Ledger/Trezor.  
 13. **H.4** + L.5/L.7 — Android only after a mobile spec **and** store/geo compliance.  
 14. New L1s (XRP…) — only after a stable core + matrix.  

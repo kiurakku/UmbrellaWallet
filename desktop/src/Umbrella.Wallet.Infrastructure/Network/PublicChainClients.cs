@@ -66,6 +66,9 @@ public static class PublicHttp
         /// the most identity-linked traffic the wallet makes, and the last thing that should share a
         /// circuit with address lookups.</summary>
         ExchangeAccount,
+        /// <summary>A PayJoin receiver's endpoint (BIP-78). It is handed a signed payment naming every
+        /// input, so it gets a circuit of its own rather than the one the explorer sees broadcasts on.</summary>
+        Payjoin,
     }
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<NetworkPurpose, HttpClient>

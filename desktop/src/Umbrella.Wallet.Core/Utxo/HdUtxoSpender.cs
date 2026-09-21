@@ -88,6 +88,8 @@ public sealed class HdUtxoSpender
     /// <summary>The virtual size of one input, by the branch it was received on. A plan that draws
     /// from both branches has inputs of two different sizes, and estimating them all as one would
     /// either overpay or — worse — underpay and stall the transaction in the mempool.</summary>
+    public static int InputVirtualSize(ChainId chain, UtxoScriptKind kind) => InputVbFor(chain, kind);
+
     private static int InputVbFor(ChainId chain, UtxoScriptKind kind)
     {
         if (kind == UtxoScriptKind.Taproot) return SizeModel(ScriptPubKeyType.TaprootBIP86).InputVb;
@@ -190,46 +192,8 @@ public sealed class HdUtxoSpender
     {
         try
         {
-            var (_, _, network, _) = HdAddressDeriver.BitcoinLikeParams(plan.Chain);
-            var builder = network.CreateTransactionBuilder();
-
-            // We size every output ourselves in PlanSpend (the recipient is validated above the dust limit,
-            // change below dust is rolled into the fee, and the memo rides a provably-unspendable zero-value
-            // OP_RETURN). NBitcoin's dust guard would otherwise reject that OP_RETURN on some altcoin
-            // networks (NBitcoin.Altcoins' BCash doesn't exempt it the way Bitcoin mainnet does), so we turn
-            // the guard off — the plan, not the builder, is the authority on outputs.
-            builder.DustPrevention = false;
-
-            foreach (var input in plan.Inputs)
-            {
-                var account = _deriver.DeriveUtxoAccount(mnemonic, input.Path);
-                var coin = new Coin(
-                    uint256.Parse(input.TxId), (uint)input.Vout,
-                    Money.Satoshis(input.ValueSat), account.ScriptPubKey);
-                builder.AddCoins(coin);
-                builder.AddKeys(account.PrivateKey);
-            }
-
-            builder.Send(BitcoinAddress.Create(request.ToAddress, network), Money.Satoshis(plan.AmountSat));
-
-            if (plan.DevFeeSat > 0 && !string.IsNullOrWhiteSpace(request.DevFeeAddress))
-                builder.Send(BitcoinAddress.Create(request.DevFeeAddress!, network), Money.Satoshis(plan.DevFeeSat));
-
-            if (!string.IsNullOrWhiteSpace(request.Memo))
-            {
-                var memoBytes = Encoding.ASCII.GetBytes(request.Memo);
-                if (memoBytes.Length > 80) return (null, "Memo exceeds the 80-byte OP_RETURN limit.");
-                builder.Send(TxNullDataTemplate.Instance.GenerateScriptPubKey(memoBytes), Money.Zero);
-            }
-
-            builder.SendFees(Money.Satoshis(plan.FeeSat));
-
-            if (plan.NeedsChange)
-            {
-                if (string.IsNullOrWhiteSpace(changeAddress))
-                    return (null, "A change address is required but was not supplied.");
-                builder.SetChange(BitcoinAddress.Create(changeAddress, network));
-            }
+            var (builder, builderError) = PrepareBuilder(mnemonic, plan, request, changeAddress);
+            if (builder is null) return (null, builderError);
 
             var tx = builder.BuildTransaction(sign: true);
             if (!builder.Verify(tx, out var errors))
@@ -241,5 +205,159 @@ public sealed class HdUtxoSpender
         {
             return (null, $"Build failed: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// The same transaction as <see cref="BuildSigned"/>, as a signed and finalized PSBT — the
+    /// "original" of a BIP-78 PayJoin (roadmap P2.2). It is a complete, broadcastable payment on its
+    /// own: the receiver may broadcast it instead of cooperating, and the sender broadcasts it if the
+    /// PayJoin fails, so it has to be exactly what the user reviewed.
+    /// </summary>
+    public (PSBT? Psbt, Transaction? Tx, string? Error) BuildOriginalPsbt(
+        string mnemonic, UtxoSpendPlan plan, UtxoSpendRequest request, string? changeAddress)
+    {
+        try
+        {
+            var (builder, builderError) = PrepareBuilder(mnemonic, plan, request, changeAddress);
+            if (builder is null) return (null, null, builderError);
+
+            var psbt = builder.BuildPSBT(sign: true);
+            if (!psbt.TryFinalize(out var finalizeErrors))
+                return (null, null, "Could not finalize: " + string.Join("; ", finalizeErrors.Select(e => e.ToString())));
+
+            var tx = psbt.ExtractTransaction();
+            if (!builder.Verify(tx, out var errors))
+                return (null, null, "Signature verification failed: " + string.Join("; ", errors.Select(e => e.ToString())));
+
+            return (psbt, tx, null);
+        }
+        catch (Exception ex)
+        {
+            return (null, null, $"Build failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Signs the sender's inputs in a receiver's PayJoin proposal — only after
+    /// <see cref="Payjoin.PayjoinProposalChecker"/> has accepted it — and returns the final transaction
+    /// with every input, the receiver's included, verified against consensus rules.
+    ///
+    /// Only the outpoints of <paramref name="plan"/> are signed. If a receiver slipped in another coin
+    /// that happens to belong to this wallet, it stays unsigned and the transaction fails to finalize;
+    /// the wallet never signs an input the user did not review.
+    /// </summary>
+    public (Transaction? Tx, long FeeSat, string? Error) SignPayjoinProposal(
+        string mnemonic, UtxoSpendPlan plan, PSBT original, PSBT proposal)
+    {
+        try
+        {
+            var (_, _, network, _) = HdAddressDeriver.BitcoinLikeParams(plan.Chain);
+            var signed = proposal.Clone();
+
+            var ours = new Dictionary<OutPoint, DerivedUtxoAccount>();
+            foreach (var u in plan.Inputs)
+                ours[new OutPoint(uint256.Parse(u.TxId), (uint)u.Vout)] = _deriver.DeriveUtxoAccount(mnemonic, u.Path);
+
+            var originalUtxos = original.Inputs.ToDictionary(i => i.PrevOut, i => i.GetTxOut());
+
+            foreach (var input in signed.Inputs)
+            {
+                if (!ours.ContainsKey(input.PrevOut))
+                {
+                    // Anything that is not one of the reviewed inputs must arrive already signed by the
+                    // receiver. An unsigned stranger here could be another coin at one of OUR addresses
+                    // (address reuse makes that possible), and signing it would spend money the user
+                    // never saw on the review screen.
+                    if (!input.IsFinalized())
+                        return (null, 0, "The PayJoin proposal contains an input that is not yours and is not signed.");
+                    continue;
+                }
+
+                // The receiver strips the sender's UTXO data (BIP-78); the sender restores it from its
+                // OWN record, never from anything the receiver sent.
+                input.WitnessUtxo = originalUtxos[input.PrevOut]
+                                    ?? throw new InvalidOperationException("original input without its UTXO");
+            }
+
+            // Input by input, and only the reviewed outpoints — not SignWithKeys, which signs every
+            // input a key happens to match.
+            foreach (var input in signed.Inputs)
+            {
+                if (ours.TryGetValue(input.PrevOut, out var account)) input.Sign(account.PrivateKey);
+            }
+
+            if (!signed.TryFinalize(out var finalizeErrors))
+                return (null, 0, "Could not finalize the PayJoin: " + string.Join("; ", finalizeErrors.Select(e => e.ToString())));
+
+            var tx = signed.ExtractTransaction();
+
+            // Every input — the receiver's as well as ours — checked against the output it spends.
+            var builder = network.CreateTransactionBuilder();
+            builder.DustPrevention = false;
+            var coins = signed.Inputs.Select(i => i.GetSignableCoin() ?? i.GetCoin()).ToList();
+            if (coins.Any(c => c is null)) return (null, 0, "A PayJoin input is missing its UTXO.");
+            builder.AddCoins(coins!);
+            if (!builder.Verify(tx, out var errors))
+                return (null, 0, "PayJoin verification failed: " + string.Join("; ", errors.Select(e => e.ToString())));
+
+            var fee = coins.Sum(c => c!.TxOut.Value.Satoshi) - tx.Outputs.Sum(o => o.Value.Satoshi);
+            return (tx, fee, null);
+        }
+        catch (Exception ex)
+        {
+            return (null, 0, $"PayJoin signing failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// The builder both signing paths share: every input with its own key, the recipient, the
+    /// service fee and memo when present, the planned fee, and change. One place, so the PSBT a
+    /// PayJoin receiver sees and the transaction a plain send broadcasts cannot drift apart.
+    /// </summary>
+    private (TransactionBuilder? Builder, string? Error) PrepareBuilder(
+        string mnemonic, UtxoSpendPlan plan, UtxoSpendRequest request, string? changeAddress)
+    {
+        var (_, _, network, _) = HdAddressDeriver.BitcoinLikeParams(plan.Chain);
+        var builder = network.CreateTransactionBuilder();
+
+        // We size every output ourselves in PlanSpend (the recipient is validated above the dust limit,
+        // change below dust is rolled into the fee, and the memo rides a provably-unspendable zero-value
+        // OP_RETURN). NBitcoin's dust guard would otherwise reject that OP_RETURN on some altcoin
+        // networks (NBitcoin.Altcoins' BCash doesn't exempt it the way Bitcoin mainnet does), so we turn
+        // the guard off — the plan, not the builder, is the authority on outputs.
+        builder.DustPrevention = false;
+
+        foreach (var input in plan.Inputs)
+        {
+            var account = _deriver.DeriveUtxoAccount(mnemonic, input.Path);
+            var coin = new Coin(
+                uint256.Parse(input.TxId), (uint)input.Vout,
+                Money.Satoshis(input.ValueSat), account.ScriptPubKey);
+            builder.AddCoins(coin);
+            builder.AddKeys(account.PrivateKey);
+        }
+
+        builder.Send(BitcoinAddress.Create(request.ToAddress, network), Money.Satoshis(plan.AmountSat));
+
+        if (plan.DevFeeSat > 0 && !string.IsNullOrWhiteSpace(request.DevFeeAddress))
+            builder.Send(BitcoinAddress.Create(request.DevFeeAddress!, network), Money.Satoshis(plan.DevFeeSat));
+
+        if (!string.IsNullOrWhiteSpace(request.Memo))
+        {
+            var memoBytes = Encoding.ASCII.GetBytes(request.Memo);
+            if (memoBytes.Length > 80) return (null, "Memo exceeds the 80-byte OP_RETURN limit.");
+            builder.Send(TxNullDataTemplate.Instance.GenerateScriptPubKey(memoBytes), Money.Zero);
+        }
+
+        builder.SendFees(Money.Satoshis(plan.FeeSat));
+
+        if (plan.NeedsChange)
+        {
+            if (string.IsNullOrWhiteSpace(changeAddress))
+                return (null, "A change address is required but was not supplied.");
+            builder.SetChange(BitcoinAddress.Create(changeAddress, network));
+        }
+
+        return (builder, null);
     }
 }

@@ -452,7 +452,7 @@ threat model names each one as an open gap rather than implying it away.
 | ~~Tor stream isolation~~ | **Done.** Chain data, broadcasts, prices, swaps, exchange accounts and maintenance each get their own circuit. |
 | **Dandelion++** | Broadcasting by flood lets an observer tie an IP to a transaction by propagation timing. A stem phase breaks that. |
 | ~~Taproot (BIP-341)~~ | **Found and spent; not yet issued.** A seed used in a Taproot wallet shows its `m/86'` coins and history and can spend them (key-path, alone or mixed with SegWit inputs). The wallet still hands out native SegWit receive addresses: switching the default is a separate decision, and an empty BTC scan already costs twice the probes it did. |
-| **PayJoin (BIP-78)** | Breaks the "all inputs belong to the sender" assumption chain analysis is built on. |
+| ~~PayJoin (BIP-78)~~ | **Sending done.** When a payment link offers it, the receiver adds a coin of its own, which breaks the "all inputs belong to the sender" assumption chain analysis is built on. The wallet cannot *receive* a PayJoin: that needs an endpoint reachable whenever someone pays, which a desktop app is not. |
 | **CoinJoin** | The heavier answer to UTXO linkage; worth doing after PayJoin. |
 | **Hardware wallets** (Ledger / Trezor) | The only real answer to Vector 1 of the threat model — malware on the user's own machine. |
 

@@ -161,7 +161,8 @@ public sealed class TorStreamIsolationTests : IDisposable
         Assert.Equal(values.Count, values.Distinct().Count());
 
         // And the set is the one the wallet actually maps, so a new purpose cannot be added without
-        // deciding where it belongs.
-        Assert.Equal(6, values.Count);
+        // deciding where it belongs. The seventh is Payjoin (P2.2): a receiver's endpoint is handed a
+        // signed payment, and does not share a circuit with the explorer that sees the broadcast.
+        Assert.Equal(7, values.Count);
     }
 }

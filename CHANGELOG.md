@@ -42,6 +42,25 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### PayJoin: a payment that does not look like it came only from you
+
+- Paste a `bitcoin:` payment link into Send and the address and amount fill themselves in. If the
+  link offers PayJoin (BIP-78), the receiver is asked to add a coin of its own to the payment — so
+  "every input belongs to the payer", the assumption most chain analysis starts from, is wrong about
+  this transaction.
+- The review says it before you confirm, with the most the receiver may take from your change toward
+  the fee. Nothing beyond that is possible: the proposal is signed only after the full BIP-78 sender
+  checklist passes, plus a separate check that your total cost did not rise past that number. The
+  receiver can never redirect the payment — output substitution is always refused.
+- If the receiver does not answer, or its answer fails any check, the payment is sent exactly as you
+  reviewed it, and the result says which one happened.
+- If even that fails to broadcast, the wallet says so **without** offering a retry: the receiver
+  already holds a signed copy and may still broadcast it, and paying again could pay twice.
+- Only for endpoints on HTTPS or a `.onion`, over its own Tor circuit when Tor is on. A link with a
+  plaintext endpoint still pays; it just says PayJoin will not be used.
+- **Limits:** sending only — the wallet cannot receive a PayJoin. Tested against a simulated receiver
+  with real keys and full signature checks, not yet against a live one; make the first one small.
+
 ### A seed from a Taproot wallet is no longer shown as empty
 
 - Bitcoin coins on `m/86'` (BIP-86, `bc1p…`) were invisible: the scan walked only the SegWit account,

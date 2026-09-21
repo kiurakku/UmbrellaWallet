@@ -275,6 +275,7 @@ public partial class MainViewModel
         _tonQuote = null;
         _sendTokenSymbol = null;
         _sendTokenAmount = 0m;
+        _payjoinPlanned = false;
 
         if (!IsUnlocked || _unlockedMnemonic is null)
         {
@@ -549,6 +550,23 @@ public partial class MainViewModel
                         : $"Network fee ≈ {Fmt(quote.FeeAmount)} {chain} · {quote.InputCount} input(s) · change returns to a fresh internal address";
                     if (CoinControlOn && _coinControlChain == chain)
                         SendQuoteFee += $" · coin control: funded from {plan.Inputs.Count} of your selected coin(s)";
+
+                    // PayJoin (P2.2): said here, with its upper bound, so Confirm never does something
+                    // the review did not describe.
+                    if (PayjoinEndpointFor(chain) is not null)
+                    {
+                        if (BitcoinTransactionSender.CanAttemptPayjoin(chain, plan))
+                        {
+                            _payjoinPlanned = true;
+                            SendQuoteFee += "\n" + string.Format(
+                                Loc.Instance["send.payjoinReview"],
+                                BitcoinTransactionSender.PayjoinOfferCapSat(plan, request));
+                        }
+                        else
+                        {
+                            SendQuoteFee += "\n" + Loc.Instance["send.payjoinNotAttempted"];
+                        }
+                    }
 
                     // "What will happen", from the plan rather than the request: the plan is the source
                     // of truth for what is actually signed, including the change coming back to us.
@@ -964,14 +982,49 @@ public partial class MainViewModel
                 {
                     var quote = _btcQuote;
                     var walletId = _registry.Active?.Id ?? "default";
-                    // Signs across every input address in the plan and reserves the internal change
-                    // index (persisted before broadcast) — no key #0 assumption.
-                    var (ok, txid, error) = await _btcSender.SignAndBroadcastHdAsync(
-                        _unlockedMnemonic!, walletId, _addrIndex, _btcPlanSymbol ?? quote.Symbol, _btcPlan, _btcRequest);
+                    var spentSymbol = _btcPlanSymbol ?? quote.Symbol;
+
+                    bool ok;
+                    string? txid, error;
+                    string? payjoinNote = null;
+
+                    if (_payjoinPlanned && PayjoinEndpointFor(spentSymbol) is { } endpoint)
+                    {
+                        var outcome = await _btcSender.SignAndBroadcastPayjoinAsync(
+                            _unlockedMnemonic!, walletId, _addrIndex, spentSymbol, _btcPlan, _btcRequest, endpoint);
+                        (ok, txid, error) = (outcome.Ok, outcome.TxId, outcome.Error);
+
+                        if (!ok && outcome.OriginalLeftDevice)
+                        {
+                            // The receiver holds a signed copy: this is NOT a send that never left, and
+                            // it must not be offered as a retry — that could pay twice.
+                            _utxoScans.Remove(spentSymbol);
+                            _lastUtxoScan.Remove(spentSymbol);
+                            ClearSendQuotes();
+                            SendTo = string.Empty;
+                            SendAmount = string.Empty;
+                            SendError = string.Format(Loc.Instance["send.payjoinOriginalOut"], error);
+                            StatusMessage = Loc.Instance["status.broadcastFailed"];
+                            break;
+                        }
+
+                        payjoinNote = outcome.UsedPayjoin
+                            ? string.Format(Loc.Instance["send.payjoinDone"], outcome.FeeContributionSat)
+                            : outcome.PayjoinFailure is { } why
+                                ? string.Format(Loc.Instance["send.payjoinFellBack"], why)
+                                : null;
+                    }
+                    else
+                    {
+                        // Signs across every input address in the plan and reserves the internal change
+                        // index (persisted before broadcast) — no key #0 assumption.
+                        (ok, txid, error) = await _btcSender.SignAndBroadcastHdAsync(
+                            _unlockedMnemonic!, walletId, _addrIndex, spentSymbol, _btcPlan, _btcRequest);
+                    }
+
                     // Force a fresh scan next time so the spent inputs and new change are reflected.
                     // The cooldown stamp goes with it: change landing on an internal address is exactly
                     // the case the user must not have to wait ten minutes to see.
-                    var spentSymbol = _btcPlanSymbol ?? quote.Symbol;
                     _utxoScans.Remove(spentSymbol);
                     _lastUtxoScan.Remove(spentSymbol);
                     var explorer = _sendSymbol switch
@@ -982,6 +1035,7 @@ public partial class MainViewModel
                         _ => $"litecoinspace.org/tx/{txid}",
                     };
                     await FinishSendAsync(ok, txid, error, quote.Symbol, quote.Amount, quote.To, explorer);
+                    if (ok && payjoinNote is not null) SendSuccess += "\n" + payjoinNote;
                     break;
                 }
 
@@ -1127,6 +1181,7 @@ public partial class MainViewModel
     private void ClearSendQuotes()
     {
         HasSendQuote = false;
+        _payjoinPlanned = false;
         ClearSendSimulation();
         _sendQuote = null;
         _btcQuote = null;

@@ -2163,6 +2163,12 @@ public partial class MainViewModel : ViewModelBase
     partial void OnSendToChanged(string value)
     {
         HasSendQuote = false;
+
+        // A pasted bitcoin: link is unpacked into address + amount (roadmap P2.2); the raw link text
+        // is not an address and is not validated as one.
+        if (TryApplyPaymentLink(value)) return;
+        ForgetPayjoinIfDestinationChanged(value);
+
         ValidateSendAddress();
         EvaluateSendSafety();
     }

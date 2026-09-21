@@ -409,8 +409,8 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 
 | | |
 |---|---|
-| ✅ Shipped | 11+ chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · keyless release attestations |
-| 🔜 Next | **PayJoin (BIP-78)** · PSBT + watch-only · Ledger / Trezor |
+| ✅ Shipped | 11+ chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · keyless release attestations |
+| 🔜 Next | **PSBT + watch-only** · Ledger / Trezor |
 | 🗓 Planned | Android · reproducible builds · SPL token send · XRP / XLM / ATOM / NEAR / DOT · external security audit |
 | ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 

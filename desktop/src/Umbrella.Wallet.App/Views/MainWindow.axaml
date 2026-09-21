@@ -1069,6 +1069,14 @@
                       </StackPanel>
                     </Border>
 
+                    <!-- PayJoin (P2.2): what a pasted payment link offered, and whether it will be used.
+                         Teal: information, not a warning. -->
+                    <Border IsVisible="{Binding HasSendPayjoinNote}" CornerRadius="8" Padding="12,8"
+                            Background="#168FB8CB" BorderThickness="1" BorderBrush="#3E6E82">
+                      <TextBlock Text="{Binding SendPayjoinNote}" Foreground="#B9D9E6" FontSize="12"
+                                 TextWrapping="Wrap"/>
+                    </Border>
+
                     <!-- Scam control: address-poisoning / own-address warning. The lookalike case is
                          red (a likely scam); the own-address case is amber (a caution). Advisory. -->
                     <Border IsVisible="{Binding SendSafetyShown}" CornerRadius="10" Padding="12,10"

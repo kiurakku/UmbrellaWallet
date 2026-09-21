@@ -3,6 +3,7 @@ using System.Text.Json;
 using NBitcoin;
 using Umbrella.Wallet.Core.Chains;
 using Umbrella.Wallet.Core.Derivation;
+using Umbrella.Wallet.Core.Payjoin;
 using Umbrella.Wallet.Core.Utxo;
 
 namespace Umbrella.Wallet.Infrastructure.Network;
@@ -22,6 +23,24 @@ public sealed record BtcSendQuote(
     // Optional OP_RETURN data (<=80 bytes) — carries a THORChain swap memo, without which a swap
     // deposit would be seen as a plain transfer and the funds lost.
     string? Memo = null);
+
+/// <summary>
+/// How a PayJoin attempt ended (roadmap P2.2).
+///
+/// <see cref="UsedPayjoin"/> false with <see cref="Ok"/> true means the PayJoin failed and the original
+/// payment — exactly what the user reviewed — was broadcast instead; <see cref="PayjoinFailure"/> says
+/// why. <see cref="OriginalLeftDevice"/> is the fact that matters when even that broadcast fails: the
+/// receiver already holds a signed copy of the payment, so it may still be broadcast, and offering a
+/// "retry" would risk paying twice.
+/// </summary>
+public sealed record PayjoinOutcome(
+    bool Ok,
+    string? TxId,
+    string? Error,
+    bool UsedPayjoin,
+    string? PayjoinFailure,
+    long FeeContributionSat,
+    bool OriginalLeftDevice);
 
 /// <summary>
 /// Real BTC / LTC sending over Esplora-style public explorers. UTXOs are discovered across EVERY
@@ -132,22 +151,159 @@ public sealed class BitcoinTransactionSender
     {
         try
         {
-            string? changeAddress = null;
-            if (plan.NeedsChange)
-            {
-                // Change returns to the same branch the inputs came from, and its index is reserved
-                // on THAT branch's counter — a Taproot change address derived from the SegWit
-                // counter would be an address the scanner does not look for (roadmap P2.1).
-                var branch = AddressIndexStore.BranchKey(symbol, plan.ChangeKind);
-                var index = store.ReserveNextChangeIndex(walletId, branch);
-                changeAddress = _deriver
-                    .DeriveBitcoinLikeAt(mnemonic, plan.Chain, change: 1, index: index, kind: plan.ChangeKind)
-                    .Address;
-            }
+            var changeAddress = ReserveChangeAddress(mnemonic, walletId, store, symbol, plan);
 
             var (tx, error) = _spender.BuildSigned(mnemonic, plan, request, changeAddress);
             if (tx is null) return (false, null, error);
 
+            return await BroadcastAsync(symbol, tx, ct);
+        }
+        catch (Exception ex)
+        {
+            return (false, null, $"Send failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Change returns to the same branch the inputs came from, and its index is reserved on THAT
+    /// branch's counter — a Taproot change address derived from the SegWit counter would be an address
+    /// the scanner does not look for (roadmap P2.1). Reserved and persisted before anything is signed.
+    /// </summary>
+    private string? ReserveChangeAddress(
+        string mnemonic, string walletId, AddressIndexStore store, string symbol, UtxoSpendPlan plan)
+    {
+        if (!plan.NeedsChange) return null;
+
+        var branch = AddressIndexStore.BranchKey(symbol, plan.ChangeKind);
+        var index = store.ReserveNextChangeIndex(walletId, branch);
+        return _deriver
+            .DeriveBitcoinLikeAt(mnemonic, plan.Chain, change: 1, index: index, kind: plan.ChangeKind)
+            .Address;
+    }
+
+    /// <summary>
+    /// True when a PayJoin can be attempted for this plan: Bitcoin, and every input of one script
+    /// type. A payment that already mixes types cannot be made to look uniform by the receiver, and
+    /// contacting the receiver at all would hand it the inputs for nothing.
+    /// </summary>
+    /// <summary>The upper bound on what a PayJoin receiver may take from the change, as shown on the
+    /// review screen. The same number caps the offer actually sent.</summary>
+    public static long PayjoinOfferCapSat(UtxoSpendPlan plan, UtxoSpendRequest request) =>
+        plan.NeedsChange && plan.Inputs.Count > 0
+            ? PayjoinPlanner.OfferCapSat(
+                request.FeeRateSatPerVByte, HdUtxoSpender.InputVirtualSize(plan.Chain, plan.Inputs[0].Path.Kind))
+            : 0;
+
+    public static bool CanAttemptPayjoin(string symbol, UtxoSpendPlan plan) =>
+        symbol.Equals("BTC", StringComparison.OrdinalIgnoreCase) &&
+        plan.Inputs.Count > 0 &&
+        plan.Inputs.Select(i => i.Path.Kind).Distinct().Count() == 1;
+
+    /// <summary>
+    /// Sends a Bitcoin payment as a PayJoin (BIP-78, sender side), falling back to the reviewed payment.
+    ///
+    /// The receiver is sent the original — signed, complete, broadcastable — and may answer with a
+    /// proposal that adds a coin of its own. That proposal is signed only if
+    /// <see cref="PayjoinProposalChecker"/> accepts it, and broadcast only if every input verifies and
+    /// the fee rate holds. On ANY failure along the way the original is broadcast instead: the receiver
+    /// already has it and may broadcast it anyway, and it is exactly what the user reviewed.
+    /// </summary>
+    public async Task<PayjoinOutcome> SignAndBroadcastPayjoinAsync(
+        string mnemonic,
+        string walletId,
+        AddressIndexStore store,
+        string symbol,
+        UtxoSpendPlan plan,
+        UtxoSpendRequest request,
+        Uri endpoint,
+        CancellationToken ct = default)
+    {
+        PSBT? original;
+        Transaction? originalTx;
+        PayjoinParameters parameters;
+        int inputVsize;
+
+        try
+        {
+            if (!CanAttemptPayjoin(symbol, plan))
+            {
+                var (ok, txid, error) = await SignAndBroadcastHdAsync(mnemonic, walletId, store, symbol, plan, request, ct);
+                return new PayjoinOutcome(ok, txid, error, false,
+                    "PayJoin was not attempted: this payment spends more than one kind of address.", 0, false);
+            }
+
+            var changeAddress = ReserveChangeAddress(mnemonic, walletId, store, symbol, plan);
+
+            string? buildError;
+            (original, originalTx, buildError) = _spender.BuildOriginalPsbt(mnemonic, plan, request, changeAddress);
+            if (original is null || originalTx is null)
+                return new PayjoinOutcome(false, null, buildError, false, null, 0, false);
+
+            inputVsize = HdUtxoSpender.InputVirtualSize(plan.Chain, plan.Inputs[0].Path.Kind);
+            var changeScript = changeAddress is null
+                ? null
+                : BitcoinAddress.Create(changeAddress, NBitcoin.Network.Main).ScriptPubKey;
+            parameters = PayjoinPlanner.ParametersFor(
+                originalTx, original.GetFee().Satoshi, changeScript, inputVsize, HdUtxoSpender.DustSatFor(plan.Chain),
+                offerCapSat: PayjoinOfferCapSat(plan, request));
+        }
+        catch (Exception ex)
+        {
+            // Nothing has left the device yet: the original was never sent anywhere.
+            return new PayjoinOutcome(false, null, $"Send failed: {ex.Message}", false, null, 0, false);
+        }
+
+        // From here on the original has been — or is about to be — handed to the receiver.
+        string failure;
+        try
+        {
+            var (proposal, requestError) = await PayjoinClient.RequestAsync(endpoint, original, parameters, ct);
+            if (proposal is null)
+            {
+                failure = requestError ?? "The receiver did not answer.";
+            }
+            else
+            {
+                var paymentScript = BitcoinAddress.Create(request.ToAddress, NBitcoin.Network.Main).ScriptPubKey;
+                var check = PayjoinProposalChecker.Check(original, proposal, paymentScript, parameters, inputVsize);
+
+                if (!check.Ok)
+                {
+                    failure = check.Reason ?? "The receiver's proposal failed a check.";
+                }
+                else
+                {
+                    var (payjoinTx, fee, signError) = _spender.SignPayjoinProposal(mnemonic, plan, original, proposal);
+                    var rateError = payjoinTx is null
+                        ? null
+                        : PayjoinProposalChecker.CheckFinalFeeRate(payjoinTx, fee, parameters.MinFeeRateSatPerVByte);
+
+                    if (payjoinTx is null) failure = signError ?? "The PayJoin could not be signed.";
+                    else if (rateError is not null) failure = rateError;
+                    else
+                    {
+                        var (ok, txid, broadcastError) = await BroadcastAsync(symbol, payjoinTx, ct);
+                        if (ok) return new PayjoinOutcome(true, txid, null, true, null, check.FeeContributionSat, true);
+                        failure = $"The network refused the PayJoin transaction: {broadcastError}";
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            failure = ex is OperationCanceledException ? "The receiver did not answer in time." : ex.Message;
+        }
+
+        var (sent, originalTxId, originalError) = await BroadcastAsync(symbol, originalTx, CancellationToken.None);
+        return new PayjoinOutcome(sent, originalTxId, originalError, false, failure, 0, OriginalLeftDevice: true);
+    }
+
+    /// <summary>Hands a signed transaction to the chain's explorer and returns its id.</summary>
+    private async Task<(bool Ok, string? TxId, string? Error)> BroadcastAsync(
+        string symbol, Transaction tx, CancellationToken ct)
+    {
+        try
+        {
             var hex = tx.ToHex();
 
             if (IsHaskoin(symbol))
