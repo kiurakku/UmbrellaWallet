@@ -335,6 +335,7 @@ public sealed class PublicChainBalanceClient
                 ChainId.Sol => await GetSolAsync(address, cancellationToken),
                 ChainId.Ton => await GetTonAsync(address, cancellationToken),
                 ChainId.Ada => await GetAdaAsync(address, cancellationToken),
+                ChainId.Xrp => await GetXrpAsync(address, cancellationToken),
                 _ => null,
             };
         }
@@ -342,6 +343,26 @@ public sealed class PublicChainBalanceClient
         {
             return null;
         }
+    }
+
+    /// <summary>The XRP Ledger JSON-RPC root: the user's chosen server, or the XRPL Labs cluster.</summary>
+    private static string XrpRoot => ChainEndpoints.Resolve("XRP", "https://xrplcluster.com");
+
+    /// <summary>
+    /// XRP balance from <c>account_info</c> at the last validated ledger (roadmap N.4). An address the
+    /// ledger does not know yet is a real zero; any other failure is unknown — see
+    /// <see cref="XrpLedger.ParseAccountInfo"/>.
+    /// </summary>
+    private static async Task<ChainBalance?> GetXrpAsync(string address, CancellationToken ct)
+    {
+        using var res = await Http.PostAsJsonAsync(XrpRoot, XrpLedger.AccountInfoRequest(address), ct);
+        if (!res.IsSuccessStatusCode) return null;
+        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+        if (!doc.RootElement.TryGetProperty("result", out var result)) return null;
+
+        return XrpLedger.ParseAccountInfo(result) is { } xrp
+            ? new ChainBalance(ChainId.Xrp, address, xrp, "XRP")
+            : null;
     }
 
     /// <summary>The TON index root: the user's chosen server, or toncenter.</summary>

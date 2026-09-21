@@ -4867,6 +4867,8 @@ public partial class MainViewModel : ViewModelBase
         if (a.StartsWith('D') && a.Length == 34) return "DOGE";
         if (a.StartsWith("bitcoincash:", StringComparison.OrdinalIgnoreCase)) return "BCH";
         if (a.StartsWith("t1", StringComparison.Ordinal) && a.Length == 35) return "ZEC"; // Zcash transparent
+        // XRP classic address: the checksum makes an 'r…' string unambiguous, so no length guessing.
+        if (a.StartsWith('r') && Umbrella.Wallet.Core.Chains.XrpAddress.IsValid(a)) return "XRP";
         if ((a.StartsWith('1') || a.StartsWith('3')) && a.Length is >= 26 and <= 35) return "BTC";
         return null; // Solana / other base58 is ambiguous — keep the selected network
     }
@@ -5348,6 +5350,7 @@ public partial class MainViewModel : ViewModelBase
         "ADA" or "CARDANO" => ChainId.Ada,
         "BCH" or "BITCOIN CASH" or "BITCOINCASH" => ChainId.Bch,
         "ZEC" or "ZCASH" => ChainId.Zec,
+        "XRP" or "RIPPLE" or "XRP LEDGER" => ChainId.Xrp,
         _ => null,
     };
 
@@ -5409,6 +5412,7 @@ public partial class MainViewModel : ViewModelBase
         ChainId.Ada => "ADA",
         ChainId.Bch => "BCH",
         ChainId.Zec => "ZEC",
+        ChainId.Xrp => "XRP",
         _ => chain.ToString().ToUpperInvariant(),
     };
 

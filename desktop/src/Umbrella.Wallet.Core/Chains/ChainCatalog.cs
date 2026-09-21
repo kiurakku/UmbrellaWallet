@@ -83,6 +83,16 @@ public static class ChainCatalog
                 CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Transparent address — this is Zcash's PUBLIC ledger, not a shielded z-address. Use Tor and a fresh address per receive."),
+            // XRP Ledger — receive and balance (roadmap N.4). BIP44 coin type 144, secp256k1, the same
+            // m/44'/144'/0'/0/0 that Xaman, Ledger and Trust derive, so the phrase restores there. One
+            // address, like ETH: every XRP account locks a reserve, so a fresh address per receive
+            // would cost real money rather than just privacy. CanSend stays off until a signed Payment
+            // has been proven against the reference library.
+            new ChainInfo(
+                ChainId.Xrp, "XRP", "XRP Ledger", ChainSupportLevel.Supported, "BIP44 · secp256k1", "m/44'/144'/0'/0/0",
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                HasTokens: false, Maturity: ChainMaturity.Beta,
+                PrivacyNote: "Public ledger. An XRP address only becomes an account once it has received the network's reserve, which then stays locked while the account exists — a smaller first payment is refused by the network."),
         ];
 
         ById = All.ToDictionary(c => c.Id);

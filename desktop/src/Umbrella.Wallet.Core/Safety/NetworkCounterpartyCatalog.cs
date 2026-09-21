@@ -57,6 +57,13 @@ public static class NetworkCounterpartyCatalog
             "TON, Jettons"),
         new("api.koios.rest", "Koios", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "ADA"),
+        new("xrplcluster.com", "XRPL Labs", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, Chain, "XRP"),
+        // Offered in the endpoint picker: contacted for real once chosen.
+        new("s1.ripple.com", "Ripple", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, Chain, "XRP"),
+        new("s2.ripple.com", "Ripple", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, Chain, "XRP"),
         new("eth.blockscout.com", "Blockscout", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, Chain | CounterpartyLearns.WhichCoinsYouHold,
             "ERC-20 tokens, NFTs"),

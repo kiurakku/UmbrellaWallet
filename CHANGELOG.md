@@ -42,6 +42,22 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### XRP: receive and balance
+
+- The wallet now has an XRP Ledger address, at `m/44'/144'/0'/0/0` — the path Xaman, Ledger and
+  Trust Wallet use, so the same phrase finds these funds there. The key is checked against xrpl.js's
+  own test and the address encoding against the example in XRPL's documentation, not against this
+  wallet's output.
+- The balance is read at the last **validated** ledger, never an open one that can still change. An
+  address the ledger has never seen is shown as a real zero — on the XRP Ledger an address only
+  becomes an account once it receives the network's reserve, which then stays locked. Any other
+  failure shows as "could not read", not as zero.
+- The server is yours to choose in *Settings → Privacy*: the XRPL Labs cluster by default, or
+  Ripple's own, or any rippled or Clio server you run. It learns your XRP address, like every
+  balance server learns what it is asked about; the network screen says so.
+- **Not yet:** sending XRP. It stays off until a signed payment is checked byte for byte against the
+  reference library, as every other coin's was.
+
 ### PSBT: check a payment somewhere else, or sign someone else's
 
 - **Export.** On the Bitcoin review screen, *Export as PSBT* gives the exact unsigned transaction — as

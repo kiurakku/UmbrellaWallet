@@ -94,6 +94,14 @@ public static class ChainEndpoints
             [
                 new("https://api.koios.rest", "Koios"),
             ],
+            // XRP Ledger JSON-RPC. The XRPL Labs cluster load-balances community nodes; Ripple runs the
+            // other two. Any rippled or Clio server you run yourself works the same way.
+            ["XRP"] =
+            [
+                new("https://xrplcluster.com", "XRPL Labs cluster"),
+                new("https://s1.ripple.com:51234", "Ripple"),
+                new("https://s2.ripple.com:51234", "Ripple (full history)"),
+            ],
         };
 
     /// <summary>The chains whose endpoint this build can actually redirect.</summary>

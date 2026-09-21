@@ -93,6 +93,7 @@ public sealed class HdAddressDeriver
                 coinType: 145,
                 addressIndex),
             ChainId.Zec => DeriveZcashTransparent(masterKey, addressIndex),
+            ChainId.Xrp => DeriveXrp(masterKey, addressIndex),
             ChainId.Eth => DeriveEthereum(masterKey, addressIndex),
             ChainId.Tron => DeriveTron(masterKey, addressIndex),
             ChainId.Sol => DeriveSolana(parsed, addressIndex, passphrase),
@@ -426,6 +427,28 @@ public sealed class HdAddressDeriver
         Buffer.BlockCopy(hash160, 0, payload, 2, 20);
         var address = EncodeBase58Check(payload);
         return new ReceiveAddress(ChainId.Zec, address, FormatPath(path), addressIndex);
+    }
+
+    /// <summary>
+    /// XRP Ledger classic address at m/44'/144'/0'/0/{index}: the account id is
+    /// RIPEMD160(SHA256(compressed secp256k1 public key)), encoded with XRPL's base58 (roadmap N.4).
+    /// Pinned end to end: the public key against xrpl.js's own <c>fromMnemonic</c> test, the
+    /// encoding against the worked example and sentinel accounts in XRPL's documentation.
+    /// </summary>
+    private static ReceiveAddress DeriveXrp(ExtKey masterKey, uint addressIndex)
+    {
+        var path = new KeyPath($"44'/144'/0'/0/{addressIndex}");
+        var pubKey = masterKey.Derive(path).PrivateKey.PubKey;   // compressed, 33 bytes
+        var accountId = XrpAddress.AccountIdFromPublicKey(pubKey.ToBytes());
+        return new ReceiveAddress(ChainId.Xrp, XrpAddress.Encode(accountId), FormatPath(path), addressIndex);
+    }
+
+    /// <summary>The compressed public key behind the XRP address, for tests and for a future signer.</summary>
+    public PubKey DeriveXrpPublicKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
+        return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"44'/144'/0'/0/{addressIndex}")).PrivateKey.PubKey;
     }
 
     private static ReceiveAddress DeriveTron(ExtKey masterKey, uint addressIndex)
