@@ -42,6 +42,17 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### Solana tokens are shown
+
+- The wallet now reads the SPL tokens at your Solana address — USDC, USDT, PayPal USD, JUP, BONK and
+  the rest — under both of Solana's token programs, with the decimals each token's mint reports.
+- A token account does not say what the token is called, and names on Solana are free to invent, so
+  the wallet names only mints it knows (each checked on-chain before it went on the list). Any other
+  token is shown by its mint address as **unverified** and folded away with suspected spam — airdropped
+  lure tokens are common there.
+- If the read fails, the tokens you already saw stay on screen rather than vanishing.
+- **Not yet:** sending SPL tokens.
+
 ### Fixed — new chains: prices, and a balance server that is down
 
 - Stellar, Cosmos and NEAR shipped without a price source, so their fiat value read **$0.00** —

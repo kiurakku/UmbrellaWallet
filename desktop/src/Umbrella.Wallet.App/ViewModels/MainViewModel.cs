@@ -4049,6 +4049,11 @@ public partial class MainViewModel : ViewModelBase
             // Jettons on our OWN TON account. USD-tether on TON is how a great many people hold
             // dollars on Telegram's chain, and until now the wallet showed the native TON and nothing
             // else — so that balance simply was not there.
+            // SPL tokens at the wallet's Solana address (roadmap N.3). Balance only in this build.
+            var solAccount = Accounts.FirstOrDefault(a => a.Symbol == "SOL" && a.SupportStatus == "Ready");
+            if (solAccount is not null && IsRealAddress(solAccount.Address))
+                await AddSolTokenRowsAsync(solAccount.Address, "Receive only", prices, ct);
+
             var tonAccount = Accounts.FirstOrDefault(a => a.Symbol == "TON" && a.SupportStatus == "Ready");
             if (tonAccount is not null && IsRealAddress(tonAccount.Address))
             {
@@ -4167,6 +4172,16 @@ public partial class MainViewModel : ViewModelBase
         AddTokenRows(await _balances.GetTonJettonsAsync(address, ct),
             address, status, prices, marker: "Jetton on TON", chain: "TON", suffix: "Jetton");
 
+    /// <summary>Adds/refreshes a Holdings row for every SPL token at a Solana address. A failed read
+    /// leaves the previous rows in place — "could not read" must not look like "sold everything".</summary>
+    private async Task AddSolTokenRowsAsync(
+        string address, string status,
+        IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct)
+    {
+        if (await _balances.GetSolTokensAsync(address, ct) is { } tokens)
+            AddTokenRows(tokens, address, status, prices, marker: "SPL on Solana", chain: "Solana", suffix: "SPL");
+    }
+
     /// <summary>Refreshes the NFT list from the wallet's Ethereum address (names + counts only).</summary>
     private async Task RefreshNftsAsync(string address, CancellationToken ct)
     {
@@ -4229,6 +4244,9 @@ public partial class MainViewModel : ViewModelBase
             // them away; a priced token is never flagged, so this can't hide a real asset.
             var spam = Umbrella.Wallet.Core.Safety.SpamTokenInspector
                 .Inspect(tok.Name, tok.Symbol, hasMarketPrice: usd > 0);
+            // An SPL mint the wallet cannot identify, with no market price, folds away with the
+            // suspected spam — it stays one tap from view, but not beside the real holdings.
+            var suspected = spam.IsSuspected || (tok.Unverified && usd <= 0);
 
             // A jetton this build can actually send says "Ready"; one with no jetton-wallet address
             // keeps the honest "Receive only", because the row would otherwise promise a send the
@@ -4240,7 +4258,7 @@ public partial class MainViewModel : ViewModelBase
             Accounts.Add(new WalletAccountViewModel(
                 tok.Symbol, $"{tok.Name} · {suffix}", rowStatus,
                 address, marker, usd, (double)tok.Amount, chain, 0,
-                IsSuspectedSpam: spam.IsSuspected, Balance: BalanceRead.Live,
+                IsSuspectedSpam: suspected, Balance: BalanceRead.Live,
                 // Carried so a send can route on the CONTRACT and scale by the decimals that
                 // contract reports — a ticker identifies neither (roadmap N.1).
                 Contract: tok.Contract, TokenDecimals: tok.Decimals, TokenWallet: tok.TokenWallet));

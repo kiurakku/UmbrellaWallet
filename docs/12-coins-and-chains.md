@@ -53,8 +53,10 @@
 > goes to that contract with about 0.05 TON attached for gas, part of which comes back. A jetton
 > whose wallet address is unknown still says **Receive only** rather than offering a send.
 >
-> **Still detected-but-not-sendable:** SPL tokens on Solana — their balances are not even read yet,
-> so there is nothing to send (roadmap N.3).
+> **Read but not yet sendable:** SPL tokens on Solana. Their balances are read under both token
+> programs (the original and Token-2022), named for the well-known mints — each checked on-chain — and
+> otherwise shown by mint address as *unverified*, folded away with suspected spam until they have a
+> market price. Sending them is roadmap N.3's remaining half.
 
 ---
 

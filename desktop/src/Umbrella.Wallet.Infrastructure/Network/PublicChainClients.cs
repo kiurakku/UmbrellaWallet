@@ -1017,6 +1017,48 @@ public sealed class PublicChainBalanceClient
     }
 
     /// <summary>
+    /// Every SPL token held at a Solana address, under both token programs (roadmap N.3). An error
+    /// reading EITHER program returns nothing rather than half a list — the caller keeps what it
+    /// showed before instead of dropping rows that are really there.
+    /// </summary>
+    public async Task<IReadOnlyList<TokenBalance>?> GetSolTokensAsync(
+        string address, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(address)) return [];
+
+        var holdings = new List<Umbrella.Wallet.Core.Chains.SplHolding>();
+        foreach (var program in new[] { Umbrella.Wallet.Core.Chains.SolanaTokens.TokenProgram, Umbrella.Wallet.Core.Chains.SolanaTokens.Token2022Program })
+        {
+            var box = await FirstAnswerAsync("SOL", "https://api.mainnet-beta.solana.com",
+                async root =>
+                {
+                    using var res = await Http.PostAsJsonAsync(root,
+                        Umbrella.Wallet.Core.Chains.SolanaTokens.TokenAccountsRequest(address.Trim(), program), cancellationToken);
+                    if (!res.IsSuccessStatusCode) return null;
+                    using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
+                    return Umbrella.Wallet.Core.Chains.SolanaTokens.ParseTokenAccounts(doc.RootElement) is { } list
+                        ? new SplList(list)
+                        : null;
+                },
+                cancellationToken);
+
+            if (box is null) return null;
+            holdings.AddRange(box.Items);
+        }
+
+        return holdings.Select(h =>
+        {
+            var known = Umbrella.Wallet.Core.Chains.SolanaTokens.KnownMints.TryGetValue(h.Mint, out var id);
+            return new TokenBalance(
+                known ? id.Symbol : "SPL",
+                known ? id.Name : $"Unverified token {h.Mint[..4]}…{h.Mint[^4..]}",
+                h.Amount, h.Mint, h.Decimals, Unverified: !known);
+        }).ToList();
+    }
+
+    private sealed record SplList(IReadOnlyList<Umbrella.Wallet.Core.Chains.SplHolding> Items);
+
+    /// <summary>
     /// Every Jetton held at a TON address — USD&#8377; on TON above all, which is how a great many people
     /// actually hold dollars on Telegram's chain. Keyless, via toncenter's v3 index.
     /// </summary>
@@ -1193,7 +1235,10 @@ public sealed record TokenBalance(
     /// addressed to. The master in <see cref="Contract"/> identifies the token; it cannot receive a
     /// transfer, and sending to it would be sending tokens to the issuer.
     /// </summary>
-    string TokenWallet = "");
+    string TokenWallet = "",
+    /// <summary>True when the wallet cannot vouch for the token's identity (an SPL mint it does not
+    /// know): shown by its mint, and folded away with suspected spam unless it has a market price.</summary>
+    bool Unverified = false);
 
 /// <summary>An NFT collection held at an address (name + count only — no image fetch, for privacy).</summary>
 public sealed record NftHolding(string Name, string Symbol, int Count, string Standard, string Network);
