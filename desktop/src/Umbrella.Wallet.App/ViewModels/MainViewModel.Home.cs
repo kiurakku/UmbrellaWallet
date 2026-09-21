@@ -192,7 +192,7 @@ public partial class MainViewModel
 
     /// <summary>The value at point <paramref name="i"/> of <paramref name="count"/>, read linearly off a
     /// series of any length. The first and last points are the series' own first and last values.</summary>
-    internal static double Resample(IReadOnlyList<double> series, int i, int count)
+    public static double Resample(IReadOnlyList<double> series, int i, int count)
     {
         if (series.Count == 1 || count < 2) return series[^1];
         var position = (double)i * (series.Count - 1) / (count - 1);

@@ -257,6 +257,15 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.Save();
             OnPropertyChanged();
             OnPropertyChanged(nameof(DeleteKeyword));
+            // Text the view model builds itself does not follow the language on its own: the balance
+            // card kept saying "TOTAL BALANCE" and "Hide" in English inside a Ukrainian wallet.
+            OnPropertyChanged(nameof(TotalBalanceCaption));
+            OnPropertyChanged(nameof(HideBalanceLabel));
+            OnPropertyChanged(nameof(TotalIncompleteLabel));
+            OnPropertyChanged(nameof(BalanceDisplayCents));
+            OnPropertyChanged(nameof(HeroEndLabel));
+            MarkMoneroUnreadReason();           // the XMR row's reason, in the new language
+            _ = RefreshPortfolioChartAsync();   // the chart's note and status are prose
             RefreshHoldings();     // re-render money labels (Fx.Money/Price) in the new locale
             RecalcBalance();
             BuildGuide(); // the guide reads in the wallet's language
