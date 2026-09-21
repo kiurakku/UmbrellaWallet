@@ -437,6 +437,23 @@ public sealed class HdAddressDeriver
     }
 
     /// <summary>
+    /// Stellar ed25519 seed (32 bytes) at m/44'/148'/0' — the SEP-0005 path <see cref="DeriveStellar"/>
+    /// shows the address for, so the key signs for exactly the account on screen. Local signing only.
+    /// </summary>
+    public byte[] DeriveStellarPrivateKey(string mnemonic, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var validation = _mnemonicService.Validate(mnemonic);
+        if (!validation.IsValid || validation.NormalizedMnemonic is null)
+        {
+            throw new ArgumentException(validation.Error ?? "Invalid mnemonic.", nameof(mnemonic));
+        }
+
+        var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
+        return Slip10Ed25519.DerivePrivateKey(parsed.DeriveSeed(passphrase), new[] { 44u, 148u, 0u });
+    }
+
+    /// <summary>
     /// TON ed25519 secret scalar (32 bytes) at m/44'/607'/0', for signing v4R2 transfers locally.
     /// </summary>
     public byte[] DeriveTonPrivateKey(string mnemonic, string? passphrase = null)

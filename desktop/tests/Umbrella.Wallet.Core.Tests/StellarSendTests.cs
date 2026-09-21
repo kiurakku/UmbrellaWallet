@@ -218,3 +218,60 @@ public sealed class StellarSendTests
         Assert.Null(StellarSendRules.ParseFeeBid(Json("""{"error":"x"}""")));
     }
 }
+
+/// <summary>
+/// What Horizon says after a submit, read the way the Send screen must act on it. The line that
+/// matters: a refusal is safe to review again, and "no answer" is NOT — the transaction may be in a
+/// ledger, and a fresh send would take the next sequence number and pay twice.
+/// </summary>
+public sealed class StellarSubmitTests
+{
+    [Fact]
+    public void A_200_with_a_hash_is_a_payment_in_a_ledger()
+    {
+        var r = StellarSubmit.Parse(200, """{"hash":"abc123","successful":true,"ledger":1}""");
+        Assert.Equal(StellarSubmitOutcome.Included, r.Outcome);
+        Assert.Equal("abc123", r.Hash);
+    }
+
+    [Fact]
+    public void Included_but_failed_is_not_a_payment()
+    {
+        var r = StellarSubmit.Parse(200, """{"hash":"abc123","successful":false}""");
+        Assert.Equal(StellarSubmitOutcome.Rejected, r.Outcome);
+    }
+
+    [Theory]
+    [InlineData("tx_failed", "op_underfunded", "minimum balance")]
+    [InlineData("tx_failed", "op_no_destination", "not a Stellar account yet")]
+    [InlineData("tx_bad_seq", null, "Another transaction")]
+    [InlineData("tx_insufficient_fee", null, "higher fee")]
+    [InlineData("tx_too_late", null, "window closed")]
+    public void A_refusal_says_why_in_words(string tx, string? op, string expected)
+    {
+        var ops = op is null ? "" : ",\"operations\":[\"" + op + "\"]";
+        var body = "{\"type\":\"https://stellar.org/horizon-errors/transaction_failed\",\"status\":400," +
+                   "\"extras\":{\"result_codes\":{\"transaction\":\"" + tx + "\"" + ops + "}}}";
+        var r = StellarSubmit.Parse(400, body);
+
+        Assert.Equal(StellarSubmitOutcome.Rejected, r.Outcome);
+        Assert.Contains(expected, r.Reason);
+    }
+
+    [Theory]
+    [InlineData(504, """{"type":"https://stellar.org/horizon-errors/timeout","status":504}""")]
+    [InlineData(503, "")]
+    [InlineData(500, "not json")]
+    [InlineData(0, null)]
+    public void No_clear_answer_is_unknown_never_a_refusal(int status, string? body)
+    {
+        // Treating a timeout as "failed" would offer a retry, and a retry could pay twice.
+        Assert.Equal(StellarSubmitOutcome.Unknown, StellarSubmit.Parse(status, body).Outcome);
+    }
+
+    [Fact]
+    public void An_unknown_code_is_reported_as_itself()
+    {
+        Assert.Contains("op_line_full", StellarSubmit.Explain(["tx_failed", "op_line_full"]));
+    }
+}
