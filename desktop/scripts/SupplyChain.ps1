@@ -23,11 +23,22 @@ Set-StrictMode -Version Latest
 
 <#
 .SYNOPSIS
-    A path as gpg should be handed it: forward slashes. Git for Windows' gpg 2.4.9 does not read a
-    backslashed "C:\..." as absolute — it prefixed its working directory to the keyring and to every
-    key file, so on the release runner nothing imported. "C:/..." is absolute to every gpg build.
+    A path as the gpg in use can read it.
+
+    Git for Windows ships an MSYS gpg, and its 2.4.9 build does not recognise a drive-letter path as
+    absolute at all — "C:\..." and "C:/..." alike were prefixed with its working directory, so on the
+    release runner the keyring and every key file were "not found" and nothing ever imported. An MSYS
+    gpg gets an MSYS path ("/c/..."), converted by the cygpath that ships beside it; any other gpg gets
+    forward slashes, which every build reads.
 #>
-function ConvertTo-GpgPath([string]$Path) { $Path -replace '\\', '/' }
+function ConvertTo-GpgPath([string]$Path) {
+    if ($script:GpgCygpath) {
+        $converted = & $script:GpgCygpath -u $Path 2>$null
+        if ($LASTEXITCODE -eq 0 -and $converted) { return ($converted | Select-Object -First 1) }
+    }
+
+    return $Path -replace '\\', '/'
+}
 
 function Get-GpgCommand {
     foreach ($name in @('gpg', 'gpg2')) {
@@ -92,6 +103,10 @@ function Assert-PinnedBySignedSums {
         Write-Warning "$message`nFalling back to the pinned hash alone — do NOT ship this build."
     }
     else {
+        # Git for Windows' gpg is an MSYS program (it lives in ...\usr\bin, beside cygpath.exe).
+        $cygpath = Join-Path (Split-Path $gpg) 'cygpath.exe'
+        $script:GpgCygpath = if ($gpg -match '\\usr\\bin\\' -and (Test-Path $cygpath)) { $cygpath } else { $null }
+
         $keyring = Join-Path $WorkDir 'gnupg'
         New-Item -ItemType Directory -Force -Path $keyring | Out-Null
         $env:GNUPGHOME = ConvertTo-GpgPath $keyring
