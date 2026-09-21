@@ -46,11 +46,12 @@ public sealed class NearReceiveTests
     }
 
     [Fact]
-    public void NEAR_is_receive_and_balance_only()
+    public void NEAR_receives_shows_a_balance_and_sends()
     {
+        // Send was switched on only once a signed transfer matched near-api-js byte for byte
+        // (NearSendTests); before that this test pinned it off.
         var info = ChainCatalog.Get(ChainId.Near);
-        Assert.True(info.CanReceive && info.CanSyncBalance);
-        Assert.False(info.CanSend);
+        Assert.True(info.CanReceive && info.CanSyncBalance && info.CanSend);
     }
 
     private static decimal? Parse(string json)

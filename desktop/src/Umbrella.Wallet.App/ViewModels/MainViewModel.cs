@@ -1082,6 +1082,7 @@ public partial class MainViewModel : ViewModelBase
     private TonSendQuote? _tonQuote;
     private AdaSendQuote? _adaQuote;
     private XlmSendQuote? _xlmQuote;
+    private NearSendQuote? _nearQuote;
     private string _sendSymbol = "ETH";
     private decimal _moneroAmount;
     private string _moneroTo = string.Empty;
@@ -1197,6 +1198,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly TonTransactionSender _tonSender = new();
     private readonly CardanoTransactionSender _adaSender = new();
     private readonly StellarTransactionSender _xlmSender = new();
+    private readonly NearTransactionSender _nearSender = new();
     private readonly EmbeddedTorService _tor = new();
     private readonly MoneroRpcService _monero = new();
     private CancellationTokenSource? _refreshCts;
@@ -1818,7 +1820,7 @@ public partial class MainViewModel : ViewModelBase
         "BTC", "LTC", "BCH", "DOGE",                 // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
         "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
         "ARB", "BASE", "OP", "LINEA",                // Ethereum L2 rollups — native ETH, same 0x address
-        "SOL", "TON", "ADA", "XLM",                  // account-based (XLM: memo, reserve-aware)
+        "SOL", "TON", "ADA", "XLM", "NEAR",          // account-based (XLM: memo; NEAR: implicit account)
         "TRX", "USDT",                               // TRON + TRC-20
         "XMR",                                       // Monero (local wallet-rpc)
     };
@@ -1842,6 +1844,7 @@ public partial class MainViewModel : ViewModelBase
         new("USDT", "Tether (TRC-20)", "TRON network · fee paid in TRX"),
         new("ADA", "Cardano", "Cardano network"),
         new("XLM", "Stellar", "Stellar network · memo for exchange deposits"),
+        new("NEAR", "NEAR Protocol", "NEAR network · from your implicit account"),
         new("BNB", "BNB", "BNB Smart Chain (BEP-20 address)"),
         new("MATIC", "Polygon", "Polygon network"),
         new("AVAX", "Avalanche", "Avalanche C-Chain"),
@@ -2416,6 +2419,9 @@ public partial class MainViewModel : ViewModelBase
         // 1 XLM for an account with nothing else on it. Max leaves both; an account holding more
         // (trustlines, offers) is told its exact spendable figure by the send review.
         "XLM" => 1.001m,
+        // NEAR: up to 0.001 NEAR of gas, plus the storage an implicit account must keep paid for
+        // (182 bytes at 0.00001 NEAR each, 0.00182). The review names the exact spendable figure.
+        "NEAR" => 0.003m,
         _ => 0m,
     };
 

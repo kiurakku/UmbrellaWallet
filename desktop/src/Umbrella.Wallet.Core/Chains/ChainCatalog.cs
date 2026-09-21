@@ -115,7 +115,7 @@ public static class ChainCatalog
             // account — the hex of the public key — so nothing has to be registered to receive.
             new ChainInfo(
                 ChainId.Near, "NEAR", "NEAR Protocol", ChainSupportLevel.Supported, "SLIP-0010 · ed25519", "m/44'/397'/0'",
-                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. This is your implicit account — the 64-character id is your public key. Named accounts (you.near) and NEAR staked with a pool are not shown."),
             // Polkadot — receive and balance (roadmap N.8). substrate-bip39 + sr25519, the scheme of
