@@ -2846,7 +2846,20 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Pulls the Monero balance and reports scan progress rather than a misleading 0.</summary>
     private async Task RefreshMoneroAsync()
     {
-        if (!_monero.IsRunning) return;
+        if (!_monero.IsRunning)
+        {
+            // Nothing asked, so nothing failed: the row says the service is off rather than blaming a
+            // server, which sent people looking for a network problem that was not there.
+            var off = Accounts.FirstOrDefault(a => a.Symbol == "XMR");
+            var note = Loc.Instance["balance.xmrOff"];
+            if (off is not null && off.Balance == BalanceRead.Unknown && off.UnreadNote != note)
+            {
+                Accounts[Accounts.IndexOf(off)] = off with { UnreadNote = note };
+                RefreshHoldings();
+            }
+
+            return;
+        }
 
         var balance = await _monero.GetBalanceAsync();
         if (balance is null) return;
@@ -2873,6 +2886,7 @@ public partial class MainViewModel : ViewModelBase
                 // A synced daemon is a real reading; a still-scanning one is a partial view of the
                 // chain, so it is presented as the last known figure rather than the current one.
                 Balance = balance.Synced ? BalanceRead.Live : BalanceRead.Cached,
+                UnreadNote = "",
             };
             RefreshHoldings();
             RecalcBalance();
@@ -5127,7 +5141,7 @@ public partial class MainViewModel : ViewModelBase
         var built = visible.Select(a => new HoldingRowViewModel(
             a.Symbol, a.Name, a.Chain, a.Price, a.Amount,
             a.Balance == BalanceRead.Unknown ? 0 : a.Price * a.Amount,
-            a.Change24h, a.Address, a.SupportStatus, a.Balance));
+            a.Change24h, a.Address, a.SupportStatus, a.Balance, a.UnreadNote));
         foreach (var h in HoldingsSorter.Order(built, HoldingsSort))
             Holdings.Add(h);
 

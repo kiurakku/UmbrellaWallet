@@ -92,7 +92,10 @@ public sealed record WalletAccountViewModel(
     /// <summary>For a jetton: the sender's OWN jetton-wallet contract, which is where a transfer
     /// message is addressed. <see cref="Contract"/> holds the master, which identifies the token and
     /// cannot receive one (roadmap N.3).</summary>
-    string TokenWallet = "")
+    string TokenWallet = "",
+    /// <summary>Why an unread balance is unread, when the wallet knows better than "the server did not
+    /// answer" — the Monero service being off is not a server failing.</summary>
+    string UnreadNote = "")
 {
     /// <summary>The amount as the row may honestly state it: a dash while nothing has been read.</summary>
     public string AmountLabel => BalanceReadout.AmountText(Amount, Balance, Symbol);
@@ -292,7 +295,9 @@ public sealed record HoldingRowViewModel(
     /// <summary>What the wallet knows about this amount — see <see cref="BalanceRead"/> (P0.6).
     /// Defaults to <see cref="BalanceRead.Live"/> so a row built from a real reading reads normally;
     /// the account list passes its own state through.</summary>
-    BalanceRead Balance = BalanceRead.Live)
+    BalanceRead Balance = BalanceRead.Live,
+    /// <summary>Why an unread balance is unread, when that is known (see WalletAccountViewModel).</summary>
+    string UnreadNote = "")
 {
     public string PriceLabel => Fx.Price(Price);
     public string AmountLabel => BalanceReadout.AmountText(Amount, Balance, Symbol);
@@ -307,6 +312,7 @@ public sealed record HoldingRowViewModel(
     /// <summary>The short note under an unread or stale amount, in the user's language.</summary>
     public string BalanceNote => Balance switch
     {
+        BalanceRead.Unknown when UnreadNote.Length > 0 => UnreadNote,
         BalanceRead.Unknown => Loc.Instance["balance.unavailable"],
         BalanceRead.Cached => Loc.Instance["balance.stale"],
         _ => string.Empty,

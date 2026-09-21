@@ -44,8 +44,6 @@ public static class NetworkCounterpartyCatalog
             CounterpartyContact.Automatic, ChainAndBroadcast, "BCH"),
         new("api.blockchair.com", "Blockchair", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, Chain, "BCH, ZEC"),
-        new("zec1.trezor.io", "Trezor", CounterpartyPurpose.Balances,
-            CounterpartyContact.Automatic, Chain, "ZEC"),
         new("api.trongrid.io", "TronGrid (Tron Foundation)", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "TRX, USDT"),
         new("apilist.tronscanapi.com", "TronScan", CounterpartyPurpose.Balances,

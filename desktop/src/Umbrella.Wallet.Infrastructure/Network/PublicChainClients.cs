@@ -556,11 +556,32 @@ public sealed class PublicChainBalanceClient
             $"{ChainEndpoints.Resolve("ADA", "https://api.koios.rest")}/api/v1/address_info", body, ct);
         if (!res.IsSuccessStatusCode) return null;
         using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-        if (doc.RootElement.ValueKind != JsonValueKind.Array || doc.RootElement.GetArrayLength() == 0) return null;
-        if (!doc.RootElement[0].TryGetProperty("balance", out var b)) return null;
-        var lovelace = b.ValueKind == JsonValueKind.String ? b.GetString() : b.GetRawText();
-        if (!decimal.TryParse(lovelace, NumberStyles.Any, CultureInfo.InvariantCulture, out var raw)) return null;
-        return new ChainBalance(ChainId.Ada, address, raw / 1_000_000m, "ADA");
+        return ParseKoiosBalance(doc.RootElement) is { } ada ? new ChainBalance(ChainId.Ada, address, ada, "ADA") : null;
+    }
+
+    /// <summary>
+    /// Reads Koios's <c>address_info</c> answer. Koios answers <c>[]</c> — with a 200 — for an address
+    /// that has never appeared on chain, and that is a real zero: every new Cardano wallet read as
+    /// "balance unavailable" because this empty list was taken for "no answer". Anything that is not
+    /// an array, or a row without a readable balance, is still unknown.
+    /// </summary>
+    public static decimal? ParseKoiosBalance(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Array) return null;
+        if (root.GetArrayLength() == 0) return 0m;
+
+        var row = root[0];
+        if (row.ValueKind != JsonValueKind.Object || !row.TryGetProperty("balance", out var b)) return null;
+        var lovelace = b.ValueKind switch
+        {
+            JsonValueKind.String => b.GetString(),
+            JsonValueKind.Number => b.GetRawText(),
+            _ => null,
+        };
+
+        return decimal.TryParse(lovelace, NumberStyles.None, CultureInfo.InvariantCulture, out var raw)
+            ? raw / 1_000_000m
+            : null;
     }
 
     private static async Task<ChainBalance?> GetBtcAsync(string address, CancellationToken ct)
@@ -609,28 +630,29 @@ public sealed class PublicChainBalanceClient
     }
 
     /// <summary>
-    /// Zcash transparent balance. There is no single reliable keyless ZEC endpoint (Haskoin has no ZEC,
-    /// and Blockchair rate-limits), so we try Trezor's public Blockbook first and fall back to Blockchair.
-    /// If both are unreachable the balance simply reads as unknown (null) rather than wrong — never 0.
+    /// Zcash transparent balance, from Blockchair's keyless API — the only keyless ZEC source left:
+    /// Haskoin has no ZEC, and Trezor's Blockbook now refuses everything but Trezor Suite (403).
+    ///
+    /// Blockchair's free tier blacklists an IP that asks too often (HTTP 430), and the wallet itself
+    /// earned that by reading ZEC on every sixty-second refresh — about 1,400 requests a day for one
+    /// address. A successful answer is now reused for <see cref="SlowSourceReuse"/>; unreachable still
+    /// reads as unknown (null), never as 0.
     /// </summary>
-    private static async Task<ChainBalance?> GetZecAsync(string address, CancellationToken ct) =>
-        await GetBlockbookAsync("https://zec1.trezor.io", ChainId.Zec, "ZEC", address, 8, ct)
-        ?? await GetBlockchairAsync("zcash", ChainId.Zec, "ZEC", address, address, ct);
-
-    /// <summary>Balance from a Blockbook v2 explorer (Trezor's public instances). The balance is a
-    /// string in the coin's smallest unit; unconfirmed is reported separately and not counted here.</summary>
-    private static async Task<ChainBalance?> GetBlockbookAsync(
-        string baseUrl, ChainId chain, string symbol, string address, int decimals, CancellationToken ct)
+    private static async Task<ChainBalance?> GetZecAsync(string address, CancellationToken ct)
     {
-        using var res = await Http.GetAsync(
-            $"{baseUrl}/api/v2/address/{Uri.EscapeDataString(address)}?details=basic", ct);
-        if (!res.IsSuccessStatusCode) return null;
-        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-        if (!doc.RootElement.TryGetProperty("balance", out var b)) return null;
-        var raw = b.ValueKind == JsonValueKind.String ? b.GetString() : b.GetRawText();
-        if (!System.Numerics.BigInteger.TryParse(raw, out var sats)) return null;
-        return new ChainBalance(chain, address, (decimal)sats / (decimal)Math.Pow(10, decimals), symbol);
+        var key = $"ZEC:{address}";
+        if (SlowSourceCache.TryGetValue(key, out var cached) && DateTimeOffset.UtcNow - cached.At < SlowSourceReuse)
+            return cached.Balance;
+
+        var fresh = await GetBlockchairAsync("zcash", ChainId.Zec, "ZEC", address, address, ct);
+        if (fresh is not null) SlowSourceCache[key] = (DateTimeOffset.UtcNow, fresh);
+        return fresh;
     }
+
+    /// <summary>How long an answer from a strictly rate-limited free source is reused before asking again.</summary>
+    public static readonly TimeSpan SlowSourceReuse = TimeSpan.FromMinutes(10);
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTimeOffset At, ChainBalance Balance)> SlowSourceCache = new();
 
     /// <summary>
     /// Native balance from Blockchair's keyless dashboards endpoint. Kept only as a FALLBACK (for ZEC):

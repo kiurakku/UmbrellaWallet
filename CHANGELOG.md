@@ -73,6 +73,12 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   on the same phrase, appears at the next full walk rather than the next refresh.
 - Locking now forgets the previous wallet's scans, so the next wallet — or the hidden one — can never
   have a send planned from someone else's coins.
+- **Cardano** read as unavailable on every new wallet: Koios answers an empty list for an address that
+  has never been used, and that was taken for "no answer". It is a real zero, and now reads as one.
+- **Zcash** asked Blockchair on every sixty-second refresh — about 1,400 requests a day — until
+  Blockchair blacklisted the IP. An answer is now reused for ten minutes. Trezor's server, which now
+  refuses everything but Trezor Suite, is no longer asked.
+- **Monero** with its service off said the server did not respond. It now says the service is off.
 
 ### Fixed — Activity overstated Bitcoin you sent
 

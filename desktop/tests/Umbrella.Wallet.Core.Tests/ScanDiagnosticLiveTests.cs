@@ -34,6 +34,19 @@ public sealed class ScanDiagnosticLiveTests(ITestOutputHelper output)
         }
     }
 
+    [Fact]
+    public async Task Koios_on_an_address_nobody_has_used()
+    {
+        Umbrella.Wallet.Core.Safety.ChainEndpoints.ClearAll();
+        PublicHttp.SetProxy(null);
+        PublicHttp.SetRequireProxy(false);
+        var phrase = new NBitcoin.Mnemonic(NBitcoin.Wordlist.English, NBitcoin.WordCount.Twelve).ToString();
+        var address = new Umbrella.Wallet.Core.Derivation.HdAddressDeriver().DeriveReceiveAddress(phrase, ChainId.Ada).Address;
+        using var body = new StringContent($"{{\"_addresses\":[\"{address}\"]}}", System.Text.Encoding.UTF8, "application/json");
+        using var res = await PublicHttp.Shared.PostAsync("https://api.koios.rest/api/v1/address_info", body);
+        output.WriteLine($"{address} -> {(int)res.StatusCode}: {await res.Content.ReadAsStringAsync()}");
+    }
+
     [Theory]
     [InlineData("BTC")]
     [InlineData("LTC")]
