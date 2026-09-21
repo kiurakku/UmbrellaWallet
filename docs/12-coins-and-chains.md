@@ -32,7 +32,7 @@
 | **ETH** | Arbitrum, Base, Optimism, Linea | ✅ | ✅ | All ERC-20 | Layer 2 — same 0x address, far cheaper |
 | **ETH** | zkSync Era | — | ✅ | — | **Balance and receive only.** Its fee model is not Ethereum's, so sending is not enabled yet |
 | **ZEC** | Zcash | — | ✅ | — | Receive only for now |
-| **XRP** | XRP Ledger | — | ✅ | — | **Receive and balance only.** An address becomes an account once it receives the network's reserve |
+| **XRP** | XRP Ledger | ✅ | ✅ | — | With a destination tag for exchange deposits. An address becomes an account once it receives the network's reserve, which then stays locked |
 | **XLM** | Stellar | ✅ | ✅ | — | Native XLM, with a text or ID memo for exchange deposits. An address becomes an account once someone funds it with 1 XLM; the first payment to a new address creates it |
 | **ATOM** | Cosmos Hub | — | ✅ | — | **Receive and balance only.** The balance is *available* ATOM — staked ATOM is not counted |
 | **NEAR** | NEAR Protocol | ✅ | ✅ | — | Your implicit account (the 64-character hex id), to any `.near` name or implicit account. Named accounts of your own and staked NEAR are not shown |
@@ -499,7 +499,7 @@ threat model names each one as an open gap rather than implying it away.
 | 19 | Zcash | ZEC | ⚠️ Partial | Receive + balance only |
 | 20 | Linea | ETH | ✅ Working | Send, receive, balance, ERC-20 |
 | 21 | zkSync Era | ETH | ⚠️ Partial | Receive + balance only |
-| 22 | XRP Ledger | XRP | ⚠️ Partial | Receive + balance only |
+| 22 | XRP Ledger | XRP | ✅ Full | Receive, balance and send (destination tag) |
 | 23 | Stellar | XLM | ✅ Full | Receive, balance and send (memo supported) |
 | 24 | Cosmos | ATOM | ⚠️ Partial | Receive + available balance only |
 | 25 | Near | NEAR | ✅ Full | Receive, balance and send from the implicit account |

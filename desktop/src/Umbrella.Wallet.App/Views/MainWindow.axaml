@@ -1191,6 +1191,13 @@
                       <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="#E7CA83"
                                  Text="{Binding [send.memoHint], Source={x:Static app:Loc.Instance}}"/>
                     </StackPanel>
+                    <!-- XRP's destination tag does the same job for an exchange deposit, as a number. -->
+                    <StackPanel Spacing="4" IsVisible="{Binding IsDestinationTagChain}">
+                      <TextBlock Classes="eyebrow" Text="{Binding [send.tagLabel], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBox Text="{Binding SendMemo}" Watermark="{Binding [send.tagPh], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="#E7CA83"
+                                 Text="{Binding [send.tagHint], Source={x:Static app:Loc.Instance}}"/>
+                    </StackPanel>
 
                     <!-- Network-check-on-paste: advisory only, but flags a destination that doesn't look
                          like the selected network before any funds move. -->
@@ -1508,7 +1515,7 @@
 
                     <!-- The memo that will be signed, with its type — or a plain warning that there is none. -->
                     <StackPanel Spacing="2" IsVisible="{Binding HasSendReviewMemo}">
-                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [send.memoLabel], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding SendReviewMemoCaption}"/>
                       <SelectableTextBlock Classes="mono" FontSize="12" TextWrapping="Wrap" Foreground="#E7CA83" Text="{Binding SendReviewMemo}"/>
                     </StackPanel>
 

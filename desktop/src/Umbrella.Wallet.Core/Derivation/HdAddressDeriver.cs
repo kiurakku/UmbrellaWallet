@@ -550,7 +550,24 @@ public sealed class HdAddressDeriver
         return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"44'/118'/0'/0/{addressIndex}")).PrivateKey.PubKey;
     }
 
-    /// <summary>The compressed public key behind the XRP address, for tests and for a future signer.</summary>
+    /// <summary>
+    /// XRP signing key at m/44'/144'/0'/0/{index} — the key the displayed XRP address comes from
+    /// (roadmap N.4, send). The caller disposes it.
+    /// </summary>
+    public Key DeriveXrpKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var validation = _mnemonicService.Validate(mnemonic);
+        if (!validation.IsValid || validation.NormalizedMnemonic is null)
+        {
+            throw new ArgumentException(validation.Error ?? "Invalid mnemonic.", nameof(mnemonic));
+        }
+
+        var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
+        return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"44'/144'/0'/0/{addressIndex}")).PrivateKey;
+    }
+
+    /// <summary>The compressed public key behind the XRP address, for tests and for the signer's checks.</summary>
     public PubKey DeriveXrpPublicKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
     {
         passphrase = Resolve(passphrase);

@@ -640,6 +640,7 @@ public partial class MainViewModel
                     SendQuoteFee = quote.CreatesAccount
                         ? string.Format(Loc.Instance["send.xlmFeeCreates"], Fmt(quote.FeeXlm))
                         : string.Format(Loc.Instance["send.xlmFee"], Fmt(quote.FeeXlm));
+                    SendReviewMemoCaption = Loc.Instance["send.memoLabel"];
                     SendReviewMemo = quote.Memo.Type == StellarMemoType.None
                         ? Loc.Instance["send.reviewNoMemo"]
                         : string.Format(Loc.Instance["send.reviewMemo"], quote.Memo);
@@ -648,6 +649,30 @@ public partial class MainViewModel
                         amount: quote.AmountXlm,
                         networkFee: quote.FeeXlm,
                         symbol: "XLM");
+                    break;
+                }
+
+                case "XRP":
+                {
+                    // The address, the tag, an unactivated account, a destination that demands a tag or is
+                    // not an account yet, and the reserve this account must keep are all checked by the
+                    // sender before anything is signed (roadmap N.4).
+                    var (quote, error) = await _xrpSender.PrepareAsync(from.Address, SendTo.Trim(), amount, SendMemo);
+                    if (quote is null) { SendError = error ?? Loc.Instance["send.errPrepareFailed"]; return; }
+                    _xrpQuote = quote;
+                    SendQuoteSummary = $"Send {Fmt(quote.AmountXrp)} XRP  →  {quote.To}";
+                    SendQuoteFee = quote.CreatesAccount
+                        ? string.Format(Loc.Instance["send.xrpFeeCreates"], Fmt(quote.FeeXrp), Fmt(quote.ReserveXrp))
+                        : string.Format(Loc.Instance["send.xrpFee"], Fmt(quote.FeeXrp));
+                    SendReviewMemoCaption = Loc.Instance["send.tagLabel"];
+                    SendReviewMemo = quote.DestinationTag is { } tag
+                        ? tag.ToString(CultureInfo.InvariantCulture)
+                        : Loc.Instance["send.reviewNoTag"];
+                    BuildSendSimulation(
+                        balance: (decimal)from.Amount,
+                        amount: quote.AmountXrp,
+                        networkFee: quote.FeeXrp,
+                        symbol: "XRP");
                     break;
                 }
 
@@ -985,7 +1010,7 @@ public partial class MainViewModel
     {
         var haveQuote = _sendQuote is not null || _btcQuote is not null || _solQuote is not null
                         || _tonQuote is not null || _tronQuote is not null || _adaQuote is not null
-                        || _xlmQuote is not null || _nearQuote is not null
+                        || _xlmQuote is not null || _nearQuote is not null || _xrpQuote is not null
                         || (_sendSymbol == "XMR" && _moneroAmount > 0);
         if (_unlockedMnemonic is null || !haveQuote)
         {
@@ -1219,6 +1244,35 @@ public partial class MainViewModel
                     break;
                 }
 
+                case "XRP" when _xrpQuote is not null:
+                {
+                    var quote = _xrpQuote;
+                    using var key = _deriver.DeriveXrpKey(_unlockedMnemonic!);
+                    var outcome = await _xrpSender.SignAndBroadcastAsync(quote, key);
+                    var explorer = outcome.Hash is null ? "" : $"livenet.xrpl.org/transactions/{outcome.Hash}";
+
+                    if (outcome.Outcome == XrpSubmitOutcome.Unknown)
+                    {
+                        // It may still be in a ledger until its last one. Never offered as a retry: a
+                        // fresh send would take the next sequence number and could pay twice.
+                        ClearSendQuotes();
+                        SendTo = string.Empty;
+                        SendAmount = string.Empty;
+                        SendMemo = string.Empty;
+                        SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
+                        StatusMessage = Loc.Instance["status.broadcastFailed"];
+                        PushActivity("Sent", "XRP", $"-{Fmt(quote.AmountXrp)}", Shorten(quote.To), "now",
+                            explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
+                        break;
+                    }
+
+                    // Included means a validated ledger holds it — final, not a forecast. A failure that
+                    // cost the fee is final too, and nothing was paid, so it is a failed send like any other.
+                    await FinishSendAsync(outcome.Outcome == XrpSubmitOutcome.Included, outcome.Hash,
+                        outcome.Message, "XRP", quote.AmountXrp, quote.To, explorer);
+                    break;
+                }
+
                 case "NEAR" when _nearQuote is not null:
                 {
                     var quote = _nearQuote;
@@ -1342,6 +1396,7 @@ public partial class MainViewModel
         _adaQuote = null;
         _xlmQuote = null;
         _nearQuote = null;
+        _xrpQuote = null;
         SendReviewMemo = string.Empty;
         // Cleared with the rest: a stale token marker would route the NEXT quote — possibly a plain
         // ETH send — down the contract-call path.

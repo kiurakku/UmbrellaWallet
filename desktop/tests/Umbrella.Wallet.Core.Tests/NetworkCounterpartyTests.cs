@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Umbrella.Wallet.Core.Chains;
 using Umbrella.Wallet.Core.Safety;
 
 namespace Umbrella.Wallet.Core.Tests;
@@ -203,6 +204,26 @@ public sealed class NetworkCounterpartyTests
             .ToList();
 
         Assert.Empty(undeclared);
+    }
+
+    [Fact]
+    public void A_server_a_chain_sends_through_is_named_as_seeing_where_the_transaction_entered()
+    {
+        // A chain that can send hands its signed transactions to the same servers it reads from. Whoever
+        // runs that server learns that this transaction came from this IP first — which the privacy page
+        // must say, or it understates what a send reveals.
+        var sendable = ChainCatalog.All.Where(c => c.CanSend).Select(c => c.Symbol).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var silent = ChainEndpoints.Known
+            .Where(k => sendable.Contains(k.Key))
+            .SelectMany(k => k.Value.Select(o => (Chain: k.Key, o.Host)))
+            .Where(x => !NetworkCounterpartyCatalog.All.Any(c =>
+                string.Equals(c.Host, x.Host, StringComparison.OrdinalIgnoreCase) &&
+                c.Learns.HasFlag(CounterpartyLearns.WhereYourTransactionEntered)))
+            .Select(x => $"{x.Chain}: {x.Host}")
+            .OrderBy(x => x, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Empty(silent);
     }
 
     [Fact]
