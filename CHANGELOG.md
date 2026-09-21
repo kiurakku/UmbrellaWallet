@@ -4,9 +4,17 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased] — what the wallet knows, and what it will not pretend to
+## [4.8.0] — 2026-09-21 — the gold design, Taproot and PayJoin, and balances you can trust
 
-Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes what gets signed.
+A new look, and a lot underneath it. The wallet is gold light on black, its logos follow whichever
+theme you pick, and its charts are lines of light. Underneath: Taproot wallets are found and spent,
+PayJoin and PSBT arrive for Bitcoin, any ERC-20, TRC-20 or jetton you hold can be sent, and XRP,
+Stellar, Cosmos, NEAR and Polkadot can receive and show a balance. And the reason so many balances
+said "server did not respond" — a timeout treated as a cancel, and a refresh that asked too much —
+is fixed.
+
+The fund-safety and honesty work from the roadmap's P0 queue is below it: a balance the wallet could
+not read never reads as zero, and a send never leaves by a route you did not choose.
 
 ### A balance the wallet could not read no longer reads as zero
 

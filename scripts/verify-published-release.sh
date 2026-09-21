@@ -12,7 +12,7 @@
 #
 # Usage:
 #   bash scripts/verify-published-release.sh            # the latest release
-#   bash scripts/verify-published-release.sh v4.7.0     # a specific tag
+#   bash scripts/verify-published-release.sh v4.8.0     # a specific tag
 #
 # Requires: gh (authenticated), sha256sum.
 set -euo pipefail

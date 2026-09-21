@@ -95,11 +95,11 @@ cannot pass for the wrong reason.
 Every release carries `SHA256SUMS-<version>.txt`. Verify what you downloaded before you run it:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\UmbrellaWallet-Setup-4.7.0.exe
+Get-FileHash -Algorithm SHA256 .\UmbrellaWallet-Setup-4.8.0.exe
 ```
 
 ```bash
-sha256sum -c SHA256SUMS-4.7.0.txt
+sha256sum -c SHA256SUMS-4.8.0.txt
 ```
 
 The release workflow generates that manifest from the artifacts it attached and verifies every line
@@ -107,7 +107,7 @@ before publishing. You can re-check what the page serves **now**, which is the p
 promise:
 
 ```bash
-bash scripts/verify-published-release.sh v4.7.0
+bash scripts/verify-published-release.sh v4.8.0
 ```
 
 A checksum proves the file matches what the release page says. It says nothing about **who put that
