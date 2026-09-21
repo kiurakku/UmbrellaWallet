@@ -87,7 +87,11 @@ public partial class MainViewModel
     /// </summary>
     private void RebuildMarketOverview()
     {
-        var priced = Market.Where(m => m.HasPrice && m.Change24h != 0).ToList();
+        // One snapshot for all three lists: a price refresh can replace rows while this runs, and
+        // enumerating the live collection twice both threw "collection was modified" and could build
+        // the movers and the watchlist from two different moments.
+        var rows = Market.ToList();
+        var priced = rows.Where(m => m.HasPrice && m.Change24h != 0).ToList();
 
         MarketGainers.Clear();
         foreach (var row in priced.Where(m => m.Change24h > 0)
@@ -100,7 +104,7 @@ public partial class MainViewModel
             MarketLosers.Add(row);
 
         MarketWatchlist.Clear();
-        foreach (var row in Market.Where(m => m.IsWatched)) MarketWatchlist.Add(row);
+        foreach (var row in rows.Where(m => m.IsWatched)) MarketWatchlist.Add(row);
 
         OnPropertyChanged(nameof(HasMarketMovers));
         OnPropertyChanged(nameof(HasWatchlist));

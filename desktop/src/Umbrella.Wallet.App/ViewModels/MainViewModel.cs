@@ -3667,13 +3667,13 @@ public partial class MainViewModel : ViewModelBase
         {
             if (!bySym.TryGetValue(chain.Symbol, out var e)) continue;
             var idx = Market.ToList().FindIndex(m => m.Symbol == chain.Symbol);
-            if (idx >= 0) Market[idx] = MarketRowViewModel.Live(chain, e.Price, e.Change) with { Spark = Market[idx].Spark };
+            if (idx >= 0) Market[idx] = MarketRowViewModel.Live(chain, e.Price, e.Change) with { Spark = Market[idx].Spark, IsWatched = Market[idx].IsWatched };
         }
         foreach (var (sym, name, holdable) in ExtraMarketCoins)
         {
             if (!bySym.TryGetValue(sym, out var e)) continue;
             var idx = Market.ToList().FindIndex(m => m.Symbol == sym);
-            if (idx >= 0) Market[idx] = MarketRowViewModel.LiveCoin(sym, name, e.Price, e.Change, holdable) with { Spark = Market[idx].Spark };
+            if (idx >= 0) Market[idx] = MarketRowViewModel.LiveCoin(sym, name, e.Price, e.Change, holdable) with { Spark = Market[idx].Spark, IsWatched = Market[idx].IsWatched };
         }
 
         ApplyWatchlist();
@@ -3702,11 +3702,14 @@ public partial class MainViewModel : ViewModelBase
                 var idx = Market.ToList().FindIndex(m => m.Symbol == chain.Symbol);
                 if (idx < 0) continue;
                 var (usd, change) = prices.GetValueOrDefault(chain.Symbol);
-                // Keep any sparkline we already fetched so the row doesn't blink empty on refresh.
-                var existingSpark = Market[idx].Spark;
+                // Keep any sparkline we already fetched so the row doesn't blink empty on refresh —
+                // and the watch star, so the row never passes through "unwatched" between here and
+                // ApplyWatchlist below.
+                var existing = Market[idx];
                 Market[idx] = MarketRowViewModel.Live(chain, (double)usd, (double)change) with
                 {
-                    Spark = existingSpark,
+                    Spark = existing.Spark,
+                    IsWatched = existing.IsWatched,
                 };
             }
 
@@ -3715,10 +3718,11 @@ public partial class MainViewModel : ViewModelBase
                 var idx = Market.ToList().FindIndex(m => m.Symbol == sym);
                 if (idx < 0) continue;
                 var (usd, change) = prices.GetValueOrDefault(sym);
-                var existingSpark = Market[idx].Spark;
+                var existing = Market[idx];
                 Market[idx] = MarketRowViewModel.LiveCoin(sym, name, (double)usd, (double)change, holdable) with
                 {
-                    Spark = existingSpark,
+                    Spark = existing.Spark,
+                    IsWatched = existing.IsWatched,
                 };
             }
 
