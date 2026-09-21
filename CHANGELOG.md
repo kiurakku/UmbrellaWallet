@@ -42,6 +42,17 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### Fixed — new chains: prices, and a balance server that is down
+
+- Stellar, Cosmos and NEAR shipped without a price source, so their fiat value read **$0.00** —
+  right only while the balance was also zero. They are priced now, and a test fails if any chain the
+  wallet shows has nowhere to get a price from.
+- Public servers go down: during testing Polkadot Asset Hub's default server stopped answering minutes
+  after it had worked, and the wallet (correctly) said "could not read". Now, if you have not chosen a
+  server, the XRP, Stellar, Cosmos, NEAR and Polkadot balances try each listed server in turn before
+  giving up. If you **have** chosen one, only that one is asked — your addresses never go to a server
+  you did not pick.
+
 ### Polkadot: receive and balance
 
 - A Polkadot (DOT) account that is **the same one Polkadot.js, Talisman, SubWallet and Nova show** for

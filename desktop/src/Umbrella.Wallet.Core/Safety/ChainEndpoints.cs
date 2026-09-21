@@ -208,6 +208,27 @@ public static class ChainEndpoints
     /// worth showing, because it is the user's own decision and they should be able to see it.</summary>
     public static bool IsCustomised(string symbol) => OverrideFor(symbol) is not null;
 
+    /// <summary>
+    /// The servers to try, in order. A user who picked a server gets exactly that one — their
+    /// addresses are never sent anywhere they did not choose. Otherwise every listed server is a
+    /// fallback for the one before it: public endpoints go down and rate-limit, and a balance that
+    /// reads "could not read" because the first of three answered 429 is a worse answer than asking
+    /// the second (every one of them is declared in the network catalog).
+    /// </summary>
+    public static IReadOnlyList<string> Candidates(string symbol, string fallback)
+    {
+        if (OverrideFor(symbol) is { } chosen) return [chosen];
+        if (!Known.TryGetValue(symbol, out var options) || options.Count == 0) return [fallback];
+
+        var list = new List<string> { fallback };
+        foreach (var option in options)
+        {
+            if (!list.Contains(option.BaseUrl, StringComparer.OrdinalIgnoreCase)) list.Add(option.BaseUrl);
+        }
+
+        return list;
+    }
+
     /// <summary>Every override, as "SYMBOL=url" pairs, for persisting to settings.</summary>
     public static string Serialise() =>
         string.Join(";", Overrides
