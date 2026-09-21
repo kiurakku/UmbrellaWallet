@@ -1183,6 +1183,14 @@
                     </ComboBox>
                     <TextBlock Classes="eyebrow" Text="{Binding [send.destLabel], Source={x:Static app:Loc.Instance}}"/>
                     <TextBox Text="{Binding SendTo}" Watermark="{Binding [send.destPlaceholder], Source={x:Static app:Loc.Instance}}"/>
+                    <!-- Stellar's memo: an exchange credits a deposit by it, so it is asked for right under
+                         the address and said again on the review — or its absence is. -->
+                    <StackPanel Spacing="4" IsVisible="{Binding IsMemoChain}">
+                      <TextBlock Classes="eyebrow" Text="{Binding [send.memoLabel], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBox Text="{Binding SendMemo}" Watermark="{Binding [send.memoPh], Source={x:Static app:Loc.Instance}}"/>
+                      <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="#E7CA83"
+                                 Text="{Binding [send.memoHint], Source={x:Static app:Loc.Instance}}"/>
+                    </StackPanel>
 
                     <!-- Network-check-on-paste: advisory only, but flags a destination that doesn't look
                          like the selected network before any funds move. -->
@@ -1496,6 +1504,12 @@
                         <SelectableTextBlock Classes="mono" FontSize="12" TextWrapping="Wrap"
                                              Foreground="{DynamicResource UmTextSoft}" Text="{Binding SendReviewTo}"/>
                       </Border>
+                    </StackPanel>
+
+                    <!-- The memo that will be signed, with its type — or a plain warning that there is none. -->
+                    <StackPanel Spacing="2" IsVisible="{Binding HasSendReviewMemo}">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [send.memoLabel], Source={x:Static app:Loc.Instance}}"/>
+                      <SelectableTextBlock Classes="mono" FontSize="12" TextWrapping="Wrap" Foreground="#E7CA83" Text="{Binding SendReviewMemo}"/>
                     </StackPanel>
 
                     <!-- Network fee (kept as its own line, separate from the total debit below). -->

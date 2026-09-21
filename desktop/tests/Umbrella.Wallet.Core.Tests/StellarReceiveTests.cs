@@ -71,11 +71,12 @@ public sealed class StellarReceiveTests
     }
 
     [Fact]
-    public void Stellar_is_receive_and_balance_only()
+    public void Stellar_receives_shows_a_balance_and_sends()
     {
+        // Send was switched on only once a signed transaction matched the Stellar Go SDK byte for byte
+        // (StellarSendTests); before that this test pinned it off.
         var info = ChainCatalog.Get(ChainId.Xlm);
-        Assert.True(info.CanReceive && info.CanSyncBalance);
-        Assert.False(info.CanSend);
+        Assert.True(info.CanReceive && info.CanSyncBalance && info.CanSend);
     }
 
     // --- Horizon ----------------------------------------------------------------------------------

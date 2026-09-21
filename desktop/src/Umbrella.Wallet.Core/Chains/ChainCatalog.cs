@@ -93,12 +93,14 @@ public static class ChainCatalog
                 CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. An XRP address only becomes an account once it has received the network's reserve, which then stays locked while the account exists — a smaller first payment is refused by the network."),
-            // Stellar — receive and balance (roadmap N.5). SEP-0005: SLIP-0010 ed25519 at m/44'/148'/0',
-            // the scheme LOBSTR, Solar and Ledger use, pinned to the SEP's own test vectors. One account
-            // per seed for the same reason as XRP: an account locks a minimum balance.
+            // Stellar — receive, balance and send (roadmap N.5). SEP-0005: SLIP-0010 ed25519 at
+            // m/44'/148'/0', the scheme LOBSTR, Solar and Ledger use, pinned to the SEP's own test vectors.
+            // Send: one native Payment (or CreateAccount for an address that is not an account yet), with
+            // a text or ID memo and a five-minute window, byte-for-byte what the Stellar Go SDK builds.
+            // One account per seed for the same reason as XRP: an account locks a minimum balance.
             new ChainInfo(
                 ChainId.Xlm, "XLM", "Stellar", ChainSupportLevel.Supported, "SEP-0005 · ed25519", "m/44'/148'/0'",
-                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. A Stellar address only becomes an account once someone funds it with the network's minimum balance, which stays locked while the account exists."),
             // Cosmos Hub — receive and balance (roadmap N.6). BIP44 coin type 118, secp256k1, the
