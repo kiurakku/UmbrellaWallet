@@ -108,5 +108,6 @@ public partial class MainViewModel
 
         OnPropertyChanged(nameof(HasMarketMovers));
         OnPropertyChanged(nameof(HasWatchlist));
+        RebuildRailMarket();
     }
 }

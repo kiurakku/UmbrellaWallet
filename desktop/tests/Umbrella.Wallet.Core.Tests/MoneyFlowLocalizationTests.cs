@@ -98,6 +98,7 @@ public sealed class MoneyFlowLocalizationTests
         "Umbrella", "Umbrella Wallet",          // brand, as the sidebar sets it
         "Bitcoin", "Ethereum", "Solana",        // chain names — proper nouns
         "1H", "7D", "24H", "30D", "1Y",         // chart ranges
+        "1D", "1W", "1M",                       // balance chart ranges
         "socks5://127.0.0.1:9050",              // proxy address placeholder
         "node.example.com:18089",               // Monero node address placeholder
         "https://mempool.space/api",            // chain endpoint placeholder

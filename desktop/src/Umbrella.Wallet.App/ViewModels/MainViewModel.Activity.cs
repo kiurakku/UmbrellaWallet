@@ -62,7 +62,11 @@ public partial class MainViewModel
     {
         RecentActivity.Clear();
         foreach (var row in MergedActivity().Take(5)) RecentActivity.Add(row);
+        OnPropertyChanged(nameof(HasRecentActivity));
     }
+
+    /// <summary>False until there is something to list in the home screen's recent transactions.</summary>
+    public bool HasRecentActivity => RecentActivity.Count > 0;
 
     private void PersistActivity() =>
         _activityStore.Save(Activity.Select(a =>

@@ -491,6 +491,20 @@ public sealed record ActivityRowViewModel(
     /// <summary>True for money movements (used by the Transactions section and the "Transactions" filter).</summary>
     public bool IsTransaction => Kind is "Sent" or "Received" or "Swap";
 
+    /// <summary>The glyph on the home screen's recent transactions: in, out, swap, or anything else.</summary>
+    public Avalonia.Media.Geometry KindGeometry => Kind switch
+    {
+        "Received" => ReceivedGlyph,
+        "Sent" => SentGlyph,
+        "Swap" => SwapGlyph,
+        _ => OtherGlyph,
+    };
+
+    private static readonly Avalonia.Media.Geometry ReceivedGlyph = Avalonia.Media.StreamGeometry.Parse("M12 5 V17 M6 11 L12 17 L18 11");
+    private static readonly Avalonia.Media.Geometry SentGlyph = Avalonia.Media.StreamGeometry.Parse("M7 17 L17 7 M9 7 H17 V15");
+    private static readonly Avalonia.Media.Geometry SwapGlyph = Avalonia.Media.StreamGeometry.Parse("M6 8 H17 L14 5 M18 16 H7 L10 19");
+    private static readonly Avalonia.Media.Geometry OtherGlyph = Avalonia.Media.StreamGeometry.Parse("M12 7 V13 M12 16.5 V17");
+
     /// <summary>Which activity filter tab this row belongs to.</summary>
     public string Category => Kind switch
     {
