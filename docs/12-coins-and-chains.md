@@ -34,7 +34,7 @@
 | **ZEC** | Zcash | — | ✅ | — | Receive only for now |
 | **XRP** | XRP Ledger | ✅ | ✅ | — | With a destination tag for exchange deposits. An address becomes an account once it receives the network's reserve, which then stays locked |
 | **XLM** | Stellar | ✅ | ✅ | — | Native XLM, with a text or ID memo for exchange deposits. An address becomes an account once someone funds it with 1 XLM; the first payment to a new address creates it |
-| **ATOM** | Cosmos Hub | — | ✅ | — | **Receive and balance only.** The balance is *available* ATOM — staked ATOM is not counted |
+| **ATOM** | Cosmos Hub | ✅ | ✅ | — | With a memo for exchange deposits. The balance is *available* ATOM — staked ATOM is not counted |
 | **NEAR** | NEAR Protocol | ✅ | ✅ | — | Your implicit account (the 64-character hex id), to any `.near` name or implicit account. Named accounts of your own and staked NEAR are not shown |
 | **DOT** | Polkadot | — | ✅ | — | **Receive and balance only.** sr25519 like Polkadot.js / Nova; balance adds Asset Hub and the relay chain |
 
@@ -501,6 +501,6 @@ threat model names each one as an open gap rather than implying it away.
 | 21 | zkSync Era | ETH | ⚠️ Partial | Receive + balance only |
 | 22 | XRP Ledger | XRP | ✅ Full | Receive, balance and send (destination tag) |
 | 23 | Stellar | XLM | ✅ Full | Receive, balance and send (memo supported) |
-| 24 | Cosmos | ATOM | ⚠️ Partial | Receive + available balance only |
+| 24 | Cosmos | ATOM | ✅ Full | Receive, available balance and send (memo) |
 | 25 | Near | NEAR | ✅ Full | Receive, balance and send from the implicit account |
 | 26 | Polkadot | DOT | ⚠️ Partial | Receive + balance (Asset Hub + relay) only |

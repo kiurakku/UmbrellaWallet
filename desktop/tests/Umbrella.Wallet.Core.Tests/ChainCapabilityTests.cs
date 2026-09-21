@@ -16,6 +16,7 @@ public sealed class ChainCapabilityTests
         ChainId.Xlm, // Payment / CreateAccount + memo, pinned to the Stellar Go SDK (StellarSendTests)
         ChainId.Near, // one Transfer from the implicit account, pinned to near-api-js (NearSendTests)
         ChainId.Xrp, // a plain XRP Payment + destination tag, pinned to xrpl.js (XrpSendTests)
+        ChainId.Atom, // one bank MsgSend + memo, pinned to cosmjs (CosmosSendTests)
     };
 
     [Fact]

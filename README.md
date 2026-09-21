@@ -179,7 +179,7 @@ is the most common way people lose money.
 | Zcash (ZEC) | ✅ | ✅ | — | — | — | **transparent `t1…` only** — not shielded |
 | XRP Ledger (XRP) | ✅ | ✅ | ✅ | — | — | destination tag for exchange deposits; an address becomes an account once it receives the network's reserve |
 | Stellar (XLM) | ✅ | ✅ | ✅ | — | — | SEP-0005, restores in LOBSTR / Solar / Ledger; memo for exchange deposits |
-| Cosmos Hub (ATOM) | ✅ | ✅ | — | — | — | **receive + available balance only** — staked ATOM is not counted |
+| Cosmos Hub (ATOM) | ✅ | ✅ | ✅ | — | — | memo for exchange deposits; the balance is *available* ATOM — staked ATOM is not counted |
 | NEAR Protocol (NEAR) | ✅ | ✅ | ✅ | — | — | from your implicit account, to any `.near` name or implicit account |
 | Polkadot (DOT) | ✅ | ✅ | — | — | — | **receive + balance only** — sr25519, same account as Polkadot.js / Nova; Asset Hub + relay |
 | Linea (ETH) | ✅ | ✅ | ✅ | 🟡 | — | same `0x` as mainnet |
@@ -426,7 +426,7 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 |---|---|
 | ✅ Shipped | 11+ chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations |
 | 🔜 Next | **Seedless watch-only mode** · Ledger / Trezor |
-| 🗓 Planned | Android · reproducible builds · SPL token send · ATOM / DOT send · external security audit |
+| 🗓 Planned | Android · reproducible builds · SPL token send · DOT send · external security audit |
 | ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 
 ## Documentation
