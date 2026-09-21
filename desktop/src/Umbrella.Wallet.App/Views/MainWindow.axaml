@@ -4614,13 +4614,17 @@
                            Text="{Binding [receive.previous], Source={x:Static app:Loc.Instance}}"/>
                 <ItemsControl ItemsSource="{Binding ReceiveHistory}">
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate>
+                    <DataTemplate x:DataType="vm:ReceiveHistoryRow">
                       <Button Classes="ghost" MinHeight="0" Padding="10,6" Margin="0,1"
-                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                              ToolTip.Tip="{Binding}"
+                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                              ToolTip.Tip="{Binding Address}"
                               Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).CopyAddressCommand}"
-                              CommandParameter="{Binding}">
-                        <TextBlock Classes="mono" FontSize="11" TextTrimming="CharacterEllipsis" Text="{Binding}"/>
+                              CommandParameter="{Binding Address}">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <TextBlock Classes="mono" FontSize="11" TextTrimming="CharacterEllipsis" Text="{Binding Address}"/>
+                          <TextBlock Grid.Column="1" FontSize="11" Margin="10,0,0,0" VerticalAlignment="Center"
+                                     Foreground="{DynamicResource UmTextMuted}" Text="{Binding Status}"/>
+                        </Grid>
                       </Button>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>

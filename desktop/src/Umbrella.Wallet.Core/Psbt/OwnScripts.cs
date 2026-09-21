@@ -26,6 +26,10 @@ public sealed class OwnScripts
 
     public bool TryGetPath(Script script, out UtxoDerivationPath path) => _paths.TryGetValue(script, out path);
 
+    /// <summary>Every script and the leaf it came from — receive and change, every branch.</summary>
+    public IEnumerable<(UtxoDerivationPath Path, Script Script)> Entries =>
+        _paths.Select(p => (p.Value, p.Key));
+
     public static OwnScripts For(
         HdAddressDeriver deriver, string mnemonic, ChainId chain, UtxoScanFloors floors,
         int gap = UtxoAccountScanner.DefaultGapLimit)

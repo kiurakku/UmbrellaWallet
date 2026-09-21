@@ -647,3 +647,7 @@ public sealed record PrivacyFindingVm(string Text, string Limit, bool IsStrength
     public string Glyph => IsStrength ? "✓" : "!";
     public string Color => IsStrength ? "#8FCB9B" : "#E7CA83";
 }
+
+/// <summary>One address the wallet has handed out, and what the last complete scan found on it
+/// (roadmap P0.1, §3.4). <see cref="Address"/> is what Copy copies — never the status text.</summary>
+public sealed record ReceiveHistoryRow(string Address, string Status);

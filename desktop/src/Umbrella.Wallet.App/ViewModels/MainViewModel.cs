@@ -121,7 +121,7 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _receiveAddressReused;
     [ObservableProperty] private bool _receiveAddressCheckPending;
     private System.Threading.CancellationTokenSource? _reuseCheckCts;
-    public System.Collections.ObjectModel.ObservableCollection<string> ReceiveHistory { get; } = new();
+    public System.Collections.ObjectModel.ObservableCollection<ReceiveHistoryRow> ReceiveHistory { get; } = new();
     /// <summary>True once more than the base address has been issued, so the "Previous addresses" list is worth showing.</summary>
     public bool HasReceiveHistory => ReceiveHistory.Count > 1;
     /// <summary>Requested-amount is only encoded where the payment-URI scheme is a recognised standard (BIP21).</summary>
@@ -4742,8 +4742,30 @@ public partial class MainViewModel : ViewModelBase
 
         var walletId = _registry.Active?.Id ?? "default";
         var lastIssued = _addrIndex.GetState(walletId, symbol).LastIssuedExternalIndex ?? 0;
+
+        // What each address holds, from the last COMPLETE scan only: a partial one would present a
+        // floor as a fact, so without a complete scan the row says it has not been checked.
+        var scan = _utxoScans.TryGetValue(symbol, out var s) && s is { Partial: false } ? s : null;
+
         for (uint i = 0; i <= lastIssued; i++)
-            ReceiveHistory.Add(_deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, _receiveChain.Value, 0, i).Address);
+        {
+            var address = _deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, _receiveChain.Value, 0, i).Address;
+            string status;
+            if (scan is null)
+            {
+                status = Loc.Instance["receive.prevUnchecked"];
+            }
+            else
+            {
+                var sat = scan.Utxos.Where(u => u.Address == address).Sum(u => u.ValueSat);
+                status = sat > 0
+                    ? string.Format(Loc.Instance["receive.prevHolds"], $"{Fmt(sat / 100_000_000m)} {symbol}")
+                    : Loc.Instance["receive.prevEmpty"];
+            }
+
+            ReceiveHistory.Add(new ReceiveHistoryRow(address, status));
+        }
+
         OnPropertyChanged(nameof(HasReceiveHistory));
     }
 
@@ -4767,7 +4789,9 @@ public partial class MainViewModel : ViewModelBase
             SelectedReceiveAddress = addr;
             ReceiveQr = BuildQr(BuildReceivePayload(addr));
             ReceivePathLabel = $"{symbol} receive address #{index}";
-            if (!ReceiveHistory.Contains(addr)) ReceiveHistory.Add(addr);
+            // Reserved a moment ago and shown to nobody yet: there is nothing on it.
+            if (ReceiveHistory.All(r => r.Address != addr))
+                ReceiveHistory.Add(new ReceiveHistoryRow(addr, Loc.Instance["receive.prevEmpty"]));
             OnPropertyChanged(nameof(HasReceiveHistory));
             _receiveIndex = index;
             QueueReuseCheck(addr, index);

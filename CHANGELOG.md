@@ -42,6 +42,17 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### Fixed — Activity overstated Bitcoin you sent
+
+- A payment that returned change to the wallet showed the change as money sent: paying 0.001 BTC from
+  an address holding 0.01 appeared as **0.00999 BTC sent**. A later payment funded only by that change
+  did not appear at all.
+- Each transaction is now judged against every address the wallet has — receiving and change, SegWit
+  and Taproot — so "sent" is exactly what left the wallet, and the change addresses' own history is
+  read. Bitcoin, Litecoin and Bitcoin Cash.
+- **Previous addresses** on the Receive screen now say what each one holds, from the last complete
+  scan — or "not checked yet", rather than a number the wallet has not confirmed.
+
 ### Solana tokens are shown
 
 - The wallet now reads the SPL tokens at your Solana address — USDC, USDT, PayPal USD, JUP, BONK and

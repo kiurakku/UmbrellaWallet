@@ -243,54 +243,34 @@ public partial class MainViewModel
             var rows = new List<(long Ts, ActivityRowViewModel Row)>();
             var walletId = _registry.Active?.Id ?? "default";
 
-            // BTC / LTC / BCH: every issued external address (0..last issued), so a rotated-address
-            // history is not lost. Capped defensively so a huge index never fans out to hundreds of calls.
+            // BTC / LTC / BCH: every address the wallet has used — receive AND change, every branch
+            // (Taproot included) — each transaction judged against the whole set, so change coming back
+            // is netted out of "sent" and a spend funded only by change still appears (roadmap P0.1).
+            // Capped per branch so a huge index never fans out into hundreds of calls.
             foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc), ("BCH", ChainId.Bch) })
             {
-                uint lastIssued = 0;
-                try { lastIssued = _addrIndex.GetState(walletId, sym).LastIssuedExternalIndex ?? 0; } catch { }
-                var cap = (uint)Math.Min(lastIssued, 25);
-                for (uint i = 0; i <= cap; i++)
+                HistoryAddressPlan plan;
+                try
                 {
-                    string addr;
-                    try { addr = _deriver.DeriveBitcoinLikeAt(_unlockedMnemonic!, chain, 0, i).Address; }
-                    catch { continue; }
+                    var floors = _addrIndex.FloorsFor(walletId, sym);
+                    var own = Umbrella.Wallet.Core.Psbt.OwnScripts.For(_deriver, _unlockedMnemonic!, chain, floors);
+                    var (_, _, network, _) = HdAddressDeriver.BitcoinLikeParams(chain);
+                    plan = HistoryAddresses.Plan(own, floors, network);
+                }
+                catch
+                {
+                    continue;
+                }
+
+                foreach (var addr in plan.Query)
+                {
                     var txs = sym switch
                     {
-                        "BTC" => await _history.GetBitcoinAsync(addr),
-                        "LTC" => await _history.GetLitecoinAsync(addr),
-                        _ => await _history.GetBitcoinCashAsync(addr),
+                        "BTC" => await _history.GetBitcoinAsync(addr, plan.Own),
+                        "LTC" => await _history.GetLitecoinAsync(addr, plan.Own),
+                        _ => await _history.GetBitcoinCashAsync(addr, plan.Own),
                     };
                     foreach (var t in txs) rows.Add((t.UnixMs, ToActivityRow(t)));
-                }
-            }
-
-            // BTC Taproot (m/86'): the wallet never hands these out, so there is no "issued" range —
-            // only what a scan has seen used on a restored seed. Without this walk, restored Taproot
-            // coins would count in the balance and be missing from the history that explains it
-            // (roadmap P2.1). Nothing is queried for a wallet whose scan found no Taproot activity.
-            uint? taprootUsed = null;
-            try
-            {
-                taprootUsed = _addrIndex
-                    .GetState(walletId, AddressIndexStore.BranchKey("BTC", UtxoScriptKind.Taproot))
-                    .LastSeenUsedExternalIndex;
-            }
-            catch { }
-
-            if (taprootUsed is { } trLast)
-            {
-                for (uint i = 0; i <= Math.Min(trLast, 25u); i++)
-                {
-                    string addr;
-                    try
-                    {
-                        addr = _deriver.DeriveBitcoinLikeAt(
-                            _unlockedMnemonic!, ChainId.Btc, 0, i, kind: UtxoScriptKind.Taproot).Address;
-                    }
-                    catch { continue; }
-
-                    foreach (var t in await _history.GetBitcoinAsync(addr)) rows.Add((t.UnixMs, ToActivityRow(t)));
                 }
             }
 

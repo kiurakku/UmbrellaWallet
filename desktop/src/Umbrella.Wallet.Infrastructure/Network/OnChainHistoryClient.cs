@@ -44,8 +44,17 @@ public sealed class OnChainHistoryClient
     }
 
     /// <summary>Any Esplora-style explorer (Blockstream for BTC, litecoinspace for LTC…).</summary>
+    public Task<IReadOnlyList<ChainTx>> GetEsploraAsync(
+        string apiBase, string address, string symbol, string explorerTxBase, CancellationToken ct = default) =>
+        GetEsploraAsync(apiBase, address, new HashSet<string>(StringComparer.Ordinal) { address }, symbol, explorerTxBase, ct);
+
+    /// <summary>
+    /// The transactions touching <paramref name="address"/>, each judged against EVERY address in
+    /// <paramref name="own"/> — see <see cref="ParseEsplora(string, IReadOnlySet{string}, string, string)"/>.
+    /// </summary>
     public async Task<IReadOnlyList<ChainTx>> GetEsploraAsync(
-        string apiBase, string address, string symbol, string explorerTxBase, CancellationToken ct = default)
+        string apiBase, string address, IReadOnlySet<string> own, string symbol, string explorerTxBase,
+        CancellationToken ct = default)
     {
         try
         {
@@ -53,7 +62,7 @@ public sealed class OnChainHistoryClient
             using var res = await Http.GetAsync(url, ct);
             if (!res.IsSuccessStatusCode) return [];
             var json = await res.Content.ReadAsStringAsync(ct);
-            return ParseEsplora(json, address, symbol, explorerTxBase);
+            return ParseEsplora(json, own, symbol, explorerTxBase);
         }
         catch
         {
@@ -86,9 +95,15 @@ public sealed class OnChainHistoryClient
     public Task<IReadOnlyList<ChainTx>> GetBitcoinAsync(string address, CancellationToken ct = default) =>
         GetEsploraAsync("https://blockstream.info/api", address, "BTC", "https://blockstream.info/tx/", ct);
 
+    public Task<IReadOnlyList<ChainTx>> GetBitcoinAsync(string address, IReadOnlySet<string> own, CancellationToken ct = default) =>
+        GetEsploraAsync("https://blockstream.info/api", address, own, "BTC", "https://blockstream.info/tx/", ct);
+
     /// <summary>Confirmed Litecoin transactions, via litecoinspace (same Esplora API).</summary>
     public Task<IReadOnlyList<ChainTx>> GetLitecoinAsync(string address, CancellationToken ct = default) =>
         GetEsploraAsync("https://litecoinspace.org/api", address, "LTC", "https://litecoinspace.org/tx/", ct);
+
+    public Task<IReadOnlyList<ChainTx>> GetLitecoinAsync(string address, IReadOnlySet<string> own, CancellationToken ct = default) =>
+        GetEsploraAsync("https://litecoinspace.org/api", address, own, "LTC", "https://litecoinspace.org/tx/", ct);
 
     /// <summary>
     /// Bitcoin Cash transactions, via Haskoin's keyless <c>transactions/full</c> API — the same explorer
@@ -96,8 +111,12 @@ public sealed class OnChainHistoryClient
     /// caller). Haskoin takes the bare CashAddr, so the "bitcoincash:" scheme is stripped from the query;
     /// addresses in the response carry the scheme, and the parser compares on the scheme-stripped form.
     /// </summary>
+    public Task<IReadOnlyList<ChainTx>> GetBitcoinCashAsync(
+        string address, int limit = 50, CancellationToken ct = default) =>
+        GetBitcoinCashAsync(address, new HashSet<string>(StringComparer.Ordinal) { address }, limit, ct);
+
     public async Task<IReadOnlyList<ChainTx>> GetBitcoinCashAsync(
-        string address, int limit = 50, CancellationToken ct = default)
+        string address, IReadOnlySet<string> own, int limit = 50, CancellationToken ct = default)
     {
         try
         {
@@ -107,7 +126,7 @@ public sealed class OnChainHistoryClient
             using var res = await Http.GetAsync(url, ct);
             if (!res.IsSuccessStatusCode) return [];
             var json = await res.Content.ReadAsStringAsync(ct);
-            return ParseHaskoinFull(json, address, "BCH", "https://blockchair.com/bitcoin-cash/transaction/");
+            return ParseHaskoinFull(json, own, "BCH", "https://blockchair.com/bitcoin-cash/transaction/");
         }
         catch
         {
@@ -424,7 +443,18 @@ public sealed class OnChainHistoryClient
         ParseEsplora(json, me, "BTC", "https://blockstream.info/tx/");
 
     /// <summary>Parses any Esplora /address/{a}/txs payload (BTC, LTC…) into normalized rows.</summary>
-    public static List<ChainTx> ParseEsplora(string json, string me, string symbol, string explorerTxBase)
+    public static List<ChainTx> ParseEsplora(string json, string me, string symbol, string explorerTxBase) =>
+        ParseEsplora(json, new HashSet<string>(StringComparer.Ordinal) { me }, symbol, explorerTxBase);
+
+    /// <summary>
+    /// The same, judged against the wallet's WHOLE set of addresses (roadmap P0.1, §3.2.4).
+    ///
+    /// Judged per address, a send from receive #0 with change back to an internal address counted the
+    /// change as "sent to others" — a 0.001 BTC payment showed as 0.00999 sent — and a spend funded
+    /// only by change never appeared at all. With the set, change back to the wallet is netted out and
+    /// "sent" is exactly what left it.
+    /// </summary>
+    public static List<ChainTx> ParseEsplora(string json, IReadOnlySet<string> own, string symbol, string explorerTxBase)
     {
         var outList = new List<ChainTx>();
         using var doc = JsonDocument.Parse(json);
@@ -439,8 +469,7 @@ public sealed class OnChainHistoryClient
             string firstOtherOut = "";
             if (tx.TryGetProperty("vin", out var vin) && vin.ValueKind == JsonValueKind.Array)
                 foreach (var v in vin.EnumerateArray())
-                    if (v.TryGetProperty("prevout", out var po) &&
-                        string.Equals(Str(po, "scriptpubkey_address"), me, StringComparison.Ordinal))
+                    if (v.TryGetProperty("prevout", out var po) && own.Contains(Str(po, "scriptpubkey_address")))
                         inMine += Long(po, "value");
 
             if (tx.TryGetProperty("vout", out var vout) && vout.ValueKind == JsonValueKind.Array)
@@ -448,7 +477,7 @@ public sealed class OnChainHistoryClient
                 {
                     var addr = Str(o, "scriptpubkey_address");
                     var val = Long(o, "value");
-                    if (string.Equals(addr, me, StringComparison.Ordinal)) outMine += val;
+                    if (own.Contains(addr)) outMine += val;
                     else { outTotalToOthers += val; if (firstOtherOut.Length == 0) firstOtherOut = addr; }
                 }
 
@@ -478,13 +507,17 @@ public sealed class OnChainHistoryClient
     /// form the wallet derives — still matches Haskoin's scheme-carrying addresses. A coinbase input has
     /// no address, which reads as empty and simply never matches "me".
     /// </summary>
-    public static List<ChainTx> ParseHaskoinFull(string json, string me, string symbol, string explorerTxBase)
+    public static List<ChainTx> ParseHaskoinFull(string json, string me, string symbol, string explorerTxBase) =>
+        ParseHaskoinFull(json, new HashSet<string>(StringComparer.Ordinal) { me }, symbol, explorerTxBase);
+
+    /// <summary>The same, judged against the wallet's whole address set (see ParseEsplora).</summary>
+    public static List<ChainTx> ParseHaskoinFull(string json, IReadOnlySet<string> own, string symbol, string explorerTxBase)
     {
         var outList = new List<ChainTx>();
         using var doc = JsonDocument.Parse(json);
         if (doc.RootElement.ValueKind != JsonValueKind.Array) return outList;
 
-        var meBare = StripCashScheme(me);
+        var ownBare = own.Select(StripCashScheme).ToHashSet(StringComparer.Ordinal);
         foreach (var tx in doc.RootElement.EnumerateArray())
         {
             var hash = Str(tx, "txid");
@@ -493,7 +526,7 @@ public sealed class OnChainHistoryClient
             string firstOtherOut = "";
             if (tx.TryGetProperty("inputs", out var ins) && ins.ValueKind == JsonValueKind.Array)
                 foreach (var i in ins.EnumerateArray())
-                    if (string.Equals(StripCashScheme(Str(i, "address")), meBare, StringComparison.Ordinal))
+                    if (ownBare.Contains(StripCashScheme(Str(i, "address"))))
                         inMine += Long(i, "value");
 
             if (tx.TryGetProperty("outputs", out var outs) && outs.ValueKind == JsonValueKind.Array)
@@ -501,7 +534,7 @@ public sealed class OnChainHistoryClient
                 {
                     var addr = Str(o, "address");
                     var val = Long(o, "value");
-                    if (string.Equals(StripCashScheme(addr), meBare, StringComparison.Ordinal)) outMine += val;
+                    if (ownBare.Contains(StripCashScheme(addr))) outMine += val;
                     else { outTotalToOthers += val; if (firstOtherOut.Length == 0) firstOtherOut = addr; }
                 }
 
