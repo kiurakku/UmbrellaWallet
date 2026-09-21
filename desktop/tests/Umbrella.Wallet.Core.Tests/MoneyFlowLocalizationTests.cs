@@ -95,6 +95,7 @@ public sealed class MoneyFlowLocalizationTests
     private static readonly HashSet<string> AllowedLiterals = new(StringComparer.Ordinal)
     {
         "UMBRELLA WALLET", "the fear",          // brand
+        "Umbrella", "Umbrella Wallet",          // brand, as the sidebar sets it
         "Bitcoin", "Ethereum", "Solana",        // chain names — proper nouns
         "1H", "7D", "24H", "30D", "1Y",         // chart ranges
         "socks5://127.0.0.1:9050",              // proxy address placeholder

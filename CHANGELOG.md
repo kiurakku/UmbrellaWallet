@@ -42,18 +42,37 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
-### The default theme is gold
+### The gold design
 
-- **Umbrella** — the theme every new wallet starts on — is now honey gold on a warm near-black, and it
-  is not a recolour. The balance card is a slab of polished gold with the balance in dark ink; the
-  round action keys and the active page in the sidebar are filled gold with dark icons; the page glow,
-  the splash and the card border follow the gold instead of staying brand blue.
-- The previous look is still there as **Navy · the classic blue**. A wallet that was on the default
-  theme opens in gold; pick Navy in Settings → Appearance to go back.
-- Every other theme keeps the quieter card it had. The splash and page glows used to be a fixed blue
-  on all of them; they now take each theme's own accent.
-- Limit: the gold card's text is checked against every stop of its gradient (the balance at 7:1, the
-  small print at 4.5:1), but only the Umbrella theme uses the bold card for now.
+- **Umbrella**, the theme every new wallet starts on, is now gold light on black: near-neutral blacks,
+  cards a step up from the page with hairline borders, white type, and long arcs of gold light behind
+  the window. The previous look is still there as **Navy · the classic blue** (Settings → Appearance).
+- **The sidebar has names.** The sections are listed with their labels; the page you are on sits on a
+  warm wash of the accent. The panel carries the Umbrella mark, the open wallet, and at its foot where
+  requests are going, the version and the lock.
+- **The action keys are flat tiles** — dark, with the accent in the icon.
+- **Charts are lines of light.** The market chart, its sparklines and the movers use a smooth line in
+  the accent with a soft glow and a wash under it, and a lit dot where it ends. The curve passes through
+  every price and never overshoots a high or low the data did not reach. Up or down is still said in
+  green or red, by the figures.
+- **Every logo follows the theme** — the mark, the wordmark, the umbrella and the canopy, gold on the
+  default theme, blue on Navy, and so on. Only the desktop icon keeps fixed colours, and it is new.
+- The Market lists show each coin's mark, price and change, and the table no longer runs the 24h change
+  into the status column on a narrower window.
+
+### Fixed — balances that read "server did not respond"
+
+- A request that **timed out** was treated as if you had cancelled it: one slow explorer aborted the
+  whole Bitcoin scan, the backup servers were never asked, and the other chains' refresh stopped too.
+  Bitcoin, Litecoin and Dogecoin showed as unreadable while a server that would have answered sat unused.
+- Busy explorers (429) are now waited out and asked again, a few requests at a time per server; a
+  definite answer — refused, unknown host, a 4xx — is returned at once.
+- A refresh no longer re-walks twenty addresses on every branch: a full walk runs on unlock and every
+  30 minutes (Dogecoin every 2 hours), and in between the wallet re-reads every address it has issued or
+  seen used plus three past it. **Limit:** money sent to an address far beyond those, by another wallet
+  on the same phrase, appears at the next full walk rather than the next refresh.
+- Locking now forgets the previous wallet's scans, so the next wallet — or the hidden one — can never
+  have a send planned from someone else's coins.
 
 ### Fixed — Activity overstated Bitcoin you sent
 

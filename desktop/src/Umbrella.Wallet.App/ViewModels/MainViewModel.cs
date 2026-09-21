@@ -332,8 +332,6 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.Theme = value;
             _uiSettings.Save();
             OnPropertyChanged();
-            OnPropertyChanged(nameof(LogoImage));
-            OnPropertyChanged(nameof(HeroLogoImage));
             // Theme changes are not real wallet events — logging them spammed the activity feed with
             // "Theme Appearance changed" rows that read like a developer log, so they're no longer logged.
         }
@@ -812,21 +810,8 @@ public partial class MainViewModel : ViewModelBase
     /// labels don't clip; four across on the desktop.</summary>
     public int QuickActionColumns => MobileMode ? 2 : 4;
 
-    /// <summary>
-    /// The in-app wordmark on the welcome and unlock screens — the ORIGINAL Umbrella Wallet logo,
-    /// swapped for the dark version on light themes (the solid-white one is invisible on white). The
-    /// new full-colour umbrella art is used only for the desktop app / taskbar icon (umbrella.ico),
-    /// not inside the app.
-    /// </summary>
-    public Bitmap LogoImage => LoadAsset(
-        Theming.IsLightTheme(Theming.Current)
-            ? "umbrella-logo-black.png"
-            : "umbrella-logo-solidwhite.png");
-
-    /// <summary>The mark ON the balance card. The gold theme's card is a light slab of gold, so it takes
-    /// the dark mark even though the rest of the app is dark.</summary>
-    public Bitmap HeroLogoImage => LoadAsset(
-        Theming.HeroIsLight(Theming.Current) ? "umbrella-logo-black.png" : "umbrella-logo-solidwhite.png");
+    // The in-app logos are Controls/BrandMark, tinted by the theme; only the desktop icon
+    // (umbrella.ico) keeps fixed colours.
 
     /// <summary>The "the fear" maker's mark — the gold ghost (transparent background).</summary>
     public Bitmap FearMark => LoadAsset("thefear-ghost.png");
@@ -948,6 +933,9 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Version shown in the status bar — read from the assembly so it never drifts from the csproj.</summary>
     public string AppVersionLabel =>
         $"Umbrella Wallet v{CurrentVersion} · the fear";
+
+    /// <summary>Just the version, for the sidebar's foot.</summary>
+    public string AppVersionShort => $"v{CurrentVersion}";
 
     private static string CurrentVersion =>
         typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.8.0";
@@ -3780,6 +3768,7 @@ public partial class MainViewModel : ViewModelBase
         HasChart = true;
         IsChartLoading = true;
         ChartPoints = new System.Collections.Generic.List<Avalonia.Point>();
+        HasChartEnd = false;
 
         try
         {

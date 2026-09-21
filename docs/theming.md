@@ -62,7 +62,6 @@ dotnet test desktop/Umbrella.Wallet.sln -c Release --filter 'FullyQualifiedName~
 | Muted contrast | `UmTextMuted` on `UmCard` ≥ **3:1** |
 | Button contrast | The auto-chosen label on `UmAccentBright` ≥ **4.5:1** |
 | Accent ≠ gain | The accent and `UmPos` must be visibly different |
-| Gold card | On the bold card, the balance ink ≥ **7:1** and the small print ≥ **4.5:1** on *every* gradient stop |
 
 ### Why "no shared gain colour"
 
@@ -99,25 +98,28 @@ The difference between a theme and a recoloured default is the **base**, not the
 If your palette is Navy with a different `UmAccentBright`, the distinctness test may pass but you have
 not really added a theme.
 
-## Bold themes
+## One signature, every theme
 
-Most themes paint the balance card as a dark, accent-tinted glass panel and the action keys as outlined
-discs. A **bold** theme turns them over: the card becomes a solid slab of the accent, printed in dark
-ink, and the action keys and the active sidebar page are filled with the accent.
+The home screen, the navigation and the charts use the same treatment on every theme, in that theme's
+own colours: dark surfaces, and the accent used as light. `Theming.PublishSignature` writes the tokens
+for it — the active sidebar page is a wash of the accent fading to the right, the action tiles are dark
+with accent icons and an accent hairline on hover — and every theme sets every one of them, so nothing
+from the previous theme lingers after a switch.
 
-```csharp
-private static readonly HashSet<string> BoldThemes = new(StringComparer.Ordinal) { "umbrella" };
-```
+**Logos follow the theme.** The in-app logos are `Controls/BrandMark`: the artwork's silhouette used as a
+mask over `UmMarkFill` (a gradient of the theme's accent), plus a layer that shades it or stays dark.
+Four kinds, all from the original artwork — the folded mark (the sidebar tile), the wordmark (welcome,
+unlock), the umbrella glyph (the sidebar card) and the canopy seen from above (the splash). Only the
+desktop icon, `umbrella.ico`, keeps fixed colours. The masks are drawn with high-quality scaling; the
+default sampling turned their edges into steps.
 
-`PublishSignature` writes every card, disc and nav token for **every** theme — the bold branch and the
-quiet one set the same keys — so switching away from a bold theme cannot leave gold behind. The card's
-colours are public data (`GoldSlabStops`, `GoldInk`, `GoldInkSoft`) so the contrast test checks exactly
-what is painted, at every stop: a wide window stretches the card, and the text can land on the deepest
-one.
+**Chart lines are light.** Every price line — the market chart, its row sparklines, the balance chart —
+is a smooth curve (`ChartGeometry`: Catmull-Rom through every sample, clamped so it never overshoots a
+high or a low the data did not reach) in the accent, with a soft glow and a wash of it underneath.
+Up or down is said by the change figures in green or red, not by the line.
 
-A bold card is light, so it carries the dark logo (`umbrella-logo-black.png`, via `HeroIsLight`).
-Anything placed on the card must use the `UmHero*` tokens rather than the page's text colours, or it
-will be pale-on-gold.
+**Light behind the window.** Two long arcs of the accent sit behind every card (`UmGlow` stops), static
+and never hit-testable.
 
 ## Gradients
 
@@ -137,8 +139,8 @@ gradient that competes with the content makes every number harder to read.
 a light theme it is detected automatically, and the card sheen inverts so it darkens instead of
 blowing out to white.
 
-A dark variant of the logo now exists for the gold card; the rest of the artwork (the sidebar mark,
-coin tiles) is still light-on-transparent, which is why there is no full light theme shipped yet.
+The logos follow the theme (see above), but coin tiles and some illustrations are still
+light-on-transparent, which is why there is no full light theme shipped yet.
 
 ## The one thing that is never themed
 

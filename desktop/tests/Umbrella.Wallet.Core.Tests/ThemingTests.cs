@@ -150,31 +150,14 @@ public sealed class ThemingTests
     }
 
     [Fact]
-    public void The_gold_balance_card_stays_readable_from_its_palest_corner_to_its_deepest_edge()
+    public void The_default_is_gold_and_the_old_navy_is_still_offered()
     {
-        // The bold theme prints the balance in dark ink on a gold slab. Readable in the pale corner is
-        // not enough: a wide window stretches the card, so the text can land on the deepest amber stop.
-        foreach (var (stop, _) in Theming.GoldSlabStops)
-        {
-            var surface = Color.Parse(stop);
-
-            var ink = Contrast(Color.Parse(Theming.GoldInk), surface);
-            Assert.True(ink >= 7.0, $"the balance on gold {stop} is only {ink:F1}:1 (needs 7:1)");
-
-            // The small print is 11px capitals — the body-text bar, not the large-text one.
-            var soft = Contrast(Color.Parse(Theming.GoldInkSoft), surface);
-            Assert.True(soft >= 4.5, $"the card's small print on gold {stop} is only {soft:F1}:1 (needs 4.5:1)");
-        }
-    }
-
-    [Fact]
-    public void The_bold_default_is_gold_and_the_old_navy_is_still_offered()
-    {
-        // The default theme became gold; everyone who liked the original look can still pick it.
-        Assert.True(Theming.IsBoldTheme("umbrella"));
-        Assert.True(Theming.HeroIsLight("umbrella"));
+        // The default theme became gold light on black; everyone who liked the original look can
+        // still pick it.
+        var gold = Color.Parse(Theming.PaletteOf("umbrella")!["UmAccentBright"]);
+        Assert.True(gold.R > 0xE0 && gold.G > 0xB0 && gold.B < 0x70, $"the default accent is not gold: {gold}");
         Assert.True(Theming.IsKnown("navy"));
-        Assert.False(Theming.IsBoldTheme("navy"));
+        Assert.Equal("umbrella", Theming.Current);
     }
 
     [Fact]

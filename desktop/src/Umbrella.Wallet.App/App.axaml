@@ -29,6 +29,16 @@
             <GradientStop Offset="0.5" Color="#4D8BFF"/>
             <GradientStop Offset="1" Color="#8E72FF"/>
         </LinearGradientBrush>
+        <!-- The mark's fill before a theme is applied (the splash can show first). Theming.Apply
+             replaces it with the chosen theme's accent. -->
+        <LinearGradientBrush x:Key="UmMarkFill" StartPoint="0%,0%" EndPoint="100%,100%">
+            <GradientStop Offset="0" Color="#FFD766"/>
+            <GradientStop Offset="0.45" Color="#F8C846"/>
+            <GradientStop Offset="1" Color="#E3A72F"/>
+        </LinearGradientBrush>
+        <Color x:Key="UmGlow">#F8C846</Color>
+        <SolidColorBrush x:Key="UmTileEdge" Color="#99F8C846"/>
+        <BoxShadows x:Key="UmTileGlow">0 0 22 0 #40F8C846</BoxShadows>
         <!-- Hero balance surface: a muted navy→blue→violet sweep that stays readable under white text. -->
         <LinearGradientBrush x:Key="UmHeroGradient" StartPoint="0%,0%" EndPoint="100%,100%">
             <GradientStop Offset="0" Color="#183A66"/>
@@ -136,6 +146,53 @@
         </Style>
 
         <!-- Icon-only nav rail buttons (square, rounded; icon follows the theme, active = accent capsule). -->
+        <!-- Sidebar entries with their names (the gold design): icon and label in a row, the current
+             page on a warm wash of the accent with its icon lit. -->
+        <Style Selector="Button.navitem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource UmTextDim}" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.navitem /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions><BrushTransition Property="Background" Duration="0:0:0.12" /></Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.navitem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmHover}" />
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+        </Style>
+        <Style Selector="Button.navitem.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmNavActiveFill}" />
+            <Setter Property="Foreground" Value="{DynamicResource UmNavActiveText}" />
+        </Style>
+        <Style Selector="Button.navitem Path">
+            <Setter Property="Stroke" Value="{DynamicResource UmTextDim}" />
+            <Setter Property="StrokeThickness" Value="1.8" />
+            <Setter Property="Fill" Value="Transparent" />
+            <Setter Property="StrokeLineCap" Value="Round" />
+            <Setter Property="StrokeJoin" Value="Round" />
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.navitem:pointerover Path">
+            <Setter Property="Stroke" Value="{DynamicResource UmText}" />
+        </Style>
+        <Style Selector="Button.navitem.active Path">
+            <Setter Property="Stroke" Value="{DynamicResource UmNavActiveIcon}" />
+        </Style>
+
         <Style Selector="Button.navicon">
             <Setter Property="Width" Value="44" />
             <Setter Property="Height" Value="44" />
@@ -307,12 +364,17 @@
         <!-- Kraken-style primary action: a round accent disc with a stroked glyph, label underneath.
              The whole thing is one transparent Button; only the disc carries colour, so a row of them
              reads as a clean set of round keys rather than a strip of boxes. -->
+        <!-- Now a flat dark tile (the gold design): the accent lives only in the icon, and a hairline
+             of it appears on hover. The disc border inside is just the icon's frame. -->
         <Style Selector="Button.action">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource UmDiscFill}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmDiscEdge}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="0,14,0,12" />
             <Setter Property="MinHeight" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="Transitions">
                 <Transitions>
@@ -321,22 +383,6 @@
             </Setter>
         </Style>
         <Style Selector="Button.action /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-        </Style>
-        <Style Selector="Button.action:pointerover">
-            <Setter Property="RenderTransform" Value="translateY(-3px)" />
-        </Style>
-        <Style Selector="Button.action:pressed">
-            <Setter Property="RenderTransform" Value="translateY(0px) scale(0.95)" />
-        </Style>
-        <!-- The disc itself. -->
-        <Style Selector="Button.action Border.disc">
-            <Setter Property="Width" Value="56" />
-            <Setter Property="Height" Value="56" />
-            <Setter Property="CornerRadius" Value="28" />
-            <Setter Property="Background" Value="{DynamicResource UmDiscFill}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource UmDiscEdge}" />
-            <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Transitions">
                 <Transitions>
                     <BrushTransition Property="Background" Duration="0:0:0.14" />
@@ -344,9 +390,22 @@
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Button.action:pointerover Border.disc">
+        <Style Selector="Button.action:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource UmDiscFillHover}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource UmDiscFillHover}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmDiscEdgeHover}" />
+        </Style>
+        <Style Selector="Button.action:pointerover">
+            <Setter Property="RenderTransform" Value="translateY(-2px)" />
+        </Style>
+        <Style Selector="Button.action:pressed">
+            <Setter Property="RenderTransform" Value="translateY(0px) scale(0.95)" />
+        </Style>
+        <!-- The disc itself. -->
+        <Style Selector="Button.action Border.disc">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Background" Value="Transparent" />
         </Style>
         <Style Selector="Button.action Path.actionIcon">
             <Setter Property="Stroke" Value="{DynamicResource UmDiscIcon}" />
@@ -354,20 +413,20 @@
             <Setter Property="StrokeLineCap" Value="Round" />
             <Setter Property="StrokeJoin" Value="Round" />
             <Setter Property="Fill" Value="Transparent" />
-            <Setter Property="Width" Value="24" />
-            <Setter Property="Height" Value="24" />
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
             <Setter Property="Stretch" Value="Uniform" />
         </Style>
-        <!-- On hover the disc fills accent, so the glyph flips to the accent's contrast colour. -->
+        <!-- On hover the icon brightens with the tile's hairline. -->
         <Style Selector="Button.action:pointerover Path.actionIcon">
             <Setter Property="Stroke" Value="{DynamicResource UmDiscIconHover}" />
         </Style>
         <Style Selector="Button.action TextBlock.actionLabel">
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{DynamicResource UmTextSoft}" />
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
             <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,8,0,0" />
+            <Setter Property="Margin" Value="0,6,0,0" />
         </Style>
         <Style Selector="Button.action:pointerover TextBlock.actionLabel">
             <Setter Property="Foreground" Value="{DynamicResource UmText}" />
@@ -426,6 +485,12 @@
             <Setter Property="Background" Value="{DynamicResource UmHover}" />
             <!-- Fluent also flips the foreground on hover; without this the hovered row
                  turns white-on-light and the coin disappears under the cursor. -->
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+        </Style>
+        <!-- Pressed: without this Fluent painted its own flat light grey over the row, washing the coin
+             and its amount out to grey-on-grey for as long as the button was held. -->
+        <Style Selector="Button.row:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
             <Setter Property="Foreground" Value="{DynamicResource UmText}" />
         </Style>
 
@@ -950,7 +1015,21 @@
             </Style.Animations>
         </Style>
         <!-- The mark scales up and fades in. -->
-        <Style Selector="Image.splashLogo">
+        <!-- The app-icon tile the mark sits in: near-black, a hairline and a glow of the accent. -->
+        <Style Selector="Border.brandTile">
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmTileEdge}" />
+            <Setter Property="BoxShadow" Value="{DynamicResource UmTileGlow}" />
+            <Setter Property="Background">
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Offset="0" Color="#1A1A1A" />
+                    <GradientStop Offset="1" Color="#070707" />
+                </LinearGradientBrush>
+            </Setter>
+        </Style>
+
+        <Style Selector=":is(Control).splashLogo">
             <Setter Property="RenderTransformOrigin" Value="50%,50%" />
             <Style.Animations>
                 <Animation Duration="0:0:0.95" Easing="CubicEaseOut" FillMode="Forward">

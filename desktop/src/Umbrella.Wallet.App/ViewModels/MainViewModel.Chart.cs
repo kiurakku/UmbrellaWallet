@@ -98,6 +98,13 @@ public partial class MainViewModel
     [ObservableProperty] private double _crosshairDotTop;
     [ObservableProperty] private double _crosshairLabelLeft;
     [ObservableProperty] private string _crosshairPrice = string.Empty;
+
+    // The dot where the line ends, and its halo — positioned on the plot canvas.
+    [ObservableProperty] private double _chartEndLeft;
+    [ObservableProperty] private double _chartEndTop;
+    [ObservableProperty] private double _chartEndHaloLeft;
+    [ObservableProperty] private double _chartEndHaloTop;
+    [ObservableProperty] private bool _hasChartEnd;
     [ObservableProperty] private string _crosshairTime = string.Empty;
 
     // Raw candles + scale of the open chart, so the crosshair can map pixels back to price/time.
@@ -124,6 +131,7 @@ public partial class MainViewModel
     {
         ChartArea = [];
         ChartPoints = [];
+        HasChartEnd = false;
         ChartCandles = [];
         ChartMa = [];
         ChartVolumeBars = [];
@@ -161,6 +169,14 @@ public partial class MainViewModel
 
         ChartPoints = line;
         ChartArea = new List<Avalonia.Point>(line) { new(PlotRight, PlotBottom), new(PlotLeft, PlotBottom) };
+
+        // The lit dot at the line's end (now): centred on the last close.
+        var end = line[^1];
+        ChartEndLeft = end.X - 5;
+        ChartEndTop = end.Y - 5;
+        ChartEndHaloLeft = end.X - 11;
+        ChartEndHaloTop = end.Y - 11;
+        HasChartEnd = true;
 
         // Moving-average overlay: a smooth trailing SMA of the closes, so the chart reads like a pro
         // trading view rather than a bare line. Period scales with the window (a few candles to ~3 weeks).
@@ -382,6 +398,7 @@ public partial class MainViewModel
         CrosshairVisible = false;
         _detailCandles = [];
         ChartPoints = new System.Collections.Generic.List<Avalonia.Point>();
+        HasChartEnd = false;
     }
 
     private const double ChartWidth = 620;
