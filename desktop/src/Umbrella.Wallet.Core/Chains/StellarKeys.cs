@@ -30,17 +30,34 @@ public static class StellarKeys
     }
 
     /// <summary>True for a well-formed account id: right length, alphabet, version and checksum.</summary>
-    public static bool IsValidAccountId(string? address)
-    {
-        if (string.IsNullOrWhiteSpace(address)) return false;
-        var a = address.Trim();
-        if (a.Length != 56 || a[0] != 'G') return false;
+    public static bool IsValidAccountId(string? address) => TryDecode(address, AccountIdVersion, out _);
 
-        var data = FromBase32(a);
-        if (data is null || data.Length != 35 || data[0] != AccountIdVersion) return false;
+    /// <summary>The 32-byte ed25519 key inside a "G…" account id, or an exception for anything that is
+    /// not one — a signer must never guess at a destination.</summary>
+    public static byte[] DecodeAccountId(string address) =>
+        TryDecode(address, AccountIdVersion, out var key)
+            ? key
+            : throw new ArgumentException("Not a Stellar account id.", nameof(address));
+
+    /// <summary>
+    /// Any 32-byte StrKey — account id, secret seed (18 &lt;&lt; 3, "S…") — checked for length, alphabet,
+    /// version byte and checksum. Everything else is refused.
+    /// </summary>
+    public static bool TryDecode(string? strKey, byte version, out byte[] payload)
+    {
+        payload = [];
+        if (string.IsNullOrWhiteSpace(strKey)) return false;
+        var s = strKey.Trim();
+        if (s.Length != 56) return false;
+
+        var data = FromBase32(s);
+        if (data is null || data.Length != 35 || data[0] != version) return false;
 
         var crc = Crc16XModem(data.AsSpan(0, 33));
-        return data[33] == (byte)(crc & 0xff) && data[34] == (byte)(crc >> 8);
+        if (data[33] != (byte)(crc & 0xff) || data[34] != (byte)(crc >> 8)) return false;
+
+        payload = data[1..33];
+        return true;
     }
 
     private static ushort Crc16XModem(ReadOnlySpan<byte> bytes)
