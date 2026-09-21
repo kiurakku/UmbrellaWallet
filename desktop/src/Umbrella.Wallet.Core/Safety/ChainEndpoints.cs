@@ -103,6 +103,19 @@ public static class ChainEndpoints
                 new("https://cosmos-rest.publicnode.com", "PublicNode (Allnodes)"),
                 new("https://lcd-cosmoshub.keplr.app", "Keplr"),
             ],
+            // Polkadot. Since the 2025 migration balances live on Asset Hub, so that is "DOT"; the relay
+            // chain is read too and has its own choice. All five answered state_getStorage over HTTPS.
+            ["DOT"] =
+            [
+                new("https://polkadot-asset-hub-rpc.polkadot.io", "Parity (Asset Hub)"),
+                new("https://statemint.api.onfinality.io/public", "OnFinality (Asset Hub)"),
+            ],
+            ["DOT-RELAY"] =
+            [
+                new("https://rpc.polkadot.io", "Parity (relay chain)"),
+                new("https://polkadot-rpc.publicnode.com", "PublicNode (relay chain)"),
+                new("https://polkadot.api.onfinality.io/public", "OnFinality (relay chain)"),
+            ],
             // NEAR JSON-RPC. near.lava.build was discontinued in 2025 — these two answered view_account.
             ["NEAR"] =
             [

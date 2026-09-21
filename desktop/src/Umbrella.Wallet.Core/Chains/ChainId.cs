@@ -20,4 +20,5 @@ public enum ChainId
     Xlm,
     Atom,
     Near,
+    Dot,
 }

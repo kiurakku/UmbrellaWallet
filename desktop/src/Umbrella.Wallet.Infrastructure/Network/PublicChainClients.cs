@@ -339,6 +339,7 @@ public sealed class PublicChainBalanceClient
                 ChainId.Xlm => await GetXlmAsync(address, cancellationToken),
                 ChainId.Atom => await GetAtomAsync(address, cancellationToken),
                 ChainId.Near => await GetNearAsync(address, cancellationToken),
+                ChainId.Dot => await GetDotAsync(address, cancellationToken),
                 _ => null,
             };
         }
@@ -366,6 +367,53 @@ public sealed class PublicChainBalanceClient
         return XrpLedger.ParseAccountInfo(result) is { } xrp
             ? new ChainBalance(ChainId.Xrp, address, xrp, "XRP")
             : null;
+    }
+
+    private static string DotAssetHubRoot => ChainEndpoints.Resolve("DOT", "https://polkadot-asset-hub-rpc.polkadot.io");
+    private static string DotRelayRoot => ChainEndpoints.Resolve("DOT-RELAY", "https://rpc.polkadot.io");
+
+    /// <summary>
+    /// DOT on the account, Asset Hub and relay chain together (roadmap N.8). Both must answer: half a
+    /// balance is not a balance, so one failed read makes the whole thing unknown.
+    /// </summary>
+    private static async Task<ChainBalance?> GetDotAsync(string address, CancellationToken ct)
+    {
+        if (!Umbrella.Wallet.Core.Polkadot.Ss58.TryDecode(address, out var prefix, out var accountId) ||
+            prefix != Umbrella.Wallet.Core.Polkadot.Ss58.PolkadotPrefix)
+            return null;
+
+        var key = Umbrella.Wallet.Core.Polkadot.PolkadotAccounts.SystemAccountKey(accountId);
+        var hub = await ReadDotAccountAsync(DotAssetHubRoot, key, ct);
+        if (hub is null) return null;
+        var relay = await ReadDotAccountAsync(DotRelayRoot, key, ct);
+        if (relay is null) return null;
+
+        return new ChainBalance(ChainId.Dot, address, hub.Value + relay.Value, "DOT");
+    }
+
+    /// <summary>System.Account at the FINALIZED head of one chain — never a block that can still be
+    /// reorganised away.</summary>
+    private static async Task<decimal?> ReadDotAccountAsync(string root, string storageKey, CancellationToken ct)
+    {
+        using var headRes = await Http.PostAsJsonAsync(root,
+            new { id = 1, jsonrpc = "2.0", method = "chain_getFinalizedHead", @params = Array.Empty<string>() }, ct);
+        if (!headRes.IsSuccessStatusCode) return null;
+        using var headDoc = await JsonDocument.ParseAsync(await headRes.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+        if (!headDoc.RootElement.TryGetProperty("result", out var h) || h.ValueKind != JsonValueKind.String) return null;
+
+        using var res = await Http.PostAsJsonAsync(root,
+            new { id = 2, jsonrpc = "2.0", method = "state_getStorage", @params = new[] { storageKey, h.GetString()! } }, ct);
+        if (!res.IsSuccessStatusCode) return null;
+        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+
+        // An "error" member instead of "result" is a failed read, not an empty account.
+        if (!doc.RootElement.TryGetProperty("result", out var r)) return null;
+        return r.ValueKind switch
+        {
+            JsonValueKind.Null => Umbrella.Wallet.Core.Polkadot.PolkadotAccounts.ParseAccountInfo(null, entryMissing: true),
+            JsonValueKind.String => Umbrella.Wallet.Core.Polkadot.PolkadotAccounts.ParseAccountInfo(r.GetString(), entryMissing: false),
+            _ => null,
+        };
     }
 
     /// <summary>The NEAR JSON-RPC root: the user's chosen server, or the NEAR Foundation's.</summary>

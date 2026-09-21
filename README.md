@@ -176,6 +176,7 @@ is the most common way people lose money.
 | Stellar (XLM) | ✅ | ✅ | — | — | — | **receive + balance only** — SEP-0005, restores in LOBSTR / Solar / Ledger |
 | Cosmos Hub (ATOM) | ✅ | ✅ | — | — | — | **receive + available balance only** — staked ATOM is not counted |
 | NEAR Protocol (NEAR) | ✅ | ✅ | — | — | — | **receive + balance only** — implicit account; `.near` names not shown |
+| Polkadot (DOT) | ✅ | ✅ | — | — | — | **receive + balance only** — sr25519, same account as Polkadot.js / Nova; Asset Hub + relay |
 | Linea (ETH) | ✅ | ✅ | ✅ | 🟡 | — | same `0x` as mainnet |
 | zkSync Era (ETH) | ✅ | ✅ | — | 🟡 | — | **receive + balance only** (send not safe yet) |
 
@@ -415,7 +416,7 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 |---|---|
 | ✅ Shipped | 11+ chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations |
 | 🔜 Next | **Seedless watch-only mode** · Ledger / Trezor |
-| 🗓 Planned | Android · reproducible builds · SPL token send · XRP / XLM / ATOM / NEAR send · DOT · external security audit |
+| 🗓 Planned | Android · reproducible builds · SPL token send · XRP / XLM / ATOM / NEAR / DOT send · external security audit |
 | ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 
 ## Documentation

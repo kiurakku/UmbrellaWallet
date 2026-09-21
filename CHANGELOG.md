@@ -42,6 +42,21 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### Polkadot: receive and balance
+
+- A Polkadot (DOT) account that is **the same one Polkadot.js, Talisman, SubWallet and Nova show** for
+  your phrase. Polkadot does not use the BIP-44 scheme every other coin here uses: it derives an
+  sr25519 key from the phrase's entropy. The wallet does the same, and each step is checked against
+  published output — the curve arithmetic against RFC 9496's own values, the full phrase-to-address
+  path against Parity's `subkey` tool, the address format against Polkadot.js.
+- The balance is read directly from chain storage, with no indexer and no API key, at the finalized
+  block of **both Polkadot Asset Hub and the relay chain**, and the two are added. Since the 2025
+  migration most DOT lives on Asset Hub — a wallet reading only the relay chain would show most people
+  close to nothing. If either read fails, the balance shows as "could not read", never as half of it.
+- DOT locked for staking or governance is included in the number; not all of it may be spendable.
+  Both chains' servers can be changed in *Settings → Privacy*.
+- **Not yet:** sending DOT.
+
 ### NEAR: receive and balance
 
 - A NEAR account from the same phrase, at `m/44'/397'/0'` — the path NEAR's own seed-phrase library

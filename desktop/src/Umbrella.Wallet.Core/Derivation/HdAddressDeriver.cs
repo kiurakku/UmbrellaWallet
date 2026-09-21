@@ -97,6 +97,7 @@ public sealed class HdAddressDeriver
             ChainId.Xlm => DeriveStellar(parsed, addressIndex, passphrase),
             ChainId.Atom => DeriveCosmos(masterKey, addressIndex),
             ChainId.Near => DeriveNear(parsed, addressIndex, passphrase),
+            ChainId.Dot => DerivePolkadot(parsed, passphrase),
             ChainId.Eth => DeriveEthereum(masterKey, addressIndex),
             ChainId.Tron => DeriveTron(masterKey, addressIndex),
             ChainId.Sol => DeriveSolana(parsed, addressIndex, passphrase),
@@ -138,6 +139,20 @@ public sealed class HdAddressDeriver
         var address = StellarKeys.EncodeAccountId(Slip10Ed25519.PublicKey(priv));
         System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
         return new ReceiveAddress(ChainId.Xlm, address, $"m/44'/148'/{addressIndex}'", addressIndex);
+    }
+
+    /// <summary>
+    /// Polkadot root account: substrate-bip39 mini secret from the phrase's ENTROPY (+ passphrase), an
+    /// sr25519 key, SS58 with the Polkadot prefix (roadmap N.8). Pinned to subkey's documented output.
+    /// </summary>
+    private static ReceiveAddress DerivePolkadot(Mnemonic parsed, string passphrase = "")
+    {
+        var entropy = AdaKeys.EntropyFromMnemonic(parsed.ToString());
+        var mini = Umbrella.Wallet.Core.Polkadot.PolkadotKeys.MiniSecretFromEntropy(entropy, passphrase);
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(entropy);
+        var publicKey = Umbrella.Wallet.Core.Polkadot.PolkadotKeys.PublicKeyFromMiniSecret(mini);
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(mini);
+        return new ReceiveAddress(ChainId.Dot, Umbrella.Wallet.Core.Polkadot.Ss58.Encode(publicKey), "sr25519 root", 0);
     }
 
     /// <summary>

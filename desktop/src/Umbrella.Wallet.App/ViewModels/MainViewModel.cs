@@ -4871,6 +4871,7 @@ public partial class MainViewModel : ViewModelBase
         if (a.StartsWith('r') && Umbrella.Wallet.Core.Chains.XrpAddress.IsValid(a)) return "XRP";
         if (a.StartsWith('G') && Umbrella.Wallet.Core.Chains.StellarKeys.IsValidAccountId(a)) return "XLM";
         if (a.StartsWith("cosmos1", StringComparison.OrdinalIgnoreCase) && Umbrella.Wallet.Core.Chains.CosmosHub.IsValidAddress(a)) return "ATOM";
+        if (a.StartsWith('1') && a.Length is 47 or 48 && Umbrella.Wallet.Core.Polkadot.Ss58.IsPolkadotAddress(a)) return "DOT";
         if ((a.StartsWith('1') || a.StartsWith('3')) && a.Length is >= 26 and <= 35) return "BTC";
         return null; // Solana / other base58 is ambiguous — keep the selected network
     }
@@ -5356,6 +5357,7 @@ public partial class MainViewModel : ViewModelBase
         "XLM" or "STELLAR" or "LUMENS" => ChainId.Xlm,
         "ATOM" or "COSMOS" or "COSMOS HUB" => ChainId.Atom,
         "NEAR" or "NEAR PROTOCOL" => ChainId.Near,
+        "DOT" or "POLKADOT" => ChainId.Dot,
         _ => null,
     };
 
@@ -5421,6 +5423,7 @@ public partial class MainViewModel : ViewModelBase
         ChainId.Xlm => "XLM",
         ChainId.Atom => "ATOM",
         ChainId.Near => "NEAR",
+        ChainId.Dot => "DOT",
         _ => chain.ToString().ToUpperInvariant(),
     };
 

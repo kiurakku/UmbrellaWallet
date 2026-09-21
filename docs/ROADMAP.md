@@ -101,7 +101,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | N.5 | **Stellar (XLM)** | 🟡 **Receive + balance.** SEP-0005 (SLIP-0010 ed25519, `m/44'/148'/0'`) pinned to the SEP's own three vectors; StrKey `G…` with its CRC16 checked, so a typo'd Stellar address is refused on paste. Balance from Horizon through a choosable server (SDF, LOBSTR); a 404 is an unfunded address — a real zero — anything else is unknown. **Send off** until a signed transaction is pinned against the reference SDK |
 | N.6 | **Cosmos (ATOM)** / IBC | 🟡 **Receive + available balance.** `m/44'/118'/0'/0/0` pinned to cosmjs's own wallet test (key and address); the address checksum is verified by the shared BIP-173 codec, so a typo'd or wrong-prefix (e.g. `osmo1…`) address is refused. Balance: the bank module's uatom through a choosable server (PublicNode, Keplr) — **staked ATOM is not counted**, and the chain's note says so. **Send and IBC off** |
 | N.7 | **NEAR** | 🟡 **Receive + balance.** SLIP-0010 ed25519 `m/44'/397'/0'` pinned to near-seed-phrase's own parse test; the address is the implicit account (hex of the key), so nothing needs registering to receive. Balance: `view_account` at final finality through a choosable RPC (NEAR Foundation, FastNEAR — Lava's endpoint was found discontinued); `UNKNOWN_ACCOUNT` is a real zero; yocto amounts beyond `decimal` are split with BigInteger so a large holder never reads "unknown". Named `.near` accounts and staked NEAR are not shown. **Send off** |
-| N.8 | **Polkadot (DOT)** | 📅 |
+| N.8 | **Polkadot (DOT)** | 🟡 **Receive + balance.** substrate-bip39 (PBKDF2 over the phrase's *entropy*) → schnorrkel sr25519 expansion → ristretto255 public key → SS58 prefix 0 — the scheme of Polkadot.js, Talisman, SubWallet and Nova, not BIP-44. Ristretto255 written from RFC 9496 and checked against its 16 published encodings; the whole pipeline against `subkey`'s documented output (phrase → mini secret → key → address); SS58 against Polkadot.js's encode tests. Balance straight from chain storage (`System.Account`, SCALE) at the finalized head of **Asset Hub and the relay chain, added** — checked live: since the 2025 migration the treasury holds 24.3 M DOT on Asset Hub vs 2.7 k on the relay, so a relay-only reader would show most people ~0. Either read failing makes the balance unknown. Both chains' servers are choosable. **Send off** (sr25519 signing is a separate job) |
 | N.9 | THORChain expansion / swap reliability (expiry, slippage, refund, failed broadcast) | 📅 after core |
 
 ### P2 — hardware, platforms, release trust
@@ -170,7 +170,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | XLM | ✅ | ✅ | ❌ | ❌ | receive + balance (N.5); send once a signed transaction is proven |
 | ATOM | ✅ | ✅ | ❌ | ❌ | receive + available balance (N.6); staked ATOM not counted |
 | NEAR | ✅ | ✅ | ❌ | ❌ | receive + balance (N.7) — implicit account only |
-| DOT | — | — | — | — | 📅 Planned |
+| DOT | ✅ | ✅ | ❌ | ❌ | receive + balance (N.8) — Asset Hub + relay chain |
 
 ---
 
@@ -207,7 +207,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 11. ✅ **P2.1** Taproot find/show/spend, ✅ **P2.2** PayJoin (sender).  
 12. ✅ **H.1** PSBT export / review / sign. **H.2** Ledger/Trezor next — needs the seedless watch-only mode and the devices to test on.  
 13. **H.4** + L.5/L.7 — Android only after a mobile spec **and** store/geo compliance.  
-14. New L1s (XRP…) — only after a stable core + matrix.  
+14. 🟡 New L1s — **XRP, XLM, ATOM, NEAR, DOT all receive + balance**, each pinned to its reference library or spec; send for each is its own later step.  
 15. **R.7 / L.5** — Microsoft Store / geo-blocklist as needed.
 
 Detailed PR schedule — §12 in [`CLAUDE_IMPLEMENTATION_ROADMAP_UK.md`](CLAUDE_IMPLEMENTATION_ROADMAP_UK.md).
