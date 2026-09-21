@@ -4,6 +4,44 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [Unreleased] — Stellar sends, and the home screen from the gold design
+
+### Stellar (XLM) can send
+
+- Native XLM to any Stellar address, signed on this PC. The transaction is byte-for-byte what the
+  Stellar Go SDK builds (pinned to its own test envelopes), with a five-minute window after which it
+  can never be included.
+- **A memo field**, right under the address: an exchange credits a deposit by its memo, and without
+  it the money reaches the exchange but not your account there. The review shows the memo that will
+  be signed and whether it is an ID or text — or says there is none.
+- The first payment to an address that is not an account yet creates it, and must be at least 1 XLM;
+  the review says that 1 XLM stays locked there as the account's minimum balance. What you can send
+  leaves your own account's minimum balance behind.
+- Submitted once. If the network's answer never comes, the wallet asks about that exact transaction
+  and, if it still cannot tell, says until when it could be included — it never offers a retry that
+  could pay twice.
+- **Limits:** muxed `M…` addresses are refused for now (use the `G…` address and a memo); only native
+  XLM, not Stellar tokens.
+
+### The home screen
+
+- Your balance card stays first. Beside it, the balance as a line of light for 1D, 1W, 1M or 1Y:
+  today's holdings at each moment's price — not a record of past balances, and it says so. Prices
+  are asked for every listed coin, never only the ones you hold, so the requests do not say what
+  you own.
+- Your assets beside recent transactions when the window has room. On the right: the market in
+  three tabs, a way into it, four theme swatches, allocation and your address.
+- Switching language now also changes the balance card's own text.
+
+### Fixed
+
+- **Connect (watch-only addresses and exchange balances), NFTs and Staking had no way in** since
+  4.5.0 — the redesign removed their buttons. They are in Discover and the command palette again, and
+  a test now fails the build if any page loses its way in.
+- The Send screen listed the coins it could send in prose, and the prose had drifted: it left out
+  Dogecoin, Cardano and tokens, and called Monero receive-only while it sends. It now points to the
+  picker, which is built from the list the send code checks.
+
 ## [4.8.2] — 2026-09-21 — the Windows build, for real
 
 The same wallet as 4.8.0 and 4.8.1, which both shipped for Linux only. The Windows build checks the
