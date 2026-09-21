@@ -88,6 +88,14 @@ function Assert-PinnedBySignedSums {
         New-Item -ItemType Directory -Force -Path $keyring | Out-Null
         $env:GNUPGHOME = $keyring
 
+        # GnuPG 2.4 gives a NEW home directory a common.conf with "use-keyboxd", which moves the keyring
+        # into a daemon that a CI runner does not start: the key "imports" and then cannot be found.
+        # An empty common.conf keeps the plain file keyring. Say which gpg ran, so a failure here can
+        # be read from the log.
+        $commonConf = Join-Path $keyring 'common.conf'
+        if (-not (Test-Path $commonConf)) { New-Item -ItemType File -Path $commonConf | Out-Null }
+        Write-Host "  gpg: $gpg ($((& $gpg --version 2>&1 | Select-Object -First 1)))"
+
         # An isolated keyring, so this never depends on — or writes to — whatever the developer
         # happens to trust locally. The key is fetched by FINGERPRINT, so a keyserver can serve the
         # wrong key but not a key with the right fingerprint.
@@ -102,7 +110,7 @@ function Assert-PinnedBySignedSums {
                 # A key kept in the repository is read from disk; anything else is downloaded.
                 if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination $keyPath -Force }
                 else { Invoke-WebRequest -Uri $source -OutFile $keyPath -UseBasicParsing }
-                & $gpg --batch --quiet --import $keyPath 2>&1 | Out-Null
+                $importLog = & $gpg --batch --import $keyPath 2>&1
 
                 # Imported is not the same as usable. keys.openpgp.org returns key material with no
                 # user ID unless the owner verified an address there, and gpg imports that happily
@@ -111,6 +119,7 @@ function Assert-PinnedBySignedSums {
                 & $gpg --batch --list-keys $fingerprint 2>&1 | Out-Null
                 if ($LASTEXITCODE -eq 0) { $fetched = $true; Write-Host "  signing key from: $source"; break }
                 Write-Host "  key source gave no usable key with fingerprint ${fingerprint}: $source"
+                $importLog | Select-Object -First 4 | ForEach-Object { Write-Host "    gpg: $_" }
             }
             catch {
                 # Say why, then try the next source: a release that fails here must be diagnosable
