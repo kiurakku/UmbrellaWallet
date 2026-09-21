@@ -42,6 +42,23 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### A seed from a Taproot wallet is no longer shown as empty
+
+- Bitcoin coins on `m/86'` (BIP-86, `bc1p…`) were invisible: the scan walked only the SegWit account,
+  so a phrase restored from a Taproot wallet read as **0 BTC** while the coins sat on another branch
+  of the same seed. BTC now walks both, with the same gap-limit and "an error is unknown, not empty"
+  rules on each.
+- Those coins can be spent — alone, or in one transaction with SegWit inputs, each signed from the
+  path it was found on and checked against consensus rules before anything is broadcast. Fees are
+  estimated per input type, so a Taproot input is not charged as a SegWit one.
+- Change goes back to the branch the inputs came from, on that branch's own index counter. Sending
+  a Taproot spend's change to a SegWit address would mark the recipient's output as yours to anyone
+  running the usual heuristic.
+- Restored Taproot history now shows in Activity next to the balance it explains.
+- **What did not change:** receive addresses are still native SegWit. The wallet does not hand out
+  `bc1p…` yet. **What it costs:** an empty Bitcoin wallet now asks the explorer about 80 addresses per
+  scan instead of 40. Other chains are unchanged.
+
 ### Tokens can be sent, not just watched — ERC-20, TRC-20 and jettons
 
 - The Send picker now lists every ERC-20 this wallet actually holds. Until now it could send native

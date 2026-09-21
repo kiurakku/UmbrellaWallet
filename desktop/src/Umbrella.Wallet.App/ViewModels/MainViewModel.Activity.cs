@@ -265,6 +265,35 @@ public partial class MainViewModel
                 }
             }
 
+            // BTC Taproot (m/86'): the wallet never hands these out, so there is no "issued" range —
+            // only what a scan has seen used on a restored seed. Without this walk, restored Taproot
+            // coins would count in the balance and be missing from the history that explains it
+            // (roadmap P2.1). Nothing is queried for a wallet whose scan found no Taproot activity.
+            uint? taprootUsed = null;
+            try
+            {
+                taprootUsed = _addrIndex
+                    .GetState(walletId, AddressIndexStore.BranchKey("BTC", UtxoScriptKind.Taproot))
+                    .LastSeenUsedExternalIndex;
+            }
+            catch { }
+
+            if (taprootUsed is { } trLast)
+            {
+                for (uint i = 0; i <= Math.Min(trLast, 25u); i++)
+                {
+                    string addr;
+                    try
+                    {
+                        addr = _deriver.DeriveBitcoinLikeAt(
+                            _unlockedMnemonic!, ChainId.Btc, 0, i, kind: UtxoScriptKind.Taproot).Address;
+                    }
+                    catch { continue; }
+
+                    foreach (var t in await _history.GetBitcoinAsync(addr)) rows.Add((t.UnixMs, ToActivityRow(t)));
+                }
+            }
+
             // ETH / TRON: single-address chains in this wallet.
             string? tron = null, eth = null;
             try { tron = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Tron).Address; } catch { }

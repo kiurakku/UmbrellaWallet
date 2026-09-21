@@ -135,8 +135,14 @@ public sealed class BitcoinTransactionSender
             string? changeAddress = null;
             if (plan.NeedsChange)
             {
-                var index = store.ReserveNextChangeIndex(walletId, symbol);
-                changeAddress = _deriver.DeriveBitcoinLikeAt(mnemonic, plan.Chain, change: 1, index: index).Address;
+                // Change returns to the same branch the inputs came from, and its index is reserved
+                // on THAT branch's counter — a Taproot change address derived from the SegWit
+                // counter would be an address the scanner does not look for (roadmap P2.1).
+                var branch = AddressIndexStore.BranchKey(symbol, plan.ChangeKind);
+                var index = store.ReserveNextChangeIndex(walletId, branch);
+                changeAddress = _deriver
+                    .DeriveBitcoinLikeAt(mnemonic, plan.Chain, change: 1, index: index, kind: plan.ChangeKind)
+                    .Address;
             }
 
             var (tx, error) = _spender.BuildSigned(mnemonic, plan, request, changeAddress);

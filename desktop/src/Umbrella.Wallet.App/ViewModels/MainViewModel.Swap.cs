@@ -240,10 +240,7 @@ public partial class MainViewModel
                 // sign each with its own key. The THORChain memo rides as an OP_RETURN in the same tx.
                 if (!_utxoScans.TryGetValue(from, out var scan) || scan is null)
                 {
-                    var st = _addrIndex.GetState(walletId, from);
-                    var fl = new UtxoScanFloors(
-                        st.LastIssuedExternalIndex, st.LastSeenUsedExternalIndex,
-                        st.LastIssuedInternalIndex, st.LastSeenUsedInternalIndex);
+                    var fl = _addrIndex.FloorsFor(walletId, from);
                     scan = await _utxoScanner.ScanAsync(_unlockedMnemonic!, fromChain.Value, UtxoExplorerFor(from), fl);
                     if (!scan.Partial) _utxoScans[from] = scan;
                 }

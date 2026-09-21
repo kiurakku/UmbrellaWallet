@@ -211,14 +211,26 @@ public sealed class HdAddressDeriver
     /// to a fresh internal address instead of re-using a public one. Address, key and scriptPubKey
     /// all come from this one method so they can never drift apart.
     /// </summary>
-    public DerivedUtxoAccount DeriveBitcoinLikeAt(string mnemonic, ChainId chain, uint change, uint index, string? passphrase = null) =>
-        DeriveUtxoAccount(mnemonic, new UtxoDerivationPath(chain, change, index), passphrase);
+    public DerivedUtxoAccount DeriveBitcoinLikeAt(
+        string mnemonic, ChainId chain, uint change, uint index, string? passphrase = null,
+        UtxoScriptKind kind = UtxoScriptKind.Default) =>
+        DeriveUtxoAccount(mnemonic, new UtxoDerivationPath(chain, change, index, kind), passphrase);
 
     /// <summary>Derives the signing account for an explicit <see cref="UtxoDerivationPath"/>.</summary>
     public DerivedUtxoAccount DeriveUtxoAccount(string mnemonic, UtxoDerivationPath path, string? passphrase = null)
     {
         passphrase = Resolve(passphrase);
         var (purpose, coinType, network, scriptType) = BitcoinLikeParams(path.Chain);
+
+        // Taproot is a different purpose AND a different script type on the same coin. Both move
+        // together or the address and the key belong to different wallets (roadmap P2.1).
+        if (path.Kind == UtxoScriptKind.Taproot)
+        {
+            if (path.Chain != ChainId.Btc) throw new UnsupportedChainException(path.Chain);
+            purpose = TaprootPurpose;
+            scriptType = ScriptPubKeyType.TaprootBIP86;
+        }
+
         var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
         var keyPath = new KeyPath($"{purpose}'/{coinType}'/0'/{path.Change}/{path.Index}");
         var key = parsed.DeriveExtKey(passphrase).Derive(keyPath).PrivateKey;
@@ -226,6 +238,9 @@ public sealed class HdAddressDeriver
         var scriptPubKey = key.PubKey.GetAddress(scriptType, network).ScriptPubKey;
         return new DerivedUtxoAccount(path, address, key, scriptPubKey);
     }
+
+    /// <summary>BIP86: the purpose Taproot accounts live at.</summary>
+    public const int TaprootPurpose = 86;
 
     /// <summary>
     /// The account-level EXTENDED PUBLIC KEY for a UTXO chain — everything a third party needs to

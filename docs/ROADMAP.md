@@ -81,7 +81,7 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 
 | # | Task | Source | Status |
 |---|---|---|---|
-| P2.1 | **Taproot (BIP-341/86)** — scanner `m/86'` + key-path spend, not derivation only | PRIVACY, coins | 📅 |
+| P2.1 | **Taproot (BIP-341/86)** — scanner `m/86'` + key-path spend, not derivation only | PRIVACY, coins | ✅ **Find, show, spend.** Addresses pinned to all three BIP-86 vectors; BTC scans `m/86'` beside `m/84'` (external + internal, same gap/partial rules); key-path inputs signed and consensus-verified, alone or mixed with SegWit; change returns to the inputs' own branch on its own index counter; restored Taproot history is read. **Receive stays BIP-84** — the wallet does not hand out `bc1p…` addresses, so nothing is issued that the old scan could miss. Cost, stated: an empty BTC scan now probes 80 addresses instead of 40 |
 | P2.2 | **PayJoin (BIP-78)** | PRIVACY, threat model | 📅 |
 | P2.3 | **CoinJoin** (after PayJoin) | PRIVACY | 📅 |
 | P2.4 | **Dandelion++** (broadcast timing privacy) | coins roadmap | 📅 |
@@ -152,7 +152,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 
 | Symbol | Receive | Balance | Send | History | Note |
 |---|:---:|:---:|:---:|:---:|---|
-| BTC | ✅ | ✅ | ✅ | ✅ | coin control; Taproot spend not yet |
+| BTC | ✅ | ✅ | ✅ | ✅ | coin control; restored Taproot (`m/86'`) found and spent — receive stays SegWit |
 | LTC | ✅ | ✅ | ✅ | ✅ | |
 | BCH | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7 |
 | DOGE | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7 |
@@ -200,7 +200,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 8. ✅ **L.1 / L.3 / L.8** (+ L.2 wording) — disclaimers / age / ToS in the app; **L.4** is store-listing copy, written at submission.  
 9. **R.6 / L.6** — EV signing for Windows + PGP for Linux packages. R.3 attestations already cover “did this come from the project”; EV covers SmartScreen, which is a different problem and needs a legal entity and money. ← **next (human/process)**  
 10. ✅ **N.1 / N.2** ERC-20 and TRC-20, 🟡 **N.3** jettons (SPL still needs balance reading first).  
-11. **P2.1–P2.2** — Taproot spend + PayJoin.  
+11. ✅ **P2.1** Taproot find/show/spend. **P2.2** PayJoin next.  
 12. **H.1 → H.2** — PSBT, then Ledger/Trezor.  
 13. **H.4** + L.5/L.7 — Android only after a mobile spec **and** store/geo compliance.  
 14. New L1s (XRP…) — only after a stable core + matrix.  

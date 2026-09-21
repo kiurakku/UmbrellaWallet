@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Umbrella.Wallet.Core.Derivation;
+using Umbrella.Wallet.Core.Utxo;
 
 namespace Umbrella.Wallet.Infrastructure;
 
@@ -57,6 +59,43 @@ public sealed class AddressIndexStore
     }
 
     private static string Key(string walletId, string chain) => $"{walletId}:{chain.ToUpperInvariant()}";
+
+    /// <summary>
+    /// The chain key a branch's state is filed under. BIP86 Taproot is a SEPARATE account on a
+    /// separate purpose, so its indices must not share a counter with the default branch — reserving
+    /// change index 4 on one says nothing about index 4 on the other (roadmap P2.1). Suffixing the
+    /// chain keeps that apart without a schema change, and an older build simply never looks at the
+    /// suffixed entries.
+    /// </summary>
+    public static string BranchKey(string chain, UtxoScriptKind kind) =>
+        kind == UtxoScriptKind.Taproot ? chain.ToUpperInvariant() + "-TR" : chain;
+
+    /// <summary>
+    /// The scan floors for every branch of one chain, in one call — so a caller cannot remember the
+    /// default branch and forget the Taproot one, which would quietly re-narrow the scan and hide
+    /// restored Taproot funds again.
+    /// </summary>
+    public UtxoScanFloors FloorsFor(string walletId, string chain)
+    {
+        var s = GetState(walletId, chain);
+        var t = GetState(walletId, BranchKey(chain, UtxoScriptKind.Taproot));
+        return new UtxoScanFloors(
+            s.LastIssuedExternalIndex, s.LastSeenUsedExternalIndex,
+            s.LastIssuedInternalIndex, s.LastSeenUsedInternalIndex,
+            t.LastSeenUsedExternalIndex, t.LastIssuedInternalIndex, t.LastSeenUsedInternalIndex);
+    }
+
+    /// <summary>Records what a completed scan found, on every branch it walked, so the next scan
+    /// starts from at least as far out as this one reached.</summary>
+    public void RecordScan(string walletId, string chain, UtxoScanResult scan)
+    {
+        if (scan.HighestUsedExternalIndex is { } he) RecordSeenUsed(walletId, chain, 0, he);
+        if (scan.HighestUsedInternalIndex is { } hi) RecordSeenUsed(walletId, chain, 1, hi);
+
+        var taproot = BranchKey(chain, UtxoScriptKind.Taproot);
+        if (scan.HighestUsedTaprootExternalIndex is { } te) RecordSeenUsed(walletId, taproot, 0, te);
+        if (scan.HighestUsedTaprootInternalIndex is { } ti) RecordSeenUsed(walletId, taproot, 1, ti);
+    }
 
     /// <summary>A read-only snapshot of the state for a wallet + chain (never null; empty by default).</summary>
     public UtxoAddressState GetState(string walletId, string chain)

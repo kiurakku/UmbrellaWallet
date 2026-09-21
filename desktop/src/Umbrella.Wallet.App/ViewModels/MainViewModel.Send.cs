@@ -192,10 +192,7 @@ public partial class MainViewModel
         {
             if (!_utxoScans.TryGetValue(chain, out var scan) || scan is null)
             {
-                var state = _addrIndex.GetState(walletId, chain);
-                var floors = new UtxoScanFloors(
-                    state.LastIssuedExternalIndex, state.LastSeenUsedExternalIndex,
-                    state.LastIssuedInternalIndex, state.LastSeenUsedInternalIndex);
+                var floors = _addrIndex.FloorsFor(walletId, chain);
                 scan = await _utxoScanner.ScanAsync(_unlockedMnemonic!, chainId.Value, UtxoExplorerFor(chain), floors);
                 if (!scan.Partial) _utxoScans[chain] = scan;
             }
@@ -500,12 +497,9 @@ public partial class MainViewModel
                     if (!_utxoScans.TryGetValue(chain, out var scan) || scan is null)
                     {
                         var chainId0 = ParseChain(chain)!.Value;
-                        var state0 = _addrIndex.GetState(walletId, chain);
-                        var floors0 = new UtxoScanFloors(
-                            state0.LastIssuedExternalIndex, state0.LastSeenUsedExternalIndex,
-                            state0.LastIssuedInternalIndex, state0.LastSeenUsedInternalIndex);
                         scan = await _utxoScanner.ScanAsync(
-                            _unlockedMnemonic!, chainId0, UtxoExplorerFor(chain), floors0);
+                            _unlockedMnemonic!, chainId0, UtxoExplorerFor(chain),
+                            _addrIndex.FloorsFor(walletId, chain));
                         if (!scan.Partial) _utxoScans[chain] = scan;
                     }
 
@@ -706,13 +700,9 @@ public partial class MainViewModel
         {
             try
             {
-                var state = _addrIndex.GetState(walletId, symbol);
-                var floors = new UtxoScanFloors(
-                    state.LastIssuedExternalIndex, state.LastSeenUsedExternalIndex,
-                    state.LastIssuedInternalIndex, state.LastSeenUsedInternalIndex);
-
                 return await _utxoScanner.ScanAsync(
-                    _unlockedMnemonic!, chain, UtxoExplorerFor(symbol), floors, ct: ct);
+                    _unlockedMnemonic!, chain, UtxoExplorerFor(symbol),
+                    _addrIndex.FloorsFor(walletId, symbol), ct: ct);
             }
             catch (OperationCanceledException) { throw; }
             catch
@@ -745,8 +735,7 @@ public partial class MainViewModel
             if (scan.Partial && _utxoScans.ContainsKey(symbol)) continue;
 
             _utxoScans[symbol] = scan;
-            if (scan.HighestUsedExternalIndex is { } he) _addrIndex.RecordSeenUsed(walletId, symbol, 0, he);
-            if (scan.HighestUsedInternalIndex is { } hi) _addrIndex.RecordSeenUsed(walletId, symbol, 1, hi);
+            _addrIndex.RecordScan(walletId, symbol, scan);
 
             var amount = scan.TotalSat / 100_000_000m;
             var (usd, change) = prices.GetValueOrDefault(symbol);

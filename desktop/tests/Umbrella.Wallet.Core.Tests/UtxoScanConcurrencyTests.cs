@@ -27,13 +27,31 @@ public sealed class UtxoScanConcurrencyTests
         // A sequential walk stops after `gapLimit` consecutive unused addresses: indices 0..19 on the
         // external chain, and the same on the internal one. The windowed walk must query that exact set
         // — no speculative look-ahead.
+        //
+        // Bitcoin has two branches to walk since P2.1 — native SegWit (m/84') and Taproot (m/86') —
+        // so the empty-wallet cost is exactly doubled there, and not one probe more. That doubling is
+        // a deliberate, stated price for not reporting a restored Taproot wallet as empty.
         var fake = new RecordingExplorer();
         var scanner = new UtxoAccountScanner(gapLimit: 20);
 
         await scanner.ScanAsync(Phrase, ChainId.Btc, fake, UtxoScanFloors.None);
 
-        Assert.Equal(40, fake.Probed.Count);                    // 20 external + 20 internal
+        Assert.Equal(80, fake.Probed.Count);                    // (20 external + 20 internal) × 2 branches
         Assert.Equal(fake.Probed.Count, fake.Probed.Distinct().Count()); // and never the same one twice
+        Assert.Equal(40, fake.Probed.Count(a => a.StartsWith("bc1p", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task Chains_without_a_Taproot_branch_do_not_pay_for_one()
+    {
+        // The Taproot walk must not leak onto chains where it could never find anything: every extra
+        // address handed to an explorer is one more address linked to this wallet.
+        var fake = new RecordingExplorer();
+        var scanner = new UtxoAccountScanner(gapLimit: 20);
+
+        await scanner.ScanAsync(Phrase, ChainId.Ltc, fake, UtxoScanFloors.None);
+
+        Assert.Equal(40, fake.Probed.Count);                    // 20 external + 20 internal, one branch
     }
 
     [Fact]
@@ -52,7 +70,9 @@ public sealed class UtxoScanConcurrencyTests
 
         Assert.Equal(50_000, result.ConfirmedSat);
         Assert.Equal(0u, result.HighestUsedExternalIndex);
-        Assert.Equal(41, fake.Probed.Count); // 21 external + 20 internal
+        // 21 external + 20 internal on SegWit, and an untouched 20 + 20 on Taproot: the used SegWit
+        // address must not stretch the OTHER branch's walk.
+        Assert.Equal(81, fake.Probed.Count);
     }
 
     [Fact]

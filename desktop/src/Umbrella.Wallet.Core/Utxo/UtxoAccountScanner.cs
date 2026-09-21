@@ -12,7 +12,13 @@ public sealed record UtxoScanFloors(
     uint? LastIssuedExternalIndex,
     uint? LastSeenUsedExternalIndex,
     uint? LastIssuedInternalIndex,
-    uint? LastSeenUsedInternalIndex)
+    uint? LastSeenUsedInternalIndex,
+    /// <summary>The same floors for the BIP86 Taproot branch. There is no "issued" pair: the wallet
+    /// never hands out a Taproot receive address, it only finds and spends ones a previous wallet used
+    /// (roadmap P2.1). A Taproot CHANGE index does get reserved, and it lands in the internal floor.</summary>
+    uint? TaprootLastSeenUsedExternalIndex = null,
+    uint? TaprootLastIssuedInternalIndex = null,
+    uint? TaprootLastSeenUsedInternalIndex = null)
 {
     public static UtxoScanFloors None { get; } = new(null, null, null, null);
 }
@@ -57,24 +63,63 @@ public sealed class UtxoAccountScanner
         var scanned = 0;
         var partial = false;
 
+        void Add(long c, long p) { confirmed += c; pending += p; }
+
         // external chain (change = 0): always covered at least through index 0, the default receive.
         var extForced = ForcedThrough(floors.LastIssuedExternalIndex, floors.LastSeenUsedExternalIndex, includeZero: true);
         var (extHigh, extPartial) = await ScanChainAsync(
-            mnemonic, chain, change: 0, explorer, extForced, externalAddresses, utxos,
-            add: (c, p) => { confirmed += c; pending += p; },
-            progressCount: () => scanned, onScan: () => scanned++, progress, ct);
+            mnemonic, chain, change: 0, UtxoScriptKind.Default, explorer, extForced, externalAddresses, utxos,
+            Add, progressCount: () => scanned, onScan: () => scanned++, progress, ct);
         partial |= extPartial;
 
         // internal chain (change = 1): no implicit #0, but a restore must still find used change addresses.
         var intForced = ForcedThrough(floors.LastIssuedInternalIndex, floors.LastSeenUsedInternalIndex, includeZero: false);
         var (intHigh, intPartial) = await ScanChainAsync(
-            mnemonic, chain, change: 1, explorer, intForced, collectAddresses: null, utxos,
-            add: (c, p) => { confirmed += c; pending += p; },
-            progressCount: () => scanned, onScan: () => scanned++, progress, ct);
+            mnemonic, chain, change: 1, UtxoScriptKind.Default, explorer, intForced, collectAddresses: null, utxos,
+            Add, progressCount: () => scanned, onScan: () => scanned++, progress, ct);
         partial |= intPartial;
 
-        return new UtxoScanResult(chain, utxos, confirmed, pending, extHigh, intHigh, externalAddresses, partial);
+        uint? trExtHigh = null, trIntHigh = null;
+
+        // BIP86 Taproot lives on a DIFFERENT purpose, so none of the work above can see it. A seed
+        // restored from a Taproot wallet would otherwise read as empty while the coins sat in plain
+        // sight — the wallet would be telling the user a number it had not actually checked.
+        //
+        // The cost is real and is not hidden: this doubles the addresses BTC reveals to the explorer
+        // per scan. It is spent because a balance that silently omits a branch is worse than a scan
+        // that is twice as wide, and it is spent only on Bitcoin, the only chain with a Taproot branch.
+        if (ScansTaproot(chain))
+        {
+            var trExtForced = ForcedThrough(null, floors.TaprootLastSeenUsedExternalIndex, includeZero: true);
+            var (h1, p1) = await ScanChainAsync(
+                mnemonic, chain, change: 0, UtxoScriptKind.Taproot, explorer, trExtForced,
+                collectAddresses: null, utxos,
+                Add, progressCount: () => scanned, onScan: () => scanned++, progress, ct);
+            trExtHigh = h1;
+            partial |= p1;
+
+            var trIntForced = ForcedThrough(
+                floors.TaprootLastIssuedInternalIndex, floors.TaprootLastSeenUsedInternalIndex, includeZero: false);
+            var (h2, p2) = await ScanChainAsync(
+                mnemonic, chain, change: 1, UtxoScriptKind.Taproot, explorer, trIntForced,
+                collectAddresses: null, utxos,
+                Add, progressCount: () => scanned, onScan: () => scanned++, progress, ct);
+            trIntHigh = h2;
+            partial |= p2;
+        }
+
+        return new UtxoScanResult(
+            chain, utxos, confirmed, pending, extHigh, intHigh, externalAddresses, partial,
+            trExtHigh, trIntHigh);
     }
+
+    /// <summary>
+    /// Which chains have a Taproot branch worth walking. Bitcoin only: Litecoin's Taproot is a
+    /// different deployment the wallet does not derive, and DOGE/BCH have none at all. Naming the
+    /// chains here — rather than trying every kind everywhere — keeps the scan from revealing
+    /// addresses that could not hold anything.
+    /// </summary>
+    public static bool ScansTaproot(ChainId chain) => chain == ChainId.Btc;
 
     /// <summary>The highest index the scan is obliged to reach; -1 means "no obligation, gap-scan from 0".</summary>
     private static long ForcedThrough(uint? lastIssued, uint? lastSeenUsed, bool includeZero)
@@ -89,6 +134,7 @@ public sealed class UtxoAccountScanner
         string mnemonic,
         ChainId chain,
         uint change,
+        UtxoScriptKind kind,
         IUtxoExplorer explorer,
         long forcedThrough,
         List<string>? collectAddresses,
@@ -138,7 +184,7 @@ public sealed class UtxoAccountScanner
 
             var batch = new List<DerivedUtxoAccount>(window);
             for (var k = 0; k < window; k++)
-                batch.Add(_deriver.DeriveBitcoinLikeAt(mnemonic, chain, change, index + (uint)k));
+                batch.Add(_deriver.DeriveBitcoinLikeAt(mnemonic, chain, change, index + (uint)k, kind: kind));
 
             var activities = await Task.WhenAll(batch.Select(a => ProbeAsync(a.Address)));
 
@@ -157,7 +203,7 @@ public sealed class UtxoAccountScanner
                 consumed = k + 1;
                 collectAddresses?.Add(batch[k].Address);
                 onScan();
-                progress?.Report(new UtxoScanProgress(chain, change, index + (uint)k, progressCount(), activity.Used));
+                progress?.Report(new UtxoScanProgress(chain, change, index + (uint)k, progressCount(), activity.Used, kind));
 
                 if (activity.Used)
                 {

@@ -28,7 +28,12 @@ public sealed record UtxoSpendPlan(
     long AmountSat,
     long DevFeeSat,
     long FeeSat,
-    long ChangeSat)
+    long ChangeSat,
+    /// <summary>Which branch the change address must be derived on (roadmap P2.1). Change goes back
+    /// to the same script type the inputs came from, because an output whose type differs from the
+    /// inputs is the one a chain-analysis heuristic reads as NOT the change — mixing types would
+    /// point at the recipient.</summary>
+    UtxoScriptKind ChangeKind = UtxoScriptKind.Default)
 {
     public bool NeedsChange => ChangeSat > 0;
 }
@@ -71,12 +76,37 @@ public sealed class HdUtxoSpender
     public HdUtxoSpender(HdAddressDeriver? deriver = null) => _deriver = deriver ?? new HdAddressDeriver();
 
     // Rough virtual sizes per input/output plus fixed overhead, by script type. Segwit (BTC/LTC
-    // P2WPKH) is far smaller than legacy (DOGE P2PKH).
+    // P2WPKH) is far smaller than legacy (DOGE P2PKH), and a Taproot key-path input is smaller again
+    // — one 64-byte Schnorr signature and no public key in the witness.
     private static (int InputVb, int OutputVb, int OverheadVb) SizeModel(ScriptPubKeyType t) => t switch
     {
+        ScriptPubKeyType.TaprootBIP86 => (58, 43, 11),
         ScriptPubKeyType.Segwit => (68, 31, 11),
         _ => (148, 34, 10),
     };
+
+    /// <summary>The virtual size of one input, by the branch it was received on. A plan that draws
+    /// from both branches has inputs of two different sizes, and estimating them all as one would
+    /// either overpay or — worse — underpay and stall the transaction in the mempool.</summary>
+    private static int InputVbFor(ChainId chain, UtxoScriptKind kind)
+    {
+        if (kind == UtxoScriptKind.Taproot) return SizeModel(ScriptPubKeyType.TaprootBIP86).InputVb;
+        var (_, _, _, scriptType) = HdAddressDeriver.BitcoinLikeParams(chain);
+        return SizeModel(scriptType).InputVb;
+    }
+
+    /// <summary>
+    /// The branch a plan's change must return to: the inputs' own, when they agree.
+    ///
+    /// The "change output looks like the inputs" heuristic cuts both ways. Send a Taproot spend's
+    /// change to a SegWit address and an observer reads the remaining Taproot output — the
+    /// recipient's — as the change, and the user as the owner of an address they do not control.
+    /// Matching the inputs keeps the wallet from volunteering that.
+    /// </summary>
+    public static UtxoScriptKind ChangeKindFor(IReadOnlyList<OwnedUtxo> inputs) =>
+        inputs.Count > 0 && inputs.All(u => u.Path.Kind == UtxoScriptKind.Taproot)
+            ? UtxoScriptKind.Taproot
+            : UtxoScriptKind.Default;
 
     /// <summary>
     /// Chooses confirmed inputs largest-first across all owned addresses and computes the fee and
@@ -105,7 +135,8 @@ public sealed class HdUtxoSpender
         if (!string.IsNullOrEmpty(request.Memo) && Encoding.ASCII.GetByteCount(request.Memo) > 80)
             return (null, "Memo is too long for an OP_RETURN (max 80 bytes).");
 
-        var (inVb, outVb, overhead) = SizeModel(scriptType);
+        var (_, outVb, overhead) = SizeModel(scriptType);
+        var taprootOutVb = SizeModel(ScriptPubKeyType.TaprootBIP86).OutputVb;
         var opReturnVb = string.IsNullOrEmpty(request.Memo) ? 0 : Encoding.ASCII.GetByteCount(request.Memo) + 11;
         var baseOutputs = 1 + (devFee > 0 ? 1 : 0); // recipient (+ dev fee)
 
@@ -114,13 +145,16 @@ public sealed class HdUtxoSpender
         if (candidates.Count == 0) return (null, "No confirmed spendable outputs.");
 
         var selected = new List<OwnedUtxo>();
-        long total = 0, fee = 0;
+        long total = 0, fee = 0, inputVb = 0;
         foreach (var u in candidates)
         {
             selected.Add(u);
             total += u.ValueSat;
-            // Assume a change output while selecting; drop it below if change is dust.
-            var vsize = selected.Count * inVb + (baseOutputs + 1) * outVb + overhead + opReturnVb;
+            inputVb += InputVbFor(chain, u.Path.Kind);
+            // Assume a change output while selecting; drop it below if change is dust. The change
+            // output is sized on the branch it will actually land on, not on the chain default.
+            var changeVb = ChangeKindFor(selected) == UtxoScriptKind.Taproot ? taprootOutVb : outVb;
+            var vsize = inputVb + baseOutputs * outVb + changeVb + overhead + opReturnVb;
             fee = (long)Math.Ceiling(vsize * request.FeeRateSatPerVByte);
             if (total >= request.AmountSat + devFee + fee) break;
         }
@@ -141,7 +175,8 @@ public sealed class HdUtxoSpender
             changeSat = 0;
         }
 
-        return (new UtxoSpendPlan(chain, selected, total, request.AmountSat, devFee, fee, changeSat), null);
+        return (new UtxoSpendPlan(
+            chain, selected, total, request.AmountSat, devFee, fee, changeSat, ChangeKindFor(selected)), null);
     }
 
     /// <summary>
