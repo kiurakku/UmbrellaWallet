@@ -7,14 +7,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 ## [4.8.2] — 2026-09-21 — the Windows build, for real
 
 The same wallet as 4.8.0 and 4.8.1, which both shipped for Linux only. The Windows build checks the
-Tor it bundles against the Tor Project's signature and stops if it cannot get the Tor Project's key —
-and from GitHub's build machine, no keyserver would hand it over in usable form, not even the Tor
-Project's own key directory. It stopped both times, as it should. Nothing was shipped unverified.
+Tor and Monero it bundles against their projects' own signatures, and stops if it cannot. It stopped
+twice, as it should — not because a signature was wrong, but because the newer gpg on GitHub's build
+machine could not read Windows paths, so the Tor Project's key never imported, from any source.
+4.8.1's entry blamed the keyservers; the build log, once it said why, showed otherwise. Nothing was
+shipped unverified.
 
-- The Tor Project's public signing key is now kept in this repository, reviewed like code. It is
-  still used only because its fingerprint is the pinned one; when Tor rotates a signing subkey the
-  check fails closed until the file is refreshed.
-- The build says which key source failed and why, instead of only that one did.
+- gpg is handed paths it can read (MSYS paths for Git for Windows' gpg).
+- The Tor Project's public signing key is kept in this repository, reviewed like code. It is used only
+  because its fingerprint is the pinned one; when Tor rotates a signing subkey the check fails closed
+  until the file is refreshed.
+- The build says which gpg ran, which key source failed and why.
 - A new CI job stages the bundled Tor and Monero, signatures required, on Windows for every change —
   so this is found on a pull request, not on release day.
 
