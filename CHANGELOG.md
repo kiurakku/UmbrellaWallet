@@ -42,6 +42,17 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### Fixed — a mistyped Cardano address could have been paid
+
+- The Cardano send path decoded the destination without checking its bech32 checksum. One wrong
+  character produced a different but structurally valid address — key hashes nobody holds — and a
+  payment to it would have been accepted by the network and lost. The checksum is now verified before
+  anything is built, and every single-character typo of a real address is refused in the tests.
+- The address inspector now calls a mistyped `addr1…` address **invalid** instead of "unverified", and a
+  testnet (`addr_test`) address is refused on mainnet.
+- One shared Bech32 codec, checked against BIP-173's own test strings, replaces the two private copies
+  the Cardano code carried.
+
 ### Stellar: receive and balance
 
 - A Stellar (XLM) address from the same phrase, derived by SEP-0005 — the standard LOBSTR, Solar and

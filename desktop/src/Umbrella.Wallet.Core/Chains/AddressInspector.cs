@@ -71,8 +71,11 @@ public static class AddressInspector
         if (a.StartsWith('G') && a.Length == 56)
             return new("XLM", StellarKeys.IsValidAccountId(a) ? AddressValidity.Valid : AddressValidity.Invalid);
 
+        // Cardano: a bech32 checksum, verified — one mistyped character is caught, not paid.
+        if (a.StartsWith("addr1", OIC))
+            return new("ADA", Umbrella.Wallet.Core.Cardano.AdaTransfer.IsValidAddress(a) ? AddressValidity.Valid : AddressValidity.Invalid);
+
         // Recognised by shape, but a deep check needs a chain-specific library we do not bundle.
-        if (a.StartsWith("addr1", OIC)) return new("ADA", AddressValidity.Unverified);
         if (a.Length == 48 && (a.StartsWith("UQ") || a.StartsWith("EQ") || a.StartsWith("kQ") || a.StartsWith("0Q")))
             return new("TON", AddressValidity.Unverified);
         if ((a.StartsWith('4') || a.StartsWith('8')) && a.Length is 95 or 106)

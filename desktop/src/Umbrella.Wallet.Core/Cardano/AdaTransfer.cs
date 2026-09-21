@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Security.Cryptography;
 using Org.BouncyCastle.Crypto.Digests;
+using Umbrella.Wallet.Core.Codecs;
 using Umbrella.Wallet.Core.Derivation;
 
 namespace Umbrella.Wallet.Core.Cardano;
@@ -111,30 +112,36 @@ public static class AdaTransfer
         return w.ToArray();
     }
 
-    /// <summary>Decodes a Cardano bech32 address (addr1…) to its raw bytes (header ‖ key hashes).</summary>
+    /// <summary>Cardano addresses are longer than BIP-173's 90 characters; CIP-5 tooling allows this.</summary>
+    private const int MaxAddressLength = 1023;
+
+    /// <summary>
+    /// Decodes a mainnet Cardano address (addr1…) to its raw bytes (header ‖ key hashes), VERIFYING
+    /// its bech32 checksum first.
+    ///
+    /// This used to drop the six checksum characters unread. A single mistyped character therefore
+    /// decoded to different key hashes — a structurally valid address that no one holds — and the
+    /// send path would have paid it. Now a typo is refused before anything is built.
+    /// </summary>
     public static byte[] DecodeAddress(string bech32)
     {
-        var s = bech32.Trim().ToLowerInvariant();
-        var sep = s.LastIndexOf('1');
-        if (sep < 1 || sep + 7 > s.Length) throw new FormatException("Not a bech32 address.");
-        var dataPart = s[(sep + 1)..];
+        if (!Bech32.TryDecode(bech32?.Trim(), out var hrp, out var data, MaxAddressLength))
+            throw new FormatException("That is not a valid Cardano address (the checksum does not match).");
+        if (hrp != "addr")
+            throw new FormatException("That is not a Cardano MAINNET address.");
+        if (data.Length < 29)
+            throw new FormatException("That Cardano address is too short to hold a key hash.");
+        return data;
+    }
 
-        var values = new int[dataPart.Length];
-        for (var i = 0; i < dataPart.Length; i++)
-        {
-            var idx = Charset.IndexOf(dataPart[i]);
-            if (idx < 0) throw new FormatException("Invalid bech32 character in address.");
-            values[i] = idx;
-        }
-
-        // Drop the 6-symbol checksum, regroup 5-bit → 8-bit (no padding on a valid address).
-        var fiveBit = values[..^6];
-        return ConvertBits(fiveBit, 5, 8, pad: false);
+    /// <summary>True for a mainnet Cardano address whose checksum is correct.</summary>
+    public static bool IsValidAddress(string? address)
+    {
+        try { DecodeAddress(address ?? ""); return true; }
+        catch (FormatException) { return false; }
     }
 
     // --- helpers ---------------------------------------------------------------------------------
-
-    private const string Charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 
     private static byte[] Sha512(byte[] data)
     {
@@ -158,27 +165,6 @@ public static class AdaTransfer
         var offset = 0;
         foreach (var p in parts) { p.CopyTo(result, offset); offset += p.Length; }
         return result;
-    }
-
-    private static byte[] ConvertBits(int[] data, int from, int to, bool pad)
-    {
-        var acc = 0;
-        var bits = 0;
-        var result = new List<byte>();
-        var maxv = (1 << to) - 1;
-        foreach (var value in data)
-        {
-            acc = (acc << from) | value;
-            bits += from;
-            while (bits >= to)
-            {
-                bits -= to;
-                result.Add((byte)((acc >> bits) & maxv));
-            }
-        }
-
-        if (pad && bits > 0) result.Add((byte)((acc << (to - bits)) & maxv));
-        return result.ToArray();
     }
 
     /// <summary>A minimal deterministic CBOR writer — just the definite-length items a Shelley tx needs.</summary>
