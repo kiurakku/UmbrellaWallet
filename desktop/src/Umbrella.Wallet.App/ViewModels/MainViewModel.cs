@@ -1884,7 +1884,7 @@ public partial class MainViewModel : ViewModelBase
     // stays focused on wallet actions (roadmap §6.1).
     public bool IsDiscover => ActiveSection == "Discover";
     // The Discover nav item stays highlighted while the user is inside any of its sub-pages.
-    public bool IsDiscoverGroup => IsDiscover || IsMarket || IsBuy || IsP2p || IsNews;
+    public bool IsDiscoverGroup => IsDiscover || IsMarket || IsBuy || IsP2p || IsNews || IsConnect || IsNfts || IsStaking;
     // Five-item primary nav (§6.1): Receive/Send live under Wallet, Transactions under Activity, so
     // those nav items stay highlighted while the user is on a sub-screen reached from them.
     public bool IsWalletGroup => IsPortfolio || IsReceive || IsSend;
