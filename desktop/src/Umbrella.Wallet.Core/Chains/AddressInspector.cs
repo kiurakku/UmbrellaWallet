@@ -67,6 +67,10 @@ public static class AddressInspector
         if (a.StartsWith('r') && a.Length is >= 25 and <= 35)
             return new("XRP", XrpAddress.IsValid(a) ? AddressValidity.Valid : AddressValidity.Invalid);
 
+        // Cosmos Hub: bech32 with the cosmos prefix — checksum verified.
+        if (a.StartsWith("cosmos1", OIC))
+            return new("ATOM", CosmosHub.IsValidAddress(a) ? AddressValidity.Valid : AddressValidity.Invalid);
+
         // Stellar: StrKey carries a CRC16 checksum, so this is definitive too.
         if (a.StartsWith('G') && a.Length == 56)
             return new("XLM", StellarKeys.IsValidAccountId(a) ? AddressValidity.Valid : AddressValidity.Invalid);

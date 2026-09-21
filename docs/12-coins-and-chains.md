@@ -34,6 +34,7 @@
 | **ZEC** | Zcash | — | ✅ | — | Receive only for now |
 | **XRP** | XRP Ledger | — | ✅ | — | **Receive and balance only.** An address becomes an account once it receives the network's reserve |
 | **XLM** | Stellar | — | ✅ | — | **Receive and balance only.** An address becomes an account once someone funds it with the minimum balance |
+| **ATOM** | Cosmos Hub | — | ✅ | — | **Receive and balance only.** The balance is *available* ATOM — staked ATOM is not counted |
 
 > Any ERC-20 token (LINK, UNI, AAVE, SHIB, PEPE, etc.) is automatically detected and its
 > balance shown when you link an Ethereum address. Same for TRC-20 on Tron and SPL on Solana.
@@ -496,6 +497,6 @@ threat model names each one as an open gap rather than implying it away.
 | 21 | zkSync Era | ETH | ⚠️ Partial | Receive + balance only |
 | 22 | XRP Ledger | XRP | ⚠️ Partial | Receive + balance only |
 | 23 | Stellar | XLM | ⚠️ Partial | Receive + balance only |
-| 24 | Cosmos | ATOM | 📅 Planned | — |
+| 24 | Cosmos | ATOM | ⚠️ Partial | Receive + available balance only |
 | 25 | Near | NEAR | 📅 Planned | — |
 | 26 | Polkadot | DOT | 📅 Planned | — |

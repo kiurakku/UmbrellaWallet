@@ -101,6 +101,13 @@ public static class ChainCatalog
                 CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. A Stellar address only becomes an account once someone funds it with the network's minimum balance, which stays locked while the account exists."),
+            // Cosmos Hub — receive and balance (roadmap N.6). BIP44 coin type 118, secp256k1, the
+            // m/44'/118'/0'/0/0 that Keplr, Leap and Ledger derive, pinned to cosmjs's own wallet test.
+            new ChainInfo(
+                ChainId.Atom, "ATOM", "Cosmos Hub", ChainSupportLevel.Supported, "BIP44 · secp256k1", "m/44'/118'/0'/0/0",
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                HasTokens: false, Maturity: ChainMaturity.Beta,
+                PrivacyNote: "Public ledger. The balance shown is available ATOM only — ATOM you have staked with a validator is not included."),
         ];
 
         ById = All.ToDictionary(c => c.Id);

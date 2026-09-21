@@ -99,7 +99,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | N.3 | Send **any SPL** / full Jetton send (Jetton balances already exist) | 🟡 **Jetton send done** — TEP-74 body pinned cell-hash-for-cell-hash against `@ton/core`, message addressed to the sender's own jetton wallet with TON attached for gas, and a row whose jetton-wallet address is unknown still says “Receive only”. **SPL not started**: the wallet does not read SPL token balances yet, so there is nothing to send |
 | N.4 | **XRP** | 🟡 **Receive + balance.** `m/44'/144'/0'/0/0`, the path Xaman, Ledger and Trust use — the key pinned to xrpl.js's own `fromMnemonic` test, the encoding to XRPL's documented example. Balance from `account_info` at the last *validated* ledger through a user-choosable server (XRPL Labs cluster, or Ripple's); an address the ledger does not have yet is a real zero, anything else is unknown. **Send off** until a signed Payment is pinned against the reference library |
 | N.5 | **Stellar (XLM)** | 🟡 **Receive + balance.** SEP-0005 (SLIP-0010 ed25519, `m/44'/148'/0'`) pinned to the SEP's own three vectors; StrKey `G…` with its CRC16 checked, so a typo'd Stellar address is refused on paste. Balance from Horizon through a choosable server (SDF, LOBSTR); a 404 is an unfunded address — a real zero — anything else is unknown. **Send off** until a signed transaction is pinned against the reference SDK |
-| N.6 | **Cosmos (ATOM)** / IBC | 📅 |
+| N.6 | **Cosmos (ATOM)** / IBC | 🟡 **Receive + available balance.** `m/44'/118'/0'/0/0` pinned to cosmjs's own wallet test (key and address); the address checksum is verified by the shared BIP-173 codec, so a typo'd or wrong-prefix (e.g. `osmo1…`) address is refused. Balance: the bank module's uatom through a choosable server (PublicNode, Keplr) — **staked ATOM is not counted**, and the chain's note says so. **Send and IBC off** |
 | N.7 | **NEAR** | 📅 |
 | N.8 | **Polkadot (DOT)** | 📅 |
 | N.9 | THORChain expansion / swap reliability (expiry, slippage, refund, failed broadcast) | 📅 after core |
@@ -168,7 +168,8 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | ZEC | ✅ | ✅ | ❌ | 🟡 | transparent `t1…` only |
 | XRP | ✅ | ✅ | ❌ | ❌ | receive + balance (N.4); send once a signed Payment is proven |
 | XLM | ✅ | ✅ | ❌ | ❌ | receive + balance (N.5); send once a signed transaction is proven |
-| ATOM / NEAR / DOT | — | — | — | — | 📅 Planned |
+| ATOM | ✅ | ✅ | ❌ | ❌ | receive + available balance (N.6); staked ATOM not counted |
+| NEAR / DOT | — | — | — | — | 📅 Planned |
 
 ---
 

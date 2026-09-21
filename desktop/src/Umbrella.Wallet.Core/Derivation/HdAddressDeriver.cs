@@ -95,6 +95,7 @@ public sealed class HdAddressDeriver
             ChainId.Zec => DeriveZcashTransparent(masterKey, addressIndex),
             ChainId.Xrp => DeriveXrp(masterKey, addressIndex),
             ChainId.Xlm => DeriveStellar(parsed, addressIndex, passphrase),
+            ChainId.Atom => DeriveCosmos(masterKey, addressIndex),
             ChainId.Eth => DeriveEthereum(masterKey, addressIndex),
             ChainId.Tron => DeriveTron(masterKey, addressIndex),
             ChainId.Sol => DeriveSolana(parsed, addressIndex, passphrase),
@@ -456,6 +457,25 @@ public sealed class HdAddressDeriver
         var pubKey = masterKey.Derive(path).PrivateKey.PubKey;   // compressed, 33 bytes
         var accountId = XrpAddress.AccountIdFromPublicKey(pubKey.ToBytes());
         return new ReceiveAddress(ChainId.Xrp, XrpAddress.Encode(accountId), FormatPath(path), addressIndex);
+    }
+
+    /// <summary>
+    /// Cosmos Hub address at m/44'/118'/0'/0/{index}: bech32("cosmos", RIPEMD160(SHA256(compressed
+    /// key))) (roadmap N.6). Pinned to cosmjs's DirectSecp256k1HdWallet test — key and address.
+    /// </summary>
+    private static ReceiveAddress DeriveCosmos(ExtKey masterKey, uint addressIndex)
+    {
+        var path = new KeyPath($"44'/118'/0'/0/{addressIndex}");
+        var accountId = masterKey.Derive(path).PrivateKey.PubKey.Hash.ToBytes();   // RIPEMD160(SHA256(pubkey))
+        return new ReceiveAddress(ChainId.Atom, CosmosHub.AddressFromAccountId(accountId), FormatPath(path), addressIndex);
+    }
+
+    /// <summary>The compressed public key behind the Cosmos address, for tests and for a future signer.</summary>
+    public PubKey DeriveCosmosPublicKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
+        return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"44'/118'/0'/0/{addressIndex}")).PrivateKey.PubKey;
     }
 
     /// <summary>The compressed public key behind the XRP address, for tests and for a future signer.</summary>

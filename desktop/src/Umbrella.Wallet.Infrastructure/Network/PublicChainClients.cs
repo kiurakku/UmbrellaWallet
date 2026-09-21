@@ -337,6 +337,7 @@ public sealed class PublicChainBalanceClient
                 ChainId.Ada => await GetAdaAsync(address, cancellationToken),
                 ChainId.Xrp => await GetXrpAsync(address, cancellationToken),
                 ChainId.Xlm => await GetXlmAsync(address, cancellationToken),
+                ChainId.Atom => await GetAtomAsync(address, cancellationToken),
                 _ => null,
             };
         }
@@ -364,6 +365,32 @@ public sealed class PublicChainBalanceClient
         return XrpLedger.ParseAccountInfo(result) is { } xrp
             ? new ChainBalance(ChainId.Xrp, address, xrp, "XRP")
             : null;
+    }
+
+    /// <summary>The Cosmos Hub REST root: the user's chosen server, or PublicNode.</summary>
+    private static string AtomRoot => ChainEndpoints.Resolve("ATOM", "https://cosmos-rest.publicnode.com");
+
+    /// <summary>Available (not staked) ATOM from the bank module (roadmap N.6).</summary>
+    private static async Task<ChainBalance?> GetAtomAsync(string address, CancellationToken ct)
+    {
+        if (!CosmosHub.IsValidAddress(address)) return null;
+
+        using var res = await Http.GetAsync(
+            $"{AtomRoot}/cosmos/bank/v1beta1/balances/{address}/by_denom?denom={CosmosHub.Denom}", ct);
+        JsonDocument? doc = null;
+        try
+        {
+            if (res.IsSuccessStatusCode)
+                doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+
+            return CosmosHub.ParseBalance((int)res.StatusCode, doc?.RootElement) is { } atom
+                ? new ChainBalance(ChainId.Atom, address, atom, "ATOM")
+                : null;
+        }
+        finally
+        {
+            doc?.Dispose();
+        }
     }
 
     /// <summary>Stellar's Horizon root: the user's chosen server, or the SDF's.</summary>

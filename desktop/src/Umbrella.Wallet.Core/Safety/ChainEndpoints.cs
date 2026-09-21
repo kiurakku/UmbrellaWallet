@@ -96,6 +96,13 @@ public static class ChainEndpoints
             ],
             // XRP Ledger JSON-RPC. The XRPL Labs cluster load-balances community nodes; Ripple runs the
             // other two. Any rippled or Clio server you run yourself works the same way.
+            // Cosmos SDK REST (LCD), two independent operators. cosmos.directory also answers, but it is
+            // already the THORChain swap route; keeping balances off it keeps the two apart.
+            ["ATOM"] =
+            [
+                new("https://cosmos-rest.publicnode.com", "PublicNode (Allnodes)"),
+                new("https://lcd-cosmoshub.keplr.app", "Keplr"),
+            ],
             // Horizon, Stellar's REST API. SDF runs the default; LOBSTR runs a public one too.
             ["XLM"] =
             [

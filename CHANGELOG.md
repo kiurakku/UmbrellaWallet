@@ -42,6 +42,17 @@ Fund-safety and honesty work from the roadmap's P0 queue. Nothing here changes w
   hides an IP; it does not make a public ledger private. It now says non-custodial, no account, and
   "hides your IP" — in every language, with a test that refuses absolute privacy claims in any of them.
 
+### Cosmos Hub: receive and balance
+
+- A Cosmos Hub (ATOM) address at `m/44'/118'/0'/0/0` — what Keplr, Leap and Ledger derive — checked
+  against cosmjs's own wallet test, key and address.
+- The balance is your **available** ATOM, read from a server you can change (PublicNode by default, or
+  Keplr's). ATOM you have staked with a validator is not part of that number, and the wallet says so
+  rather than let the figure look like everything you own.
+- A pasted `cosmos1…` address is recognised and its checksum verified; an address for another Cosmos
+  chain (`osmo1…` and the like) is not taken for a Hub one.
+- **Not yet:** sending ATOM, staking, IBC.
+
 ### Fixed — a mistyped Cardano address could have been paid
 
 - The Cardano send path decoded the destination without checking its bech32 checksum. One wrong

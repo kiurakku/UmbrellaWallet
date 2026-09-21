@@ -4870,6 +4870,7 @@ public partial class MainViewModel : ViewModelBase
         // XRP classic address: the checksum makes an 'r…' string unambiguous, so no length guessing.
         if (a.StartsWith('r') && Umbrella.Wallet.Core.Chains.XrpAddress.IsValid(a)) return "XRP";
         if (a.StartsWith('G') && Umbrella.Wallet.Core.Chains.StellarKeys.IsValidAccountId(a)) return "XLM";
+        if (a.StartsWith("cosmos1", StringComparison.OrdinalIgnoreCase) && Umbrella.Wallet.Core.Chains.CosmosHub.IsValidAddress(a)) return "ATOM";
         if ((a.StartsWith('1') || a.StartsWith('3')) && a.Length is >= 26 and <= 35) return "BTC";
         return null; // Solana / other base58 is ambiguous — keep the selected network
     }
@@ -5353,6 +5354,7 @@ public partial class MainViewModel : ViewModelBase
         "ZEC" or "ZCASH" => ChainId.Zec,
         "XRP" or "RIPPLE" or "XRP LEDGER" => ChainId.Xrp,
         "XLM" or "STELLAR" or "LUMENS" => ChainId.Xlm,
+        "ATOM" or "COSMOS" or "COSMOS HUB" => ChainId.Atom,
         _ => null,
     };
 
@@ -5416,6 +5418,7 @@ public partial class MainViewModel : ViewModelBase
         ChainId.Zec => "ZEC",
         ChainId.Xrp => "XRP",
         ChainId.Xlm => "XLM",
+        ChainId.Atom => "ATOM",
         _ => chain.ToString().ToUpperInvariant(),
     };
 

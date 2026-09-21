@@ -18,4 +18,5 @@ public enum ChainId
     Zec,
     Xrp,
     Xlm,
+    Atom,
 }
