@@ -273,6 +273,7 @@ public partial class MainViewModel
         HasSendPrivacy = false;
         _sendQuote = null;
         _tonQuote = null;
+        _splQuote = null;
         _sendTokenSymbol = null;
         _sendTokenAmount = 0m;
         _payjoinPlanned = false;
@@ -922,8 +923,9 @@ public partial class MainViewModel
 
         var onTron = IsTronTokenKey(sendKey);
         var onTon = IsJettonKey(sendKey);
-        var fundingSymbol = onTon ? "TON" : onTron ? "TRX" : "ETH";
-        var fundingChain = onTon ? "TON" : onTron ? "TRON" : "Ethereum";
+        var onSolana = IsSplKey(sendKey);
+        var fundingSymbol = onSolana ? "SOL" : onTon ? "TON" : onTron ? "TRX" : "ETH";
+        var fundingChain = onSolana ? "Solana" : onTon ? "TON" : onTron ? "TRON" : "Ethereum";
 
         var from = Accounts.FirstOrDefault(a => a.Symbol == fundingSymbol && a.SupportStatus is "Ready" or "Receive only");
         if (from is null || !IsRealAddress(from.Address))
@@ -949,6 +951,31 @@ public partial class MainViewModel
         await RunBusyAsync(async () =>
         {
             StatusMessage = Loc.Instance["status.reviewTransfer"];
+
+            if (onSolana)
+            {
+                // Everything the transfer depends on — the mint's program and decimals, the balance in
+                // this wallet's token account, what the destination is and whether its token account
+                // exists — is read from the chain by the sender, not taken from the holdings row.
+                var (splQuote, splError) = await _splSender.PrepareAsync(
+                    from.Address, token.Contract, token.Symbol, SendTo.Trim(), amount);
+
+                if (splQuote is null)
+                {
+                    SendError = splError ?? Loc.Instance["send.errPrepareFailed"];
+                    return;
+                }
+
+                _splQuote = splQuote;
+                _sendTokenAmount = amount;
+                HasSendQuote = true;
+                SendQuoteSummary = $"Send {Fmt(amount)} {token.Symbol}  →  {SendTo.Trim()}";
+                SendQuoteFee = splQuote.CreatesAccount
+                    ? string.Format(Loc.Instance["send.splFeeCreates"], Fmt(splQuote.FeeSol), Fmt(splQuote.RentSol), token.Symbol)
+                    : string.Format(Loc.Instance["send.splFee"], Fmt(splQuote.FeeSol));
+                StatusMessage = Loc.Instance["status.reviewTransfer"];
+                return;
+            }
 
             if (onTon)
             {
@@ -1030,6 +1057,7 @@ public partial class MainViewModel
     {
         var haveQuote = _sendQuote is not null || _btcQuote is not null || _solQuote is not null
                         || _tonQuote is not null || _tronQuote is not null || _adaQuote is not null
+                        || _splQuote is not null
                         || _xlmQuote is not null || _nearQuote is not null || _xrpQuote is not null
                         || _atomQuote is not null
                         || (_sendSymbol == "XMR" && _moneroAmount > 0);
@@ -1211,6 +1239,40 @@ public partial class MainViewModel
                     var (ok, txId, error) = await _tronSender.SignAndBroadcastAsync(quote, key);
                     await FinishSendAsync(ok, txId, error, quote.Symbol, quote.Amount, quote.To,
                         txId is null ? "" : $"tronscan.org/#/transaction/{txId}");
+                    break;
+                }
+
+                // An SPL token (roadmap N.3), matched on the quote like the other tokens.
+                case not null when _splQuote is not null:
+                {
+                    var quote = _splQuote;
+                    var priv = _deriver.DeriveSolanaPrivateKey(_unlockedMnemonic!);
+                    try
+                    {
+                        var outcome = await _splSender.SignAndBroadcastAsync(quote, priv);
+                        var explorer = outcome.Signature is null ? "" : $"solscan.io/tx/{outcome.Signature}";
+
+                        if (outcome.Outcome is SolSubmitOutcome.Unknown or SolSubmitOutcome.Pending)
+                        {
+                            // It may still land until its blockhash expires. Never offered as a retry.
+                            ClearSendQuotes();
+                            SendTo = string.Empty;
+                            SendAmount = string.Empty;
+                            SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
+                            StatusMessage = Loc.Instance["status.broadcastFailed"];
+                            PushActivity("Sent", quote.Symbol, $"-{Fmt(quote.Amount)}", Shorten(quote.To), "now",
+                                explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
+                            break;
+                        }
+
+                        await FinishSendAsync(outcome.Outcome == SolSubmitOutcome.Included, outcome.Signature,
+                            outcome.Message, quote.Symbol, quote.Amount, quote.To, explorer);
+                    }
+                    finally
+                    {
+                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
+                    }
+
                     break;
                 }
 
@@ -1461,6 +1523,7 @@ public partial class MainViewModel
         _solQuote = null;
         _tronQuote = null;
         _tonQuote = null;
+        _splQuote = null;
         _adaQuote = null;
         _xlmQuote = null;
         _nearQuote = null;

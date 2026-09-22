@@ -1091,6 +1091,7 @@ public partial class MainViewModel : ViewModelBase
     private SolSendQuote? _solQuote;
     private TronSendQuote? _tronQuote;
     private TonSendQuote? _tonQuote;
+    private SplSendQuote? _splQuote;
     private AdaSendQuote? _adaQuote;
     private XlmSendQuote? _xlmQuote;
     private NearSendQuote? _nearQuote;
@@ -1209,6 +1210,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly SolanaTransactionSender _solSender = new();
     private readonly TronTransactionSender _tronSender = new();
     private readonly TonTransactionSender _tonSender = new();
+    private readonly SplTokenSender _splSender = new();
     private readonly CardanoTransactionSender _adaSender = new();
     private readonly StellarTransactionSender _xlmSender = new();
     private readonly NearTransactionSender _nearSender = new();
@@ -4151,7 +4153,8 @@ public partial class MainViewModel : ViewModelBase
             // Jettons on our OWN TON account. USD-tether on TON is how a great many people hold
             // dollars on Telegram's chain, and until now the wallet showed the native TON and nothing
             // else — so that balance simply was not there.
-            // SPL tokens at the wallet's Solana address (roadmap N.3). Balance only in this build.
+            // SPL tokens at the wallet's Solana address (roadmap N.3). Tokens of the original token
+            // program can be sent; Token-2022 ones stay receive-only (their rows say so).
             var solAccount = Accounts.FirstOrDefault(a => a.Symbol == "SOL" && a.SupportStatus == "Ready");
             if (solAccount is not null && IsRealAddress(solAccount.Address))
                 await AddSolTokenRowsAsync(solAccount.Address, "Receive only", prices, ct);
@@ -4355,7 +4358,9 @@ public partial class MainViewModel : ViewModelBase
             // picker will not offer (roadmap N.3).
             var rowStatus = marker.StartsWith("Jetton", StringComparison.OrdinalIgnoreCase)
                 ? (tok.TokenWallet.Length > 0 ? "Ready" : status)
-                : status;
+                : marker.StartsWith("SPL", StringComparison.OrdinalIgnoreCase)
+                    ? (tok.Sendable ? "Ready" : status)
+                    : status;
 
             Accounts.Add(new WalletAccountViewModel(
                 tok.Symbol, $"{tok.Name} · {suffix}", rowStatus,

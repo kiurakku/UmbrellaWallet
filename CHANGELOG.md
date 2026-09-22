@@ -4,7 +4,7 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased] — Stellar, NEAR, XRP and Cosmos send, and the home screen from the gold design
+## [Unreleased] — Stellar, NEAR, XRP, Cosmos and Solana-token send, and the home screen from the gold design
 
 ### Stellar (XLM) can send
 
@@ -72,6 +72,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 - The explorers a sent transaction links to — StellarExpert, NearBlocks, the XRPL Foundation's
   explorer and Mintscan — are listed as link-only, as the others were. A test fails the build if the
   Send screen links anywhere the page does not name.
+
+### Solana tokens (SPL) can send
+
+- USDC, USDT, BONK, JUP and every other token of Solana's original token program, from the Send
+  picker. The transfer is TransferChecked — the token program itself re-checks the mint and its
+  decimals — between the two wallets' associated token accounts.
+- When the recipient has no account for that token yet, the same transaction creates it and your SOL
+  pays its rent; the review says exactly how much, read from the network.
+- Before signing: the mint's program and decimals are read from the chain, not from the holdings
+  list; a token account or a program address given as the destination is refused — ask for the
+  wallet address.
+- Checked against mainnet itself: the account derivation reproduces the accounts real wallets hold
+  their USDC and USDT in, and a validator runs the whole transaction (create + transfer) in a live
+  simulation.
+- **Limits:** Token-2022 tokens (PayPal USD among them) stay receive-only — their transfer fees and
+  hooks are not handled yet, and their rows say so.
 
 ### Solana sends are followed to the end
 

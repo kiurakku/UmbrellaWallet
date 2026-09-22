@@ -29,6 +29,10 @@ public partial class MainViewModel
     /// the token; the message goes to the sender's own jetton wallet, carried on the row.</summary>
     public const string JettonSendPrefix = "JETTON:";
 
+    /// <summary>And for an SPL token on Solana (roadmap N.3). The key is the MINT; the transfer moves
+    /// it between the two wallets' associated token accounts, derived from the mint.</summary>
+    public const string SplSendPrefix = "SPL:";
+
     /// <summary>The contract a picker key refers to, or null when the key is a native coin.</summary>
     public static string? ContractFromSendKey(string? key)
     {
@@ -39,6 +43,8 @@ public partial class MainViewModel
             return key[TronTokenSendPrefix.Length..];
         if (key.StartsWith(JettonSendPrefix, StringComparison.OrdinalIgnoreCase))
             return key[JettonSendPrefix.Length..];
+        if (key.StartsWith(SplSendPrefix, StringComparison.OrdinalIgnoreCase))
+            return key[SplSendPrefix.Length..];
 
         return null;
     }
@@ -52,6 +58,11 @@ public partial class MainViewModel
     /// with TON attached for gas, which is a different shape again.</summary>
     public static bool IsJettonKey(string? key) =>
         key is not null && key.StartsWith(JettonSendPrefix, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>True when a picker key names an SPL token — the fee (and any new account's rent) comes
+    /// out of SOL, and the transfer is a TransferChecked between associated token accounts.</summary>
+    public static bool IsSplKey(string? key) =>
+        key is not null && key.StartsWith(SplSendPrefix, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Everything the Send picker offers: the native coins this build can broadcast, plus every
@@ -82,7 +93,10 @@ public partial class MainViewModel
             .Where(a => a.Derivation.StartsWith("ERC20", StringComparison.OrdinalIgnoreCase)
                         || a.Derivation.StartsWith("TRC20", StringComparison.OrdinalIgnoreCase)
                         || (a.Derivation.StartsWith("Jetton", StringComparison.OrdinalIgnoreCase)
-                            && a.IsSpendableJetton))
+                            && a.IsSpendableJetton)
+                        // An SPL token only when its row says Ready: a Token-2022 mint is shown, not offered.
+                        || (a.Derivation.StartsWith("SPL", StringComparison.OrdinalIgnoreCase)
+                            && a.SupportStatus == "Ready"))
             .Where(a => a.Amount > 0)
             // An unsolicited airdrop token is usually a lure; it stays visible in Holdings behind the
             // spam fold, but it does not get promoted into the send picker.
@@ -94,8 +108,9 @@ public partial class MainViewModel
             {
                 var tron = a.Derivation.StartsWith("TRC20", StringComparison.OrdinalIgnoreCase);
                 var jetton = a.Derivation.StartsWith("Jetton", StringComparison.OrdinalIgnoreCase);
-                var prefix = jetton ? JettonSendPrefix : tron ? TronTokenSendPrefix : TokenSendPrefix;
-                var network = jetton ? "send.jettonNetwork" : tron ? "send.trc20Network" : "send.erc20Network";
+                var spl = a.Derivation.StartsWith("SPL", StringComparison.OrdinalIgnoreCase);
+                var prefix = spl ? SplSendPrefix : jetton ? JettonSendPrefix : tron ? TronTokenSendPrefix : TokenSendPrefix;
+                var network = spl ? "send.splNetwork" : jetton ? "send.jettonNetwork" : tron ? "send.trc20Network" : "send.erc20Network";
 
                 return new SendOption(prefix + a.Contract, a.Name, Loc.Instance[network], Ticker: a.Symbol);
             })

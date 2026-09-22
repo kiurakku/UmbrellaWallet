@@ -1048,7 +1048,7 @@ public sealed class PublicChainBalanceClient
     {
         if (string.IsNullOrWhiteSpace(address)) return [];
 
-        var holdings = new List<Umbrella.Wallet.Core.Chains.SplHolding>();
+        var holdings = new List<(Umbrella.Wallet.Core.Chains.SplHolding Holding, string Program)>();
         foreach (var program in new[] { Umbrella.Wallet.Core.Chains.SolanaTokens.TokenProgram, Umbrella.Wallet.Core.Chains.SolanaTokens.Token2022Program })
         {
             var box = await FirstAnswerAsync("SOL", "https://api.mainnet-beta.solana.com",
@@ -1065,16 +1065,18 @@ public sealed class PublicChainBalanceClient
                 cancellationToken);
 
             if (box is null) return null;
-            holdings.AddRange(box.Items);
+            holdings.AddRange(box.Items.Select(h => (h, program)));
         }
 
-        return holdings.Select(h =>
+        return holdings.Select(x =>
         {
+            var h = x.Holding;
             var known = Umbrella.Wallet.Core.Chains.SolanaTokens.KnownMints.TryGetValue(h.Mint, out var id);
             return new TokenBalance(
                 known ? id.Symbol : "SPL",
                 known ? id.Name : $"Unverified token {h.Mint[..4]}…{h.Mint[^4..]}",
-                h.Amount, h.Mint, h.Decimals, Unverified: !known);
+                h.Amount, h.Mint, h.Decimals, Unverified: !known,
+                Sendable: x.Program == Umbrella.Wallet.Core.Chains.SolanaTokens.TokenProgram);
         }).ToList();
     }
 
@@ -1260,7 +1262,10 @@ public sealed record TokenBalance(
     string TokenWallet = "",
     /// <summary>True when the wallet cannot vouch for the token's identity (an SPL mint it does not
     /// know): shown by its mint, and folded away with suspected spam unless it has a market price.</summary>
-    bool Unverified = false);
+    bool Unverified = false,
+    /// <summary>For an SPL token: true when this build can send it — a mint of the original token
+    /// program. Token-2022 mints can carry transfer fees and hooks and stay receive-only.</summary>
+    bool Sendable = false);
 
 /// <summary>An NFT collection held at an address (name + count only — no image fetch, for privacy).</summary>
 public sealed record NftHolding(string Name, string Symbol, int Count, string Standard, string Network);

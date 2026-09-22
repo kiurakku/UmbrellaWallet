@@ -53,10 +53,12 @@
 > goes to that contract with about 0.05 TON attached for gas, part of which comes back. A jetton
 > whose wallet address is unknown still says **Receive only** rather than offering a send.
 >
-> **Read but not yet sendable:** SPL tokens on Solana. Their balances are read under both token
-> programs (the original and Token-2022), named for the well-known mints — each checked on-chain — and
-> otherwise shown by mint address as *unverified*, folded away with suspected spam until they have a
-> market price. Sending them is roadmap N.3's remaining half.
+> **SPL tokens on Solana send too.** Their balances are read under both token programs (the original
+> and Token-2022), named for the well-known mints — each checked on-chain — and otherwise shown by mint
+> address as *unverified*, folded away with suspected spam until they have a market price. Tokens of
+> the original program can be sent: the fee is paid in SOL, and when the recipient has no account for
+> that token yet the transfer creates one and your SOL pays its rent — the review says how much.
+> Token-2022 tokens (PayPal USD among them) stay **Receive only** for now.
 
 ---
 
@@ -433,7 +435,7 @@ The wallet works like this:
 |---------|-----------------------|
 | Send any ERC-20 token | Currently send ETH native; soon send USDT, USDC, LINK, etc. on ETH |
 | Send any TRC-20 token | Send any token on Tron, not just USDT |
-| Send any SPL token | Send BONK, WIF, RAY etc. on Solana |
+| Send Token-2022 tokens | PayPal USD and other Token-2022 mints — the original-program SPL tokens already send |
 | Send on zkSync Era | Its balance already shows; sending needs the gas limit to come from the chain |
 
 ### Medium term (months 3-6)

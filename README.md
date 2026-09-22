@@ -171,7 +171,7 @@ is the most common way people lose money.
 | Dogecoin (DOGE) | ✅ | ✅ | ✅ | ✅ | ✅ | real UTXO spend |
 | Bitcoin Cash (BCH) | ✅ | ✅ | ✅ | ✅ | — | CashAddr, SIGHASH_FORKID |
 | Monero (XMR) | ✅ | ✅ | ✅ | ✅ | — | local `monero-wallet-rpc`, loopback only |
-| Solana (SOL) | ✅ | ✅ | ✅ | ✅ | — | SPL compatible |
+| Solana (SOL) | ✅ | ✅ | ✅ | ✅ | — | SPL tokens send too (original token program; Token-2022 receive-only) |
 | TRON (TRX) | ✅ | ✅ | ✅ | ✅ | — | + every TRC-20 at the same address |
 | USDT (TRC-20) | ✅ | ✅ | ✅ | ✅ | — | same address as TRX; fee paid in TRX |
 | TON | ✅ | ✅ | ✅ | ✅ | — | wallet v4R2, pinned to `@ton/ton` |
@@ -426,7 +426,7 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 |---|---|
 | ✅ Shipped | 11+ chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations |
 | 🔜 Next | **Seedless watch-only mode** · Ledger / Trezor |
-| 🗓 Planned | Android · reproducible builds · SPL token send · DOT send · external security audit |
+| 🗓 Planned | Android · reproducible builds · DOT send · Token-2022 send · external security audit |
 | ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 
 ## Documentation
