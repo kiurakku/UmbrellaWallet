@@ -1,98 +1,31 @@
-Umbrella Wallet — Free-Use, No-Derivatives License
-Copyright (c) 2026 the fear (thefear078). All rights reserved.
+MIT License
 
-Umbrella Wallet (the "Software") is a free, independent, non-custodial wallet
-client authored and published by the fear in this repository. It is provided to
-the public at no charge as experimental, self-custody software for personal and
-educational use — you run it on your own device, hold your own keys, and are in
-sole control of your funds at all times. By downloading, installing or using the
-Software you accept the terms below; if you do not accept them, do not use it.
+Copyright (c) 2026 the fear (thefear078)
 
-1. WHAT YOU MAY DO
-   a) Download, install and run the Software, for personal or commercial
-      purposes, at no charge.
-   b) View and study the source code as published in this repository.
-   c) Share an unmodified link to this repository or its official releases.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-2. WHAT YOU MAY NOT DO
-   Except with prior written permission from the copyright holder, you may
-   not:
-   a) modify the Software or create derivative works of it;
-   b) copy, republish, mirror or redistribute the Software or its source, in
-      original or modified form;
-   c) fork this repository on GitHub or host a copy of the source elsewhere
-      for public use, redistribution or derivative development;
-   d) sell, rent, sublicense or otherwise commercialise the Software;
-   e) publish the Software or any part of it under another name or brand, or
-      remove or alter its copyright, attribution or watermarks;
-   f) use the names "Umbrella Wallet", "the fear" or "thefear078", or the
-      associated logos, to endorse or promote any other product.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-3. SERVICE FEES
-   The Software is and remains free to obtain and use. The copyright holder
-   reserves the right for the Software to include a small service fee applied
-   to certain in-app transactions. Any such fee is part of the Software's
-   operation, is disclosed in the interface where it applies, and does not
-   create custody of user funds, a deposit relationship, or any liability
-   beyond Section 4.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
-4. NO WARRANTY; NO LIABILITY
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL
-   THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
-   OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-   ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-   OTHER DEALINGS IN THE SOFTWARE.
+---
 
-5. FINANCIAL RESPONSIBILITY
-   The Software is non-custodial: cryptographic keys are generated and stored
-   solely on the user's own device, and the copyright holder never has access
-   to them or to any funds. By using the Software you acknowledge that:
-   a) you alone are responsible for safeguarding your recovery phrase,
-      passwords, keys and funds;
-   b) lost credentials cannot be recovered by anyone, including the copyright
-      holder, and blockchain transactions cannot be reversed;
-   c) all financial decisions and their outcomes, up to and including total
-      loss of funds, are exclusively your own responsibility;
-   d) nothing in the Software or its documentation constitutes financial,
-      investment or legal advice.
+TRADEMARK NOTICE (not part of the MIT grant of rights in the code):
 
-6. SUPPORT
-   The copyright holder may, at their sole discretion, provide support,
-   updates and contact channels. Doing so is voluntary and best-effort, and
-   creates no legal obligation, warranty, custodial duty or fiduciary
-   relationship of any kind.
-
-7. THIRD-PARTY COMPONENTS
-   The Software bundles or downloads third-party components (including Tor
-   and monero-wallet-rpc) that are licensed under their own terms, which
-   remain in force and are unaffected by this license. Nothing in Section 2
-   restricts rights granted directly to you by those components' licenses.
-
-8. TERMINATION
-   Any breach of Section 2 ends the permissions granted in Section 1
-   automatically. Sections 4, 5, 9 and 10 survive termination.
-
-9. TRADEMARKS AND NON-AFFILIATION
-   The Software is independent and is NOT affiliated with, endorsed by, sponsored
-   by, or connected to any exchange, blockchain, protocol, wallet or other third
-   party. All third-party names, brands, logos and trademarks — including but not
-   limited to Bitcoin, Ethereum, TRON, TON, Monero, Uniswap, Binance, Bybit, OKX,
-   WhiteBit, Telegram, MetaMask and any coin, token or network name — are the
-   property of their respective owners. Where such a name appears (for example a
-   colour-theme label or an optional read-only exchange connector), it is used
-   solely nominatively, to identify the corresponding style, network or service
-   for the user's convenience, and implies no affiliation, endorsement, ownership
-   or partnership of any kind.
-
-10. NOT A REGULATED SERVICE; NO ADVICE
-   The Software is self-custody software, not a service. The author does not
-   operate an exchange, broker-dealer, money-services business, custodian,
-   payment processor or financial institution, does not take custody of user
-   funds or personal data, and does not execute, intermediate or settle any
-   transaction on a user's behalf — the user's own device signs and broadcasts
-   everything locally. Nothing provided is financial, investment, tax or legal
-   advice. The user is responsible for determining, and complying with, any laws,
-   taxes or regulations that apply to them in their jurisdiction; use where such
-   use is unlawful is prohibited and is solely the user's responsibility.
+The names "Umbrella Wallet", "Umbrella" (in the wallet product sense), "the fear",
+and "thefear078", and the associated logos and icons, are product and brand
+identifiers of this project. The MIT License does **not** grant trademark rights.
+See TRADEMARK_POLICY.md. Derivatives and forks must use a different name and branding
+unless you have prior written permission.

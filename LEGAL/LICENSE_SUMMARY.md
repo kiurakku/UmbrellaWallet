@@ -1,22 +1,18 @@
 # License summary (plain English)
 
-**Canonical text:** [LICENSE](../LICENSE) — *Umbrella Wallet — Free-Use, No-Derivatives License*  
-**Copyright:** © 2026 the fear (thefear078). All rights reserved.
+**Canonical text:** [LICENSE](../LICENSE) — **MIT License**  
+**Copyright:** © 2026 the fear (thefear078)
 
-This is **source-available**, not a permissive open-source license (not MIT/Apache) and **not GPL**.
-
-| You may | You may not (without written permission) |
-|---------|------------------------------------------|
-| Download, install, and run the wallet (personal or commercial use of the **binary** as published) | Modify, fork, redistribute, or republish the software or source |
-| View and study the source for audit / education | Create derivative wallets or rebrands |
-| Link to the official repo and releases | Remove copyright / attribution / watermarks |
-| | Use “Umbrella Wallet”, “the fear”, or “thefear078” branding to promote other products |
+| You may | You may not |
+|---------|-------------|
+| Use, copy, modify, merge, publish, distribute, sublicense, sell | Remove the copyright / permission notice from substantial copies |
+| Fork publicly and ship derivatives under MIT terms | Use “Umbrella Wallet”, “the fear”, logos, or confusing names without permission ([TRADEMARK_POLICY.md](../TRADEMARK_POLICY.md)) |
+| Submit pull requests | Imply endorsement by thefear078 / Umbrella |
 
 Third-party components (Tor, Monero, NuGet libraries) keep **their own** licenses — see
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
-Trademarks: [TRADEMARK_POLICY.md](../TRADEMARK_POLICY.md).  
-Permission / commercial questions: [CONTACT.md](../CONTACT.md).
+Why we switched from Free-Use No-Derivatives: [LICENSE_CHANGE.md](../LICENSE_CHANGE.md).
 
 ---
 

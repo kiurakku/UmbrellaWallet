@@ -4,8 +4,7 @@
 **Repo:** [thefear078/UmbrellaWallet](https://github.com/thefear078/UmbrellaWallet)
 
 Closes stale audits that claim “missing LICENSE / CODEOWNERS / Dependabot / trademark”. Those items
-are **present**. Do **not** replace [LICENSE](../LICENSE) with GPL — Umbrella is **Free-Use,
-No-Derivatives** (source-available for audit).
+are **present**. Code licence is **MIT**; brand protection is [TRADEMARK_POLICY.md](../TRADEMARK_POLICY.md).
 
 ---
 
@@ -13,7 +12,7 @@ No-Derivatives** (source-available for audit).
 
 ### P0 — done
 
-- [x] `LICENSE` present (Free-Use, No-Derivatives — not GPL/MIT)
+- [x] `LICENSE` present (**MIT** + trademark notice — see LICENSE_CHANGE.md)
 - [x] `.github/CODEOWNERS`
 - [x] `.github/dependabot.yml` (NuGet `/desktop` + GitHub Actions; no Docker — none in repo)
 - [x] Dependabot security updates enabled
@@ -39,7 +38,7 @@ No-Derivatives** (source-available for audit).
 - [x] `SECURITY/VULNERABILITY_HISTORY.md`
 - [x] `SECURITY/COORDINATED_DISCLOSURE.md`
 - [x] `LEGAL/PRIVACY_POLICY_APPSTORE.md`
-- [x] README badges (CI, CodeQL, Security, release, Free-Use license)
+- [x] README badges (CI, CodeQL, Security, release, **MIT** license)
 - [x] `dependency-review` required on `main`
 - [x] Hardening script: [.github/scripts/apply-repo-hardening.ps1](../.github/scripts/apply-repo-hardening.ps1)
 

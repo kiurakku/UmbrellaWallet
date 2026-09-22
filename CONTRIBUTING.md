@@ -1,36 +1,45 @@
 # Contributing to Umbrella Wallet
 
-Thank you for your interest. Please read this before opening a pull request or forking.
-
-## This is not a community fork project
-
-Umbrella Wallet is an **independent product** by **the fear** (thefear078). The source code is public so users can **audit** what the app does with their keys — not so anyone can ship a clone, rebrand, or "Umbrella mod".
-
-**Forking is prohibited** by the [LICENSE](LICENSE): no derivatives, no redistribution, no rebranding without written permission. On GitHub, the Fork button may still appear for public repos — using it to publish a clone still violates the license.
-
-## What we welcome
-
-- **Bug reports** — [GitHub Issues](https://github.com/thefear078/UmbrellaWallet/issues) with steps to reproduce, version, and platform.
-- **Security reports** — privately via [GitHub Security Advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new). Do not open public issues for vulnerabilities.
-- **Sponsorship** — [GitHub Sponsors](https://github.com/sponsors/thefear078) helps fund development. It does not buy roadmap priority or access to user data.
+Thank you. Umbrella is MIT-licensed source for a non-custodial desktop wallet by **the fear**
+(thefear078). Contributions that improve fund safety, privacy honesty, and auditability are welcome.
 
 Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-## What we do not accept
+## Licence and brand
 
-- Pull requests that add features, refactor large areas, or change product direction **without prior discussion**.
-- Forks, mirrors, or derivative wallets — on GitHub or elsewhere.
-- Changes that remove copyright, attribution, or branding.
+- **Code:** [MIT](LICENSE) — you may fork, patch, and redistribute under MIT terms.
+- **Brand:** [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md) — do **not** ship a look-alike named
+  “Umbrella Wallet” / “the fear”. Rebrand derivatives; see [docs/forking.md](docs/forking.md).
+- Background: [LICENSE_CHANGE.md](LICENSE_CHANGE.md).
 
-## Building for yourself
+## What we welcome
 
-You may clone and build locally to verify behaviour or study the code for personal/educational use, as allowed by the LICENSE. You may **not** publish, distribute, or sell the result.
+- **Bug reports** — [GitHub Issues](https://github.com/thefear078/UmbrellaWallet/issues) with version, OS, steps.
+- **Security reports** — privately via [GitHub Security Advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) only.
+- **Pull requests** — small, tested, phase-aligned with [docs/ROADMAP.md](docs/ROADMAP.md) /
+  [docs/WORKFLOW.md](docs/WORKFLOW.md). Prefer discussing large features in an issue first.
+- **Coin proposals** — use the “Add a new coin” issue template.
+- **Sponsorship** — [GitHub Sponsors](https://github.com/sponsors/thefear078).
+
+## PR expectations
+
+1. `dotnet test` / CI green.
+2. No secrets in logs or git history.
+3. New network calls go through the shared Tor-aware HTTP path.
+4. Do not announce a capability in README/CHANGELOG/UI before the end-to-end path works.
+5. Keep MANIFESTO honesty: state limits next to promises (especially Tor vs transparent chains).
+6. Preserve publisher attribution in assembly metadata / About (see `PublisherAttributionTests`).
+
+## What we push back on
+
+- Silent fee recipients, RNG weakening, or Tor kill-switch bypasses.
+- Marketing claims that contradict [THREAT_MODEL.md](THREAT_MODEL.md) / [APP_STORE_NOTES.md](APP_STORE_NOTES.md).
+- Drive-by renames that strip “the fear” attribution without a full honest rebrand.
 
 ## Questions
 
-Community channel: [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)
+[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet) · [CONTACT.md](CONTACT.md)
 
 ---
 
 📖 Back to [Documentation Index](docs/INDEX.md)
-
