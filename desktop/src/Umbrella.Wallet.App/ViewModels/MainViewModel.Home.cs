@@ -244,11 +244,15 @@ public partial class MainViewModel
 
     private void RebuildRailMarket()
     {
+        // Snapshot — market refresh / watchlist toggles can mutate ObservableCollections while we build.
+        var market = Market.ToArray();
+        var gainers = MarketGainers.ToArray();
+        var losers = MarketLosers.ToArray();
         var rows = RailMarketTab switch
         {
-            "Gainers" => MarketGainers.ToList(),
-            "Losers" => MarketLosers.ToList(),
-            _ => Market.Where(m => m.HasPrice).Take(RailMarketShown).ToList(),
+            "Gainers" => gainers,
+            "Losers" => losers,
+            _ => market.Where(m => m.HasPrice).Take(RailMarketShown).ToArray(),
         };
 
         RailMarketRows.Clear();
