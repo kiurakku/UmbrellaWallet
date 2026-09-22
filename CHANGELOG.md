@@ -73,6 +73,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
   explorer and Mintscan — are listed as link-only, as the others were. A test fails the build if the
   Send screen links anywhere the page does not name.
 
+### Solana sends are followed to the end
+
+- A SOL send used to report success the moment a server accepted it, and report failure — offering a
+  retry — whenever the answer got lost, even though the transaction may already have been on its way.
+  Now the transaction id is known before anything is sent, and the wallet follows it until a
+  confirmed block holds it or its blockhash expires. An answer it cannot settle is said as it is and
+  never offered as a retry that could pay twice.
+- The Solana server you choose in Settings is now used for sending too, not only for balances; the
+  listed servers back each other up otherwise.
+- Amounts with more than nine decimals are refused instead of silently cut; a first transfer to an
+  empty address below the network's rent minimum, or one that would leave your account below it, is
+  refused before signing with the exact figure (read from the network, not assumed).
+- Messages are compiled by one shared builder, checked against the Solana SDK's own program-address
+  vectors and, in a live check, run by a mainnet validator's simulation.
+
 ### The home screen
 
 - Your balance card stays first. Beside it, the balance as a line of light for 1D, 1W, 1M or 1Y:
