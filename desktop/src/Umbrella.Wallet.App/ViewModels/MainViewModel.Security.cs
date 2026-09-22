@@ -144,6 +144,9 @@ public partial class MainViewModel
         Note("💾", L["sec.backup"], L["sec.backupBody"], L["sec.openSettings"], "Settings");
         Note("🧾", L["sec.verify"], L["sec.verifyBody"], L["sec.openGuide"],
             "https://github.com/thefear078/UmbrellaWallet/blob/main/docs/BUILD_VERIFY.md");
+        // Malware residual risk is HIGH on any hot desktop wallet. Point at the honest guide and PSBT path.
+        Note("🛡️", L["sec.hw"], L["sec.hwBody"], L["sec.openHwGuide"],
+            "https://github.com/thefear078/UmbrellaWallet/blob/main/docs/HARDWARE_WALLETS.md");
 
         SecurityScoreDone = good;
         SecurityScoreTotal = scored;

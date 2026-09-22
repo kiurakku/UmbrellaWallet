@@ -4,6 +4,25 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [Unreleased] — MIT licence + honest hardware-wallet path
+
+### Licence: MIT (trademark kept)
+
+- The code is now under the **MIT License** so forks, patches and independent audit are allowed.
+- **Brand** (“Umbrella Wallet”, “the fear”, logos) stays under [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md).
+- Why: [LICENSE_CHANGE.md](LICENSE_CHANGE.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Malware residual risk (honest UX)
+
+- Security Center now states that **malware on this PC can still steal an unlocked seed**, and points
+  at [docs/HARDWARE_WALLETS.md](docs/HARDWARE_WALLETS.md).
+- **H.1 PSBT** remains the practical bridge to Ledger/Trezor/air-gap today; **H.2** USB device
+  signing is the next P0.
+- `SensitiveBytes` zeroes key material buffers after vault KDF / seal work (best-effort; does not
+  defeat a compromised user session).
+
+---
+
 ## [Unreleased] — Stellar, NEAR, XRP, Cosmos and Solana-token send, and the home screen from the gold design
 
 ### Stellar (XLM) can send

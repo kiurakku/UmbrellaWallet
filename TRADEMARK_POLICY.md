@@ -29,9 +29,10 @@ name. It does **not** replace the [LICENSE](LICENSE).
 
 ## Forks and derivatives
 
-Public forks and redistribution are restricted by the [LICENSE](LICENSE). See also
-[docs/forking.md](docs/forking.md). Permission for a derivative almost always requires a **full
-rebrand** and preservation of honest threat/privacy documentation.
+Public forks are allowed under the [MIT License](LICENSE). Redistribution and rebranding of the
+**name** are restricted by this trademark policy. See also [docs/forking.md](docs/forking.md).
+Permission to use Umbrella branding almost always requires a **full rebrand** and preservation of
+honest threat/privacy documentation.
 
 ## Enforcement
 

@@ -9,11 +9,11 @@ namespace Umbrella.Wallet.Core.Tests;
 /// Users of a self-custody wallet are told — correctly — to check what they downloaded. That check
 /// only means something if the real build states its publisher somewhere the user can read it: the
 /// file properties, the installer, the About screen. A look-alike that keeps the name "Umbrella" and
-/// changes the money path is the attack the LICENSE and TRADEMARK_POLICY exist to make actionable,
-/// and attribution that lives only in a markdown file is attribution the user never sees.
+/// changes the money path is the attack the TRADEMARK_POLICY and honest About attribution exist to
+/// make actionable, and attribution that lives only in a markdown file is attribution the user never sees.
 ///
-/// It is also a licence term (LICENSE §2(e): attribution may not be removed), so this pins it rather
-/// than trusting that nobody trims the csproj metadata during a refactor.
+/// Assembly Company / Copyright / Product metadata is pinned here so a refactor cannot silently
+/// strip the publisher the user is meant to verify.
 /// </summary>
 public sealed class PublisherAttributionTests
 {
@@ -79,7 +79,7 @@ public sealed class PublisherAttributionTests
         {
             var relative = Path.GetRelativePath(root, file);
             if (relative.Split(Path.DirectorySeparatorChar)
-                .Any(part => part is ".git" or "bin" or "obj" or "node_modules")) continue;
+                .Any(part => part is ".git" or "bin" or "obj" or "node_modules" or "dist")) continue;
 
             // This file is ABOUT the old name, so it says it out loud. Named rather than pattern-
             // matched around, so the exception is visible instead of hidden in a cleverer rule.

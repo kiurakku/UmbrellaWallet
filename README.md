@@ -16,7 +16,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 ![CodeQL](https://github.com/thefear078/UmbrellaWallet/actions/workflows/codeql.yml/badge.svg)
 ![Security](https://github.com/thefear078/UmbrellaWallet/actions/workflows/security.yml/badge.svg)
 ![Release](https://img.shields.io/github/v/release/thefear078/UmbrellaWallet?label=release)
-![License](https://img.shields.io/badge/license-Free--Use%20No--Derivatives-4B3F86)
+![License](https://img.shields.io/badge/license-MIT-4B3F86)
 ![Version](https://img.shields.io/badge/version-4.8.2-E9B22E)
 ![Tests](https://img.shields.io/badge/tests-1190%2B%20offline-7DCF8F)
 ![Platform fee](https://img.shields.io/badge/platform%20fee-none-7DCF8F)
@@ -485,10 +485,10 @@ those are the paths where a bug costs somebody their money.
 
 ## License
 
-**Free-use, no-derivatives** (source-available for audit — not MIT/GPL). See [LICENSE](LICENSE) and the
-plain-English map in [LEGAL/LICENSE_SUMMARY.md](LEGAL/LICENSE_SUMMARY.md). Forking limits:
-[docs/forking.md](docs/forking.md). Brand: [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md). Third-party
-components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+**MIT** for the code — see [LICENSE](LICENSE) and [LICENSE_CHANGE.md](LICENSE_CHANGE.md). Brand names
+and logos remain under [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md). Forking guide:
+[docs/forking.md](docs/forking.md). Summary: [LEGAL/LICENSE_SUMMARY.md](LEGAL/LICENSE_SUMMARY.md).
+Third-party: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ---
 

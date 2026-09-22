@@ -13,8 +13,8 @@ namespace Umbrella.Wallet.App.ViewModels;
 /// the installer's properties dialog, and it is read from the assembly rather than typed here, so a
 /// rebranded fork cannot leave it saying "the fear" while being something else.
 ///
-/// These strings are also the attribution the licence requires (LICENSE §2(e), LEGAL/LICENSE_SUMMARY)
-/// and the in-app notices THIRD_PARTY_NOTICES points at.
+/// These strings are also the attribution users check on About, and the in-app notices
+/// THIRD_PARTY_NOTICES points at. Brand limits live in TRADEMARK_POLICY (MIT does not grant trademarks).
 /// </summary>
 public partial class MainViewModel
 {

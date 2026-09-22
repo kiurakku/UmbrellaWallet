@@ -1,3 +1,4 @@
+using Umbrella.Wallet.Core.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -145,10 +146,10 @@ public sealed class EncryptedFileSeedVault
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(plaintext);
+            SensitiveBytes.Clear(plaintext);
             if (key is not null)
             {
-                CryptographicOperations.ZeroMemory(key);
+                SensitiveBytes.Clear(key);
             }
         }
     }
@@ -230,10 +231,10 @@ public sealed class EncryptedFileSeedVault
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(plaintext);
+            SensitiveBytes.Clear(plaintext);
             if (key is not null)
             {
-                CryptographicOperations.ZeroMemory(key);
+                SensitiveBytes.Clear(key);
             }
         }
     }
@@ -364,7 +365,7 @@ public sealed class EncryptedFileSeedVault
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(passwordBytes);
+            SensitiveBytes.Clear(passwordBytes);
         }
     }
 

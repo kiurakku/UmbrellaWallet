@@ -213,7 +213,9 @@ Being direct about this is the point.
 
 **Malware running as your user.** If something is already executing on your machine with your
 privileges, it can read your keystrokes, your clipboard, and the wallet's memory while it is unlocked.
-No desktop wallet solves this. A hardware wallet is the answer, and Umbrella does not yet support one.
+No desktop wallet solves malware in the user session alone. Prefer a **hardware wallet** for serious
+amounts; Umbrella’s interim path is Bitcoin **PSBT** (H.1). USB Ledger/Trezor is roadmap **H.2** —
+see [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md).
 
 **Losing your 24 words.** If you lose both the words and the vault password, the funds are gone.
 Nobody can recover them. That is the same property that means nobody can freeze them.

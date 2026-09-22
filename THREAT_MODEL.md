@@ -67,10 +67,21 @@ five minutes.
 **No desktop wallet survives a fully compromised user session.** Full-disk encryption helps a stolen
 powered-off disk; it does not help malware already running as you.
 
-**Mitigation (not shipped yet):** hardware wallet signing (roadmap **H.1 / H.2**) so the seed never
-decrypts on the general-purpose PC for spends. Until then residual risk stays **HIGH and unmitigated**.
+**Mitigation (partial today, stronger next):**
 
-**Residual risk: HIGH and unmitigated.** Stated here rather than buried.
+- **H.1 ✅** — Bitcoin **PSBT** export/import so spends can be signed on a hardware wallet or
+  air-gapped machine; Umbrella only signs coins its own scan found. Guide:
+  [docs/HARDWARE_WALLETS.md](docs/HARDWARE_WALLETS.md).
+- **H.2 🏆 next** — USB Ledger / Trezor so the seed never decrypts on this PC for spends.
+- **H.3** — Multisig 2-of-3 for amounts that justify operational complexity.
+- **Best-effort memory hygiene** — `SensitiveBytes` zeroes key material buffers after use. It does
+  **not** make an unlocked .NET `string` mnemonic safe against a memory scraper.
+
+Until H.2 ships, residual risk for **hot-wallet spends on this PC** stays **HIGH**. Duress/decoy
+passwords defend against **coercion**, not malware.
+
+**Residual risk: HIGH** for unlocked hot wallet on a compromised PC. **Lower** when signing only via
+hardware / PSBT and the seed is never unlocked here for spends.
 
 ---
 

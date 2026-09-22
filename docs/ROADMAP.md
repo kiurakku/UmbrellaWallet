@@ -57,6 +57,7 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | **P0.6** | **Fail-closed balance.** If all RPC/nodes are unreachable (e.g. 3+ attempts) → UI: “Balance unavailable (network error)” + Refresh. **Do not** show cache as the current balance; cache only with an explicit “last synced …” / “unknown” label, never as a live `0.0000` caused by an error. Offline test mandatory. | MANIFESTO §4, audit | ✅ (`BalanceReadout`: unread → “—” + reason, cache marked “last known”, unread rows excluded from the total and counted out loud) |
 | **P0.7** | **Send-path transport gate.** Before Send/Review, verify that the actual path (Tor / Clearnet / Custom) matches the user’s settings (+ kill-switch). Violation → **FAIL**, send blocked; no silent clearnet fallback. | MANIFESTO §3–4, audit | ✅ (`SendTransportGate` at Review **and** Confirm: Tor on-but-down, routed elsewhere, unapplied proxy or armed kill-switch with no proxy all refuse) |
 | **P0.8** | **Network isolation CI.** Run in a sandbox / firewall without clearnet: with Tor-only enabled, the wallet process **must not** attempt clearnet connections. Without this, the kill-switch is not proven in production. | Audit | ✅ (`Category=Isolation` CI job: a loopback listener proves no socket is opened at all, with the kill-switch off as the counter-proof; plus a scan for any HttpClient built outside `PublicHttp`) |
+| **H.2** | **Hardware wallets (Ledger/Trezor)** — sign on device; seed never on PC for spends. Interim: PSBT (**H.1** ✅). See [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md). | Threat model Vector 1 | 🏆 **next** |
 
 ### P1 — privacy, trust, core UX (UI honesty)
 
@@ -109,7 +110,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | # | Task | Status |
 |---|---|---|
 | H.1 | Bitcoin **PSBT** export/import + watch-only xpub | ✅ **PSBT both ways.** Export: the reviewed payment as an unsigned PSBT naming the master fingerprint and every BIP32 path — BIP-371 Taproot fields filled by hand, because NBitcoin's `AddKeyPath` leaves a Taproot coin unnamed — with the change index reserved as for a real send. Import (base64, hex or `.psbt`): reviewed line by line with the cost to this wallet, and only coins the wallet's **own scan** found are signed, at the value read from the chain; a PSBT that misstates one of them, or spends from one of its addresses a coin the scan cannot see, is refused. Completed PSBTs broadcast through the same route gate. The xpub export now includes the Taproot account the balance counts. **Not done:** a seedless watch-only wallet (import an xpub, sign elsewhere) — the app is built around an unlocked seed, and that mode is the same work H.2 needs, so they go together. Signing needs a synced wallet: this is not an air-gapped signer |
-| H.2 | **Ledger / Trezor** (sign on device, no seed in Umbrella) | 📅 |
+| **H.2** | **Ledger / Trezor** (sign on device, no seed in Umbrella) + seedless watch-only | 🏆 **P0 next** — design in [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md); H.1 PSBT is the interim path |
 | H.3 | **Multisig** 2-of-3 | 📅 long |
 | H.4 | **Android** (separate mobile threat model + UX, not a desktop copy) | 📅 Planned |
 | R.1 | **Reproducible builds** + published attestations (honestly: .NET single-file installer is not bit-identical) | 🟡 docs / ⏳ attestations |
@@ -250,7 +251,9 @@ Detailed PR schedule — §12 in [`CLAUDE_IMPLEMENTATION_ROADMAP_UK.md`](CLAUDE_
 | [`../CONTACT.md`](../CONTACT.md) | Public contacts |
 | [`../TRADEMARK_POLICY.md`](../TRADEMARK_POLICY.md) | Brand / name protection |
 | [`../CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | Community standards |
-| [`../LICENSE`](../LICENSE) | Free-Use, No-Derivatives |
+| [`../LICENSE`](../LICENSE) | **MIT** (+ trademark notice) |
+| [`../LICENSE_CHANGE.md`](../LICENSE_CHANGE.md) | Why we left Free-Use No-Derivatives |
+| [`HARDWARE_WALLETS.md`](HARDWARE_WALLETS.md) | Malware residual risk + PSBT / H.2 path |
 | [`../LEGAL/README.md`](../LEGAL/README.md) | Legal document map |
 | [`../SECURITY/README.md`](../SECURITY/README.md) | Disclosure process folder |
 | [`REPO_HARDENING.md`](REPO_HARDENING.md) | Live GitHub security / legal checklist |

@@ -14,10 +14,10 @@ and **process** (EV certificate order) — not more markdown stubs.
 Legal and store markdown is **already written** — leave it alone while you ship coins, unless behaviour
 changes. Engineering order:
 
-1. **Core** — P0.0 + P0.6–P0.8 ([ROADMAP.md](ROADMAP.md))  
+1. **Core** — remaining fund-safety polish + **H.2 hardware wallets** ([ROADMAP.md](ROADMAP.md), [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md))  
 2. **Coins** — [WORKFLOW.md](WORKFLOW.md) + [adding-a-chain.md](adding-a-chain.md)  
-3. **Stabilize** — P1 / P2 / hardware  
-4. **Release prep** — EV cert (≥60 days), L.1–L.8 UI, audit  
+3. **Stabilize** — leftover P1 / P2  
+4. **Release prep** — EV cert (≥60 days), store submission, **external audit (R.5)**
 
 Day-to-day: [WORKFLOW.md](WORKFLOW.md). Doc links: `pwsh scripts/check-doc-links.ps1`.
 
@@ -26,7 +26,7 @@ Day-to-day: [WORKFLOW.md](WORKFLOW.md). Doc links: `pwsh scripts/check-doc-links
 ## A. Documentation spider — DONE
 
 - [x] [docs/INDEX.md](INDEX.md) hub + back-links on root/docs pages
-- [x] [README.md](../README.md) navigation table + badges (CI, CodeQL, Security, release, **Free-Use No-Derivatives**)
+- [x] [README.md](../README.md) navigation table + badges (CI, CodeQL, Security, release, **MIT**)
 - [x] [getting-started.md](getting-started.md), [ROADMAP.md](ROADMAP.md), [REPO_HARDENING.md](REPO_HARDENING.md)
 - [x] [CONTACT.md](../CONTACT.md) — real channels (GitHub, Telegram, TikTok, Reddit, Advisories). **No** fake `legal@…example` addresses.
 
@@ -34,7 +34,7 @@ Day-to-day: [WORKFLOW.md](WORKFLOW.md). Doc links: `pwsh scripts/check-doc-links
 
 | Item | Status | Note |
 |------|--------|------|
-| [LICENSE](../LICENSE) | ✅ | **Free-Use, No-Derivatives** (source-available). **Not** GPL/MIT by design. |
+| [LICENSE](../LICENSE) | ✅ | **MIT** (+ trademark notice). See [LICENSE_CHANGE.md](../LICENSE_CHANGE.md). |
 | [LEGAL/LICENSE_SUMMARY.md](../LEGAL/LICENSE_SUMMARY.md) | ✅ | Plain English |
 | [TRADEMARK_POLICY.md](../TRADEMARK_POLICY.md) | ✅ | Brand protection |
 | [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) | ✅ | Community / issues / Telegram |

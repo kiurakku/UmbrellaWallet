@@ -169,6 +169,10 @@ with links to advisories.
 **Currently unfunded.** There is no paid bounty programme yet. Responsible disclosure is still
 welcome under the process above; researchers will be credited publicly unless they ask otherwise.
 
+The project is **MIT-licensed** so independent review and patches are welcome ([LICENSE_CHANGE.md](LICENSE_CHANGE.md)).
+An external audit remains planned (roadmap **R.5** / [AUDIT_STATUS.md](AUDIT_STATUS.md)) — until then, do
+not describe the wallet as audited.
+
 When funding exists, the intended structure is:
 
 | Severity | Example | Target reward | Acknowledgement |

@@ -43,6 +43,8 @@ Android planned). There is no web app and no backend that knows who you are.
 | [architecture.md](architecture.md) | Layers, data flow, Core vs Infrastructure |
 | [building.md](building.md) | Compile, test, package installers |
 | [WORKFLOW.md](WORKFLOW.md) | How to add coins and keep ROADMAP honest |
+| [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md) | Malware residual risk + PSBT / hardware path |
+| [LICENSE_CHANGE.md](../LICENSE_CHANGE.md) | MIT switch announcement |
 | [testing.md](testing.md) | What the suite protects |
 | [adding-a-chain.md](adding-a-chain.md) | Full procedure for a new cryptocurrency |
 | [12-coins-and-chains.md](12-coins-and-chains.md) | Capability matrix for every chain |
