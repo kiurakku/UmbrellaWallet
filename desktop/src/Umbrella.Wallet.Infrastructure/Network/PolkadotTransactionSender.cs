@@ -41,7 +41,9 @@ public sealed class PolkadotTransactionSender
     private static HttpClient Submit => PublicHttp.For(PublicHttp.NetworkPurpose.Broadcast);
 
     private const string DefaultServer = "https://polkadot-asset-hub-rpc.polkadot.io";
-    private const string SystemEventsKey = "0x26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7";
+    /// <summary>Where System.Events lives: twox128("System") ‖ twox128("Events") — public, the same on
+    /// every Substrate chain.</summary>
+    private const string SystemEventsStorage = "0x26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7";
 
     private static readonly SemaphoreSlim MetadataLock = new(1, 1);
     private static (uint Spec, RuntimeMetadata Metadata)? _metadata;
@@ -169,7 +171,7 @@ public sealed class PolkadotTransactionSender
                 scanned = number;
                 if (index < 0) continue;
 
-                var (events, _) = await RpcAsync(quote.Server, "state_getStorage", [SystemEventsKey, blockHash.Value.GetString()!], ct);
+                var (events, _) = await RpcAsync(quote.Server, "state_getStorage", [SystemEventsStorage, blockHash.Value.GetString()!], ct);
                 return (events?.GetString() is { } ev ? PolkadotSendRules.ExtrinsicSucceeded(md, ev, index) : null) switch
                 {
                     true => new DotSendOutcome(DotSubmitOutcome.Included, hashHex, null),
