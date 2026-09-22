@@ -51,11 +51,13 @@ public sealed class CosmosReceiveTests
     }
 
     [Fact]
-    public void Cosmos_is_receive_and_balance_only_and_says_staking_is_not_counted()
+    public void Cosmos_receives_shows_a_balance_sends_and_says_staking_is_not_counted()
     {
+        // Send was switched on only once a signed transfer matched cosmjs byte for byte
+        // (CosmosSendTests); before that this test pinned it off.
         var info = ChainCatalog.Get(ChainId.Atom);
         Assert.True(info.CanReceive && info.CanSyncBalance);
-        Assert.False(info.CanSend);
+        Assert.True(info.CanSend);
         Assert.Contains("staked", info.PrivacyNote, StringComparison.OrdinalIgnoreCase);
     }
 

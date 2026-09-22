@@ -115,8 +115,8 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>What the review calls the memo line: "Memo" for Stellar, "Destination tag" for XRP.</summary>
     [ObservableProperty] private string _sendReviewMemoCaption = string.Empty;
 
-    /// <summary>True for the chains whose payments carry a memo (Stellar).</summary>
-    public bool IsMemoChain => string.Equals(SendChain?.Trim(), "XLM", StringComparison.OrdinalIgnoreCase);
+    /// <summary>True for the chains whose payments carry a text memo (Stellar, the Cosmos Hub).</summary>
+    public bool IsMemoChain => SendChain?.Trim().ToUpperInvariant() is "XLM" or "ATOM";
 
     /// <summary>True for the chains whose payments carry a destination tag (XRP).</summary>
     public bool IsDestinationTagChain => string.Equals(SendChain?.Trim(), "XRP", StringComparison.OrdinalIgnoreCase);
@@ -1095,6 +1095,7 @@ public partial class MainViewModel : ViewModelBase
     private XlmSendQuote? _xlmQuote;
     private NearSendQuote? _nearQuote;
     private XrpSendQuote? _xrpQuote;
+    private AtomSendQuote? _atomQuote;
     private string _sendSymbol = "ETH";
     private decimal _moneroAmount;
     private string _moneroTo = string.Empty;
@@ -1212,6 +1213,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly StellarTransactionSender _xlmSender = new();
     private readonly NearTransactionSender _nearSender = new();
     private readonly XrpTransactionSender _xrpSender = new();
+    private readonly CosmosTransactionSender _atomSender = new();
     private readonly EmbeddedTorService _tor = new();
     private readonly MoneroRpcService _monero = new();
     private CancellationTokenSource? _refreshCts;
@@ -1834,6 +1836,7 @@ public partial class MainViewModel : ViewModelBase
         "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
         "ARB", "BASE", "OP", "LINEA",                // Ethereum L2 rollups — native ETH, same 0x address
         "SOL", "TON", "ADA", "XLM", "NEAR", "XRP",   // account-based (XLM: memo; NEAR: implicit account; XRP: tag)
+        "ATOM",                                      // Cosmos Hub (memo)
         "TRX", "USDT",                               // TRON + TRC-20
         "XMR",                                       // Monero (local wallet-rpc)
     };
@@ -1859,6 +1862,7 @@ public partial class MainViewModel : ViewModelBase
         new("XLM", "Stellar", "Stellar network · memo for exchange deposits"),
         new("NEAR", "NEAR Protocol", "NEAR network · from your implicit account"),
         new("XRP", "XRP", "XRP Ledger · destination tag for exchange deposits"),
+        new("ATOM", "Cosmos Hub", "Cosmos Hub · memo for exchange deposits"),
         new("BNB", "BNB", "BNB Smart Chain (BEP-20 address)"),
         new("MATIC", "Polygon", "Polygon network"),
         new("AVAX", "Avalanche", "Avalanche C-Chain"),
@@ -2439,6 +2443,8 @@ public partial class MainViewModel : ViewModelBase
         // XRP: the 1 XRP base reserve every account keeps, plus a fee. An account that owns objects
         // (trust lines, offers) keeps 0.2 XRP more for each; the review names the exact figure.
         "XRP" => 1.001m,
+        // ATOM: the fee is priced by the fee market at send time — well under 0.003 ATOM at today's prices.
+        "ATOM" => 0.003m,
         _ => 0m,
     };
 

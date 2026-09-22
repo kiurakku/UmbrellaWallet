@@ -542,7 +542,24 @@ public sealed class HdAddressDeriver
         return new ReceiveAddress(ChainId.Atom, CosmosHub.AddressFromAccountId(accountId), FormatPath(path), addressIndex);
     }
 
-    /// <summary>The compressed public key behind the Cosmos address, for tests and for a future signer.</summary>
+    /// <summary>
+    /// Cosmos Hub signing key at m/44'/118'/0'/0/{index} — the key the displayed ATOM address comes from
+    /// (roadmap N.6, send). The caller disposes it.
+    /// </summary>
+    public Key DeriveCosmosKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var validation = _mnemonicService.Validate(mnemonic);
+        if (!validation.IsValid || validation.NormalizedMnemonic is null)
+        {
+            throw new ArgumentException(validation.Error ?? "Invalid mnemonic.", nameof(mnemonic));
+        }
+
+        var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
+        return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"44'/118'/0'/0/{addressIndex}")).PrivateKey;
+    }
+
+    /// <summary>The compressed public key behind the Cosmos address, for tests and for the signer's checks.</summary>
     public PubKey DeriveCosmosPublicKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
     {
         passphrase = Resolve(passphrase);

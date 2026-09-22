@@ -652,6 +652,26 @@ public partial class MainViewModel
                     break;
                 }
 
+                case "ATOM":
+                {
+                    // The node's chain id, the account, its balance and the fee market are read, and the
+                    // node simulates the transfer for its gas, before anything is signed (roadmap N.6).
+                    var publicKey = _deriver.DeriveCosmosPublicKey(_unlockedMnemonic!).ToBytes();
+                    var (quote, error) = await _atomSender.PrepareAsync(from.Address, publicKey, SendTo.Trim(), amount, SendMemo);
+                    if (quote is null) { SendError = error ?? Loc.Instance["send.errPrepareFailed"]; return; }
+                    _atomQuote = quote;
+                    SendQuoteSummary = $"Send {Fmt(quote.AmountAtom)} ATOM  →  {quote.To}";
+                    SendQuoteFee = string.Format(Loc.Instance["send.atomFee"], Fmt(quote.FeeAtom));
+                    SendReviewMemoCaption = Loc.Instance["send.memoLabel"];
+                    SendReviewMemo = quote.Memo.Length == 0 ? Loc.Instance["send.reviewNoMemo"] : quote.Memo;
+                    BuildSendSimulation(
+                        balance: (decimal)from.Amount,
+                        amount: quote.AmountAtom,
+                        networkFee: quote.FeeAtom,
+                        symbol: "ATOM");
+                    break;
+                }
+
                 case "XRP":
                 {
                     // The address, the tag, an unactivated account, a destination that demands a tag or is
@@ -1011,6 +1031,7 @@ public partial class MainViewModel
         var haveQuote = _sendQuote is not null || _btcQuote is not null || _solQuote is not null
                         || _tonQuote is not null || _tronQuote is not null || _adaQuote is not null
                         || _xlmQuote is not null || _nearQuote is not null || _xrpQuote is not null
+                        || _atomQuote is not null
                         || (_sendSymbol == "XMR" && _moneroAmount > 0);
         if (_unlockedMnemonic is null || !haveQuote)
         {
@@ -1244,6 +1265,35 @@ public partial class MainViewModel
                     break;
                 }
 
+                case "ATOM" when _atomQuote is not null:
+                {
+                    var quote = _atomQuote;
+                    using var key = _deriver.DeriveCosmosKey(_unlockedMnemonic!);
+                    var outcome = await _atomSender.SignAndBroadcastAsync(quote, key);
+                    var explorer = outcome.Hash is null ? "" : $"www.mintscan.io/cosmos/tx/{outcome.Hash}";
+
+                    if (outcome.Outcome is CosmosSubmitOutcome.Unknown or CosmosSubmitOutcome.Pending)
+                    {
+                        // It may still land in a block until its timeout height. Never offered as a retry:
+                        // a fresh send would take the next sequence number and could pay twice.
+                        ClearSendQuotes();
+                        SendTo = string.Empty;
+                        SendAmount = string.Empty;
+                        SendMemo = string.Empty;
+                        SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
+                        StatusMessage = Loc.Instance["status.broadcastFailed"];
+                        PushActivity("Sent", "ATOM", $"-{Fmt(quote.AmountAtom)}", Shorten(quote.To), "now",
+                            explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
+                        break;
+                    }
+
+                    // Included means a block holds it. A failure in a block cost only the fee and paid
+                    // nothing, so it is a failed send like any other.
+                    await FinishSendAsync(outcome.Outcome == CosmosSubmitOutcome.Included, outcome.Hash,
+                        outcome.Message, "ATOM", quote.AmountAtom, quote.To, explorer);
+                    break;
+                }
+
                 case "XRP" when _xrpQuote is not null:
                 {
                     var quote = _xrpQuote;
@@ -1397,6 +1447,7 @@ public partial class MainViewModel
         _xlmQuote = null;
         _nearQuote = null;
         _xrpQuote = null;
+        _atomQuote = null;
         SendReviewMemo = string.Empty;
         // Cleared with the rest: a stale token marker would route the NEXT quote — possibly a plain
         // ETH send — down the contract-call path.

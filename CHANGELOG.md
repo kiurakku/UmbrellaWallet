@@ -4,7 +4,7 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased] — Stellar, NEAR and XRP send, and the home screen from the gold design
+## [Unreleased] — Stellar, NEAR, XRP and Cosmos send, and the home screen from the gold design
 
 ### Stellar (XLM) can send
 
@@ -51,11 +51,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 - **Limits:** X-addresses (`X…`) are refused for now — use the `r…` address and its tag; only XRP,
   not issued tokens.
 
+### Cosmos Hub (ATOM) can send
+
+- ATOM to any `cosmos1…` address, signed on this PC. The transaction is byte-for-byte what cosmjs
+  signs (pinned to its own three signing vectors), with **a memo field** for exchange deposits; a
+  Hub node's own decoder reads the memo back in a live check.
+- Before anything is signed: the node must say it is on `cosmoshub-4` — a signature for another chain
+  is never made; the gas is what the node's own simulation of the transfer used, and the fee is the
+  fee market's current price with room for it to move. What you can send is the *available* balance;
+  staked ATOM is not part of it.
+- Broadcast once. A transfer carries a timeout height about five minutes out: until a block holds it,
+  or that height passes without one, the wallet says so and never offers a retry that could pay twice.
+- **Limits:** only ATOM to Cosmos Hub addresses — no IBC transfers, staking or other tokens.
+
 ### Privacy page
 
 - The Stellar, NEAR and XRP servers are now listed as learning where a transaction entered the
   network, as every other chain that sends already was. A test fails the build if a chain can send
   through a server the page does not say that about.
+- The explorers a sent transaction links to — StellarExpert, NearBlocks, the XRPL Foundation's
+  explorer and Mintscan — are listed as link-only, as the others were. A test fails the build if the
+  Send screen links anywhere the page does not name.
 
 ### The home screen
 

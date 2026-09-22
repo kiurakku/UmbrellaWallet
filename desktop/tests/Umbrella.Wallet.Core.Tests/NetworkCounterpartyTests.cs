@@ -46,6 +46,17 @@ public sealed class NetworkCounterpartyTests
     private static bool IsLocal(string host) =>
         host is "127.0.0.1" or "localhost" or "0.0.0.0" || host.EndsWith(".onion", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>The explorers the App links a sent transaction to: interpolated strings shaped
+    /// <c>"host/…{hash}"</c> in its view models.</summary>
+    private static List<string> ExplorerLinkHosts(string sourceRoot)
+    {
+        var link = new Regex(@"\$""(?:https://)?((?:[a-z0-9-]+\.)+[a-z]{2,})/[^""]*\{", RegexOptions.Compiled);
+        return Directory.EnumerateFiles(Path.Combine(sourceRoot, "Umbrella.Wallet.App", "ViewModels"), "*.cs")
+            .SelectMany(f => link.Matches(File.ReadAllText(f)).Select(m => m.Groups[1].Value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     private static List<(string Host, string File, int Line)> HostsInSource(string sourceRoot)
     {
         var url = new Regex(@"https?://([A-Za-z0-9._-]+)", RegexOptions.Compiled);
@@ -111,6 +122,9 @@ public sealed class NetworkCounterpartyTests
         // network layer, so the source scan does not reach them — but choosing one means really
         // contacting it, which is the whole reason they are declared.
         foreach (var option in ChainEndpoints.Known.SelectMany(k => k.Value)) inCode.Add(option.Host);
+
+        // So do the explorers the Send screen links a transaction to (declared link-only).
+        foreach (var host in ExplorerLinkHosts(root)) inCode.Add(host);
 
         var stale = NetworkCounterpartyCatalog.All
             .Select(NetworkCounterpartyCatalog.HostOf)
@@ -224,6 +238,20 @@ public sealed class NetworkCounterpartyTests
             .ToList();
 
         Assert.Empty(silent);
+    }
+
+    [Fact]
+    public void Every_explorer_a_sent_transaction_links_to_is_declared()
+    {
+        // The Send screen builds a link to the new transaction on an explorer. The wallet never opens it
+        // on its own, but a link to a host the privacy page does not name is still a host it does not
+        // name. The App's view models are scanned for those links ("host/…{hash}").
+        var root = FindSourceRoot();
+        Assert.NotNull(root);
+        var hosts = ExplorerLinkHosts(root!);
+
+        Assert.NotEmpty(hosts);
+        Assert.Empty(hosts.Where(h => !NetworkCounterpartyCatalog.IsDeclared(h)).OrderBy(h => h, StringComparer.Ordinal));
     }
 
     [Fact]

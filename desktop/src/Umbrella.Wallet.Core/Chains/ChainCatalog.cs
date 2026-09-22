@@ -103,11 +103,12 @@ public static class ChainCatalog
                 CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. A Stellar address only becomes an account once someone funds it with the network's minimum balance, which stays locked while the account exists."),
-            // Cosmos Hub — receive and balance (roadmap N.6). BIP44 coin type 118, secp256k1, the
-            // m/44'/118'/0'/0/0 that Keplr, Leap and Ledger derive, pinned to cosmjs's own wallet test.
+            // Cosmos Hub — receive, balance and send (roadmap N.6). BIP44 coin type 118, secp256k1, the
+            // m/44'/118'/0'/0/0 that Keplr, Leap and Ledger derive, pinned to cosmjs's own wallet test;
+            // sends one bank MsgSend, pinned byte-for-byte to cosmjs's signing vectors (CosmosSendTests).
             new ChainInfo(
                 ChainId.Atom, "ATOM", "Cosmos Hub", ChainSupportLevel.Supported, "BIP44 · secp256k1", "m/44'/118'/0'/0/0",
-                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. The balance shown is available ATOM only — ATOM you have staked with a validator is not included."),
             // NEAR — receive and balance (roadmap N.7). SLIP-0010 ed25519 at m/44'/397'/0', the path
