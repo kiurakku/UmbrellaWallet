@@ -36,7 +36,7 @@
 | **XLM** | Stellar | ✅ | ✅ | — | Native XLM, with a text or ID memo for exchange deposits. An address becomes an account once someone funds it with 1 XLM; the first payment to a new address creates it |
 | **ATOM** | Cosmos Hub | ✅ | ✅ | — | With a memo for exchange deposits. The balance is *available* ATOM — staked ATOM is not counted |
 | **NEAR** | NEAR Protocol | ✅ | ✅ | — | Your implicit account (the 64-character hex id), to any `.near` name or implicit account. Named accounts of your own and staked NEAR are not shown |
-| **DOT** | Polkadot | — | ✅ | — | **Receive and balance only.** sr25519 like Polkadot.js / Nova; balance adds Asset Hub and the relay chain |
+| **DOT** | Polkadot | ✅ | ✅ | — | sr25519 like Polkadot.js / Nova; balance adds Asset Hub and the relay chain; sends go from Asset Hub, where balances now live |
 
 > Any ERC-20 token (LINK, UNI, AAVE, SHIB, PEPE, etc.) is automatically detected and its
 > balance shown when you link an Ethereum address. Same for TRC-20 on Tron and SPL on Solana.
@@ -505,4 +505,4 @@ threat model names each one as an open gap rather than implying it away.
 | 23 | Stellar | XLM | ✅ Full | Receive, balance and send (memo supported) |
 | 24 | Cosmos | ATOM | ✅ Full | Receive, available balance and send (memo) |
 | 25 | Near | NEAR | ✅ Full | Receive, balance and send from the implicit account |
-| 26 | Polkadot | DOT | ⚠️ Partial | Receive + balance (Asset Hub + relay) only |
+| 26 | Polkadot | DOT | ✅ Full | Receive, balance (Asset Hub + relay), send from Asset Hub |

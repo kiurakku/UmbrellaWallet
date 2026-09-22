@@ -119,12 +119,14 @@ public static class ChainCatalog
                 CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. This is your implicit account — the 64-character id is your public key. Named accounts (you.near) and NEAR staked with a pool are not shown."),
-            // Polkadot — receive and balance (roadmap N.8). substrate-bip39 + sr25519, the scheme of
+            // Polkadot — receive, balance and send (roadmap N.8). substrate-bip39 + sr25519, the scheme of
             // Polkadot.js, Talisman, SubWallet and Nova — NOT BIP-44 — so the phrase shows the same
-            // account there. The root key, no derivation path. Balance from Asset Hub and the relay chain.
+            // account there. The root key, no derivation path. Balance from Asset Hub and the relay chain;
+            // sends Balances.transfer_keep_alive from Asset Hub, built from the running runtime's metadata
+            // and validated by the node before broadcast (PolkadotSendTests, PolkadotSendLiveTests).
             new ChainInfo(
                 ChainId.Dot, "DOT", "Polkadot", ChainSupportLevel.Supported, "substrate-bip39 · sr25519", "root key (no derivation path)",
-                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. The balance adds up DOT on Asset Hub and on the relay chain — Polkadot moved balances to Asset Hub in 2025 — and includes DOT locked for staking or governance, which may not all be spendable."),
         ];

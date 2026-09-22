@@ -4,7 +4,7 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased] — Stellar, NEAR, XRP, Cosmos and Solana-token send, and the home screen from the gold design
+## [Unreleased] — every coin sends: Stellar, NEAR, XRP, Cosmos, Polkadot and Solana tokens; the home screen from the gold design
 
 ### Stellar (XLM) can send
 
@@ -70,8 +70,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
   network, as every other chain that sends already was. A test fails the build if a chain can send
   through a server the page does not say that about.
 - The explorers a sent transaction links to — StellarExpert, NearBlocks, the XRPL Foundation's
-  explorer and Mintscan — are listed as link-only, as the others were. A test fails the build if the
+  explorer, Mintscan and Subscan — are listed as link-only, as the others were. The Asset Hub servers
+  are now listed as learning where a transaction entered. A test fails the build if the
   Send screen links anywhere the page does not name.
+
+### Polkadot (DOT) can send
+
+- DOT from your Polkadot account to any Polkadot address, signed on this PC with sr25519 — the same
+  account Polkadot.js, Talisman, SubWallet and Nova show for your phrase. Transfers go from Asset Hub,
+  where Polkadot balances have lived since the 2025 migration.
+- **Built from what the running chain says.** The transfer's pallet and call, their argument types and
+  the full list of transaction extensions come from the runtime's own metadata; if a runtime upgrade
+  changes any of them, the wallet refuses to sign instead of guessing. (On its first live run this check
+  found an extension the wallet did not know yet.)
+- **Checked by the node before it is sent:** Asset Hub validates the signed transfer — signature,
+  era, nonce, fee — and only then is it broadcast. The signing itself (Merlin transcripts on STROBE and
+  Keccak, schnorrkel on ristretto255) is pinned to published transcripts and to signatures Polkadot.js
+  made, and every signature is verified before use.
+- The existential deposit (0.01 DOT) is kept: a transfer cannot empty the account, and a first
+  transfer to an empty address must be at least the deposit. The fee is the chain's own estimate.
+- Submitted once and followed through finalized blocks; whether it succeeded is read from the block's
+  events. A transfer is valid for 64 blocks (about six minutes): until then an unclear outcome is said
+  as it is, never offered as a retry.
+- **Limits:** DOT on the relay chain (if any is left there) is shown in the balance but not sent from.
 
 ### Solana tokens (SPL) can send
 
