@@ -1171,9 +1171,27 @@ public partial class MainViewModel
                     var priv = _deriver.DeriveSolanaPrivateKey(_unlockedMnemonic!);
                     try
                     {
-                        var (ok, signature, error) = await _solSender.SignAndBroadcastAsync(quote, priv);
-                        await FinishSendAsync(ok, signature, error,
-                            "SOL", quote.AmountSol, quote.To, $"solscan.io/tx/{signature}");
+                        var outcome = await _solSender.SignAndBroadcastAsync(quote, priv);
+                        var explorer = outcome.Signature is null ? "" : $"solscan.io/tx/{outcome.Signature}";
+
+                        if (outcome.Outcome is SolSubmitOutcome.Unknown or SolSubmitOutcome.Pending)
+                        {
+                            // It may still land until its blockhash expires. Never offered as a retry: the
+                            // transaction id is known, and a fresh send could pay twice.
+                            ClearSendQuotes();
+                            SendTo = string.Empty;
+                            SendAmount = string.Empty;
+                            SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
+                            StatusMessage = Loc.Instance["status.broadcastFailed"];
+                            PushActivity("Sent", "SOL", $"-{Fmt(quote.AmountSol)}", Shorten(quote.To), "now",
+                                explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
+                            break;
+                        }
+
+                        // Included means a confirmed block holds it. A failure in a block cost only the
+                        // fee and moved nothing, so it is a failed send like any other.
+                        await FinishSendAsync(outcome.Outcome == SolSubmitOutcome.Included, outcome.Signature,
+                            outcome.Message, "SOL", quote.AmountSol, quote.To, explorer);
                     }
                     finally
                     {
