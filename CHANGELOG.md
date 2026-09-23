@@ -4,7 +4,7 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased] — MIT licence + honest hardware-wallet path
+## [4.9.0] — 2026-09-23 — every coin sends, and the code opens up
 
 ### Licence: MIT (trademark kept)
 
@@ -21,9 +21,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 - `SensitiveBytes` zeroes key material buffers after vault KDF / seal work (best-effort; does not
   defeat a compromised user session).
 
----
+### Every coin the wallet shows can now send
 
-## [Unreleased] — every coin sends: Stellar, NEAR, XRP, Cosmos, Polkadot and Solana tokens; the home screen from the gold design
+Stellar, NEAR, XRP, Cosmos, Polkadot and Solana tokens joined the list; what follows is each of them.
 
 ### Stellar (XLM) can send
 
