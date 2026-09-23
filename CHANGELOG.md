@@ -4,6 +4,22 @@ All notable releases of **Umbrella Wallet**.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### A lost answer is no longer called a failure
+
+- Bitcoin, Litecoin, Dogecoin and Bitcoin Cash sends: an explorer answering **"already in the mempool"**
+  (which it does with an error code) was being reported as a rejection. It means the opposite — the
+  network has your transaction. Pressing Retry after that could spend a different set of coins and
+  **pay the recipient twice**. That answer now counts as sent, and so does a transaction the wallet
+  finds on the explorer after an unclear reply.
+- The same for Ethereum and every EVM network, including token sends and swap deposits: "already
+  known" counts as sent, a refusal on the node's own terms (funds, gas, signature) counts as not sent,
+  and **anything else is checked against the chain** by the transaction's own hash — which the wallet
+  now computes before sending — instead of being reported as a failure.
+- When it still cannot be settled, the send is shown as **Pending with its transaction id** and is
+  never offered as a retry, with an explanation of why sending again could pay twice.
+
 ## [4.9.0] — 2026-09-23 — every coin sends, and the code opens up
 
 ### Licence: MIT (trademark kept)

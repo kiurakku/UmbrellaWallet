@@ -140,7 +140,7 @@ public sealed class BitcoinTransactionSender
     /// change, the next internal index is durably reserved BEFORE broadcast (throws on write failure)
     /// and the change is sent there — a fresh address, never a reused public one.
     /// </summary>
-    public async Task<(bool Ok, string? TxId, string? Error)> SignAndBroadcastHdAsync(
+    public async Task<(bool Ok, string? TxId, string? Error, bool Unclear)> SignAndBroadcastHdAsync(
         string mnemonic,
         string walletId,
         AddressIndexStore store,
@@ -154,13 +154,14 @@ public sealed class BitcoinTransactionSender
             var changeAddress = ReserveChangeAddress(mnemonic, walletId, store, symbol, plan);
 
             var (tx, error) = _spender.BuildSigned(mnemonic, plan, request, changeAddress);
-            if (tx is null) return (false, null, error);
+            // Nothing has left this device yet, so a failure here is plainly a failure.
+            if (tx is null) return (false, null, error, false);
 
             return await BroadcastAsync(symbol, tx, ct);
         }
         catch (Exception ex)
         {
-            return (false, null, $"Send failed: {ex.Message}");
+            return (false, null, $"Send failed: {ex.Message}", false);
         }
     }
 
@@ -209,7 +210,14 @@ public sealed class BitcoinTransactionSender
 
     /// <summary>Broadcasts a transaction that was signed elsewhere in the app — a completed PSBT.</summary>
     public Task<(bool Ok, string? TxId, string? Error)> BroadcastSignedAsync(
-        string symbol, Transaction tx, CancellationToken ct = default) => BroadcastAsync(symbol, tx, ct);
+        string symbol, Transaction tx, CancellationToken ct = default) => ThreeAsync(BroadcastAsync(symbol, tx, ct));
+
+    private static async Task<(bool Ok, string? TxId, string? Error)> ThreeAsync(
+        Task<(bool Ok, string? TxId, string? Error, bool Unclear)> task)
+    {
+        var (ok, txid, error, _) = await task;
+        return (ok, txid, error);
+    }
 
     /// <summary>
     /// True when a PayJoin can be attempted for this plan: Bitcoin, and every input of one script
@@ -257,7 +265,7 @@ public sealed class BitcoinTransactionSender
         {
             if (!CanAttemptPayjoin(symbol, plan))
             {
-                var (ok, txid, error) = await SignAndBroadcastHdAsync(mnemonic, walletId, store, symbol, plan, request, ct);
+                var (ok, txid, error, _) = await SignAndBroadcastHdAsync(mnemonic, walletId, store, symbol, plan, request, ct);
                 return new PayjoinOutcome(ok, txid, error, false,
                     "PayJoin was not attempted: this payment spends more than one kind of address.", 0, false);
             }
@@ -312,7 +320,7 @@ public sealed class BitcoinTransactionSender
                     else if (rateError is not null) failure = rateError;
                     else
                     {
-                        var (ok, txid, broadcastError) = await BroadcastAsync(symbol, payjoinTx, ct);
+                        var (ok, txid, broadcastError, _) = await BroadcastAsync(symbol, payjoinTx, ct);
                         if (ok) return new PayjoinOutcome(true, txid, null, true, null, check.FeeContributionSat, true);
                         failure = $"The network refused the PayJoin transaction: {broadcastError}";
                     }
@@ -324,67 +332,101 @@ public sealed class BitcoinTransactionSender
             failure = ex is OperationCanceledException ? "The receiver did not answer in time." : ex.Message;
         }
 
-        var (sent, originalTxId, originalError) = await BroadcastAsync(symbol, originalTx, CancellationToken.None);
+        var (sent, originalTxId, originalError, _) = await BroadcastAsync(symbol, originalTx, CancellationToken.None);
         return new PayjoinOutcome(sent, originalTxId, originalError, false, failure, 0, OriginalLeftDevice: true);
     }
 
     /// <summary>Hands a signed transaction to the chain's explorer and returns its id.</summary>
-    private async Task<(bool Ok, string? TxId, string? Error)> BroadcastAsync(
+    /// <summary>
+    /// Sends the signed transaction and says honestly how that ended.
+    ///
+    /// The transaction id is fixed the moment it is signed, so it is known before anything is sent. An
+    /// explorer answering "already in the mempool" (which it does with a 400) means the network HAS it;
+    /// a refusal on consensus grounds means it never will. Anything else — a dead connection, a 502, a
+    /// message nobody here has seen — is unclear, and then the explorer is asked about this exact id
+    /// instead of the user being told it failed and offered a retry that could spend other coins.
+    /// </summary>
+    private async Task<(bool Ok, string? TxId, string? Error, bool Unclear)> BroadcastAsync(
         string symbol, Transaction tx, CancellationToken ct)
     {
+        var txid = tx.GetHash().ToString();
+        var hex = tx.ToHex();
+        bool httpOk;
+        string body;
+
         try
         {
-            var hex = tx.ToHex();
-
             if (IsHaskoin(symbol))
             {
-                // Haskoin broadcast: POST the raw transaction hex as the body; the txid returns at "txid".
-                using var bchContent = new StringContent(hex, Encoding.ASCII, "text/plain");
-                using var bchRes = await Http.PostAsync($"{ExplorerFor(symbol)}/transactions", bchContent, ct);
-                var bchBody = (await bchRes.Content.ReadAsStringAsync(ct)).Trim();
-                if (!bchRes.IsSuccessStatusCode)
-                    return (false, null, $"Explorer rejected the transaction: {bchBody}");
-                try
-                {
-                    using var doc = JsonDocument.Parse(bchBody);
-                    if (doc.RootElement.TryGetProperty("txid", out var th) && th.GetString() is { } h)
-                        return (true, h, null);
-                }
-                catch { /* fall back to the locally-computed hash below */ }
-                return (true, tx.GetHash().ToString(), null);
+                using var content = new StringContent(hex, Encoding.ASCII, "text/plain");
+                using var res = await Http.PostAsync($"{ExplorerFor(symbol)}/transactions", content, ct);
+                httpOk = res.IsSuccessStatusCode;
+                body = (await res.Content.ReadAsStringAsync(ct)).Trim();
             }
-
-            if (IsBlockCypher(symbol))
+            else if (IsBlockCypher(symbol))
             {
-                // BlockCypher broadcast: POST {"tx":"<hex>"} to /txs/push; the txid returns at tx.hash.
-                using var dogeContent = new StringContent($"{{\"tx\":\"{hex}\"}}", Encoding.UTF8, "application/json");
-                using var dogeRes = await Http.PostAsync($"{ExplorerFor(symbol)}/txs/push", dogeContent, ct);
-                var dogeBody = (await dogeRes.Content.ReadAsStringAsync(ct)).Trim();
-                if (!dogeRes.IsSuccessStatusCode)
-                    return (false, null, $"Explorer rejected the transaction: {dogeBody}");
-                try
-                {
-                    using var doc = JsonDocument.Parse(dogeBody);
-                    if (doc.RootElement.TryGetProperty("tx", out var txEl) &&
-                        txEl.TryGetProperty("hash", out var hh) && hh.GetString() is { } h)
-                        return (true, h, null);
-                }
-                catch { /* fall back to the locally-computed hash below */ }
-                return (true, tx.GetHash().ToString(), null);
+                using var content = new StringContent($"{{\"tx\":\"{hex}\"}}", Encoding.UTF8, "application/json");
+                using var res = await Http.PostAsync($"{ExplorerFor(symbol)}/txs/push", content, ct);
+                httpOk = res.IsSuccessStatusCode;
+                body = (await res.Content.ReadAsStringAsync(ct)).Trim();
             }
-
-            using var content = new StringContent(hex, Encoding.UTF8, "text/plain");
-            using var res = await Http.PostAsync($"{ExplorerFor(symbol)}/tx", content, ct);
-            var body = (await res.Content.ReadAsStringAsync(ct)).Trim();
-            if (!res.IsSuccessStatusCode)
-                return (false, null, $"Explorer rejected the transaction: {body}");
-
-            return (true, body, null);
+            else
+            {
+                using var content = new StringContent(hex, Encoding.UTF8, "text/plain");
+                using var res = await Http.PostAsync($"{ExplorerFor(symbol)}/tx", content, ct);
+                httpOk = res.IsSuccessStatusCode;
+                body = (await res.Content.ReadAsStringAsync(ct)).Trim();
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
-            return (false, null, $"Send failed: {ex.Message}");
+            // The request may have reached the explorer before the connection died.
+            return await SettleAsync(symbol, txid, $"The network did not answer ({ex.Message}).", ct);
         }
+
+        switch (UtxoBroadcast.Classify(httpOk, body))
+        {
+            case UtxoBroadcastAnswer.Accepted:
+                return (true, txid, null, false);
+            case UtxoBroadcastAnswer.Rejected:
+                return (false, null, $"Explorer rejected the transaction: {body}", false);
+            default:
+                return await SettleAsync(symbol, txid, $"The explorer's answer was unclear: {body}", ct);
+        }
+    }
+
+    /// <summary>Asks the explorer whether this exact transaction is there before calling it anything.</summary>
+    private async Task<(bool Ok, string? TxId, string? Error, bool Unclear)> SettleAsync(
+        string symbol, string txid, string why, CancellationToken ct)
+    {
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(attempt == 0 ? 2 : 5), ct);
+            try
+            {
+                var url = IsBlockCypher(symbol) ? $"{ExplorerFor(symbol)}/txs/{txid}" : $"{ExplorerFor(symbol)}/tx/{txid}";
+                if (IsHaskoin(symbol)) url = $"{ExplorerFor(symbol)}/transaction/{txid}";
+                using var res = await Http.GetAsync(url, ct);
+                if (res.IsSuccessStatusCode) return (true, txid, null, false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                // keep asking
+            }
+        }
+
+        return (false, txid,
+            $"{why} The transaction {txid} may already be in the mempool — check it on an explorer before " +
+            "sending again, because a second send would spend different coins and pay twice.",
+            true);
     }
 
     /// <summary>
