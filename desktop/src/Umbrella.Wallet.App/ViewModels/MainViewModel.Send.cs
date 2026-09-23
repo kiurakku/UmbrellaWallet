@@ -1275,8 +1275,8 @@ public partial class MainViewModel
                 {
                     var quote = _tronQuote;
                     var key = _deriver.DeriveTronKey(_unlockedMnemonic!);
-                    var (ok, txId, error) = await _tronSender.SignAndBroadcastAsync(quote, key);
-                    await FinishSendAsync(ok, txId, error, quote.Symbol, quote.Amount, quote.To,
+                    var (ok, txId, error, unclear) = await _tronSender.SignAndBroadcastAsync(quote, key);
+                    await FinishSendAsync(ok, txId, error, unclear, quote.Symbol, quote.Amount, quote.To,
                         txId is null ? "" : $"tronscan.org/#/transaction/{txId}");
                     break;
                 }
@@ -1331,11 +1331,11 @@ public partial class MainViewModel
                         // A jetton quote carries the token's own wallet and units, and signs a
                         // different message; the TON amount on it is gas, not the transfer.
                         var isJetton = quote.JettonWallet is not null;
-                        var (ok, _, error) = isJetton
+                        var (ok, _, error, unclear) = isJetton
                             ? await _tonSender.SignAndBroadcastJettonAsync(quote, priv)
                             : await _tonSender.SignAndBroadcastAsync(quote, priv);
 
-                        await FinishSendAsync(ok, ok ? quote.To : null, error,
+                        await FinishSendAsync(ok, ok ? quote.To : null, error, unclear,
                             isJetton ? quote.JettonSymbol ?? "TON" : "TON",
                             isJetton ? _sendTokenAmount : quote.AmountTon,
                             quote.To, $"tonviewer.com/{quote.From}");
@@ -1510,8 +1510,8 @@ public partial class MainViewModel
                     var extendedKey = AdaKeys.PaymentKey(_unlockedMnemonic!);
                     try
                     {
-                        var (ok, txId, error) = await _adaSender.SignAndBroadcastAsync(quote, extendedKey);
-                        await FinishSendAsync(ok, txId, error, "ADA", quote.Amount, quote.To,
+                        var (ok, txId, error, unclear) = await _adaSender.SignAndBroadcastAsync(quote, extendedKey);
+                        await FinishSendAsync(ok, txId, error, unclear, "ADA", quote.Amount, quote.To,
                             txId is null ? "" : $"cardanoscan.io/transaction/{txId}");
                     }
                     finally
@@ -1527,7 +1527,7 @@ public partial class MainViewModel
                     // monero-wallet-rpc builds, signs and relays the RingCT transaction itself.
                     // The developer fee (if any) rides along as a second destination — disclosed above.
                     var result = await _monero.SendAsync(_moneroTo, _moneroAmount, _moneroFeeTo, _moneroFeeAmount);
-                    await FinishSendAsync(result.Ok, result.TxHash, result.Error,
+                    await FinishSendAsync(result.Ok, result.TxHash, result.Error, result.Unclear,
                         "XMR", _moneroAmount, _moneroTo,
                         result.TxHash is null ? "" : $"xmrchain.net/tx/{result.TxHash}");
                     if (result.Ok)
@@ -1553,18 +1553,28 @@ public partial class MainViewModel
     /// Finishes an EVM send. An answer the network never gave is recorded as Pending against the hash
     /// that was signed — never as a failure with a retry, which would send again with the next nonce.
     /// </summary>
-    private async Task FinishEvmSendAsync(EthSendResult result, string symbol, decimal amount, string to, string explorer)
+    private Task FinishEvmSendAsync(EthSendResult result, string symbol, decimal amount, string to, string explorer) =>
+        FinishSendAsync(result.Ok, result.TxHash, result.Error, result.Unclear, symbol, amount, to, explorer);
+
+    /// <summary>
+    /// Finishes a send whose network answer may be unclear. Unclear is not failure: the transaction was
+    /// signed and may be on its way, so it is recorded as Pending against its own id and never offered
+    /// as a retry — every chain here would pay twice if the same money were sent again.
+    /// </summary>
+    private async Task FinishSendAsync(
+        bool ok, string? reference, string? error, bool unclear, string symbol, decimal amount, string to, string explorer)
     {
-        if (!result.Unclear)
+        if (!unclear)
         {
-            await FinishSendAsync(result.Ok, result.TxHash, result.Error, symbol, amount, to, explorer);
+            await FinishSendAsync(ok, reference, error, symbol, amount, to, explorer);
             return;
         }
 
         ClearSendQuotes();
         SendTo = string.Empty;
         SendAmount = string.Empty;
-        SendError = result.Error ?? Loc.Instance["send.errBroadcast"];
+        SendMemo = string.Empty;
+        SendError = error ?? Loc.Instance["send.errBroadcast"];
         StatusMessage = Loc.Instance["status.broadcastFailed"];
         var link = string.IsNullOrWhiteSpace(explorer) ? null
             : explorer.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? explorer : $"https://{explorer}";

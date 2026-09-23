@@ -111,7 +111,7 @@ public sealed class CardanoTransactionSender
         return (new AdaSendQuote(from, to, amountAda, amount, fee, ttl.Value, inputs, outputs), null);
     }
 
-    public async Task<(bool Ok, string? TxId, string? Error)> SignAndBroadcastAsync(
+    public async Task<(bool Ok, string? TxId, string? Error, bool Unclear)> SignAndBroadcastAsync(
         AdaSendQuote quote, byte[] extendedKey, CancellationToken ct = default)
     {
         try
@@ -120,22 +120,69 @@ public sealed class CardanoTransactionSender
             var hash = AdaTransfer.HashBody(body);
             var signed = AdaTransfer.BuildSignedTx(body, AdaKeys.PublicKey(extendedKey), AdaTransfer.Sign(extendedKey, hash));
 
+            // The id is fixed by the signed body, so it is known whatever the network answers.
+            var txId = Convert.ToHexString(hash).ToLowerInvariant();
+
             using var content = new ByteArrayContent(signed);
             content.Headers.ContentType = new MediaTypeHeaderValue("application/cbor");
             using var res = await Http.PostAsync($"{Koios}/submittx", content, ct);
             var respBody = (await res.Content.ReadAsStringAsync(ct)).Trim();
-            if (!res.IsSuccessStatusCode)
-            {
-                return (false, null, $"Koios rejected the transaction: {respBody}");
-            }
+            if (res.IsSuccessStatusCode) return (true, respBody.Trim('"'), null, false);
 
-            // submittx returns the transaction id (hash), quoted.
-            return (true, respBody.Trim('"'), null);
+            // The ledger's own validation failures mean this transaction can never be in a block.
+            var refused = new[]
+            {
+                "ValueNotConservedUTxO", "BadInputsUTxO", "FeeTooSmallUTxO", "OutsideValidityIntervalUTxO",
+                "MissingVKeyWitnessesUTXOW", "OutputTooSmallUTxO", "MaxTxSizeUTxO", "ExpiredUTxO",
+            }.Any(e => respBody.Contains(e, StringComparison.OrdinalIgnoreCase));
+            if (refused) return (false, null, $"Koios rejected the transaction: {respBody}", false);
+
+            return await SettleAsync(txId, $"Koios's answer was unclear: {respBody}", ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
-            return (false, null, $"Send failed: {ex.Message}");
+            return (false, null, $"Send failed: {ex.Message}", false);
         }
+    }
+
+    /// <summary>
+    /// Asks Koios whether this exact transaction is on chain. Koios indexes confirmed transactions, so
+    /// one still in the mempool will not be found — which is why "not found" is left unclear rather than
+    /// reported as a failure that invites a second send of the same coins.
+    /// </summary>
+    private async Task<(bool Ok, string? TxId, string? Error, bool Unclear)> SettleAsync(
+        string txId, string why, CancellationToken ct)
+    {
+        for (var attempt = 0; attempt < 4; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(attempt == 0 ? 3 : 8), ct);
+            try
+            {
+                using var body = new StringContent($"{{\"_tx_hashes\":[\"{txId}\"]}}", Encoding.UTF8, "application/json");
+                using var res = await Http.PostAsync($"{Koios}/tx_info", body, ct);
+                if (!res.IsSuccessStatusCode) continue;
+                using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
+                if (doc.RootElement.ValueKind == JsonValueKind.Array && doc.RootElement.GetArrayLength() > 0)
+                    return (true, txId, null, false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                // keep asking
+            }
+        }
+
+        return (false, txId,
+            $"{why} The transaction {txId} may already be on Cardano — check it on an explorer before sending " +
+            "again, because a second send would spend different coins and pay twice.",
+            true);
     }
 
     private static int MeasureSignedSize(
