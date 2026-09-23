@@ -1130,8 +1130,10 @@ public partial class MainViewModel
                     break;
                 }
 
-                case "ETH" or "BNB" or "MATIC" or "AVAX" or "FTM" or "CRO"
-                     or "ARB" or "BASE" or "OP" when _sendQuote is not null:
+                // Every EVM network in the sender's own registry, matched against that registry rather
+                // than a list repeated here — which is how Linea came to be offered in the picker and
+                // then refused at confirm time with "prepare first".
+                case not null when _sendQuote is not null && EthTransactionSender.Chains.ContainsKey(_sendSymbol):
                 {
                     var quote = _sendQuote;
                     // Every EVM chain (mainnet, side-chains and L2 rollups) shares the same Ethereum key

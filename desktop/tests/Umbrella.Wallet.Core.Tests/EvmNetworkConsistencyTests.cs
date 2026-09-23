@@ -46,17 +46,18 @@ public sealed class EvmNetworkConsistencyTests
     }
 
     [Fact]
-    public void Zksync_era_is_read_only_and_linea_is_not()
+    public void Every_network_whose_balance_is_read_can_also_be_spent()
     {
-        // Pinned by name rather than by count, so adding a network later does not silently rewrite the
-        // claim these two make.
+        // zkSync Era was the exception while the wallet signed a flat 21,000 gas everywhere; now the
+        // gas limit is the chain's own estimate, so a balance that is read is a balance that can move.
+        // Pinned by name, so adding a network later does not silently rewrite the claim.
         var networks = PublicChainBalanceClient.EvmSideNetworks.ToDictionary(n => n.Network, n => n.CanSend);
 
         Assert.True(networks.ContainsKey("zkSync Era"));
-        Assert.False(networks["zkSync Era"]);
-
+        Assert.True(networks["zkSync Era"]);
         Assert.True(networks.ContainsKey("Linea"));
         Assert.True(networks["Linea"]);
+        Assert.DoesNotContain(networks, n => !n.Value);
     }
 
     [Fact]

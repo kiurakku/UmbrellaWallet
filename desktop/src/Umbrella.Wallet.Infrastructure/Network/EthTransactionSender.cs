@@ -81,11 +81,13 @@ public sealed class EthTransactionSender
             // native transfer, so the signer pinned to the official EIP-155 vector covers it with only
             // the chain id changing. Newly enabled — verify with a small amount before trusting it.
             //
-            // zkSync Era is deliberately NOT here even though its balance is read: a plain transfer
-            // there does not cost a flat 21,000 gas, so the shared TransferGasLimit would strand the
-            // transaction. It stays read-only until the gas limit comes from the chain.
             ["LINEA"] = new("ETH", "Linea", 59144, "lineascan.build/tx/",
                 ["https://rpc.linea.build", "https://linea.drpc.org"]),
+            // zkSync Era charges what its own estimate says, not a flat 21,000 — which is why sending
+            // here waited until the gas limit came from the chain (eth_estimateGas) instead of a
+            // constant. Signing is the same EIP-155 with its chain id.
+            ["ZKSYNC"] = new("ETH", "zkSync Era", 324, "explorer.zksync.io/tx/",
+                ["https://mainnet.era.zksync.io", "https://zksync.drpc.org"]),
         };
 
     /// <summary>The explorer-tx base for a chain id (used at confirm time, when a quote carries only its
@@ -128,13 +130,25 @@ public sealed class EthTransactionSender
                 var gasHex = await CallAsync(rpc, "eth_gasPrice", Array.Empty<object>(), ct);
                 if (balanceHex is null || nonceHex is null || gasHex is null) continue;
 
+                // The gas a transfer costs is the chain's answer, not a constant: it is 21,000 on
+                // Ethereum and its EVM-equivalent chains, and more on zkSync Era, where a wallet that
+                // assumed 21,000 would sign a transaction that can never execute.
+                var estimateHex = await CallAsync(rpc, "eth_estimateGas", new object[]
+                {
+                    new { from = fromAddress, to = toAddress, value = "0x" + amountWei.ToString("x").TrimStart('0') },
+                }, ct);
+                if (estimateHex is null) continue;
+                var estimated = FromHex(estimateHex);
+                // A fifth more than the estimate, and never below the intrinsic cost of a transfer.
+                var gasLimit = BigInteger.Max(estimated * 120 / 100, TransferGasLimit);
+
                 var balance = FromHex(balanceHex);
                 var nonce = FromHex(nonceHex);
                 var gasPrice = FromHex(gasHex);
                 // 5% headroom: enough that a small gas-price move between quote and broadcast
                 // doesn't strand the transaction, without overpaying the way a 20% pad did.
                 var paddedGasPrice = gasPrice * 105 / 100;
-                var maxFeeWei = paddedGasPrice * TransferGasLimit;
+                var maxFeeWei = paddedGasPrice * gasLimit;
 
                 if (balance < amountWei + maxFeeWei)
                 {
@@ -147,7 +161,7 @@ public sealed class EthTransactionSender
                 return (new EthSendQuote(
                     fromAddress, toAddress, amountEth, amountWei, nonce, paddedGasPrice,
                     (decimal)maxFeeWei / 1_000_000_000_000_000_000m, rpc,
-                    chain.ChainId, chain.Symbol, chain.Rpcs), null);
+                    chain.ChainId, chain.Symbol, chain.Rpcs, GasLimit: (long)gasLimit), null);
             }
             catch
             {
@@ -168,7 +182,7 @@ public sealed class EthTransactionSender
         try
         {
             signedHex = SignTransfer(
-                privateKey, quote.ChainId, quote.To, quote.AmountWei, quote.Nonce, quote.GasPriceWei, TransferGasLimit);
+                privateKey, quote.ChainId, quote.To, quote.AmountWei, quote.Nonce, quote.GasPriceWei, quote.GasLimit);
         }
         catch (Exception ex)
         {

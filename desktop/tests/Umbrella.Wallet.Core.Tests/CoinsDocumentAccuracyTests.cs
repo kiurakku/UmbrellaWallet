@@ -99,7 +99,8 @@ public sealed class CoinsDocumentAccuracyTests
         ["Base"] = "BASE",
         ["Optimism"] = "OP",
         ["Linea"] = "LINEA",
-        // zkSync Era has no entry on purpose: its balance is read, but nothing can broadcast there.
+        ["zkSync Era"] = "ZKSYNC",
+        ["zkSync"] = "ZKSYNC",
     };
 
     /// <summary>The capability keys a row is really about: the L2 networks it names, or else its own
@@ -148,11 +149,11 @@ public sealed class CoinsDocumentAccuracyTests
     }
 
     [Fact]
-    public void The_zksync_row_says_receive_only_and_the_linea_row_does_not()
+    public void The_zksync_and_linea_rows_both_say_they_send()
     {
-        // The pair this indirection exists for. zkSync Era shows a balance the wallet cannot spend;
-        // Linea shows one it can. Both are "ETH" at the same address, so only the network tells them
-        // apart, and getting it backwards would strand somebody's funds in their own head.
+        // The pair this indirection exists for. Both are "ETH" at the same address, so only the network
+        // tells them apart; zkSync was the one the wallet could read but not spend, until its gas came
+        // from the chain. Saying it backwards either way would strand somebody's funds in their own head.
         var path = FindDocument();
         if (path is null) return;
 
@@ -160,7 +161,7 @@ public sealed class CoinsDocumentAccuracyTests
 
         var zk = rows.SingleOrDefault(r => r.Network.Contains("zkSync", StringComparison.OrdinalIgnoreCase));
         Assert.NotEqual(default, zk);
-        Assert.False(zk.ClaimsSend);
+        Assert.True(zk.ClaimsSend);
 
         Assert.Contains(rows, r => r.Network.Contains("Linea", StringComparison.OrdinalIgnoreCase) && r.ClaimsSend);
     }
