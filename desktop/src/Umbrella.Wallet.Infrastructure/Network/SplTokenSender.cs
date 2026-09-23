@@ -13,7 +13,10 @@ public sealed record SplSendQuote(
     byte Decimals,
     bool CreatesAccount,
     ulong RentLamports,
-    string Server)
+    string Server,
+    string TokenProgram = SolanaTokens.TokenProgram,
+    /// <summary>What the issuer can still do to this token after it arrives, when that is anything.</summary>
+    string? IssuerPowers = null)
 {
     public decimal FeeSol => SolanaRpc.ToSol(SolanaRpc.BaseFeeLamports);
     public decimal RentSol => SolanaRpc.ToSol(RentLamports);
@@ -26,6 +29,11 @@ public sealed record SplSendQuote(
 /// transfer is TransferChecked — the token program re-checks the mint and decimals itself — preceded,
 /// only when the recipient has no account for this token, by an idempotent create that the sender pays
 /// rent for, which the review states.
+///
+/// Both token programs are sent: the original, and Token-2022 for mints whose extensions cannot change
+/// what a plain transfer does (<see cref="SplToken.WhyNotSendable"/>). One that could — a transfer fee,
+/// a transfer hook, a paused or non-transferable token, accounts that start frozen, or a scaled display
+/// amount — is refused in the user's own terms rather than sent and hoped for.
 /// </summary>
 public sealed class SplTokenSender
 {
@@ -52,13 +60,17 @@ public sealed class SplTokenSender
             var m = SplToken.ParseAccount(mintInfo.Value);
             if (m.Kind != SplToken.AccountKind.Mint)
                 return (null, $"{host} does not show {Short(mint)} as a token mint. Nothing was sent.");
-            if (m.Program != SolanaTokens.TokenProgram)
-                return (null, "This token uses Token-2022, whose transfer fees and hooks this wallet does not handle yet. Nothing was sent.");
+            if (m.Program is not (SolanaTokens.TokenProgram or SolanaTokens.Token2022Program))
+                return (null, $"{Short(mint)} is not held by a token program this wallet knows. Nothing was sent.");
+            if (SplToken.WhyNotSendable(m.Program, MintInfo(mintInfo.Value)) is { } why)
+                return (null, $"{symbol} cannot be sent from here: {why}. Nothing was sent.");
+            if (!SolanaKeys.TryDecode(m.Program, out var tokenProgram))
+                return (null, "This token's program could not be read. Nothing was sent.");
             if (!SplToken.TryToUnits(amount, m.Decimals, out var units))
                 return (null, $"Enter a positive amount with at most {m.Decimals} decimal places.");
 
             // The sender's tokens: in its associated account, as every wallet keeps them.
-            var sourceAta = SolanaKeys.Encode(SplToken.AssociatedTokenAddress(fromKey, mintKey));
+            var sourceAta = SolanaKeys.Encode(SplToken.AssociatedTokenAddress(fromKey, mintKey, tokenProgram));
             var (sourceInfo, _) = await SolanaNetwork.CallAsync(server, Info(sourceAta), ct);
             var source = Parse(sourceInfo);
             if (source.Kind != SplToken.AccountKind.TokenAccount || source.Mint != mint || source.Owner != from)
@@ -83,7 +95,7 @@ public sealed class SplTokenSender
                     return (null, $"Could not check the destination on {host}. Nothing was sent.");
             }
 
-            var destAta = SolanaKeys.Encode(SplToken.AssociatedTokenAddress(toKey, mintKey));
+            var destAta = SolanaKeys.Encode(SplToken.AssociatedTokenAddress(toKey, mintKey, tokenProgram));
             var (destAtaInfo, _) = await SolanaNetwork.CallAsync(server, Info(destAta), ct);
             var destAccount = Parse(destAtaInfo);
             if (destAccount.Kind is not (SplToken.AccountKind.Missing or SplToken.AccountKind.TokenAccount) ||
@@ -95,7 +107,7 @@ public sealed class SplTokenSender
             if (creates)
             {
                 var r = await SolanaNetwork.LamportsAsync(server,
-                    SolanaRpc.Request("getMinimumBalanceForRentExemption", SplToken.TokenAccountSize), ct);
+                    SolanaRpc.Request("getMinimumBalanceForRentExemption", SplToken.AccountSizeFor(m.Program)), ct);
                 if (r is null) return (null, $"Could not read the rent for a token account from {host}. Nothing was sent.");
                 rent = r.Value;
             }
@@ -111,7 +123,8 @@ public sealed class SplTokenSender
                     : $"Not enough SOL for the fee: it needs {SolanaRpc.Sol(needed)} SOL.");
             }
 
-            return (new SplSendQuote(from, to, mint, symbol, amount, units, (byte)m.Decimals, creates, rent, server), null);
+            return (new SplSendQuote(from, to, mint, symbol, amount, units, (byte)m.Decimals, creates, rent, server, m.Program!,
+                SplToken.IssuerPowers(MintInfo(mintInfo.Value))), null);
         }
 
         return (null, "No Solana server answered. Check your connection (or Tor). Nothing was sent.");
@@ -135,13 +148,24 @@ public sealed class SplTokenSender
     /// the TransferChecked from the sender's account to it.</summary>
     public static IReadOnlyList<SolanaInstruction> Instructions(SplSendQuote quote, byte[] from, byte[] to, byte[] mint)
     {
+        if (!SolanaKeys.TryDecode(quote.TokenProgram, out var program))
+            throw new InvalidOperationException("The token's program is not an address.");
+
         var list = new List<SolanaInstruction>();
-        if (quote.CreatesAccount) list.Add(SplToken.CreateAssociatedAccountIdempotent(from, to, mint));
+        if (quote.CreatesAccount) list.Add(SplToken.CreateAssociatedAccountIdempotent(from, to, mint, program));
         list.Add(SplToken.TransferChecked(
-            SplToken.AssociatedTokenAddress(from, mint), mint, SplToken.AssociatedTokenAddress(to, mint), from,
-            quote.Units, quote.Decimals));
+            SplToken.AssociatedTokenAddress(from, mint, program), mint, SplToken.AssociatedTokenAddress(to, mint, program), from,
+            quote.Units, quote.Decimals, program));
         return list;
     }
+
+    /// <summary>The <c>info</c> object of a jsonParsed account — where a mint's extensions are listed.</summary>
+    private static System.Text.Json.JsonElement MintInfo(System.Text.Json.JsonElement result) =>
+        result.TryGetProperty("value", out var value) && value.ValueKind == System.Text.Json.JsonValueKind.Object &&
+        value.TryGetProperty("data", out var data) && data.TryGetProperty("parsed", out var parsed) &&
+        parsed.TryGetProperty("info", out var info)
+            ? info
+            : default;
 
     /// <summary>A lookup that got no answer is unreadable — never "missing", which would read as a
     /// new, empty account and let a send go ahead on a guess.</summary>

@@ -88,4 +88,39 @@ public sealed class SplTokenLiveTests(ITestOutputHelper output)
         output.WriteLine(tokenAccountError);
         Assert.Contains("program, not a wallet", tokenAccountError);   // an associated account is itself off-curve
     }
+    /// <summary>A wallet whose PayPal USD (Token-2022) sits in its associated account.</summary>
+    private const string PyusdHolder = "H8sMJSCQxfKiFTCfDR3DUMLPwcRbM61LGFJ8N4dK3WjS";
+    private const string Pyusd = "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo";
+
+    [Fact]
+    public async Task The_validator_runs_a_token_2022_transfer_of_paypal_usd()
+    {
+        Online();
+        var fresh = FreshWallet();
+        var (quote, error) = await new SplTokenSender().PrepareAsync(PyusdHolder, Pyusd, "PYUSD", fresh, 0.000001m);
+        output.WriteLine(error ?? $"{quote}");
+
+        // PYUSD's extensions (a zero fee, a hook with no program, metadata) do not stop a plain transfer.
+        Assert.NotNull(quote);
+        Assert.Equal(SolanaTokens.Token2022Program, quote!.TokenProgram);
+        Assert.True(quote.CreatesAccount);
+
+        SolanaKeys.TryDecode(PyusdHolder, out var from);
+        SolanaKeys.TryDecode(fresh, out var to);
+        SolanaKeys.TryDecode(Pyusd, out var mint);
+        var message = SolanaMessage.Compile(from, SplTokenSender.Instructions(quote, from, to, mint), new byte[32]);
+
+        using var res = await PublicHttp.Shared.PostAsJsonAsync(Node, SolanaRpc.Request("simulateTransaction",
+            Convert.ToBase64String(SolanaMessage.Transaction(new byte[64], message)),
+            new { encoding = "base64", sigVerify = false, replaceRecentBlockhash = true, commitment = "confirmed" }));
+        var text = await res.Content.ReadAsStringAsync();
+        var (result, rpcError) = SolanaRpc.Unwrap(JsonDocument.Parse(text).RootElement);
+        Assert.Null(rpcError);
+        var value = result!.Value.GetProperty("value");
+        var logs = value.GetProperty("logs").EnumerateArray().Select(l => l.GetString()).ToList();
+        foreach (var line in logs) output.WriteLine(line);
+
+        Assert.Equal(JsonValueKind.Null, value.GetProperty("err").ValueKind);
+        Assert.Equal($"Program {SolanaTokens.Token2022Program} success", logs[^1]);
+    }
 }
