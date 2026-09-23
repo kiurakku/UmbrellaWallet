@@ -14,6 +14,7 @@ using CommunityToolkit.Mvvm.Input;
 using QRCoder;
 using Umbrella.Wallet.Core.Chains;
 using Umbrella.Wallet.Core.Derivation;
+using Umbrella.Wallet.Core.Polkadot;
 using Umbrella.Wallet.Core.Amounts;
 using Umbrella.Wallet.Core.Safety;
 using Umbrella.Wallet.Core.Seed;
@@ -274,6 +275,7 @@ public partial class MainViewModel
         _sendQuote = null;
         _tonQuote = null;
         _splQuote = null;
+        _dotQuote = null;
         _sendTokenSymbol = null;
         _sendTokenAmount = 0m;
         _payjoinPlanned = false;
@@ -650,6 +652,26 @@ public partial class MainViewModel
                         amount: quote.AmountXlm,
                         networkFee: quote.FeeXlm,
                         symbol: "XLM");
+                    break;
+                }
+
+                case "DOT":
+                {
+                    // The running runtime's metadata says how the transfer is built; the account, its nonce,
+                    // the existential deposit and the fee are read from Asset Hub before anything is signed
+                    // (roadmap N.8).
+                    var (quote, error) = await _dotSender.PrepareAsync(from.Address, SendTo.Trim(), amount);
+                    if (quote is null) { SendError = error ?? Loc.Instance["send.errPrepareFailed"]; return; }
+                    _dotQuote = quote;
+                    SendQuoteSummary = $"Send {Fmt(quote.AmountDot)} DOT  →  {quote.To}";
+                    SendQuoteFee = quote.CreatesAccount
+                        ? string.Format(Loc.Instance["send.dotFeeCreates"], Fmt(quote.FeeDot), Fmt(quote.ExistentialDepositDot))
+                        : string.Format(Loc.Instance["send.dotFee"], Fmt(quote.FeeDot));
+                    BuildSendSimulation(
+                        balance: (decimal)from.Amount,
+                        amount: quote.AmountDot,
+                        networkFee: quote.FeeDot,
+                        symbol: "DOT");
                     break;
                 }
 
@@ -1059,7 +1081,7 @@ public partial class MainViewModel
                         || _tonQuote is not null || _tronQuote is not null || _adaQuote is not null
                         || _splQuote is not null
                         || _xlmQuote is not null || _nearQuote is not null || _xrpQuote is not null
-                        || _atomQuote is not null
+                        || _atomQuote is not null || _dotQuote is not null
                         || (_sendSymbol == "XMR" && _moneroAmount > 0);
         if (_unlockedMnemonic is null || !haveQuote)
         {
@@ -1345,6 +1367,34 @@ public partial class MainViewModel
                     break;
                 }
 
+                case "DOT" when _dotQuote is not null:
+                {
+                    var quote = _dotQuote;
+                    using var key = _deriver.DeriveDotKeypair(_unlockedMnemonic!);
+                    var outcome = await _dotSender.SignAndBroadcastAsync(quote, key);
+                    var explorer = outcome.Hash is null ? "" : $"assethub-polkadot.subscan.io/extrinsic/{outcome.Hash}";
+
+                    if (outcome.Outcome == DotSubmitOutcome.Unknown)
+                    {
+                        // It may still be included until its era ends. Never offered as a retry: a fresh
+                        // send would take the next nonce and could pay twice.
+                        ClearSendQuotes();
+                        SendTo = string.Empty;
+                        SendAmount = string.Empty;
+                        SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
+                        StatusMessage = Loc.Instance["status.broadcastFailed"];
+                        PushActivity("Sent", "DOT", $"-{Fmt(quote.AmountDot)}", Shorten(quote.To), "now",
+                            explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
+                        break;
+                    }
+
+                    // Included means a finalized block holds it and its events say it succeeded. A failure
+                    // there cost only the fee and moved nothing, so it is a failed send like any other.
+                    await FinishSendAsync(outcome.Outcome == DotSubmitOutcome.Included, outcome.Hash,
+                        outcome.Message, "DOT", quote.AmountDot, quote.To, explorer);
+                    break;
+                }
+
                 case "ATOM" when _atomQuote is not null:
                 {
                     var quote = _atomQuote;
@@ -1524,6 +1574,7 @@ public partial class MainViewModel
         _tronQuote = null;
         _tonQuote = null;
         _splQuote = null;
+        _dotQuote = null;
         _adaQuote = null;
         _xlmQuote = null;
         _nearQuote = null;

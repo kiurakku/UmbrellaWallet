@@ -156,6 +156,32 @@ public sealed class HdAddressDeriver
     }
 
     /// <summary>
+    /// The sr25519 key the Polkadot address comes from (roadmap N.8, send): the same mini secret, expanded
+    /// the way schnorrkel does. The caller disposes it.
+    /// </summary>
+    public Umbrella.Wallet.Core.Polkadot.Sr25519.Keypair DeriveDotKeypair(string mnemonic, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var validation = _mnemonicService.Validate(mnemonic);
+        if (!validation.IsValid || validation.NormalizedMnemonic is null)
+        {
+            throw new ArgumentException(validation.Error ?? "Invalid mnemonic.", nameof(mnemonic));
+        }
+
+        var entropy = AdaKeys.EntropyFromMnemonic(validation.NormalizedMnemonic);
+        var mini = Umbrella.Wallet.Core.Polkadot.PolkadotKeys.MiniSecretFromEntropy(entropy, passphrase);
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(entropy);
+        try
+        {
+            return Umbrella.Wallet.Core.Polkadot.Sr25519.FromMiniSecret(mini);
+        }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(mini);
+        }
+    }
+
+    /// <summary>
     /// NEAR implicit account at m/44'/397'/{index}' (SLIP-0010 ed25519): the account id is the hex of
     /// the public key (roadmap N.7). Pinned to near-seed-phrase's own parse test.
     /// </summary>
