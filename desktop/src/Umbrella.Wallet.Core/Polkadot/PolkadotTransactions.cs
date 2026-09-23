@@ -108,7 +108,8 @@ public static class PolkadotTransactions
         const uint period = EraPeriod;
         var phase = block % period;
         var quantize = Math.Max(period >> 12, 1);
-        var encoded = (ushort)(Math.Min(15, Math.Max(1, BitOperations.TrailingZeroCount(period) - 1)) | ((phase / quantize) << 4));
+        var trailingZeros = (uint)Math.Min(15, Math.Max(1, BitOperations.TrailingZeroCount(period) - 1));
+        var encoded = (ushort)(trailingZeros | ((phase / quantize) << 4));
         return [(byte)encoded, (byte)(encoded >> 8)];
     }
 
