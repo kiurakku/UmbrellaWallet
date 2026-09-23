@@ -14,7 +14,11 @@ public sealed record MoneroBalance(decimal Total, decimal Unlocked, ulong Scanne
         : (int)Math.Clamp(ScannedHeight * 100.0 / ChainHeight, 0, 100);
 }
 
-public sealed record MoneroSendResult(bool Ok, string? TxHash, decimal FeeXmr, string? Error);
+/// <summary>
+/// How a Monero send ended. <paramref name="Unclear"/> means the wallet was asked to relay and never
+/// answered: the transaction may be on the network, so it must not be offered as a retry.
+/// </summary>
+public sealed record MoneroSendResult(bool Ok, string? TxHash, decimal FeeXmr, string? Error, bool Unclear = false);
 
 /// <summary>
 /// Drives the bundled <c>monero-wallet-rpc</c> so Monero is a first-class coin — real balance and
@@ -192,7 +196,14 @@ public sealed class MoneroRpcService : IDisposable
 
         if (response.Error is not null)
         {
-            return new MoneroSendResult(false, null, 0, response.Error);
+            // The wallet refuses on its own terms before relaying anything (not enough money, a bad
+            // address, no unlocked outputs). Anything else — a dead socket, a crash after relaying — is
+            // settled against the wallet's own record of what it sent.
+            var refused = new[] { "not enough", "no unlocked", "invalid address", "failed to parse", "transaction too large", "daemon is busy" }
+                .Any(e => response.Error.Contains(e, StringComparison.OrdinalIgnoreCase));
+            return refused
+                ? new MoneroSendResult(false, null, 0, response.Error)
+                : await SettleAsync(toAddress, piconero, $"The Monero wallet's answer was unclear: {response.Error}", ct);
         }
 
         var hash = response.Result?.TryGetProperty("tx_hash", out var th) == true ? th.GetString() : null;
@@ -200,6 +211,45 @@ public sealed class MoneroRpcService : IDisposable
         return hash is null
             ? new MoneroSendResult(false, null, 0, "The wallet did not return a transaction hash.")
             : new MoneroSendResult(true, hash, fee, null);
+    }
+
+    /// <summary>
+    /// Asks the wallet what it has actually sent. A relayed transfer shows up in its own outgoing list
+    /// (pool included) with the destination and amount it was built for, so an answer lost on the way
+    /// back can still be settled instead of being reported as a failure to try again.
+    /// </summary>
+    private async Task<MoneroSendResult> SettleAsync(string toAddress, ulong piconero, string why, CancellationToken ct)
+    {
+        for (var attempt = 0; attempt < 4; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(attempt == 0 ? 2 : 5), ct);
+            var (result, error) = await CallAsync("get_transfers", new { @out = true, pending = true, pool = true, account_index = 0 }, ct);
+            if (error is not null || result is not { } transfers) continue;
+
+            foreach (var list in new[] { "out", "pending", "pool" })
+            {
+                if (!transfers.TryGetProperty(list, out var entries) || entries.ValueKind != JsonValueKind.Array) continue;
+                foreach (var entry in entries.EnumerateArray())
+                {
+                    if (!entry.TryGetProperty("destinations", out var destinations) || destinations.ValueKind != JsonValueKind.Array) continue;
+                    foreach (var destination in destinations.EnumerateArray())
+                    {
+                        var address = destination.TryGetProperty("address", out var a) ? a.GetString() : null;
+                        var amount = destination.TryGetProperty("amount", out var m) && m.TryGetUInt64(out var v) ? v : 0;
+                        if (address != toAddress || amount != piconero) continue;
+
+                        var hash = entry.TryGetProperty("txid", out var t) ? t.GetString() : null;
+                        var fee = entry.TryGetProperty("fee", out var f) && f.TryGetUInt64(out var fv) ? fv / Piconero : 0m;
+                        return new MoneroSendResult(true, hash, fee, null);
+                    }
+                }
+            }
+        }
+
+        return new MoneroSendResult(false, null, 0,
+            $"{why} The transfer may already have been relayed — check your Monero transfers before sending again, " +
+            "because a second send would spend different outputs and pay twice.",
+            Unclear: true);
     }
 
     private async Task<(bool Ok, string Message)> LaunchAsync(IProgress<string>? progress, CancellationToken ct)

@@ -109,11 +109,11 @@ public sealed class TonTransactionSender
     }
 
     /// <summary>Signs and broadcasts a jetton transfer quote.</summary>
-    public async Task<(bool Ok, string? Result, string? Error)> SignAndBroadcastJettonAsync(
+    public async Task<(bool Ok, string? Result, string? Error, bool Unclear)> SignAndBroadcastJettonAsync(
         TonSendQuote quote, byte[] privateKey, string? comment = null, CancellationToken ct = default)
     {
         if (quote.JettonWallet is null || quote.JettonUnits is not { } units || quote.JettonDestination is null)
-            return (false, null, "This quote is not a jetton transfer.");
+            return (false, null, "This quote is not a jetton transfer.", false);
 
         try
         {
@@ -122,7 +122,7 @@ public sealed class TonTransactionSender
             var (fromWc, fromHash, _) = TonTransfer.ParseFriendlyAddress(quote.From);
             var (derivedWc, derivedHash, _) = TonTransfer.ParseFriendlyAddress(derived);
             if (derivedWc != fromWc || !derivedHash.SequenceEqual(fromHash))
-                return (false, null, "Key does not match the sending address — refusing to sign.");
+                return (false, null, "Key does not match the sending address — refusing to sign.", false);
 
             var (destWc, destHash, _) = TonTransfer.ParseFriendlyAddress(quote.JettonDestination);
 
@@ -144,19 +144,26 @@ public sealed class TonTransactionSender
             {
                 var hash = doc.RootElement.TryGetProperty("result", out var r) &&
                            r.TryGetProperty("hash", out var h) ? h.GetString() : null;
-                return (true, hash ?? "broadcast", null);
+                return (true, hash ?? "broadcast", null, false);
             }
 
             var error = doc.RootElement.TryGetProperty("error", out var e) ? e.GetString() : "TON node rejected the transaction";
-            return (false, null, error);
+            // A node that refuses the message outright has not applied it: the seqno is untouched, so
+            // the same message can be built again. Anything else is settled against the wallet itself.
+            return await SettleAsync(quote, $"The node's answer was unclear: {error}", ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
-            return (false, null, $"Send failed: {ex.Message}");
+            // The message may have reached the node before the connection failed.
+            return await SettleAsync(quote, $"The network did not answer ({ex.Message}).", ct);
         }
     }
 
-    public async Task<(bool Ok, string? Result, string? Error)> SignAndBroadcastAsync(
+    public async Task<(bool Ok, string? Result, string? Error, bool Unclear)> SignAndBroadcastAsync(
         TonSendQuote quote, byte[] privateKey, string? comment = null, CancellationToken ct = default)
     {
         try
@@ -167,7 +174,7 @@ public sealed class TonTransactionSender
             var (fromWc, fromHash, _) = TonTransfer.ParseFriendlyAddress(quote.From);
             var (derivedWc, derivedHash, _) = TonTransfer.ParseFriendlyAddress(derived);
             if (derivedWc != fromWc || !derivedHash.SequenceEqual(fromHash))
-                return (false, null, "Key does not match the sending address — refusing to sign.");
+                return (false, null, "Key does not match the sending address — refusing to sign.", false);
 
             var validUntil = (uint)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 90);
             var boc = TonTransfer.BuildSignedTransferBoc(
@@ -180,16 +187,44 @@ public sealed class TonTransactionSender
             {
                 var hash = doc.RootElement.TryGetProperty("result", out var r) &&
                            r.TryGetProperty("hash", out var h) ? h.GetString() : null;
-                return (true, hash ?? "broadcast", null);
+                return (true, hash ?? "broadcast", null, false);
             }
 
             var error = doc.RootElement.TryGetProperty("error", out var e) ? e.GetString() : "TON node rejected the transaction";
-            return (false, null, error);
+            // A node that refuses the message outright has not applied it: the seqno is untouched, so
+            // the same message can be built again. Anything else is settled against the wallet itself.
+            return await SettleAsync(quote, $"The node's answer was unclear: {error}", ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
-            return (false, null, $"Send failed: {ex.Message}");
+            // The message may have reached the node before the connection failed.
+            return await SettleAsync(quote, $"The network did not answer ({ex.Message}).", ct);
         }
+    }
+
+    /// <summary>
+    /// Settles an unclear send against the wallet contract itself: a v4R2 wallet only advances its
+    /// seqno when a signed message is applied, and this message carried the seqno in the quote. If it
+    /// has moved past that, the message was applied — and building a fresh one would pay again.
+    /// </summary>
+    private static async Task<(bool Ok, string? Result, string? Error, bool Unclear)> SettleAsync(
+        TonSendQuote quote, string why, CancellationToken ct)
+    {
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(attempt == 0 ? 3 : 5), ct);
+            if (await GetWalletInfoAsync(quote.From, ct) is { } info && info.Seqno > quote.Seqno)
+                return (true, "applied", null, false);
+        }
+
+        return (false, null,
+            $"{why} The transfer may already have been applied by your wallet contract — check it on an " +
+            "explorer before sending again, because a second send would use the next seqno and pay twice.",
+            true);
     }
 
     /// <summary>Balance (nanoTON), current seqno, and whether the wallet still needs deploying.</summary>

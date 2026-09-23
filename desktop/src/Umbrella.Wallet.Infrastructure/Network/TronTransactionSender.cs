@@ -170,20 +170,24 @@ public sealed class TronTransactionSender
     }
 
     /// <summary>Signs the prepared transaction's txID and broadcasts it.</summary>
-    public async Task<(bool Ok, string? TxId, string? Error)> SignAndBroadcastAsync(
+    public async Task<(bool Ok, string? TxId, string? Error, bool Unclear)> SignAndBroadcastAsync(
         TronSendQuote quote, Key privateKey, CancellationToken ct = default)
     {
+        // The id is known before anything is sent, so a lost answer can still be settled against the chain.
+        string? txId = null;
         try
         {
-            if (quote.RawTransactionJson is null) return (false, null, "Nothing to sign.");
+            if (quote.RawTransactionJson is null) return (false, null, "Nothing to sign.", false);
 
             using var doc = JsonDocument.Parse(quote.RawTransactionJson);
             var root = doc.RootElement;
-            if (!root.TryGetProperty("txID", out var txIdEl) || txIdEl.GetString() is not { } txId)
+            if (!root.TryGetProperty("txID", out var txIdEl) || txIdEl.GetString() is not { } id)
             {
                 var apiError = root.TryGetProperty("Error", out var e) ? e.GetString() : null;
-                return (false, null, apiError ?? "TRON API returned no txID.");
+                return (false, null, apiError ?? "TRON API returned no txID.", false);
             }
+
+            txId = id;
 
             // TRON signs the raw 32-byte txID directly (no extra hashing/prefix).
             var signature = SignTxId(Convert.FromHexString(txId), privateKey);
@@ -213,18 +217,71 @@ public sealed class TronTransactionSender
             using var result = JsonDocument.Parse(body);
             if (result.RootElement.TryGetProperty("result", out var okEl) && okEl.GetBoolean())
             {
-                return (true, txId, null);
+                return (true, txId, null, false);
             }
 
+            var code = result.RootElement.TryGetProperty("code", out var c) ? c.GetString() : null;
             var message = result.RootElement.TryGetProperty("message", out var m)
                 ? DecodeHexMessage(m.GetString())
                 : body;
-            return (false, null, $"TRON rejected the transaction: {message}");
+
+            // TRON says DUP_TRANSACTION_ERROR when it already has this exact transaction — which is
+            // what was wanted, not a failure.
+            if (code == "DUP_TRANSACTION_ERROR" || (message?.Contains("dup transaction", StringComparison.OrdinalIgnoreCase) ?? false))
+                return (true, txId, null, false);
+
+            // Everything TRON refuses on its own terms (signature, bandwidth, balance, expiry) never
+            // entered a block. Anything else is unclear and settled against the chain below.
+            var refused = code is "SIGERROR" or "BANDWITH_ERROR" or "TAPOS_ERROR" or "TRANSACTION_EXPIRATION_ERROR"
+                or "CONTRACT_VALIDATE_ERROR" or "CONTRACT_EXE_ERROR" or "TOO_BIG_TRANSACTION_ERROR";
+            if (refused) return (false, null, $"TRON rejected the transaction: {message}", false);
+
+            return await SettleAsync(txId, $"TRON's answer was unclear: {message}", ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
-            return (false, null, $"Send failed: {ex.Message}");
+            // Before the id exists nothing has been sent; after it, the broadcast may have reached TRON
+            // before the connection failed.
+            return txId is null
+                ? (false, null, $"Send failed: {ex.Message}", false)
+                : await SettleAsync(txId, $"The network did not answer ({ex.Message}).", ct);
         }
+    }
+
+    /// <summary>Asks TRON about this exact transaction before calling it anything.</summary>
+    private async Task<(bool Ok, string? TxId, string? Error, bool Unclear)> SettleAsync(
+        string txId, string why, CancellationToken ct)
+    {
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(attempt == 0 ? 2 : 5), ct);
+            try
+            {
+                using var content = new StringContent($"{{\"value\":\"{txId}\"}}", Encoding.UTF8, "application/json");
+                using var res = await Http.PostAsync($"{ApiBase}/wallet/gettransactionbyid", content, ct);
+                if (!res.IsSuccessStatusCode) continue;
+                var body = await res.Content.ReadAsStringAsync(ct);
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("txID", out _)) return (true, txId, null, false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                // keep asking
+            }
+        }
+
+        return (false, txId,
+            $"{why} The transaction {txId} may already be on TRON — check it on an explorer before sending " +
+            "again, because TRON has no nonce and a second send would pay twice.",
+            true);
     }
 
     private static async Task<string?> BuildTrxTransferAsync(
