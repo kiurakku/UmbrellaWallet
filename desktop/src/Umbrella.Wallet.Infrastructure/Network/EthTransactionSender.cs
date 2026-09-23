@@ -24,7 +24,12 @@ public sealed record EthSendQuote(
     string? Data = null,
     long GasLimit = 21_000);
 
-public sealed record EthSendResult(bool Ok, string? TxHash, string? Error);
+/// <summary>
+/// How an EVM broadcast ended. <paramref name="Unclear"/> means the transaction was signed and sent but
+/// the network never said whether it took it: it may be in the mempool with this nonce, so it must not
+/// be offered as a retry — a fresh send with the next nonce would pay twice.
+/// </summary>
+public sealed record EthSendResult(bool Ok, string? TxHash, string? Error, bool Unclear = false);
 
 /// <summary>An EVM network the wallet can send native coin on, sharing the same 0x address as Ethereum.</summary>
 public sealed record EvmChain(string Symbol, string Name, long ChainId, string ExplorerTx, IReadOnlyList<string> Rpcs);
@@ -170,41 +175,7 @@ public sealed class EthTransactionSender
             return new EthSendResult(false, null, $"Signing failed: {ex.Message}");
         }
 
-        foreach (var rpc in quote.Rpcs ?? Rpcs)
-        {
-            try
-            {
-                using var res = await Http.PostAsJsonAsync(rpc, new
-                {
-                    jsonrpc = "2.0",
-                    id = 1,
-                    method = "eth_sendRawTransaction",
-                    @params = new object[] { "0x" + signedHex },
-                }, ct);
-                if (!res.IsSuccessStatusCode) continue;
-
-                using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-                if (doc.RootElement.TryGetProperty("result", out var result) &&
-                    result.ValueKind == JsonValueKind.String)
-                {
-                    return new EthSendResult(true, result.GetString(), null);
-                }
-
-                if (doc.RootElement.TryGetProperty("error", out var error))
-                {
-                    var message = error.TryGetProperty("message", out var m) ? m.GetString() : "RPC rejected the transaction";
-                    // A node-level rejection (bad nonce, underpriced, insufficient funds) is
-                    // final — retrying another RPC with the same bytes will fail the same way.
-                    return new EthSendResult(false, null, message);
-                }
-            }
-            catch
-            {
-                // network issue — try next RPC
-            }
-        }
-
-        return new EthSendResult(false, null, "Broadcast failed: no RPC accepted the transaction.");
+        return await BroadcastAsync(signedHex, quote.Rpcs ?? Rpcs, ct);
     }
 
     /// <summary>
@@ -470,9 +441,22 @@ public sealed class EthTransactionSender
         return await BroadcastAsync(signedHex, quote.Rpcs ?? Rpcs, ct);
     }
 
+    /// <summary>
+    /// Sends a signed transaction and says honestly how that ended.
+    ///
+    /// The hash is computed from the signed bytes BEFORE anything is sent, so the transaction can be
+    /// looked for even when no answer comes back. A node that refuses on its own terms — the funds, the
+    /// gas, the signature — means nothing was sent; "already known" means it is in the mempool, which is
+    /// what was wanted. Anything else is unclear, and then the chain is asked about this exact hash
+    /// rather than the user being told it failed.
+    /// </summary>
     private static async Task<EthSendResult> BroadcastAsync(
         string signedHex, IReadOnlyList<string> rpcs, CancellationToken ct)
     {
+        var raw = signedHex.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? signedHex : "0x" + signedHex;
+        var hash = EvmBroadcast.Hash(raw);
+        string? refusal = null;
+
         foreach (var rpc in rpcs)
         {
             try
@@ -482,25 +466,88 @@ public sealed class EthTransactionSender
                     jsonrpc = "2.0",
                     id = 1,
                     method = "eth_sendRawTransaction",
-                    @params = new object[] { "0x" + signedHex },
+                    @params = new object[] { raw },
                 }, ct);
-                if (!res.IsSuccessStatusCode) continue;
+                if (!res.IsSuccessStatusCode) continue;   // no answer from this node; ask the next
 
                 using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
                 if (doc.RootElement.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.String)
-                    return new EthSendResult(true, result.GetString(), null);
+                {
+                    // The node echoes the hash; it must be the one that was signed here.
+                    var echoed = result.GetString();
+                    return string.Equals(echoed, hash, StringComparison.OrdinalIgnoreCase)
+                        ? new EthSendResult(true, hash, null)
+                        : new EthSendResult(false, hash, $"The node answered with a different transaction ({echoed}). Check {hash} on an explorer before sending again.", Unclear: true);
+                }
+
                 if (doc.RootElement.TryGetProperty("error", out var error))
                 {
-                    var message = error.TryGetProperty("message", out var m) ? m.GetString() : "RPC rejected the transaction";
-                    return new EthSendResult(false, null, message);
+                    var message = error.TryGetProperty("message", out var m) ? m.GetString() : null;
+                    switch (EvmBroadcast.Classify(message))
+                    {
+                        case EvmBroadcastAnswer.Accepted:
+                            return new EthSendResult(true, hash, null);
+                        case EvmBroadcastAnswer.Rejected:
+                            return new EthSendResult(false, null, message ?? "The node refused the transaction.");
+                        default:
+                            refusal = message;   // unclear: keep it for the message, then ask the chain
+                            break;
+                    }
                 }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch
             {
-                // network issue — try next RPC
+                // The request may have reached the node before the connection failed.
             }
         }
-        return new EthSendResult(false, null, "Broadcast failed: no RPC accepted the transaction.");
+
+        // Nobody said clearly. Ask the chain about this exact transaction before saying anything.
+        if (await FoundOnChainAsync(hash, rpcs, ct)) return new EthSendResult(true, hash, null);
+
+        var why = refusal is null ? "" : $" The last node said: {refusal}.";
+        return new EthSendResult(false, hash,
+            $"The network did not confirm whether it took the transaction.{why} It may still be in the mempool as {hash}; " +
+            "check an explorer before sending again — a fresh send would use the next nonce and could pay twice.",
+            Unclear: true);
+    }
+
+    /// <summary>Asks every node about this hash for a while: a transaction that was accepted shows up in
+    /// the mempool within seconds.</summary>
+    private static async Task<bool> FoundOnChainAsync(string hash, IReadOnlyList<string> rpcs, CancellationToken ct)
+    {
+        for (var attempt = 0; attempt < 6; attempt++)
+        {
+            foreach (var rpc in rpcs)
+            {
+                try
+                {
+                    using var res = await Http.PostAsJsonAsync(rpc, new
+                    {
+                        jsonrpc = "2.0", id = 1, method = "eth_getTransactionByHash", @params = new object[] { hash },
+                    }, ct);
+                    if (!res.IsSuccessStatusCode) continue;
+                    using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                    if (doc.RootElement.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Object)
+                        return true;
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch
+                {
+                    // try the next node
+                }
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(5), ct);
+        }
+
+        return false;
     }
 
     private static async Task<string?> CallAsync(string rpc, string method, object[] args, CancellationToken ct)

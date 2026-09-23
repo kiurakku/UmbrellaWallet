@@ -1120,8 +1120,7 @@ public partial class MainViewModel
 
                         // The activity row names the TOKEN and its amount — the transaction's own
                         // value is zero ether, which would otherwise be recorded as a 0 ETH send.
-                        await FinishSendAsync(result.Ok, result.TxHash, result.Error,
-                            token, _sendTokenAmount, SendReviewTo, explorer);
+                        await FinishEvmSendAsync(result, token, _sendTokenAmount, SendReviewTo, explorer);
                     }
                     finally
                     {
@@ -1145,8 +1144,7 @@ public partial class MainViewModel
                         // quote's chain id, not its symbol — otherwise an Arbitrum tx would link to
                         // etherscan (mainnet) instead of arbiscan.
                         var explorer = EthTransactionSender.ExplorerTxForChainId(quote.ChainId) + result.TxHash;
-                        await FinishSendAsync(result.Ok, result.TxHash, result.Error,
-                            quote.Symbol, quote.AmountEth, quote.To, explorer);
+                        await FinishEvmSendAsync(result, quote.Symbol, quote.AmountEth, quote.To, explorer);
                     }
                     finally
                     {
@@ -1164,6 +1162,8 @@ public partial class MainViewModel
 
                     bool ok;
                     string? txid, error;
+                    // True when the network never said whether it took the transaction.
+                    var unclear = false;
                     string? payjoinNote = null;
 
                     if (_payjoinPlanned && PayjoinEndpointFor(spentSymbol) is { } endpoint)
@@ -1196,7 +1196,7 @@ public partial class MainViewModel
                     {
                         // Signs across every input address in the plan and reserves the internal change
                         // index (persisted before broadcast) — no key #0 assumption.
-                        (ok, txid, error) = await _btcSender.SignAndBroadcastHdAsync(
+                        (ok, txid, error, unclear) = await _btcSender.SignAndBroadcastHdAsync(
                             _unlockedMnemonic!, walletId, _addrIndex, spentSymbol, _btcPlan, _btcRequest);
                     }
 
@@ -1212,6 +1212,21 @@ public partial class MainViewModel
                         "BCH" => $"blockchair.com/bitcoin-cash/transaction/{txid}",
                         _ => $"litecoinspace.org/tx/{txid}",
                     };
+                    if (unclear)
+                    {
+                        // The network never said whether it took it. Recorded as Pending against the
+                        // transaction id that was signed, and never offered as a retry: a second send
+                        // would choose different coins and pay twice.
+                        ClearSendQuotes();
+                        SendTo = string.Empty;
+                        SendAmount = string.Empty;
+                        SendError = error ?? Loc.Instance["send.errBroadcast"];
+                        StatusMessage = Loc.Instance["status.broadcastFailed"];
+                        PushActivity("Sent", quote.Symbol, $"-{Fmt(quote.Amount)}", Shorten(quote.To), "now",
+                            txid is null ? null : $"https://{explorer}", "Pending");
+                        break;
+                    }
+
                     await FinishSendAsync(ok, txid, error, quote.Symbol, quote.Amount, quote.To, explorer);
                     if (ok && payjoinNote is not null) SendSuccess += "\n" + payjoinNote;
                     break;
@@ -1532,6 +1547,28 @@ public partial class MainViewModel
                     break;
             }
         });
+    }
+
+    /// <summary>
+    /// Finishes an EVM send. An answer the network never gave is recorded as Pending against the hash
+    /// that was signed — never as a failure with a retry, which would send again with the next nonce.
+    /// </summary>
+    private async Task FinishEvmSendAsync(EthSendResult result, string symbol, decimal amount, string to, string explorer)
+    {
+        if (!result.Unclear)
+        {
+            await FinishSendAsync(result.Ok, result.TxHash, result.Error, symbol, amount, to, explorer);
+            return;
+        }
+
+        ClearSendQuotes();
+        SendTo = string.Empty;
+        SendAmount = string.Empty;
+        SendError = result.Error ?? Loc.Instance["send.errBroadcast"];
+        StatusMessage = Loc.Instance["status.broadcastFailed"];
+        var link = string.IsNullOrWhiteSpace(explorer) ? null
+            : explorer.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? explorer : $"https://{explorer}";
+        PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", link, "Pending");
     }
 
     private async Task FinishSendAsync(

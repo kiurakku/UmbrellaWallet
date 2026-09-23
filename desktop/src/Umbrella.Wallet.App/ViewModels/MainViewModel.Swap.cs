@@ -227,7 +227,11 @@ public partial class MainViewModel
                 try
                 {
                     var res = await _ethSender.SignAndBroadcastSwapAsync(eq, priv);
-                    (ok, txid, sendErr) = (res.Ok, res.TxHash, res.Error);
+                    // An unclear answer leaves the swap unconfirmed rather than failed: the deposit may
+                    // be in the mempool, and sending it again would pay the vault twice.
+                    (ok, txid, sendErr) = (res.Ok, res.TxHash, res.Unclear
+                        ? $"{res.Error} The swap was not marked failed: check the transaction before trying again."
+                        : res.Error);
                 }
                 finally
                 {
@@ -262,8 +266,12 @@ public partial class MainViewModel
                     SwapError = prepErr ?? "Could not build the swap deposit."; return;
                 }
 
-                (ok, txid, sendErr) = await _btcSender.SignAndBroadcastHdAsync(
+                bool depositUnclear;
+                (ok, txid, sendErr, depositUnclear) = await _btcSender.SignAndBroadcastHdAsync(
                     _unlockedMnemonic!, walletId, _addrIndex, from, plan, request);
+                // An unclear answer leaves the deposit unconfirmed rather than failed: sending it again
+                // would spend different coins and pay the vault twice.
+                if (depositUnclear) sendErr = $"{sendErr} The swap was not marked failed: check the deposit before trying again.";
                 _utxoScans.Remove(from);
             }
             if (ok && txid is not null)
