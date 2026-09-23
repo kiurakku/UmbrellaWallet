@@ -58,7 +58,11 @@
 > address as *unverified*, folded away with suspected spam until they have a market price. Tokens of
 > the original program can be sent: the fee is paid in SOL, and when the recipient has no account for
 > that token yet the transfer creates one and your SOL pays its rent — the review says how much.
-> Token-2022 tokens (PayPal USD among them) stay **Receive only** for now.
+> Token-2022 tokens (PayPal USD among them) send too, as long as the mint's extensions cannot change
+> what a plain transfer does. One that charges a transfer fee, runs a transfer hook, is paused or
+> non-transferable, creates frozen accounts, or scales its displayed amount is refused in plain words
+> and its row stays **Receive only**. If the token's issuer can freeze or seize it — PayPal USD's can —
+> the review says so before you send.
 
 ---
 
@@ -435,7 +439,7 @@ The wallet works like this:
 |---------|-----------------------|
 | Send any ERC-20 token | Currently send ETH native; soon send USDT, USDC, LINK, etc. on ETH |
 | Send any TRC-20 token | Send any token on Tron, not just USDT |
-| Send Token-2022 tokens | PayPal USD and other Token-2022 mints — the original-program SPL tokens already send |
+| Confidential Token-2022 transfers | The private-balance mode some Token-2022 mints offer; ordinary transfers of them already send |
 | Send on zkSync Era | Its balance already shows; sending needs the gas limit to come from the chain |
 
 ### Medium term (months 3-6)

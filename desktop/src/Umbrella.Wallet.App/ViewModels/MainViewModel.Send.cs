@@ -995,6 +995,8 @@ public partial class MainViewModel
                 SendQuoteFee = splQuote.CreatesAccount
                     ? string.Format(Loc.Instance["send.splFeeCreates"], Fmt(splQuote.FeeSol), Fmt(splQuote.RentSol), token.Symbol)
                     : string.Format(Loc.Instance["send.splFee"], Fmt(splQuote.FeeSol));
+                // A token whose issuer can freeze or seize it says so here, before it is sent.
+                if (splQuote.IssuerPowers is { Length: > 0 } powers) SendQuoteFee += $"  ·  {powers}";
                 StatusMessage = Loc.Instance["status.reviewTransfer"];
                 return;
             }

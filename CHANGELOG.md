@@ -126,8 +126,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 - Checked against mainnet itself: the account derivation reproduces the accounts real wallets hold
   their USDC and USDT in, and a validator runs the whole transaction (create + transfer) in a live
   simulation.
-- **Limits:** Token-2022 tokens (PayPal USD among them) stay receive-only — their transfer fees and
-  hooks are not handled yet, and their rows say so.
+- **Token-2022 tokens send too** — PayPal USD among them. The account is derived with the mint's own
+  program, and a mint is only offered when its extensions cannot change what a plain transfer does:
+  a transfer fee, a transfer hook, a paused or non-transferable token, accounts that start frozen, or
+  a display amount the issuer scales are refused in plain words, and those rows stay "Receive only".
+- **If the issuer can freeze or seize the token, the review says so** before you send. (Solana's own
+  runtime warns about this when it creates an account; you should read it first.)
 
 ### Solana sends are followed to the end
 

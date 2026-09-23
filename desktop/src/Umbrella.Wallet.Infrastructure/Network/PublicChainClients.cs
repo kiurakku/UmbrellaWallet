@@ -1068,6 +1068,18 @@ public sealed class PublicChainBalanceClient
             holdings.AddRange(box.Items.Select(h => (h, program)));
         }
 
+        // A Token-2022 mint is only sendable when its extensions cannot change what a plain transfer
+        // does; that takes reading the mint, so the answer is remembered per mint. A mint that cannot be
+        // read stays "Receive only" — a row must not promise a send the Send screen would refuse.
+        var sendable = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (var mint in holdings
+                     .Where(x => x.Program == Umbrella.Wallet.Core.Chains.SolanaTokens.Token2022Program)
+                     .Select(x => x.Holding.Mint)
+                     .Distinct(StringComparer.Ordinal))
+        {
+            sendable[mint] = await Token2022SendableAsync(mint, cancellationToken);
+        }
+
         return holdings.Select(x =>
         {
             var h = x.Holding;
@@ -1076,8 +1088,43 @@ public sealed class PublicChainBalanceClient
                 known ? id.Symbol : "SPL",
                 known ? id.Name : $"Unverified token {h.Mint[..4]}…{h.Mint[^4..]}",
                 h.Amount, h.Mint, h.Decimals, Unverified: !known,
-                Sendable: x.Program == Umbrella.Wallet.Core.Chains.SolanaTokens.TokenProgram);
+                Sendable: x.Program == Umbrella.Wallet.Core.Chains.SolanaTokens.TokenProgram ||
+                          sendable.GetValueOrDefault(h.Mint));
         }).ToList();
+    }
+
+    /// <summary>What each Token-2022 mint's extensions allow, asked once per mint per run of the app.</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> Token2022Sendable = new(StringComparer.Ordinal);
+
+    private async Task<bool> Token2022SendableAsync(string mint, CancellationToken ct)
+    {
+        if (Token2022Sendable.TryGetValue(mint, out var known)) return known;
+
+        var box = await FirstAnswerAsync("SOL", "https://api.mainnet-beta.solana.com",
+            async root =>
+            {
+                using var res = await Http.PostAsJsonAsync(root, new
+                {
+                    jsonrpc = "2.0", id = 1, method = "getAccountInfo",
+                    @params = new object[] { mint, new { encoding = "jsonParsed" } },
+                }, ct);
+                if (!res.IsSuccessStatusCode) return null;
+                using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                if (!doc.RootElement.TryGetProperty("result", out var result) ||
+                    !result.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.Object ||
+                    !value.TryGetProperty("data", out var data) || !data.TryGetProperty("parsed", out var parsed) ||
+                    !parsed.TryGetProperty("info", out var info))
+                    return null;
+
+                var why = Umbrella.Wallet.Core.Chains.SplToken.WhyNotSendable(
+                    Umbrella.Wallet.Core.Chains.SolanaTokens.Token2022Program, info.Clone());
+                return new Box<bool>(why is null);
+            },
+            ct);
+
+        if (box is null) return false;   // unreadable: not a claim that it can be sent
+        Token2022Sendable[mint] = box.Value;
+        return box.Value;
     }
 
     private sealed record SplList(IReadOnlyList<Umbrella.Wallet.Core.Chains.SplHolding> Items);
