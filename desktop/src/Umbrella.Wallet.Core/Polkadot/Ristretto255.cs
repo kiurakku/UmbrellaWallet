@@ -11,9 +11,10 @@ namespace Umbrella.Wallet.Core.Polkadot;
 /// gone. It is therefore checked against RFC 9496's own encodings of 0·B … 15·B, and the whole sr25519
 /// pipeline against subkey's published output.
 ///
-/// This computes PUBLIC values only. It is written for clarity over speed (BigInteger, not constant
-/// time), which is acceptable because nothing secret depends on its timing beyond a one-off derivation
-/// on the user's own machine, and it never signs.
+/// It is written for clarity over speed (BigInteger, not constant time). Since sr25519 signing (N.8,
+/// send) it also multiplies a secret nonce: that happens once per transaction the user confirms, on
+/// their own machine, with no way for anyone else to request signatures or time them — the setting in
+/// which variable-time arithmetic leaks nothing a local attacker could not read from memory anyway.
 /// </summary>
 public static class Ristretto255
 {
@@ -39,11 +40,54 @@ public static class Ristretto255
     private static readonly Point Identity = new(0, 1, 1, 0);
     private static readonly Point Base = new(BaseX, BaseY, 1, Mod(BaseX * BaseY));
 
+    /// <summary>The group order ℓ = 2^252 + 27742317777372353535851937790883648493.</summary>
+    public static readonly BigInteger Order =
+        BigInteger.Pow(2, 252) + BigInteger.Parse("27742317777372353535851937790883648493");
+
     /// <summary>The ristretto255 encoding of <paramref name="scalar"/>·B, 32 bytes little-endian.</summary>
     public static byte[] EncodeBaseMultiple(BigInteger scalar)
     {
         if (scalar.Sign < 0) throw new ArgumentOutOfRangeException(nameof(scalar));
         return Encode(Multiply(Base, scalar));
+    }
+
+    /// <summary>The encoding of s·B − k·A for an encoded point A — what a Schnorr verification compares
+    /// with R. Null when A is not a valid encoding.</summary>
+    public static byte[]? EncodeBaseMinusMultiple(BigInteger s, BigInteger k, ReadOnlySpan<byte> encodedA)
+    {
+        if (Decode(encodedA) is not { } a) return null;
+        var kA = Multiply(a, BigInteger.Remainder(k, Order));
+        var negKA = new Point(Mod(-kA.X), kA.Y, kA.Z, Mod(-kA.T));
+        return Encode(Add(Multiply(Base, BigInteger.Remainder(s, Order)), negKA));
+    }
+
+    /// <summary>Whether 32 bytes are a canonical ristretto255 encoding of a point.</summary>
+    public static bool IsValidEncoding(ReadOnlySpan<byte> bytes) => Decode(bytes) is not null;
+
+    /// <summary>RFC 9496 §4.3.1: the point an encoding stands for, or null when it is not a canonical
+    /// encoding of one.</summary>
+    private static Point? Decode(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length != 32) return null;
+        var s = new BigInteger(bytes, isUnsigned: true, isBigEndian: false);
+        if (s >= P || IsNegative(s)) return null;   // non-canonical, or negative
+
+        var ss = Mod(s * s);
+        var u1 = Mod(1 - ss);
+        var u2 = Mod(1 + ss);
+        var u2Sqr = Mod(u2 * u2);
+        var v = Mod(-(D * Mod(u1 * u1)) - u2Sqr);
+
+        var (wasSquare, invsqrt) = SqrtRatioM1(1, Mod(v * u2Sqr));
+        var denX = Mod(invsqrt * u2);
+        var denY = Mod(invsqrt * denX * v);
+
+        var x = Abs(Mod(2 * s * denX));
+        var y = Mod(u1 * denY);
+        var t = Mod(x * y);
+
+        if (!wasSquare || IsNegative(t) || y.IsZero) return null;
+        return new Point(x, y, 1, t);
     }
 
     private static Point Multiply(Point point, BigInteger scalar)

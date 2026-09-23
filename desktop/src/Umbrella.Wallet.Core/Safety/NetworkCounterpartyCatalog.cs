@@ -58,9 +58,9 @@ public static class NetworkCounterpartyCatalog
         new("cosmos-rest.publicnode.com", "PublicNode (Allnodes)", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "ATOM"),
         new("polkadot-asset-hub-rpc.polkadot.io", "Parity", CounterpartyPurpose.Balances,
-            CounterpartyContact.Automatic, Chain, "DOT (Asset Hub)"),
+            CounterpartyContact.Automatic, ChainAndBroadcast, "DOT (Asset Hub)"),
         new("statemint.api.onfinality.io", "OnFinality", CounterpartyPurpose.Balances,
-            CounterpartyContact.Automatic, Chain, "DOT (Asset Hub)"),
+            CounterpartyContact.Automatic, ChainAndBroadcast, "DOT (Asset Hub)"),
         new("rpc.polkadot.io", "Parity", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, Chain, "DOT (relay chain)"),
         new("polkadot-rpc.publicnode.com", "PublicNode (Allnodes)", CounterpartyPurpose.Balances,
@@ -204,6 +204,8 @@ public static class NetworkCounterpartyCatalog
             CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "DOGE"),
         new("xmrchain.net", "xmrchain", CounterpartyPurpose.ExplorerLink,
             CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "XMR"),
+        new("assethub-polkadot.subscan.io", "Subscan", CounterpartyPurpose.ExplorerLink,
+            CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "DOT"),
     ];
 
     /// <summary>Contacted by the wallet on its own, without being asked. The ones worth reading first.</summary>

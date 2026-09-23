@@ -1092,6 +1092,7 @@ public partial class MainViewModel : ViewModelBase
     private TronSendQuote? _tronQuote;
     private TonSendQuote? _tonQuote;
     private SplSendQuote? _splQuote;
+    private DotSendQuote? _dotQuote;
     private AdaSendQuote? _adaQuote;
     private XlmSendQuote? _xlmQuote;
     private NearSendQuote? _nearQuote;
@@ -1211,6 +1212,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly TronTransactionSender _tronSender = new();
     private readonly TonTransactionSender _tonSender = new();
     private readonly SplTokenSender _splSender = new();
+    private readonly PolkadotTransactionSender _dotSender = new();
     private readonly CardanoTransactionSender _adaSender = new();
     private readonly StellarTransactionSender _xlmSender = new();
     private readonly NearTransactionSender _nearSender = new();
@@ -1839,6 +1841,7 @@ public partial class MainViewModel : ViewModelBase
         "ARB", "BASE", "OP", "LINEA",                // Ethereum L2 rollups — native ETH, same 0x address
         "SOL", "TON", "ADA", "XLM", "NEAR", "XRP",   // account-based (XLM: memo; NEAR: implicit account; XRP: tag)
         "ATOM",                                      // Cosmos Hub (memo)
+        "DOT",                                       // Polkadot Asset Hub (sr25519)
         "TRX", "USDT",                               // TRON + TRC-20
         "XMR",                                       // Monero (local wallet-rpc)
     };
@@ -1865,6 +1868,7 @@ public partial class MainViewModel : ViewModelBase
         new("NEAR", "NEAR Protocol", "NEAR network · from your implicit account"),
         new("XRP", "XRP", "XRP Ledger · destination tag for exchange deposits"),
         new("ATOM", "Cosmos Hub", "Cosmos Hub · memo for exchange deposits"),
+        new("DOT", "Polkadot", "Polkadot Asset Hub · where DOT balances now live"),
         new("BNB", "BNB", "BNB Smart Chain (BEP-20 address)"),
         new("MATIC", "Polygon", "Polygon network"),
         new("AVAX", "Avalanche", "Avalanche C-Chain"),
@@ -2447,6 +2451,9 @@ public partial class MainViewModel : ViewModelBase
         "XRP" => 1.001m,
         // ATOM: the fee is priced by the fee market at send time — well under 0.003 ATOM at today's prices.
         "ATOM" => 0.003m,
+        // DOT: the 0.01 DOT existential deposit the account must keep, plus a fee of about 0.02 DOT.
+        // Locked or frozen DOT is not spendable either; the review names the exact figure.
+        "DOT" => 0.04m,
         _ => 0m,
     };
 

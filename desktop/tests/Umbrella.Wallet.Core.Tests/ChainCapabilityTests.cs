@@ -17,6 +17,7 @@ public sealed class ChainCapabilityTests
         ChainId.Near, // one Transfer from the implicit account, pinned to near-api-js (NearSendTests)
         ChainId.Xrp, // a plain XRP Payment + destination tag, pinned to xrpl.js (XrpSendTests)
         ChainId.Atom, // one bank MsgSend + memo, pinned to cosmjs (CosmosSendTests)
+        ChainId.Dot, // transfer_keep_alive on Asset Hub; sr25519 pinned to polkadot.js, validated by the node (PolkadotSend*Tests)
     };
 
     [Fact]
