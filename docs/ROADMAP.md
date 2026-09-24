@@ -34,7 +34,7 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | Tor + kill-switch fail-closed, Verify Tor, custom SOCKS5 | ✅ |
 | Per-network RPC/explorer selection, list of “who can see addresses” | ✅ (4.7) |
 | Monero full wallet; BTC/LTC/BCH/DOGE HD scan + fresh receive | ✅ |
-| ETH + L2 (Arbitrum/Base/Optimism/Linea) send; zkSync — balance only | ✅ / 🟡 |
+| ETH + L2 (Arbitrum/Base/Optimism/Linea/zkSync Era) send | ✅ |
 | THORChain swaps, Security Center, Privacy Radar, coin control (BTC/LTC/DOGE) | ✅ (Radar exists; **limit explanations — see P1.11**) |
 | Address poisoning / EIP-55 / reuse warnings | ✅ |
 | Desktop Win/Linux, themes, 6 languages, encrypted backup | ✅ |
@@ -53,7 +53,7 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | P0.2 | Pin + SHA/PGP verification for **Tor** and **monero-wallet-rpc** in fetch scripts (fail-closed) | Claude §4.2, BUILD_VERIFY | ✅ the fetch scripts verify each project's SIGNED sums file (Tor `.asc`, Monero clearsigned) against a pinned key fingerprint before trusting the hash; release builds pass `-RequireSignature`; `scripts/check-pinned-binaries.sh` keeps the scripts and THIRD_PARTY_NOTICES from drifting (they had: the pinned Tor version was gone from the mirror) |
 | P0.3 | CI: verify `SHA256SUMS` ↔ attached artifacts byte-for-byte | Claude §4.1 | ✅ the release job already self-verifies before publishing; `scripts/verify-published-release.sh` now checks what the page **serves afterwards**, including that no attached artifact is missing from the manifest |
 | P0.4 | Single machine-readable **capability matrix** → UI + README + tests (no discrepancies) | Claude §5.1, coins doc | ✅ `SendableSymbols` is the one source the picker, the send guard, the coins doc, the README table and §4 below are all checked against (`CapabilityMatrixTests`) |
-| P0.5 | zkSync Era **send** or honestly leave Receive-only with gas explanation (not “Ready”) | coins / CHANGELOG 4.7 | ✅ **Honest receive-only.** The row reads "Receive only" (never "Ready"), the coins doc and README say why — zkSync's fee model is not Ethereum's, so a send built the Ethereum way is not safe — and `CoinsDocumentAccuracyTests` / `CapabilityMatrixTests` fail if any table or the send guard claims otherwise. A real zkSync send is a separate future item |
+| P0.5 | zkSync Era **send** or honestly leave Receive-only with gas explanation (not “Ready”) | coins / CHANGELOG 4.7 | ✅ **Sends.** It was honestly receive-only while the wallet signed every transfer with a flat 21,000 gas; now the gas limit is the chain's own `eth_estimateGas` answer (+20%, never below the intrinsic 21,000), which is what zkSync needed all along — a live check reads 178,472 there against 21,000 on Ethereum. The same change makes every other EVM network price its own gas instead of assuming Ethereum's |
 | **P0.6** | **Fail-closed balance.** If all RPC/nodes are unreachable (e.g. 3+ attempts) → UI: “Balance unavailable (network error)” + Refresh. **Do not** show cache as the current balance; cache only with an explicit “last synced …” / “unknown” label, never as a live `0.0000` caused by an error. Offline test mandatory. | MANIFESTO §4, audit | ✅ (`BalanceReadout`: unread → “—” + reason, cache marked “last known”, unread rows excluded from the total and counted out loud) |
 | **P0.7** | **Send-path transport gate.** Before Send/Review, verify that the actual path (Tor / Clearnet / Custom) matches the user’s settings (+ kill-switch). Violation → **FAIL**, send blocked; no silent clearnet fallback. | MANIFESTO §3–4, audit | ✅ (`SendTransportGate` at Review **and** Confirm: Tor on-but-down, routed elsewhere, unapplied proxy or armed kill-switch with no proxy all refuse) |
 | **P0.8** | **Network isolation CI.** Run in a sandbox / firewall without clearnet: with Tor-only enabled, the wallet process **must not** attempt clearnet connections. Without this, the kill-switch is not proven in production. | Audit | ✅ (`Category=Isolation` CI job: a loopback listener proves no socket is opened at all, with the kill-switch off as the counter-proof; plus a scan for any HttpClient built outside `PublicHttp`) |
@@ -159,7 +159,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | DOGE | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7 |
 | ETH | ✅ | ✅ | ✅ | ✅ | any held ERC-20 (N.1) |
 | Arb / Base / OP / Linea | ✅ | ✅ | ✅ | 🟡 | |
-| zkSync Era | ✅ | ✅ | ❌ | 🟡 | Receive only (gas) |
+| zkSync Era | ✅ | ✅ | ✅ | 🟡 | gas from the chain's own estimate |
 | TRX | ✅ | ✅ | ✅ | ✅ | any held TRC-20, USDT included (N.2) |
 | SOL | ✅ | ✅ | ✅ | ✅ | any SPL token, both token programs (Token-2022 when its extensions allow) |
 | TON | ✅ | ✅ | ✅ | ✅ | jettons: balance ✅, send ✅ (N.3) |

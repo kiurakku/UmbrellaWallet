@@ -1838,7 +1838,7 @@ public partial class MainViewModel : ViewModelBase
     {
         "BTC", "LTC", "BCH", "DOGE",                 // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
         "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
-        "ARB", "BASE", "OP", "LINEA",                // Ethereum L2 rollups — native ETH, same 0x address
+        "ARB", "BASE", "OP", "LINEA", "ZKSYNC",      // Ethereum L2 rollups — native ETH, same 0x address
         "SOL", "TON", "ADA", "XLM", "NEAR", "XRP",   // account-based (XLM: memo; NEAR: implicit account; XRP: tag)
         "ATOM",                                      // Cosmos Hub (memo)
         "DOT",                                       // Polkadot Asset Hub (sr25519)
@@ -1879,6 +1879,7 @@ public partial class MainViewModel : ViewModelBase
         new("BASE", "ETH · Base", "Base · native ETH (same 0x address)"),
         new("OP", "ETH · Optimism", "Optimism · native ETH (same 0x address)"),
         new("LINEA", "ETH · Linea", "Linea · native ETH (same 0x address)"),
+        new("ZKSYNC", "ETH · zkSync Era", "zkSync Era · native ETH (same 0x address)"),
     ];
 
     /// <summary>Networks a watch-only address can be added for.</summary>
@@ -2434,6 +2435,8 @@ public partial class MainViewModel : ViewModelBase
         // The L2 rollups send ETH, and their fees are a small fraction of mainnet's - but gas there
         // does spike, so this is deliberately generous rather than tuned to a quiet day.
         "ARB" or "BASE" or "OP" or "LINEA" => 0.0003m,
+        // zkSync Era's fee is larger than a rollup transfer's and is quoted from its own estimate.
+        "ZKSYNC" => 0.001m,
         "SOL" => 0.002m,
         "TON" => 0.05m,
         "TRX" => 2m,

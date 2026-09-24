@@ -6,6 +6,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+### zkSync Era sends, and every EVM network prices its own gas
+
+- The wallet signed every EVM transfer with a flat **21,000 gas** — right on Ethereum and its
+  EVM-equivalent chains, and wrong on zkSync Era, which is why that network was honestly left
+  receive-only. The gas limit is now **the chain's own estimate** for that exact transfer (+20%, never
+  below 21,000), so zkSync Era sends and every other network is priced by itself rather than by
+  Ethereum. A live check reads 178,472 gas on zkSync against 21,000 on Ethereum.
+- **Linea could be chosen in the Send picker but never confirmed** — the confirm step matched a
+  hand-written list of networks that had not been updated, so it answered "prepare first". The list is
+  gone: the sender's own registry decides, and a test now fails if the two ever disagree.
+
 ### A lost answer is no longer called a failure
 
 - Bitcoin, Litecoin, Dogecoin and Bitcoin Cash sends: an explorer answering **"already in the mempool"**

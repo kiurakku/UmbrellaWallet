@@ -743,11 +743,9 @@ public sealed class PublicChainBalanceClient
         // Linea is EVM-equivalent: EIP-155 signing and the same 21,000 intrinsic gas as mainnet, so
         // the existing signer covers it unchanged and sending is enabled alongside the balance.
         ("ETH",   "Linea",      true,  ["https://rpc.linea.build", "https://linea.drpc.org"]),
-        // zkSync Era is READ ONLY here on purpose. Its balances are a normal eth_getBalance, but its
-        // fee model is not Ethereum's: a plain transfer does not cost a flat 21,000 gas, so the shared
-        // gas limit this wallet signs with would strand the transaction. Sending stays off until the
-        // gas comes from the chain rather than from a constant.
-        ("ETH",   "zkSync Era", false, ["https://mainnet.era.zksync.io", "https://zksync.drpc.org"]),
+        // zkSync Era sends too since the gas limit comes from the chain's own estimate rather than a
+        // constant 21,000 — which is what kept it read-only before.
+        ("ETH",   "zkSync Era", true,  ["https://mainnet.era.zksync.io", "https://zksync.drpc.org"]),
     ];
 
     /// <summary>

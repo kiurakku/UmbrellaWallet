@@ -183,7 +183,7 @@ is the most common way people lose money.
 | NEAR Protocol (NEAR) | ✅ | ✅ | ✅ | — | — | from your implicit account, to any `.near` name or implicit account |
 | Polkadot (DOT) | ✅ | ✅ | ✅ | — | — | sr25519, same account as Polkadot.js / Nova; balance adds Asset Hub + relay; sends from Asset Hub |
 | Linea (ETH) | ✅ | ✅ | ✅ | 🟡 | — | same `0x` as mainnet |
-| zkSync Era (ETH) | ✅ | ✅ | — | 🟡 | — | **receive + balance only** (send not safe yet) |
+| zkSync Era (ETH) | ✅ | ✅ | ✅ | 🟡 | — | the gas comes from zkSync's own estimate, not Ethereum's 21,000 |
 
 Plus the native coin of every major EVM network at the same `0x` address (BNB, MATIC, AVAX, FTM, CRO,
 and ETH on Arbitrum / Optimism / Base), and NFTs listed by name and count with **no image fetch**, so

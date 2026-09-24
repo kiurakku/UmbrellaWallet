@@ -30,7 +30,7 @@
 | **FTM** | Fantom | ✅ | ✅ | All ERC-20 | Fast EVM |
 | **CRO** | Cronos | ✅ | ✅ | All ERC-20 | Crypto.com chain |
 | **ETH** | Arbitrum, Base, Optimism, Linea | ✅ | ✅ | All ERC-20 | Layer 2 — same 0x address, far cheaper |
-| **ETH** | zkSync Era | — | ✅ | — | **Balance and receive only.** Its fee model is not Ethereum's, so sending is not enabled yet |
+| **ETH** | zkSync Era | ✅ | ✅ | — | Sends too: the gas limit comes from zkSync's own estimate, not Ethereum's flat 21,000 |
 | **ZEC** | Zcash | — | ✅ | — | Receive only for now |
 | **XRP** | XRP Ledger | ✅ | ✅ | — | With a destination tag for exchange deposits. An address becomes an account once it receives the network's reserve, which then stays locked |
 | **XLM** | Stellar | ✅ | ✅ | — | Native XLM, with a text or ID memo for exchange deposits. An address becomes an account once someone funds it with 1 XLM; the first payment to a new address creates it |
@@ -440,7 +440,7 @@ The wallet works like this:
 | Send any ERC-20 token | Currently send ETH native; soon send USDT, USDC, LINK, etc. on ETH |
 | Send any TRC-20 token | Send any token on Tron, not just USDT |
 | Confidential Token-2022 transfers | The private-balance mode some Token-2022 mints offer; ordinary transfers of them already send |
-| Send on zkSync Era | Its balance already shows; sending needs the gas limit to come from the chain |
+| Native zkSync paymasters | Paying the fee in a token instead of ETH; ordinary zkSync sends already work |
 
 ### Medium term (months 3-6)
 
@@ -504,7 +504,7 @@ threat model names each one as an open gap rather than implying it away.
 | 18 | Dogecoin | DOGE | ✅ Working | Send, receive, balance, fresh address per receive |
 | 19 | Zcash | ZEC | ⚠️ Partial | Receive + balance only |
 | 20 | Linea | ETH | ✅ Working | Send, receive, balance, ERC-20 |
-| 21 | zkSync Era | ETH | ⚠️ Partial | Receive + balance only |
+| 21 | zkSync Era | ETH | ✅ Full | Receive, balance and send |
 | 22 | XRP Ledger | XRP | ✅ Full | Receive, balance and send (destination tag) |
 | 23 | Stellar | XLM | ✅ Full | Receive, balance and send (memo supported) |
 | 24 | Cosmos | ATOM | ✅ Full | Receive, available balance and send (memo) |
