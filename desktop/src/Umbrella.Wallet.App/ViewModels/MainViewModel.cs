@@ -290,6 +290,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(TotalIncompleteLabel));
             OnPropertyChanged(nameof(BalanceDisplayCents));
             OnPropertyChanged(nameof(HeroEndLabel));
+            OnPropertyChanged(nameof(SendBalancesFromLabel));   // "Balances from …" above the Send picker
             MarkMoneroUnreadReason();           // the XMR row's reason, in the new language
             _ = RefreshPortfolioChartAsync();   // the chart's note and status are prose
             RefreshHoldings();     // re-render money labels (Fx.Money/Price) in the new locale
@@ -1229,6 +1230,9 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Every wallet on this PC, for the switcher. Each is an independent encrypted vault.</summary>
     public ObservableCollection<WalletListItemViewModel> Wallets { get; } = [];
     public string ActiveWalletLabel => _registry.Active?.Label ?? "Main wallet";
+
+    /// <summary>Whose balances the Send picker shows — the active wallet's, by name.</summary>
+    public string SendBalancesFromLabel => string.Format(Loc.Instance["send.balancesFrom"], ActiveWalletLabel);
     public bool HasMultipleWallets => _registry.Wallets.Count > 1;
     /// <summary>Label typed when adding a new wallet.</summary>
     [ObservableProperty] private string _newWalletLabel = string.Empty;
@@ -1879,11 +1883,12 @@ public partial class MainViewModel : ViewModelBase
         new("FTM", "Fantom", "Fantom Opera"),
         new("CRO", "Cronos", "Cronos EVM"),
         // Ethereum L2 rollups — the coin is ETH, on the same 0x address; only the network differs.
-        new("ARB", "ETH · Arbitrum", "Arbitrum One · native ETH (same 0x address)"),
-        new("BASE", "ETH · Base", "Base · native ETH (same 0x address)"),
-        new("OP", "ETH · Optimism", "Optimism · native ETH (same 0x address)"),
-        new("LINEA", "ETH · Linea", "Linea · native ETH (same 0x address)"),
-        new("ZKSYNC", "ETH · zkSync Era", "zkSync Era · native ETH (same 0x address)"),
+        // The key names the network; the ticker the user reads is ETH, which is what is being sent.
+        new("ARB", "Arbitrum One", "Arbitrum One · native ETH (same 0x address)", "ETH"),
+        new("BASE", "Base", "Base · native ETH (same 0x address)", "ETH"),
+        new("OP", "Optimism", "Optimism · native ETH (same 0x address)", "ETH"),
+        new("LINEA", "Linea", "Linea · native ETH (same 0x address)", "ETH"),
+        new("ZKSYNC", "zkSync Era", "zkSync Era · native ETH (same 0x address)", "ETH"),
     ];
 
     /// <summary>Networks a watch-only address can be added for.</summary>
@@ -2049,18 +2054,122 @@ public partial class MainViewModel : ViewModelBase
     /// the TRON one, so matching on symbol could show the TON balance as available and offer a Max
     /// that the TRON send cannot possibly cover. The chain is pinned for exactly those cases.
     /// </summary>
-    private WalletAccountViewModel? SelectedSendAccount()
+    private WalletAccountViewModel? SelectedSendAccount() => AccountForSendKey(SelectedSendAsset?.Symbol ?? string.Empty);
+
+    /// <summary>
+    /// The holdings row a picker key spends from, in the active wallet — or null when it has none.
+    ///
+    /// The key is not always the row's ticker. An ERC-20 is found by its contract (roadmap N.1). ETH on
+    /// a rollup is picked as "ARB", "OP", "BASE", "LINEA" or "ZKSYNC", but its row says ETH and names the
+    /// network — matching the key against the ticker found nothing, so "Available" read 0 on every
+    /// rollup and Max said there was nothing to send. Mainnet ETH, in turn, is the ETH row that is not a
+    /// rollup's, so an Arbitrum balance can never stand in for an Ethereum one.
+    /// </summary>
+    private WalletAccountViewModel? AccountForSendKey(string key)
     {
-        var symbol = SelectedSendAsset?.Symbol ?? string.Empty;
+        if (ContractFromSendKey(key) is not null) return TokenAccountFor(key);
 
-        // An ERC-20 is identified by its contract, not its ticker (roadmap N.1).
-        if (ContractFromSendKey(symbol) is not null) return TokenAccountFor(symbol);
+        if (RollupNetworks.TryGetValue(key, out var rollup))
+        {
+            return Accounts.FirstOrDefault(a => a.Symbol == "ETH" && a.Derivation == EvmSideDerivation
+                && a.Chain.Equals(rollup, StringComparison.OrdinalIgnoreCase)
+                && a.SupportStatus is "Ready" or "Receive only" && IsRealAddress(a.Address));
+        }
 
-        var requiredChain = TokenSendChain.GetValueOrDefault(symbol);
+        var requiredChain = TokenSendChain.GetValueOrDefault(key);
 
-        return Accounts.FirstOrDefault(a => a.Symbol == symbol
+        return Accounts.FirstOrDefault(a => a.Symbol == key
             && (requiredChain is null || a.Chain.Equals(requiredChain, StringComparison.OrdinalIgnoreCase))
+            && !(key == "ETH" && a.Derivation == EvmSideDerivation)
             && a.SupportStatus is "Ready" or "Receive only" && IsRealAddress(a.Address));
+    }
+
+    /// <summary>How the rows for EVM networks read at the Ethereum address are marked.</summary>
+    private const string EvmSideDerivation = "EVM side-chain";
+
+    /// <summary>
+    /// The rollup picker keys, and the network their ETH row is read under. Pinned by a test to both the
+    /// signer's chain list and the balance reader's network list, so neither can be renamed away from it.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> RollupNetworks { get; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ARB"] = "Arbitrum",
+            ["OP"] = "Optimism",
+            ["BASE"] = "Base",
+            ["LINEA"] = "Linea",
+            ["ZKSYNC"] = "zkSync Era",
+        };
+
+    /// <summary>
+    /// The EVM network whose balance read decides a picker key, when it is one of those read at the
+    /// Ethereum address (a side chain such as BSC, or a rollup). Null for everything else.
+    /// </summary>
+    private static string? EvmSideNetworkFor(string key)
+    {
+        if (RollupNetworks.TryGetValue(key, out var rollup)) return rollup;
+        foreach (var (symbol, network, _) in PublicChainBalanceClient.EvmSideNetworks)
+        {
+            if (symbol != "ETH" && symbol.Equals(key, StringComparison.OrdinalIgnoreCase)) return network;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Which EVM networks answered the last balance read at the Ethereum address. A network with no row
+    /// either holds nothing or did not answer, and the picker must not say "0" for the second (P0.6).
+    /// </summary>
+    private readonly Dictionary<string, bool> _evmSideReadOk = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The ticker whose price values a picker key: ETH for a rollup, the token's own ticker for
+    /// a token. Pricing "ARB" would price the Arbitrum governance token, not the ETH being sent.</summary>
+    private static string PriceSymbolFor(SendOption option) =>
+        RollupNetworks.ContainsKey(option.Symbol) ? "ETH" : option.DisplayTicker;
+
+    /// <summary>
+    /// What the active wallet holds of one picker asset, as it may honestly be said. A dash for a
+    /// balance nobody has read, "last known" for one shown from the cache, and nothing at all for a coin
+    /// this wallet keeps no account for — never a zero standing in for "unknown".
+    /// </summary>
+    private (string Amount, string Fiat) SendOptionBalance(SendOption option)
+    {
+        var ticker = option.DisplayTicker;
+        var account = AccountForSendKey(option.Symbol);
+
+        if (account is null)
+        {
+            // Networks read at the 0x address only get a row when they hold something, so "no row" is
+            // a zero only if that network actually answered.
+            if (EvmSideNetworkFor(option.Symbol) is { } network && IsUnlocked)
+            {
+                return _evmSideReadOk.GetValueOrDefault(network) ? ($"0 {ticker}", string.Empty) : ($"— {ticker}", string.Empty);
+            }
+
+            return (string.Empty, string.Empty);
+        }
+
+        if (account.Balance == BalanceRead.Unknown) return ($"— {ticker}", string.Empty);
+
+        var amount = (decimal)account.Amount;
+        var text = $"{Fmt(amount)} {ticker}";
+        if (account.Balance == BalanceRead.Cached) text += $" · {Loc.Instance["send.lastKnown"]}";
+
+        return (text, amount > 0 ? FiatEquivalentLabel(PriceSymbolFor(option), amount) : string.Empty);
+    }
+
+    /// <summary>Writes the current balance onto every picker entry, in place.</summary>
+    private void RefreshSendOptionBalances()
+    {
+        foreach (var option in SendableAssetOptions)
+        {
+            var (amount, fiat) = SendOptionBalance(option);
+            option.Balance = amount;
+            option.BalanceFiat = fiat;
+        }
+
+        OnPropertyChanged(nameof(SelectedSendBalance));
+        OnPropertyChanged(nameof(SelectedSendBalanceLabel));
     }
 
     /// <summary>The one chain each sendable TOKEN may be spent on. A symbol absent from here is a
@@ -2072,9 +2181,22 @@ public partial class MainViewModel : ViewModelBase
 
     public decimal SelectedSendBalance => (decimal)(SelectedSendAccount()?.Amount ?? 0d);
 
-    public string SelectedSendBalanceLabel => SelectedSendAsset is null
-        ? string.Empty
-        : $"{Loc.Instance["send.available"]}: {Fmt(SelectedSendBalance)} {SelectedSendAsset.DisplayTicker}";
+    /// <summary>"Available: …" under the picker — the same honest reading the picker entry shows, so an
+    /// unread balance says so instead of offering a zero.</summary>
+    public string SelectedSendBalanceLabel
+    {
+        get
+        {
+            if (SelectedSendAsset is null) return string.Empty;
+            var (amount, _) = SendOptionBalance(SelectedSendAsset);
+            return $"{Loc.Instance["send.available"]}: {(amount.Length > 0 ? amount : $"— {SelectedSendAsset.DisplayTicker}")}";
+        }
+    }
+
+    /// <summary>True when the selected asset's balance has never been read: Max and the presets would
+    /// otherwise treat "not read" as "nothing there".</summary>
+    private bool SelectedSendBalanceUnknown =>
+        SelectedSendAsset is not null && SendOptionBalance(SelectedSendAsset).Amount.StartsWith('—');
 
     // --- Send review breakdown (§4): full destination, amount + fiat, kept separate from the fee. ---
     /// <summary>The destination shown in review, ALWAYS in full (never shortened) so the user can verify
@@ -2148,7 +2270,7 @@ public partial class MainViewModel : ViewModelBase
             if (SelectedSendAsset is null) return string.Empty;
             // The estimate has to read the field exactly as the send path will, or the two disagree.
             if (!AmountInput.TryParsePositive(SendAmount, out var amt)) return string.Empty;
-            return FiatEquivalentLabel(SelectedSendAsset.Symbol, amt);
+            return FiatEquivalentLabel(PriceSymbolFor(SelectedSendAsset), amt);
         }
     }
 
@@ -2171,8 +2293,8 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>The USD price of one unit of the selected asset (stablecoins = $1), or 0 when unknown.</summary>
     private decimal PriceForSelected()
     {
-        var sym = SelectedSendAsset?.Symbol;
-        if (sym is null) return 0m;
+        if (SelectedSendAsset is null) return 0m;
+        var sym = PriceSymbolFor(SelectedSendAsset);
         if (sym is "USDT" or "USDC") return 1m;
         return _priceUsd.TryGetValue(sym, out var p) && p.Usd > 0 ? p.Usd : 0m;
     }
@@ -2187,7 +2309,7 @@ public partial class MainViewModel : ViewModelBase
         get
         {
             var coin = FiatConvert.FiatToCoinAmount(SendFiatAmount, PriceForSelected());
-            return coin.Length == 0 ? string.Empty : $"= {coin} {SelectedSendAsset?.Symbol}";
+            return coin.Length == 0 ? string.Empty : $"= {coin} {SelectedSendAsset?.DisplayTicker}";
         }
     }
 
@@ -2480,6 +2602,7 @@ public partial class MainViewModel : ViewModelBase
     private void SetMaxAmount()
     {
         if (SelectedSendAsset is null) return;
+        if (SelectedSendBalanceUnknown) { SendError = Loc.Instance["balance.unavailable"]; return; }
         var bal = SelectedSendBalance;
         if (bal <= 0) { SendError = Loc.Instance["send.nothingToSend"]; return; }
         SendAmount = Fmt(Math.Max(0m, bal - SendMaxReserve(SelectedSendAsset.Symbol)));
@@ -2494,6 +2617,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (SelectedSendAsset is null) return;
         if (!int.TryParse(percent, NumberStyles.Integer, CultureInfo.InvariantCulture, out var pct)) return;
+        if (SelectedSendBalanceUnknown) { SendError = Loc.Instance["balance.unavailable"]; return; }
         var bal = SelectedSendBalance;
         if (bal <= 0) { SendError = Loc.Instance["send.nothingToSend"]; return; }
         var amount = AmountPresets.Of(bal, pct);
@@ -3291,6 +3415,7 @@ public partial class MainViewModel : ViewModelBase
             Wallets.Add(new WalletListItemViewModel(w.Id, w.Label, w.Id == activeId, w.IsLegacy, w.Color));
         }
         OnPropertyChanged(nameof(ActiveWalletLabel));
+        OnPropertyChanged(nameof(SendBalancesFromLabel));
         OnPropertyChanged(nameof(HasMultipleWallets));
         RebuildWalletCoinToggles();
     }
@@ -4317,24 +4442,33 @@ public partial class MainViewModel : ViewModelBase
     private async Task AddEvmSideRowsAsync(
         string address, IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct)
     {
-        foreach (var stale in Accounts
-                     .Where(a => a.Derivation == "EVM side-chain" &&
-                                 a.Address.Equals(address, StringComparison.OrdinalIgnoreCase))
-                     .ToList())
+        foreach (var (symbol, amount, network, canSend) in await _balances.GetEvmSideReadsAsync(address, ct))
         {
-            Accounts.Remove(stale);
-        }
+            var previous = Accounts.FirstOrDefault(a => a.Derivation == EvmSideDerivation
+                && a.Address.Equals(address, StringComparison.OrdinalIgnoreCase)
+                && a.Chain.Equals(network, StringComparison.OrdinalIgnoreCase));
+            _evmSideReadOk[network] = amount is not null;
 
-        foreach (var (symbol, amount, network, canSend) in await _balances.GetEvmSideBalancesAsync(address, ct))
-        {
+            if (amount is null)
+            {
+                // The network did not answer. Dropping the row would make a holding vanish for a minute
+                // and reappear; keeping it as a live reading would claim a check that never happened. It
+                // stays, marked as the last known amount (P0.6).
+                if (previous is { Balance: BalanceRead.Live })
+                    Accounts[Accounts.IndexOf(previous)] = previous with { Balance = BalanceRead.Cached };
+                continue;
+            }
+
+            if (previous is not null) Accounts.Remove(previous);
+            if (amount <= 0m) continue;   // answered, and holds nothing: no row, and the picker says 0
+
             var (usd, change) = prices.GetValueOrDefault(symbol);
             // "Ready" is a claim that the coin can be moved. A network this build can read but not
             // broadcast on says "Receive only" instead, so the holdings list never promises a send the
             // Send screen will not offer.
-            // These rows exist only because the read succeeded, so their amount is a live reading.
             Accounts.Add(new WalletAccountViewModel(
-                symbol, $"{symbol} · {network}", canSend ? "Ready" : "Receive only", address, "EVM side-chain",
-                (double)usd, (double)amount, network, (double)change, Balance: BalanceRead.Live));
+                symbol, $"{symbol} · {network}", canSend ? "Ready" : "Receive only", address, EvmSideDerivation,
+                (double)usd, (double)amount.Value, network, (double)change, Balance: BalanceRead.Live));
         }
     }
 
@@ -5124,6 +5258,7 @@ public partial class MainViewModel : ViewModelBase
     private void DeriveAccounts(string mnemonic)
     {
         Accounts.Clear();
+        _evmSideReadOk.Clear();   // another wallet's reads say nothing about this one
 
         // A TON-native wallet (imported from Telegram Wallet / Tonkeeper) derives only its TON address.
         if (_isTonWallet)
@@ -5191,6 +5326,7 @@ public partial class MainViewModel : ViewModelBase
     private void ResetAddresses()
     {
         Accounts.Clear();
+        _evmSideReadOk.Clear();
         foreach (var chain in ChainCatalog.All)
         {
             Accounts.Add(MakeLockedAccount(chain));

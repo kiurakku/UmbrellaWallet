@@ -1166,18 +1166,35 @@
                 <Border Classes="card">
                   <StackPanel Spacing="12">
                     <TextBlock Classes="eyebrow" Text="{Binding [send.step1], Source={x:Static app:Loc.Instance}}"/>
-                    <TextBlock Classes="eyebrow" Text="{Binding [col.asset], Source={x:Static app:Loc.Instance}}"/>
-                    <!-- The native coins plus every ERC-20 actually held, rebuilt from the
-                         holdings so the picker never offers what is not there (roadmap N.1). -->
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="eyebrow" Text="{Binding [col.asset], Source={x:Static app:Loc.Instance}}"/>
+                      <!-- Which wallet the balances below belong to: with several wallets, "0.4 ETH"
+                           means nothing until it says whose. -->
+                      <TextBlock Grid.Column="1" FontSize="11" Foreground="{DynamicResource UmTextDim}"
+                                 VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis"
+                                 Text="{Binding SendBalancesFromLabel}"/>
+                    </Grid>
+                    <!-- The native coins plus every token actually held, each with what the active
+                         wallet holds of it. Updated in place, so a refresh never moves the selection. -->
                     <ComboBox ItemsSource="{Binding SendableAssetOptions}"
                               SelectedItem="{Binding SelectedSendAsset}"
-                              HorizontalAlignment="Stretch">
+                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                              MaxDropDownHeight="440">
                       <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:SendOption">
-                          <StackPanel Spacing="1" Margin="0,3">
-                            <TextBlock Text="{Binding Display}" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding Network}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
-                          </StackPanel>
+                          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14" Margin="0,3">
+                            <StackPanel Spacing="1" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding Display}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                              <TextBlock Text="{Binding Network}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"
+                                         TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center" IsVisible="{Binding HasBalance}">
+                              <TextBlock Text="{Binding Balance}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                              <TextBlock Text="{Binding BalanceFiat}" FontSize="10.5" HorizontalAlignment="Right"
+                                         Foreground="{DynamicResource UmTextDim}"
+                                         IsVisible="{Binding BalanceFiat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            </StackPanel>
+                          </Grid>
                         </DataTemplate>
                       </ComboBox.ItemTemplate>
                     </ComboBox>

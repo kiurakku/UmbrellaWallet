@@ -757,17 +757,28 @@ public sealed class PublicChainBalanceClient
     public async Task<IReadOnlyList<(string Symbol, decimal Amount, string Network, bool CanSend)>> GetEvmSideBalancesAsync(
         string address, CancellationToken cancellationToken = default)
     {
+        var reads = await GetEvmSideReadsAsync(address, cancellationToken);
+        return reads.Where(r => r.Amount > 0m).Select(r => (r.Symbol, r.Amount!.Value, r.Network, r.CanSend)).ToList();
+    }
+
+    /// <summary>
+    /// Every EVM network's native balance at the address, INCLUDING the ones that did not answer, whose
+    /// amount is null. "Holds nothing" and "could not be asked" are different answers, and a wallet that
+    /// shows the second as a zero is telling the user their money is gone (roadmap P0.6).
+    /// </summary>
+    public async Task<IReadOnlyList<(string Symbol, decimal? Amount, string Network, bool CanSend)>> GetEvmSideReadsAsync(
+        string address, CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrWhiteSpace(address) || !address.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             return [];
 
         var tasks = EvmSideChains.Select(async chain =>
         {
             var amount = await EvmNativeBalanceAsync(chain.Rpcs, address, cancellationToken);
-            return (chain.Symbol, Amount: amount ?? 0m, chain.Network, chain.CanSend);
+            return (chain.Symbol, Amount: amount, chain.Network, chain.CanSend);
         });
 
-        var results = await Task.WhenAll(tasks);
-        return results.Where(r => r.Amount > 0m).ToList();
+        return await Task.WhenAll(tasks);
     }
 
     /// <summary>The EVM networks this build reads a native balance for, and whether it can spend each.

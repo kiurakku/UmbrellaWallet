@@ -112,20 +112,57 @@ public partial class MainViewModel
                 var prefix = spl ? SplSendPrefix : jetton ? JettonSendPrefix : tron ? TronTokenSendPrefix : TokenSendPrefix;
                 var network = spl ? "send.splNetwork" : jetton ? "send.jettonNetwork" : tron ? "send.trc20Network" : "send.erc20Network";
 
-                return new SendOption(prefix + a.Contract, a.Name, Loc.Instance[network], Ticker: a.Symbol);
+                return new SendOption(prefix + a.Contract, a.Name, Loc.Instance[network], ticker: a.Symbol);
             })
             .ToList();
 
-        SendableAssetOptions.Clear();
-        foreach (var option in SendableAssets) SendableAssetOptions.Add(option);
-        foreach (var token in tokens) SendableAssetOptions.Add(token);
+        SyncInPlace(SendableAssetOptions, [.. SendableAssets, .. tokens]);
 
         var restored = previouslySelected is null
             ? null
             : SendableAssetOptions.FirstOrDefault(
                 o => o.Symbol.Equals(previouslySelected, StringComparison.OrdinalIgnoreCase));
 
-        SelectedSendAsset = restored ?? SendableAssetOptions.FirstOrDefault();
+        // The same object as before whenever the asset is still offered, so this is not a change and
+        // nothing about the Send screen resets. Clearing and refilling the list used to happen on every
+        // one-minute refresh; the picker lost its selection each time and could wipe a review in progress.
+        if (!ReferenceEquals(SelectedSendAsset, restored ?? SendableAssetOptions.FirstOrDefault()))
+            SelectedSendAsset = restored ?? SendableAssetOptions.FirstOrDefault();
+
+        RefreshSendOptionBalances();
+    }
+
+    /// <summary>
+    /// Makes <paramref name="target"/> list exactly <paramref name="wanted"/>, in order, keeping every
+    /// entry that is already there as the SAME object: a ComboBox keeps its selection only while its
+    /// selected item stays in the list.
+    /// </summary>
+    public static void SyncInPlace(ObservableCollection<SendOption> target, IReadOnlyList<SendOption> wanted)
+    {
+        var keys = new HashSet<string>(wanted.Select(w => w.Symbol), StringComparer.OrdinalIgnoreCase);
+        for (var i = target.Count - 1; i >= 0; i--)
+        {
+            if (!keys.Contains(target[i].Symbol)) target.RemoveAt(i);
+        }
+
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            var at = -1;
+            for (var j = i; j < target.Count; j++)
+            {
+                if (target[j].Symbol.Equals(wanted[i].Symbol, StringComparison.OrdinalIgnoreCase)) { at = j; break; }
+            }
+
+            if (at < 0)
+            {
+                target.Insert(i, wanted[i]);
+                continue;
+            }
+
+            // Kept as the same object, but with today's display text: the language may have changed.
+            target[at].CopyDisplayFrom(wanted[i]);
+            if (at != i) target.Move(at, i);
+        }
     }
 
     /// <summary>The holdings row for a token picker key, or null when it is no longer held.</summary>
