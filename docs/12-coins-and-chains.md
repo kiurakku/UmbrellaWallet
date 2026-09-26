@@ -37,6 +37,7 @@
 | **ATOM** | Cosmos Hub | ✅ | ✅ | — | With a memo for exchange deposits. The balance is *available* ATOM — staked ATOM is not counted |
 | **NEAR** | NEAR Protocol | ✅ | ✅ | — | Your implicit account (the 64-character hex id), to any `.near` name or implicit account. Named accounts of your own and staked NEAR are not shown |
 | **DOT** | Polkadot | ✅ | ✅ | — | sr25519 like Polkadot.js / Nova; balance adds Asset Hub and the relay chain; sends go from Asset Hub, where balances now live |
+| **XNO** | Nano | — | ✅ | — | Receive and balance. Restores in Ledger / Trust Wallet / Nault (BIP39). Incoming XNO waits as "receivable" until a wallet that signs pockets it; the balance includes it. Sending is not here yet |
 
 > Any ERC-20 token (LINK, UNI, AAVE, SHIB, PEPE, etc.) is automatically detected and its
 > balance shown when you link an Ethereum address. Same for TRC-20 on Tron and SPL on Solana.
@@ -510,3 +511,4 @@ threat model names each one as an open gap rather than implying it away.
 | 24 | Cosmos | ATOM | ✅ Full | Receive, available balance and send (memo) |
 | 25 | Near | NEAR | ✅ Full | Receive, balance and send from the implicit account |
 | 26 | Polkadot | DOT | ✅ Full | Receive, balance (Asset Hub + relay), send from Asset Hub |
+| 27 | Nano | XNO | ⚠️ Partial | Receive and balance (incl. receivable); no send yet |

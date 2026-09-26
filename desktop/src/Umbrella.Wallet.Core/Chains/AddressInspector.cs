@@ -80,6 +80,10 @@ public static class AddressInspector
         if (a.StartsWith("cosmos1", OIC))
             return new("ATOM", CosmosHub.IsValidAddress(a) ? AddressValidity.Valid : AddressValidity.Invalid);
 
+        // Nano: base32 key + a BLAKE2b checksum, so this is definitive. "xrb_" is the old prefix.
+        if (a.StartsWith("nano_", OIC) || a.StartsWith("xrb_", OIC))
+            return new("XNO", NanoAccounts.IsValid(a) ? AddressValidity.Valid : AddressValidity.Invalid);
+
         // NEAR named accounts: recognisable by suffix, but a name carries no checksum to verify.
         if (a.EndsWith(".near", OIC) && a.Length > 5)
             return new("NEAR", AddressValidity.Unverified);

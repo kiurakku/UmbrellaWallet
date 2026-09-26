@@ -339,6 +339,7 @@ public sealed class PublicChainBalanceClient
                 ChainId.Xlm => await GetXlmAsync(address, cancellationToken),
                 ChainId.Atom => await GetAtomAsync(address, cancellationToken),
                 ChainId.Near => await GetNearAsync(address, cancellationToken),
+                ChainId.Nano => await GetNanoAsync(address, cancellationToken),
                 ChainId.Dot => await GetDotAsync(address, cancellationToken),
                 _ => null,
             };
@@ -468,6 +469,29 @@ public sealed class PublicChainBalanceClient
 
         return NearAccounts.ParseViewAccount(doc.RootElement) is { } near
             ? new ChainBalance(ChainId.Near, address, near, "NEAR")
+            : null;
+    }
+
+    /// <summary>The Nano node RPC root: the user's chosen server, or Nano.to.</summary>
+    private static string NanoRoot => ChainEndpoints.Resolve("XNO", "https://rpc.nano.to");
+
+    /// <summary>
+    /// XNO held by a Nano account: pocketed plus receivable, since receivable XNO is the account's money
+    /// even before a receive block pockets it. Any failure is unknown, never zero.
+    /// </summary>
+    private static Task<ChainBalance?> GetNanoAsync(string address, CancellationToken ct) =>
+        NanoAccounts.IsValid(address)
+            ? FirstAnswerAsync("XNO", NanoRoot, root => ReadNanoAsync(root, address, ct), ct)
+            : Task.FromResult<ChainBalance?>(null);
+
+    private static async Task<ChainBalance?> ReadNanoAsync(string root, string address, CancellationToken ct)
+    {
+        using var res = await Http.PostAsJsonAsync(root, NanoAccounts.AccountBalanceRequest(address), ct);
+        if (!res.IsSuccessStatusCode) return null;
+        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+
+        return NanoAccounts.ParseAccountBalance(doc.RootElement) is { } nano
+            ? new ChainBalance(ChainId.Nano, address, nano.Total, "XNO")
             : null;
     }
 
@@ -1361,6 +1385,7 @@ public sealed class PublicMarketRatesClient
         ["XLM"] = "stellar",
         ["ATOM"] = "cosmos",
         ["NEAR"] = "near",
+        ["XNO"] = "nano",
         ["BCH"] = "bitcoin-cash",
         ["ZEC"] = "zcash",
         // Tether trades a cent either side of $1; quoting it beats assuming exactly 1.00.
@@ -1389,6 +1414,7 @@ public sealed class PublicMarketRatesClient
         ["XLM"] = "XLMUSDT",
         ["ATOM"] = "ATOMUSDT",
         ["NEAR"] = "NEARUSDT",
+        ["XNO"] = "XNOUSDT",
         ["BCH"] = "BCHUSDT",
         ["ZEC"] = "ZECUSDT",
         ["USDC"] = "USDCUSDT",

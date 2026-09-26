@@ -131,6 +131,16 @@ public static class ChainCatalog
                 CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. The balance adds up DOT on Asset Hub and on the relay chain — Polkadot moved balances to Asset Hub in 2025 — and includes DOT locked for staking or governance, which may not all be spendable."),
+            // Nano — receive and balance. SLIP-0010 at m/44'/165'/0' with Nano's ed25519-BLAKE2b public key,
+            // the scheme Ledger, Trust Wallet and Nault's BIP39 mode use, pinned stage by stage to the Nano
+            // documentation's own test vector (NanoReceiveTests). Sending needs signed blocks with proof of
+            // work and stays off until that path is proven; XNO sent here waits as "receivable" until a
+            // wallet that signs pockets it, and the balance counts it so the money is never hidden.
+            new ChainInfo(
+                ChainId.Nano, "XNO", "Nano", ChainSupportLevel.Supported, "SLIP-0010 · ed25519-blake2b", "m/44'/165'/0'",
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                HasTokens: false, Maturity: ChainMaturity.Beta,
+                PrivacyNote: "Public ledger. Incoming XNO stays \"receivable\" until a signed receive block pockets it; this wallet shows it in the balance but cannot sign Nano blocks yet — restore the phrase in Nault or a Ledger to move it."),
         ];
 
         ById = All.ToDictionary(c => c.Id);
