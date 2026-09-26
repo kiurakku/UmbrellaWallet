@@ -6,6 +6,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+### Switching wallets is one click
+
+- **The wallet name in the sidebar (and the wallet chip in the top or bottom bar) now opens a switcher**
+  listing every wallet, with its colour tag; one click opens that wallet without leaving the screen you
+  are on. "Manage or add wallets…" still leads to Settings → Wallets.
+- **Ctrl+Shift+W** jumps to the next wallet, wrapping round; the **Ctrl+K** palette lists your other
+  wallets by name.
+- While the next wallet's vault is being opened the status line says so, and a second click cannot
+  start a second unlock on top of the first.
+- The lock screen deliberately does **not** list your wallets: it would show their names to anyone who
+  can see a locked screen. Unlock, then switch.
+
 ### The Send picker shows what each coin holds, in the wallet that is open
 
 - **Every coin in the Send picker now shows its balance** — in the active wallet, which the picker names

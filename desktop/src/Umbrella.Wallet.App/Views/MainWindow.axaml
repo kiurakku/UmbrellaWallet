@@ -61,11 +61,50 @@
         </Grid>
       </Button>
     </DataTemplate>
+    <!-- The wallet switcher: every wallet one click away, from the sidebar, the top bar or the bottom
+         tab. Shared, so all three show the same list; an item's Click closes it (code-behind). -->
+    <Flyout x:Key="WalletSwitcherFlyout" Placement="BottomEdgeAlignedLeft" ShowMode="Transient">
+      <StackPanel Width="272" Spacing="4" Margin="2">
+        <TextBlock Classes="eyebrow" Margin="6,2,6,4"
+                   Text="{Binding [wallets.switchTitle], Source={x:Static app:Loc.Instance}}"/>
+        <ItemsControl ItemsSource="{Binding #RootWindow.((vm:MainViewModel)DataContext).Wallets}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:WalletListItemViewModel">
+              <Button Classes="navitem" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                      Padding="8,6" Margin="0,1" Click="WalletSwitcherItem_Click"
+                      IsEnabled="{Binding !IsActive}"
+                      AutomationProperties.Name="{Binding Label}"
+                      Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SwitchWalletCommand}"
+                      CommandParameter="{Binding Id}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                  <Border Width="28" Height="28" CornerRadius="8" Background="{DynamicResource UmAccentWash}"
+                          BorderThickness="2" BorderBrush="{Binding ColorBrush}">
+                    <TextBlock Text="{Binding Badge}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource UmAccentBright}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                             FontWeight="SemiBold" Foreground="{DynamicResource UmText}"/>
+                  <TextBlock Grid.Column="2" Text="✓" VerticalAlignment="Center" IsVisible="{Binding IsActive}"
+                             Foreground="{DynamicResource UmAccent}"/>
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Border Height="1" Background="{DynamicResource UmBorder}" Margin="4,4"/>
+        <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Click="WalletSwitcherItem_Click"
+                Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).OpenWalletsCommand}"
+                Content="{Binding [wallets.manage], Source={x:Static app:Loc.Instance}}"/>
+        <TextBlock Margin="6,2,6,2" FontSize="10.5" Foreground="{DynamicResource UmTextMuted}"
+                   Text="{Binding [wallets.shortcutHint], Source={x:Static app:Loc.Instance}}"/>
+      </StackPanel>
+    </Flyout>
   </Window.Resources>
 
   <Window.KeyBindings>
     <KeyBinding Gesture="Ctrl+L" Command="{Binding LockCommand}" />
     <KeyBinding Gesture="Ctrl+K" Command="{Binding OpenCommandPaletteCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+W" Command="{Binding SwitchToNextWalletCommand}" />
   </Window.KeyBindings>
 
   <Grid RowDefinitions="36,*">
@@ -560,9 +599,10 @@
                    IsVisible="{Binding HasSidebarBg}" Opacity="0.30"/>
             <Border Grid.RowSpan="4" Background="#AB000000" IsVisible="{Binding HasSidebarBg}"/>
 
-            <!-- The mark, the name, and which wallet is open. Opens the wallet switcher. -->
+            <!-- The mark, the name, and which wallet is open. Opens the wallet switcher: every wallet
+                 one click away, without leaving the screen you are on. -->
             <Button Grid.Row="0" Classes="navitem" Height="64" Margin="12,14,12,6" Padding="8,0"
-                    Command="{Binding OpenWalletsCommand}" ToolTip.Tip="{Binding WalletLabel}"
+                    Flyout="{StaticResource WalletSwitcherFlyout}" ToolTip.Tip="{Binding WalletLabel}"
                     AutomationProperties.Name="{Binding [settings.tabWallets], Source={x:Static app:Loc.Instance}}">
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <Border Classes="brandTile" Width="44" Height="44" CornerRadius="13">
@@ -700,7 +740,7 @@
             </Button>
 
             <!-- Wallet switcher — always reachable, so switching works when the nav is top/bottom. -->
-            <Button Classes="chip" Command="{Binding OpenWalletsCommand}" IsVisible="{Binding IsUnlocked}"
+            <Button Classes="chip" Flyout="{StaticResource WalletSwitcherFlyout}" IsVisible="{Binding IsUnlocked}"
                     AutomationProperties.Name="{Binding [settings.tabWallets], Source={x:Static app:Loc.Instance}}"
                     ToolTip.Tip="{Binding [settings.tabWallets], Source={x:Static app:Loc.Instance}}"
                     BorderBrush="{DynamicResource UmAccent}">
@@ -4612,7 +4652,7 @@
           <StackPanel Spacing="12">
             <Border Width="42" Height="4" CornerRadius="2" Background="{DynamicResource UmBorder3}" HorizontalAlignment="Center"/>
             <UniformGrid Columns="4">
-              <Button Classes="tab" Command="{Binding OpenWalletsCommand}" IsVisible="{Binding IsUnlocked}">
+              <Button Classes="tab" Flyout="{StaticResource WalletSwitcherFlyout}" IsVisible="{Binding IsUnlocked}">
                 <StackPanel Spacing="4">
                   <Path Classes="tabIcon" Data="M3 7 H21 V17 H3 Z M16 12 A1.5 1.5 0 1 0 16 11.99 M3 10 H21"/>
                   <TextBlock Text="{Binding ActiveWalletLabel}" FontSize="10" HorizontalAlignment="Center" MaxWidth="72" TextTrimming="CharacterEllipsis"/>

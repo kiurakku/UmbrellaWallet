@@ -367,6 +367,43 @@ public sealed class MainViewModelTests : IDisposable
         Assert.Equal("Savings", vm.ActiveWalletLabel);
     }
 
+    /// <summary>
+    /// Easier switching: Ctrl+Shift+W walks to the next wallet and wraps round, and the command palette
+    /// lists every OTHER wallet by name, one Enter away.
+    /// </summary>
+    [Fact]
+    public async Task MultiWallet_NextWalletCycles_AndThePaletteOffersTheOthers()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        vm.NewWalletLabel = "Savings";
+        vm.BeginAddWalletCommand.Execute(null);
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        Assert.Equal("Savings", vm.ActiveWalletLabel);
+
+        await vm.SwitchToNextWalletCommand.ExecuteAsync(null);
+        Assert.True(vm.IsUnlocked);
+        Assert.Equal("Main wallet", vm.ActiveWalletLabel);
+
+        await vm.SwitchToNextWalletCommand.ExecuteAsync(null);   // wraps back round
+        Assert.Equal("Savings", vm.ActiveWalletLabel);
+
+        vm.OpenCommandPaletteCommand.Execute(null);
+        vm.CommandQuery = "main";
+        var row = Assert.Single(vm.CommandResults, r => r.Target.StartsWith("wallet:", StringComparison.Ordinal));
+        Assert.Equal("Main wallet", row.Label);
+        Assert.DoesNotContain(vm.CommandResults, r => r.Label == "Savings");   // not the one already open
+
+        await vm.RunPaletteCommandCommand.ExecuteAsync(row);
+        Assert.True(vm.IsUnlocked);
+        Assert.Equal("Main wallet", vm.ActiveWalletLabel);
+    }
+
     /// <summary>Cancelling an add-wallet must de-register the pending wallet and leave exactly the
     /// original wallet behind.</summary>
     [Fact]

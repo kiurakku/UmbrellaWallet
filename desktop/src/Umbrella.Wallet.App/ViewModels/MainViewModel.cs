@@ -3498,7 +3498,38 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task SwitchWalletAsync(string? id)
     {
-        if (string.IsNullOrWhiteSpace(id) || id == _registry.Active?.Id) return;
+        if (string.IsNullOrWhiteSpace(id) || id == _registry.Active?.Id || _switchingWallet) return;
+        _switchingWallet = true;
+        try
+        {
+            await SwitchWalletCoreAsync(id);
+        }
+        finally
+        {
+            _switchingWallet = false;
+        }
+    }
+
+    /// <summary>True while a switch is opening the next vault: a second click (or Ctrl+Shift+W held
+    /// down) must not start another key derivation on top of the first.</summary>
+    private bool _switchingWallet;
+
+    /// <summary>
+    /// Ctrl+Shift+W: the next wallet in the list, wrapping round. The quickest way between two wallets
+    /// someone uses side by side.
+    /// </summary>
+    [RelayCommand]
+    private async Task SwitchToNextWalletAsync()
+    {
+        if (!IsUnlocked) return;
+        var wallets = _registry.Wallets.ToList();
+        if (wallets.Count < 2) return;
+        var at = wallets.FindIndex(w => w.Id == _registry.Active?.Id);
+        await SwitchWalletAsync(wallets[(at + 1) % wallets.Count].Id);
+    }
+
+    private async Task SwitchWalletCoreAsync(string id)
+    {
         var pw = _sessionPassword;               // capture before LockVault wipes it
         _registry.SetActive(id);
         LockVault();
@@ -3509,6 +3540,8 @@ public partial class MainViewModel : ViewModelBase
         // Seamless switch when the common password matches (the normal case).
         if (HasVault && !string.IsNullOrEmpty(pw))
         {
+            // The key derivation takes a moment by design; say what is happening meanwhile.
+            StatusMessage = string.Format(Loc.Instance["status.openingWallet"], ActiveWalletLabel);
             try
             {
                 var mnemonic = await _vault.UnlockAsync(pw);

@@ -77,6 +77,15 @@ public partial class MainViewModel
         bool Match(string s) => q.Length == 0 || s.Contains(q, StringComparison.OrdinalIgnoreCase);
         foreach (var c in StaticCommands)
             if (Match(c.Label) || Match(c.Hint)) CommandResults.Add(c);
+        // Every other wallet, one Enter away — by name, or by typing "wallet".
+        if (IsUnlocked && _registry.Wallets.Count > 1)
+        {
+            var hint = Loc.Instance["wallets.paletteHint"];
+            foreach (var w in _registry.Wallets.Where(w => w.Id != _registry.Active?.Id))
+                if (Match(w.Label) || Match(hint) || Match("wallet"))
+                    CommandResults.Add(new PaletteCommand("⇄", w.Label, hint, "wallet:" + w.Id));
+        }
+
         // Type a ticker/name to jump straight to that coin's chart.
         // Snapshot first: the market refresh mutates Market on its own schedule, and enumerating it
         // mid-update threw "collection was modified" — the same race already fixed in Assets.
@@ -126,6 +135,11 @@ public partial class MainViewModel
         if (cmd is null) return;
         IsCommandPaletteOpen = false;
         if (cmd.Target == "lock") { LockCommand.Execute(null); return; }
+        if (cmd.Target.StartsWith("wallet:", StringComparison.Ordinal))
+        {
+            await SwitchWalletAsync(cmd.Target["wallet:".Length..]);
+            return;
+        }
         if (cmd.Target.StartsWith("coin:", StringComparison.Ordinal))
         {
             await OpenAssetChartAsync(cmd.Target["coin:".Length..]);
