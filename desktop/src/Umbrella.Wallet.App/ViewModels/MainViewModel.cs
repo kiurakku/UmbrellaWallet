@@ -3324,6 +3324,7 @@ public partial class MainViewModel : ViewModelBase
 
     public void LockVault()
     {
+        _lockEpoch++;   // anything that was opening a vault when this happened must not finish the job
         _refreshCts?.Cancel();
         if (_unlockedMnemonic is not null)
         {
@@ -3514,6 +3515,11 @@ public partial class MainViewModel : ViewModelBase
     /// down) must not start another key derivation on top of the first.</summary>
     private bool _switchingWallet;
 
+    /// <summary>Counts locks. A switch notes it before the key derivation and gives up if it moved: a
+    /// lock (Ctrl+L, auto-lock, lock-on-minimise) during "Opening…" must stay a lock, not be undone by
+    /// the unlock finishing a moment later.</summary>
+    private int _lockEpoch;
+
     /// <summary>
     /// Ctrl+Shift+W: the next wallet in the list, wrapping round. The quickest way between two wallets
     /// someone uses side by side.
@@ -3539,6 +3545,7 @@ public partial class MainViewModel : ViewModelBase
         // meanwhile the current screen stays up with a notice, instead of dropping to the lock screen
         // and leaving the user to wonder whether the click did anything.
         string? mnemonic = null;
+        var epoch = _lockEpoch;
         if (targetVault.Exists && !string.IsNullOrEmpty(pw))
         {
             ShowToast(string.Format(Loc.Instance["status.openingWallet"], target.Label), isError: false);
@@ -3551,6 +3558,10 @@ public partial class MainViewModel : ViewModelBase
                 // This wallet uses a different password — ask for it below.
             }
         }
+
+        // Locked while the vault was being opened: the lock wins. Nothing is switched and nothing is
+        // left unlocked; the user unlocks again, from the wallet they were in.
+        if (_lockEpoch != epoch) return;
 
         _registry.SetActive(id);
         LockVault();
