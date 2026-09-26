@@ -6,6 +6,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+### The Send picker shows what each coin holds, in the wallet that is open
+
+- **Every coin in the Send picker now shows its balance** — in the active wallet, which the picker names
+  — with its value in your currency beside it. Choosing what to send is also seeing whether there is
+  anything to send.
+- An unread balance reads **"—"**, never a zero standing in for "unknown"; one shown from the cache says
+  it is the last known amount. Max and the percentage buttons refuse an unread balance instead of
+  treating it as empty.
+- **Fixed: ETH on Arbitrum, Optimism, Base, Linea and zkSync Era always showed "Available: 0"**, and Max
+  said there was nothing to send. The picker looked the balance up by the network key ("ARB") while the
+  row is held as ETH. Those entries now read ETH, and their fiat estimate uses the ETH price.
+- **Fixed: the Send screen could reset itself on the one-minute refresh.** The picker was emptied and
+  refilled every time balances updated, which moved its selection — enough to drop a review in progress
+  or the coins chosen in coin control. It is now updated in place.
+- An EVM network that does not answer no longer makes a holding vanish until the next refresh: the row
+  stays, marked as the last known amount.
+
 ### Zcash can now be sent, not only received
 
 - **Every coin in the wallet can now be spent.** Zcash was the last one that could take money and not

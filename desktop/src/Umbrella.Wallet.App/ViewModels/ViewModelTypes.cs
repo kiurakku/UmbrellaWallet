@@ -451,17 +451,77 @@ public static class CoinBadge
 /// <summary>
 /// One entry in an asset / network picker.
 ///
-/// <paramref name="Symbol"/> is the KEY the send path switches on. For a native coin that is the
-/// ticker; for an ERC-20 it is <c>ERC20:0x…</c>, because a ticker does not identify a token — two
-/// contracts can call themselves USDC, and only one of them is the one you hold.
-/// <paramref name="Ticker"/> is what the user reads.
+/// <see cref="Symbol"/> is the KEY the send path switches on. For a native coin that is the ticker;
+/// for an ERC-20 it is <c>ERC20:0x…</c>, because a ticker does not identify a token — two contracts
+/// can call themselves USDC, and only one of them is the one you hold. <see cref="Ticker"/> is what
+/// the user reads.
+///
+/// <para>
+/// It also carries what the active wallet holds of the asset, which changes on every refresh — so the
+/// item is updated in place, never replaced. A replaced item is a different object to the ComboBox:
+/// the selection would jump, and the Send screen would reset in the middle of a review. Two options
+/// are therefore equal when they ROUTE the same way; the balance is not part of what the option is.
+/// </para>
 /// </summary>
-public sealed record SendOption(string Symbol, string Name, string Network, string? Ticker = null)
+public sealed class SendOption : ObservableObject, IEquatable<SendOption>
 {
+    public SendOption(string symbol, string name, string network, string? ticker = null)
+    {
+        Symbol = symbol;
+        Name = name;
+        Network = network;
+        Ticker = ticker;
+    }
+
+    public string Symbol { get; }
+    public string Name { get; }
+    public string Network { get; }
+    public string? Ticker { get; }
+
     /// <summary>What to show for this asset: the ticker, never the routing key.</summary>
     public string DisplayTicker => Ticker ?? Symbol;
 
     public string Display => $"{DisplayTicker} · {Name}";
+
+    private string _balance = string.Empty;
+
+    /// <summary>
+    /// What the active wallet holds of this asset, as it may honestly be said: an amount, a dash when
+    /// it has not been read (never a zero standing in for "unknown"), or empty when this wallet has no
+    /// account for the coin at all.
+    /// </summary>
+    public string Balance
+    {
+        get => _balance;
+        set
+        {
+            if (SetProperty(ref _balance, value)) OnPropertyChanged(nameof(HasBalance));
+        }
+    }
+
+    public bool HasBalance => Balance.Length > 0;
+
+    private string _balanceFiat = string.Empty;
+
+    /// <summary>The balance in the display currency, when there is a price and something to price.</summary>
+    public string BalanceFiat
+    {
+        get => _balanceFiat;
+        set => SetProperty(ref _balanceFiat, value);
+    }
+
+    public bool Equals(SendOption? other) =>
+        other is not null
+        && string.Equals(Symbol, other.Symbol, StringComparison.OrdinalIgnoreCase)
+        && Name == other.Name
+        && Network == other.Network
+        && Ticker == other.Ticker;
+
+    public override bool Equals(object? obj) => Equals(obj as SendOption);
+
+    public override int GetHashCode() => StringComparer.OrdinalIgnoreCase.GetHashCode(Symbol);
+
+    public override string ToString() => Display;
 }
 
 public sealed record ActivityRowViewModel(

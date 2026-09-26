@@ -75,7 +75,7 @@ public sealed class TokenSendRoutingTests
     public void The_picker_shows_the_ticker_and_routes_on_the_contract()
     {
         var option = new SendOption(
-            MainViewModel.TokenSendPrefix + Usdc, "USD Coin", "Ethereum · ERC-20", Ticker: "USDC");
+            MainViewModel.TokenSendPrefix + Usdc, "USD Coin", "Ethereum · ERC-20", ticker: "USDC");
 
         Assert.Equal("USDC", option.DisplayTicker);
         Assert.Equal("USDC · USD Coin", option.Display);
