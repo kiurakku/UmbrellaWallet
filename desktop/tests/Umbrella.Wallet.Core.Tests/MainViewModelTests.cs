@@ -367,6 +367,100 @@ public sealed class MainViewModelTests : IDisposable
         Assert.Equal("Savings", vm.ActiveWalletLabel);
     }
 
+    /// <summary>
+    /// Easier switching: Ctrl+Shift+W walks to the next wallet and wraps round, and the command palette
+    /// lists every OTHER wallet by name, one Enter away.
+    /// </summary>
+    [Fact]
+    public async Task MultiWallet_NextWalletCycles_AndThePaletteOffersTheOthers()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        vm.NewWalletLabel = "Savings";
+        vm.BeginAddWalletCommand.Execute(null);
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        Assert.Equal("Savings", vm.ActiveWalletLabel);
+
+        await vm.SwitchToNextWalletCommand.ExecuteAsync(null);
+        Assert.True(vm.IsUnlocked);
+        Assert.Equal("Main wallet", vm.ActiveWalletLabel);
+
+        await vm.SwitchToNextWalletCommand.ExecuteAsync(null);   // wraps back round
+        Assert.Equal("Savings", vm.ActiveWalletLabel);
+
+        vm.OpenCommandPaletteCommand.Execute(null);
+        vm.CommandQuery = "main";
+        var row = Assert.Single(vm.CommandResults, r => r.Target.StartsWith("wallet:", StringComparison.Ordinal));
+        Assert.Equal("Main wallet", row.Label);
+        Assert.DoesNotContain(vm.CommandResults, r => r.Label == "Savings");   // not the one already open
+
+        await vm.RunPaletteCommandCommand.ExecuteAsync(row);
+        Assert.True(vm.IsUnlocked);
+        Assert.Equal("Main wallet", vm.ActiveWalletLabel);
+    }
+
+    /// <summary>
+    /// A lock pressed while the next wallet is still being opened must stay a lock. The switch opens the
+    /// target vault before closing the current one; if the unlock finishing a moment later could undo a
+    /// Ctrl+L or an auto-lock, the wallet would reopen by itself.
+    /// </summary>
+    [Fact]
+    public async Task MultiWallet_ALockDuringTheSwitchWins()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        var mainId = vm.Wallets.Single(w => w.IsActive).Id;
+
+        vm.NewWalletLabel = "Savings";
+        vm.BeginAddWalletCommand.Execute(null);
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        var switching = vm.SwitchWalletCommand.ExecuteAsync(mainId);   // runs until the key derivation
+        vm.LockVault();                                                // the user locks meanwhile
+        await switching;
+
+        Assert.False(vm.IsUnlocked);
+        Assert.Equal("Savings", vm.ActiveWalletLabel);   // nothing was switched either
+    }
+
+    /// <summary>
+    /// A new wallet's recovery phrase is on screen until "I've written it down". Switching away would
+    /// lock it and clear the phrase before it was ever confirmed — so neither the switcher, the shortcut
+    /// nor the palette may do it.
+    /// </summary>
+    [Fact]
+    public async Task MultiWallet_NoSwitchingAwayFromAnUnconfirmedBackup()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        var mainId = vm.Wallets.Single(w => w.IsActive).Id;
+
+        vm.NewWalletLabel = "Savings";
+        vm.BeginAddWalletCommand.Execute(null);
+        await vm.CreateWalletCommand.ExecuteAsync(null);   // backup screen now showing — not confirmed
+        Assert.True(vm.IsBackupStage);
+
+        await vm.SwitchWalletCommand.ExecuteAsync(mainId);
+        await vm.SwitchToNextWalletCommand.ExecuteAsync(null);
+        vm.OpenCommandPaletteCommand.Execute(null);
+
+        Assert.True(vm.IsBackupStage);
+        Assert.Equal("Savings", vm.ActiveWalletLabel);
+        Assert.DoesNotContain(vm.CommandResults, r => r.Target.StartsWith("wallet:", StringComparison.Ordinal));
+    }
+
     /// <summary>Cancelling an add-wallet must de-register the pending wallet and leave exactly the
     /// original wallet behind.</summary>
     [Fact]

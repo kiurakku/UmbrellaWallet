@@ -3290,6 +3290,8 @@ public partial class MainViewModel : ViewModelBase
 
     public void LockVault()
     {
+        _lockEpoch++;   // anything that was opening a vault when this happened must not finish the job
+        ToastVisible = false;   // a notice about this wallet (or the one being opened) never outlives the lock
         _refreshCts?.Cancel();
         if (_unlockedMnemonic is not null)
         {
@@ -3464,26 +3466,70 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task SwitchWalletAsync(string? id)
     {
-        if (string.IsNullOrWhiteSpace(id) || id == _registry.Active?.Id) return;
-        var pw = _sessionPassword;               // capture before LockVault wipes it
-        _registry.SetActive(id);
-        LockVault();
-        _vault = BuildActiveVault();
-        HasVault = _vault.Exists;
-        RefreshWalletList();
+        if (string.IsNullOrWhiteSpace(id) || id == _registry.Active?.Id || _switchingWallet) return;
 
-        // Seamless switch when the common password matches (the normal case).
-        if (HasVault && !string.IsNullOrEmpty(pw))
+        // Never away from the recovery-phrase backup: switching locks this wallet, which would clear the
+        // phrase and the "I've written it down" gate with it, before it was ever confirmed.
+        if (PendingPhraseBackup) return;
+
+        bool opened;
+        _switchingWallet = true;
+        try
         {
+            opened = await SwitchWalletCoreAsync(id);
+        }
+        finally
+        {
+            // Released as soon as the vault question is settled — not after the balance refresh below,
+            // which can take many seconds and would silently swallow the user's next choice.
+            _switchingWallet = false;
+        }
+
+        if (opened) await RefreshLiveDataAsync();
+    }
+
+    /// <summary>True while a switch is opening the next vault: a second click (or Ctrl+Shift+W held
+    /// down) must not start another key derivation on top of the first.</summary>
+    private bool _switchingWallet;
+
+    /// <summary>Counts locks. A switch notes it before the key derivation and gives up if it moved: a
+    /// lock (Ctrl+L, auto-lock, lock-on-minimise) during "Opening…" must stay a lock, not be undone by
+    /// the unlock finishing a moment later.</summary>
+    private int _lockEpoch;
+
+    /// <summary>
+    /// Ctrl+Shift+W: the next wallet in the list, wrapping round. The quickest way between two wallets
+    /// someone uses side by side.
+    /// </summary>
+    [RelayCommand]
+    private async Task SwitchToNextWalletAsync()
+    {
+        if (!IsWorkspace) return;
+        var wallets = _registry.Wallets.ToList();
+        if (wallets.Count < 2) return;
+        var at = wallets.FindIndex(w => w.Id == _registry.Active?.Id);
+        await SwitchWalletAsync(wallets[(at + 1) % wallets.Count].Id);
+    }
+
+    /// <returns>True when the target wallet ended up open, so its balances should be read.</returns>
+    private async Task<bool> SwitchWalletCoreAsync(string id)
+    {
+        var pw = _sessionPassword;               // capture before LockVault wipes it
+        var target = _registry.Wallets.FirstOrDefault(w => w.Id == id);
+        if (target is null) return false;
+        var targetVault = new EncryptedFileSeedVault(_registry.VaultPathFor(target));
+
+        // Open the next wallet BEFORE closing this one. The key derivation takes a moment by design;
+        // meanwhile the current screen stays up with a notice, instead of dropping to the lock screen
+        // and leaving the user to wonder whether the click did anything.
+        string? mnemonic = null;
+        var epoch = _lockEpoch;
+        if (targetVault.Exists && !string.IsNullOrEmpty(pw))
+        {
+            ShowToast(string.Format(Loc.Instance["status.openingWallet"], target.Label), isError: false);
             try
             {
-                var mnemonic = await _vault.UnlockAsync(pw);
-                SetSessionPassword(pw);
-                SetUnlocked(mnemonic);
-                ActiveSection = "Portfolio";
-                StatusMessage = string.Format(Loc.Instance["status.switchedTo"], ActiveWalletLabel);
-                await RefreshLiveDataAsync();
-                return;
+                mnemonic = await targetVault.UnlockAsync(pw);
             }
             catch
             {
@@ -3491,10 +3537,32 @@ public partial class MainViewModel : ViewModelBase
             }
         }
 
+        // Locked while the vault was being opened: the lock wins. Nothing is switched and nothing is
+        // left unlocked; the user unlocks again, from the wallet they were in.
+        if (_lockEpoch != epoch) return false;
+
+        _registry.SetActive(id);
+        LockVault();
+        _vault = targetVault;
+        HasVault = _vault.Exists;
+        RefreshWalletList();
+
+        // Seamless switch when the common password matches (the normal case).
+        if (mnemonic is not null)
+        {
+            SetSessionPassword(pw!);
+            SetUnlocked(mnemonic);
+            ActiveSection = "Portfolio";
+            StatusMessage = string.Format(Loc.Instance["status.switchedTo"], ActiveWalletLabel);
+            ShowToast(StatusMessage, isError: false);
+            return true;
+        }
+
         SetupStage = HasVault ? SetupStage : "Welcome";
         StatusMessage = HasVault
             ? $"Switched to “{ActiveWalletLabel}” · enter its password"
             : $"“{ActiveWalletLabel}” · create or import to set it up";
+        return false;
     }
 
     /// <summary>Begin adding a new, independent wallet: registers it, makes it active, locks the current

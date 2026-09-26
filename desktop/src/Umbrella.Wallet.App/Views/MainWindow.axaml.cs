@@ -22,6 +22,21 @@ public partial class MainWindow : Window
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetWindowDisplayAffinity(IntPtr hWnd, uint dwAffinity);
 
+    /// <summary>
+    /// Closes the wallet switcher once a choice is made — a flyout does not close on its own when a
+    /// button inside it is pressed. Deferred: Click is raised BEFORE the button runs its command, and
+    /// tearing the flyout down right here could clear that command's binding first, so the click would
+    /// close the menu without switching.
+    /// </summary>
+    private void WalletSwitcherItem_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (Resources.TryGetValue("WalletSwitcherFlyout", out var flyout) && flyout is Avalonia.Controls.Primitives.FlyoutBase switcher)
+                switcher.Hide();
+        }, DispatcherPriority.Background);
+    }
+
     public MainWindow()
     {
         InitializeComponent();
