@@ -69,6 +69,7 @@ public static class DataWiper
         DeleteFile(Path.Combine(root, "address-book.json"));    // the pre-4.7 plaintext book, if migration never ran
         DeleteFile(Path.Combine(root, "addr-indexes.json"));    // how many addresses were ever issued
         DeleteFile(Path.Combine(root, "market.json"));          // cached prices
+        DeleteDir(Path.Combine(root, "updates"));               // a downloaded release waiting to be installed
 
         // Private transaction notes are one encrypted file PER WALLET (tx-notes-<id>.bin), so they
         // cannot be named individually here.

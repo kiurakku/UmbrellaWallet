@@ -38,7 +38,7 @@ A wallet must query a blockchain. When you use balances, history, or send, **you
 | Public addresses | Block explorers / RPC nodes (defaults or ones you choose) | Read balances / history; broadcast signed txs |
 | Signed transactions | Same | Publish to the network |
 | Coin symbols (not your identity) | Price providers (e.g. CoinGecko / exchange public APIs) | Display fiat values |
-| Optional update check | GitHub | Know if a newer release exists |
+| Update check and download (on by default, can be turned off) | GitHub | Know if a newer release exists, and fetch it for you to install |
 
 **Tor** (if enabled) hides your IP from those servers; it does **not** un-send an address on a public chain.
 
