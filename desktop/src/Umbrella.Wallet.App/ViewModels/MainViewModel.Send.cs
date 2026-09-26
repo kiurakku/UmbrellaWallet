@@ -751,6 +751,26 @@ public partial class MainViewModel
                     SendQuoteFee = $"Network fee ≈ {Fmt(quote.Fee / 1_000_000m)} ADA · {quote.Inputs.Count} input(s) · change returns to you";
                     break;
                 }
+
+                case "ZEC":
+                {
+                    // Transparent Zcash (roadmap N.8): the coins and the chain tip are read, the
+                    // ZIP-317 fee follows from how many coins fund the spend, and the signature will be
+                    // bound to the consensus branch id at the height this expires under.
+                    var (quote, error) = await _zecSender.PrepareAsync(from.Address, SendTo.Trim(), amount);
+                    if (quote is null) { SendError = error ?? Loc.Instance["send.errPrepareFailed"]; return; }
+                    _zecQuote = quote;
+                    SendQuoteSummary = $"Send {Fmt(quote.Amount)} ZEC  →  {quote.To}";
+                    SendQuoteFee = string.Format(
+                        Loc.Instance[quote.ChangeSweptToFee ? "send.zecFeeNoChange" : "send.zecFee"],
+                        Fmt(quote.FeeZec), quote.InputCount);
+                    BuildSendSimulation(
+                        balance: (decimal)from.Amount,
+                        amount: quote.Amount,
+                        networkFee: quote.FeeZec,
+                        symbol: "ZEC");
+                    break;
+                }
             }
 
             HasSendQuote = true;
@@ -1083,7 +1103,7 @@ public partial class MainViewModel
                         || _tonQuote is not null || _tronQuote is not null || _adaQuote is not null
                         || _splQuote is not null
                         || _xlmQuote is not null || _nearQuote is not null || _xrpQuote is not null
-                        || _atomQuote is not null || _dotQuote is not null
+                        || _atomQuote is not null || _dotQuote is not null || _zecQuote is not null
                         || (_sendSymbol == "XMR" && _moneroAmount > 0);
         if (_unlockedMnemonic is null || !haveQuote)
         {
@@ -1524,6 +1544,17 @@ public partial class MainViewModel
                     break;
                 }
 
+                case "ZEC" when _zecQuote is not null:
+                {
+                    var quote = _zecQuote;
+                    using var key = _deriver.DeriveZcashKey(_unlockedMnemonic!);
+                    var result = await _zecSender.SignAndBroadcastAsync(quote, key);
+                    await FinishSendAsync(result.Ok, result.TxId, result.Error, result.Unclear,
+                        "ZEC", quote.Amount, quote.To,
+                        result.TxId is null ? "" : ZcashTransactionSender.ExplorerFor(result.TxId));
+                    break;
+                }
+
                 case "XMR":
                 {
                     // monero-wallet-rpc builds, signs and relays the RingCT transaction itself.
@@ -1631,6 +1662,7 @@ public partial class MainViewModel
         _nearQuote = null;
         _xrpQuote = null;
         _atomQuote = null;
+        _zecQuote = null;
         SendReviewMemo = string.Empty;
         // Cleared with the rest: a stale token marker would route the NEXT quote — possibly a plain
         // ETH send — down the contract-call path.

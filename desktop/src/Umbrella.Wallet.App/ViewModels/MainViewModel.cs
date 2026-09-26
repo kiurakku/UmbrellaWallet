@@ -1098,6 +1098,7 @@ public partial class MainViewModel : ViewModelBase
     private NearSendQuote? _nearQuote;
     private XrpSendQuote? _xrpQuote;
     private AtomSendQuote? _atomQuote;
+    private ZecSendQuote? _zecQuote;
     private string _sendSymbol = "ETH";
     private decimal _moneroAmount;
     private string _moneroTo = string.Empty;
@@ -1218,6 +1219,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly NearTransactionSender _nearSender = new();
     private readonly XrpTransactionSender _xrpSender = new();
     private readonly CosmosTransactionSender _atomSender = new();
+    private readonly ZcashTransactionSender _zecSender = new();
     private readonly EmbeddedTorService _tor = new();
     private readonly MoneroRpcService _monero = new();
     private CancellationTokenSource? _refreshCts;
@@ -1837,6 +1839,7 @@ public partial class MainViewModel : ViewModelBase
     public static readonly IReadOnlySet<string> SendableSymbols = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "BTC", "LTC", "BCH", "DOGE",                 // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
+        "ZEC",                                       // Zcash transparent (v4 Sapling, ZIP-243 digest)
         "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
         "ARB", "BASE", "OP", "LINEA", "ZKSYNC",      // Ethereum L2 rollups — native ETH, same 0x address
         "SOL", "TON", "ADA", "XLM", "NEAR", "XRP",   // account-based (XLM: memo; NEAR: implicit account; XRP: tag)
@@ -1858,6 +1861,7 @@ public partial class MainViewModel : ViewModelBase
         new("LTC", "Litecoin", "Litecoin network · native SegWit"),
         new("BCH", "Bitcoin Cash", "Bitcoin Cash network · CashAddr"),
         new("DOGE", "Dogecoin", "Dogecoin network · UTXO spend (BlockCypher)"),
+        new("ZEC", "Zcash", "Zcash network · transparent t1… only, not shielded"),
         new("SOL", "Solana", "Solana network"),
         new("TON", "Toncoin", "TON network · wallet v4R2"),
         new("XMR", "Monero", "Monero network · needs the Monero service on"),
@@ -2457,6 +2461,9 @@ public partial class MainViewModel : ViewModelBase
         // DOT: the 0.01 DOT existential deposit the account must keep, plus a fee of about 0.02 DOT.
         // Locked or frozen DOT is not spendable either; the review names the exact figure.
         "DOT" => 0.04m,
+        // ZEC: ZIP-317 charges 0.00005 ZEC per coin spent, 0.0001 at least — 0.0005 covers ten coins.
+        // The review states the exact fee for the coins actually chosen.
+        "ZEC" => 0.0005m,
         _ => 0m,
     };
 

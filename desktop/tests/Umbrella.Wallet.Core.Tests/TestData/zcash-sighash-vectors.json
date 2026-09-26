@@ -1,0 +1,899 @@
+[
+{
+"inputs": [
+{
+"txid": "7d225df732b40f5c67beb29a7c31fd76b5192622e099f440d47eee8322b06925",
+"index": 2,
+"sequence": 1724654589
+}
+],
+"outputs": [
+{
+"value": 28370274,
+"script": "63530052"
+},
+{
+"value": 14407784,
+"script": "526a"
+}
+],
+"lockTime": 590215690,
+"expiryHeight": 2371257,
+"valueBalance": 68851843,
+"scriptCode": "0065",
+"index": 0,
+"hashType": -78167730,
+"branchId": 733220448,
+"sigHash": "c434730ad3d5b12a7d4d50c0c4ec4d8379e22daf7b8e7173595a5c2c7330e52d",
+"hashShieldedSpends": "97e1e6a06c4d447d152cfa97b78cfc7486268e5219898f2ea046cb695c8598db",
+"hashShieldedOutputs": "e0d415bdab510d895a185fa64100c3ede002387ede206d7f144c7f394d9f7d7e"
+},
+{
+"inputs": [
+{
+"txid": "2838d7366b913c61aeae373a6811fe20926383f9f41f561786c7d632a668b93d",
+"index": 2,
+"sequence": 2228256263
+},
+{
+"txid": "ddc5b7a14a65d2dc195db3bc1d65812b8ba5ae44561a6c04627c3407bfb9238c",
+"index": 2,
+"sequence": 2267848228
+},
+{
+"txid": "7925fbde5ad76fb057d3c9d324a1151cebc7d34c3abaefd7eb473bb4865e7d84",
+"index": 0,
+"sequence": 2565172658
+}
+],
+"outputs": [
+{
+"value": 83064090,
+"script": "63"
+}
+],
+"lockTime": 0,
+"expiryHeight": 237901206,
+"valueBalance": 21154461,
+"scriptCode": "63",
+"index": 1,
+"hashType": -2055945936,
+"branchId": 4179206552,
+"sigHash": "94a4ce71bcfd989b906fc4e7c196ddc6a1d0e10da6c8cd119c3684b821894c0d",
+"hashShieldedSpends": "f3d4adcbef89beb03fadca2022c9623ecf5790df0dfefac1faa6255b509369c3",
+"hashShieldedOutputs": "582964b208ff75ef5225623b8386562364a1ac24a4f31c2561944468209c7395"
+},
+{
+"inputs": [
+{
+"txid": "9cdf932e1388f1342dcfbbc6cde2c09fdaef89a98985cc041153b5c8e7cdc33c",
+"index": 0,
+"sequence": 4294967295
+},
+{
+"txid": "ab7c5cf9d9ca28c6e2741e0b03e543839a6f8a76489a7c76a67e6f6fb615c049",
+"index": 0,
+"sequence": 3732787437
+},
+{
+"txid": "34a28150430c21c6af996e0f5a743acb928eed9f4c0883406d2f03d9716a69f2",
+"index": 3,
+"sequence": 756281721
+}
+],
+"outputs": [
+{
+"value": 67429116,
+"script": "63ac6a52"
+}
+],
+"lockTime": 0,
+"expiryHeight": 91686700,
+"valueBalance": 98566241,
+"scriptCode": "6a52acac656a6a52",
+"index": 0,
+"hashType": -495539591,
+"branchId": 733220448,
+"sigHash": "f8526816a2d296285040a42569ddd8f7eb2e39bbed085eff94d25dda1ec7f108",
+"hashShieldedSpends": "83ba89e57556c0b0ecba0c84e79c49832b5470e2bf16012b9f1f7dbc6ca6fc87",
+"hashShieldedOutputs": "08a9be6f42578ef759750bd6529fb8ad2aa68d7c25d10c0247d85227692c0a9f"
+},
+{
+"inputs": [
+{
+"txid": "8ba430ef8b2495b563f32f9778b0026e78194ebfb1cc4ffa634c2edd0f0d4237",
+"index": 3,
+"sequence": 1152152832
+}
+],
+"outputs": [
+{
+"value": 63115512,
+"script": "65650053"
+}
+],
+"lockTime": 0,
+"expiryHeight": 260136196,
+"valueBalance": 84118040,
+"scriptCode": "acac5165515353",
+"index": 0,
+"hashType": 1108358069,
+"branchId": 733220448,
+"sigHash": "22492644183864de11c03f4217e75ba5c7822a8d6d08f6be4ff21118c91a8844",
+"hashShieldedSpends": "d32a5d6007fa4a2ab833690de27d0671d55a4adb8d2ce488633c3b4554d0daea",
+"hashShieldedOutputs": "6663181e3c8282ef0a0d290680c2a0c101cb0fdee5d44f14591b16c031d1d893"
+},
+{
+"inputs": [
+{
+"txid": "b07bc5fd42f10c66ae01c7f2e4fe778d6c536227dfdb77d31f6f42228318c5ce",
+"index": 2,
+"sequence": 3463465723
+}
+],
+"outputs": [
+{
+"value": 35491212,
+"script": "635263536a5100"
+},
+{
+"value": 61563640,
+"script": "00520063"
+},
+{
+"value": 39030570,
+"script": "636a516a6a"
+},
+{
+"value": 36198017,
+"script": ""
+}
+],
+"lockTime": 0,
+"expiryHeight": 0,
+"valueBalance": 74463653,
+"scriptCode": "6a",
+"index": 0,
+"hashType": -160501909,
+"branchId": 3925833126,
+"sigHash": "3f5bbfc07574fa4b91a16d2e9e0166f94465081f948eb8d7f9c9412969eb98ae",
+"hashShieldedSpends": "11b44885a4e0661a73e4138caf0b5da5b8be4840a81dbfcf4d1b0ddf3fc996ac",
+"hashShieldedOutputs": "09ba1e448927a890141df8f2338bd659c0502a40095d39d0ede0503b082f0c6f"
+},
+{
+"inputs": [
+{
+"txid": "6e91db9949ea486fab4c49dd6b97f4b92837cffb0cf206713c41ffe017c996ff",
+"index": 2,
+"sequence": 4294967295
+},
+{
+"txid": "ebf1dfc815f10e04d9c2d7ebeec2424488c992b6b408f0db3bdea91ecf41c588",
+"index": 1,
+"sequence": 4294967295
+},
+{
+"txid": "e5e5734c7bd5dde970e8b22ca10cd2473e4224888e0735e1efa4859a16d7a88f",
+"index": 0,
+"sequence": 4294967295
+}
+],
+"outputs": [
+{
+"value": 65943132,
+"script": "00"
+}
+],
+"lockTime": 239184578,
+"expiryHeight": 22271383,
+"valueBalance": 73976338,
+"scriptCode": "525163635351",
+"index": 1,
+"hashType": 185417982,
+"branchId": 3925833126,
+"sigHash": "2bedd00c716730884a7fdeb5274d7a5879e6777b215510d0bab5d69e22eb3c38",
+"hashShieldedSpends": "34d97e0362259c3f09a86b0a2507c8426ef2ed3ddc689323056f4984fcc9f2c4",
+"hashShieldedOutputs": "1c26021a76113c9db4333364c2ac3da23361e940b06aff695430837b63f43b06"
+},
+{
+"inputs": [
+{
+"txid": "14d4b1d3e776479ddbef09b04e060f25ea4bcbedbd0adaf53c97ee775fc757e0",
+"index": 2,
+"sequence": 4294967295
+},
+{
+"txid": "fb5a765c16fc5eeabc01424fc30dc088297b01c2a34dc51bed4ff70d44916a9e",
+"index": 1,
+"sequence": 4294967295
+},
+{
+"txid": "637afda29c8c64cdc857a2632ec6a4facbc01ab7dea69269d3737f65e5bc5ac2",
+"index": 3,
+"sequence": 4123344517
+},
+{
+"txid": "706103f2548df8088265f4733dcae7aa9394a0a044dc835cbd39be19d26a8e34",
+"index": 3,
+"sequence": 790907451
+}
+],
+"outputs": [
+{
+"value": 58463544,
+"script": "536a655253005253"
+},
+{
+"value": 78739065,
+"script": "630000526500516a65"
+}
+],
+"lockTime": 3255709001,
+"expiryHeight": 0,
+"valueBalance": 41699986,
+"scriptCode": "6a6a53635151516351",
+"index": 0,
+"hashType": -800437618,
+"branchId": 1991772603,
+"sigHash": "d1ac6b03ad0805e192b216dc96347c37e07a807c0e949c5e229cdbde4291f7e2",
+"hashShieldedSpends": "52e9f0786bb00543bfdc2c0f92c0f03d896c5877e25cbd36d3e37603552fa996",
+"hashShieldedOutputs": "d33cb766de09ca75061b71050d829e3be83a4b66fc2ed639afef61afaff6a7f5"
+},
+{
+"inputs": [
+{
+"txid": "ee201867cbd6ed1d648b4ee36a8d53fb48b8ee260027b9e8fccc098b03cbb972",
+"index": 1,
+"sequence": 4294967295
+},
+{
+"txid": "4983c7c77cfb2f8d4237ccf72c71d1a859c2e8b71f4aceb4afce8505eb5ec0b6",
+"index": 3,
+"sequence": 3807348644
+},
+{
+"txid": "05a65ca64b4fb5baa65c534723597424eadf83a5d93ed2dcc2750e2af4868e82",
+"index": 2,
+"sequence": 2394087791
+}
+],
+"outputs": [
+{
+"value": 92700974,
+"script": "635363ac656aac6a53"
+},
+{
+"value": 89936246,
+"script": "00655365650052"
+},
+{
+"value": 21311088,
+"script": "acac63"
+}
+],
+"lockTime": 3995892328,
+"expiryHeight": 240658525,
+"valueBalance": 53274895,
+"scriptCode": "6a53526a525365",
+"index": 1,
+"hashType": 1694521251,
+"branchId": 4122551051,
+"sigHash": "0623a2368d3f504bb88c87496facc66a8d3bcb8a987e13994896cba04262d0f4",
+"hashShieldedSpends": "33c5334f7a2a8b33c86b70587f7b535c56bb2ee682cb984ed5b3569bdb9688a8",
+"hashShieldedOutputs": "30b16b378ec1ff330a7664ffa050c9a967f8fa113be8a189ef2fd7cbb5bb4769"
+},
+{
+"inputs": [
+{
+"txid": "450812ce5c17282da35e451f79374313278888b02ac969ebf02df45f278f9ab0",
+"index": 0,
+"sequence": 4294967295
+},
+{
+"txid": "5e9b7d759fdc6747ca354172cb71ca694739d447a936cc53896943721ae54b1c",
+"index": 0,
+"sequence": 4294967295
+},
+{
+"txid": "5ba7a71bfa1489be63dd563f536a49a49fa94e203c4dea9d1d99c659c473bcac",
+"index": 2,
+"sequence": 4294967295
+}
+],
+"outputs": [
+{
+"value": 30852691,
+"script": "51"
+}
+],
+"lockTime": 0,
+"expiryHeight": 40733478,
+"valueBalance": 12348901,
+"scriptCode": "65ac655163536a00",
+"index": 0,
+"hashType": 609010502,
+"branchId": 4122551051,
+"sigHash": "27118b78e2532e95d7338f7119f86278567ed429d12d08cb2d2032fc117bb53f",
+"hashShieldedSpends": "e190c1db25fcaa8bab103240ca4fa03a704b5ea6dae72a6a7a2533c738c586b1",
+"hashShieldedOutputs": "30cf269d649f5dbf26a52866f1520c7387ec1ed2acfb616b8ce7a9046f397566"
+},
+{
+"inputs": [
+{
+"txid": "9dfb1c852d2aa54c685a59ef3183548128590d03d181dc5899b3dfcdaf0855ee",
+"index": 2,
+"sequence": 4294967295
+},
+{
+"txid": "a36d941be08e7b4518f1da734afc12e4c47d53ff98b35eb929753ada065813ab",
+"index": 2,
+"sequence": 1912474740
+}
+],
+"outputs": [
+{
+"value": 29206607,
+"script": "636a63516a636563ac"
+}
+],
+"lockTime": 0,
+"expiryHeight": 358719065,
+"valueBalance": 72418572,
+"scriptCode": "535265ac",
+"index": 0,
+"hashType": 352410233,
+"branchId": 1991772603,
+"sigHash": "7159e2732fc6832546f4fb754fa1349e9f8912f115cab3b590e9e77bcb82a64f",
+"hashShieldedSpends": "965cd412695720f60c0422122cf1223d118b0e1246401fef41ccf3e8efb31beb",
+"hashShieldedOutputs": "5f8bf8dc41b69c5141f812b03f4ce72d8d46d7a03a124e87554119f394e71405"
+},
+{
+"inputs": [
+{
+"txid": "0a698807ed0092b700db0d206cb9924ea48e09b5f589a848b8ca461141c9d4b6",
+"index": 2,
+"sequence": 212561649
+},
+{
+"txid": "fcd1e1df62d15d90dd9825698ad68b9b6108e36d3e69444408295b11b8a618af",
+"index": 2,
+"sequence": 4294967295
+},
+{
+"txid": "8ea743ecea2a0ccf723f5c0e75c062e922fc7a089d1d134881565d32277626ff",
+"index": 0,
+"sequence": 2449804091
+},
+{
+"txid": "d8b3ef6b85f5a80f99e604348c27944b6184554cd50c20a2ce38b64fc1afa0b9",
+"index": 0,
+"sequence": 3509993532
+}
+],
+"outputs": [
+{
+"value": 52525689,
+"script": "6a005152"
+}
+],
+"lockTime": 0,
+"expiryHeight": 366276785,
+"valueBalance": 4483330,
+"scriptCode": "00655153656a",
+"index": 1,
+"hashType": -489166006,
+"branchId": 1991772603,
+"sigHash": "53a0e453651599e748dacad48b4e3f4be234d7644d96935d94c1196c9b754cc7",
+"hashShieldedSpends": "bbe86867b4946764260eb9dcda0b0fb54be39f330b2226b01b602fbe2c3a75d8",
+"hashShieldedOutputs": "6a3b085455c9806ec5e68dc8595f9ca881001c089645f9dcf21d88e55a6ea0b6"
+},
+{
+"inputs": [
+{
+"txid": "38b66d1d352b77c8d2e69e86e4db96b27b152a1db37f83e0edbb158079be632d",
+"index": 1,
+"sequence": 4294967295
+},
+{
+"txid": "8678eee05136a1ce1df9cfa71fbda5c5c317cf4b05a8ca41286474cab08154c9",
+"index": 0,
+"sequence": 3609648938
+},
+{
+"txid": "bace2e451b21246b21dfeec1e85c91b154b6e0dce21e05328381c9679599458f",
+"index": 0,
+"sequence": 4294967295
+}
+],
+"outputs": [
+{
+"value": 87361268,
+"script": "6a5253"
+}
+],
+"lockTime": 2868136942,
+"expiryHeight": 361366676,
+"valueBalance": 25895669,
+"scriptCode": "",
+"index": 2,
+"hashType": -1640809497,
+"branchId": 4122551051,
+"sigHash": "be10391db34d2fc0242c02c67680c454b3001d21761dc615904f58b5d20adf6c",
+"hashShieldedSpends": "3399e49d2b455d78f8ae6763ce0cde041455327a5daeb3308135dad209b9fcf4",
+"hashShieldedOutputs": "f8e59af8ff0506e08b865d6ff030dccb939fcab5eea4fa3fb696c79d97d9403c"
+},
+{
+"inputs": [
+{
+"txid": "f55ff09eee93cf73833d52bffc5d8900c74d6a7e86b141c98be7cb61797888e1",
+"index": 2,
+"sequence": 2716733567
+},
+{
+"txid": "c1c437c4e550c482565a31f82e54c52163820319e33f56c929841ce0e6896a67",
+"index": 0,
+"sequence": 2109563355
+}
+],
+"outputs": [
+{
+"value": 72540259,
+"script": "516552526a53535265"
+},
+{
+"value": 43830782,
+"script": "6a656a5253516a53"
+},
+{
+"value": 70654715,
+"script": "6363ac52516563ac51"
+},
+{
+"value": 51684406,
+"script": "005152"
+}
+],
+"lockTime": 886547043,
+"expiryHeight": 0,
+"valueBalance": 38349477,
+"scriptCode": "5351ac006551635300",
+"index": 0,
+"hashType": 1733699724,
+"branchId": 1991772603,
+"sigHash": "b465b5f40e5c2d41d566e0c0bc83cc63dff8dc5d3bd6a79506c7ec71dcbbf12e",
+"hashShieldedSpends": "ac7b9a6d79456ed44346c33d4acaa8f28c77b249a861a7d4ed64bc3635c5cea3",
+"hashShieldedOutputs": "32d3a114ea9bacf18742feb86dd1fc90fc35beaeb8b3d2adeb5e98774fd580c8"
+},
+{
+"inputs": [
+{
+"txid": "0052972150b8f8c64de07dc391a60fd918b9016f6dd47c4a7f277708ce23d61b",
+"index": 1,
+"sequence": 1461262221
+},
+{
+"txid": "6b7eaad30dfc39dcc3942054671b3f518b99fdc0caae1749345de38aca8a27b3",
+"index": 2,
+"sequence": 3458397521
+}
+],
+"outputs": [
+{
+"value": 32350784,
+"script": "51516a6500"
+},
+{
+"value": 54416724,
+"script": "65"
+},
+{
+"value": 41925379,
+"script": "52"
+},
+{
+"value": 38566965,
+"script": ""
+}
+],
+"lockTime": 0,
+"expiryHeight": 450423839,
+"valueBalance": 24353072,
+"scriptCode": "",
+"index": 0,
+"hashType": -1504527550,
+"branchId": 4122551051,
+"sigHash": "cc9acfb2e53981bfdbea32d4ecee7c3ce611fdc3ae132463c1a5ee9f4a4b5385",
+"hashShieldedSpends": "2ce30570b6d04fe35310bff9c0dc144df91eb8f02116b66e4e1909fa55f3602a",
+"hashShieldedOutputs": "aa6294d48275378f766de97adff2a9249859ff3041e927efd943149fc0d40bf8"
+},
+{
+"inputs": [
+{
+"txid": "6b6bd6000190b45135a0f9bb5c4b8d751f87254943b9e16c06421677016fcfa4",
+"index": 3,
+"sequence": 4294967295
+},
+{
+"txid": "efd7c6af2bba7faa83f11dbed1c85ab8dd8de27e21a2b77fd94195b036a7772c",
+"index": 3,
+"sequence": 4033723072
+},
+{
+"txid": "3dbab699e8273be3e57db28bd5512dad05dd5d2a5e150dd4db0dd816b7d7acfb",
+"index": 3,
+"sequence": 4294967295
+}
+],
+"outputs": [
+{
+"value": 3865283,
+"script": "535353636363acac65"
+},
+{
+"value": 59774571,
+"script": ""
+},
+{
+"value": 62908196,
+"script": "ac63"
+}
+],
+"lockTime": 1791209691,
+"expiryHeight": 0,
+"valueBalance": 14721707,
+"scriptCode": "ac5165",
+"index": 1,
+"hashType": 882280634,
+"branchId": 733220448,
+"sigHash": "c44ce2a2ead592f81dd1e25cc10cc24de8772ca73f9f4fc52934466895ca19bb",
+"hashShieldedSpends": "4b5fd594c4bb25045486bd72d46b8fbdc59cfefb0ef1cce52b79a9e9cdf4d46f",
+"hashShieldedOutputs": "9210c2ed49a16617beebf603484002ec5a87bd660586f884386adb4ec74c878f"
+},
+{
+"inputs": [
+{
+"txid": "56c7db032ebe64a8f377c1245856c0b57add509f461c055b793dc059767623cc",
+"index": 1,
+"sequence": 4294967295
+},
+{
+"txid": "582b859980dd113465866437c2ddffb83e04c3318a414c9c0891bf0946d39c12",
+"index": 3,
+"sequence": 1611889829
+},
+{
+"txid": "41bd55ab39adb183b221c966404a9d62a7dae324bb53c5150140328288b433e8",
+"index": 2,
+"sequence": 4294967295
+}
+],
+"outputs": [
+{
+"value": 56002261,
+"script": "5352526a6a6300"
+}
+],
+"lockTime": 0,
+"expiryHeight": 380670704,
+"valueBalance": 59096486,
+"scriptCode": "",
+"index": 0,
+"hashType": -804231310,
+"branchId": 3925833126,
+"sigHash": "7192f9bd0cf7654ea4933f078ad1e8165fd7b850c5b76c036a5e551ecc5e7841",
+"hashShieldedSpends": "cbe2a7ca22e14c5bba7089919bbfdf4991cb2b0d58bd3a565bebfa31813335a1",
+"hashShieldedOutputs": "c40ab5d491d797bfcb684d9f992dcda3eb6f75ce044518a61392042e2f1ea363"
+},
+{
+"inputs": [
+{
+"txid": "f2b4f37f952acb69820914559541edbcf07c9b955f8efa1b020ba2d8655ff6a8",
+"index": 3,
+"sequence": 2185466919
+}
+],
+"outputs": [
+{
+"value": 97570118,
+"script": "53ac6551"
+}
+],
+"lockTime": 0,
+"expiryHeight": 175896406,
+"valueBalance": 17580274,
+"scriptCode": "00",
+"index": 0,
+"hashType": -933246669,
+"branchId": 1537743641,
+"sigHash": "83b8e23cdea01d758cef888a0911cb98fe6fffb16721c4867b5a960d04d97c72",
+"hashShieldedSpends": "c1881dd8425dd8676717185f420606558ff565efd96267376b7cd87744f41c99",
+"hashShieldedOutputs": "1f783799b2fd681d2f99333f72f536c03f5e812aa6a1d4ba4098480057254901"
+},
+{
+"inputs": [
+{
+"txid": "82f1cf32b10f0073d7a48ef5ed9f68a960917a47e90986f1ba0149dbb0383e61",
+"index": 1,
+"sequence": 3201069508
+}
+],
+"outputs": [
+{
+"value": 30869631,
+"script": "ac6a63"
+},
+{
+"value": 84009093,
+"script": "63516a526a515300"
+},
+{
+"value": 94102997,
+"script": "ac6a"
+}
+],
+"lockTime": 0,
+"expiryHeight": 184457497,
+"valueBalance": 14986099,
+"scriptCode": "656a52005253ac5100",
+"index": 0,
+"hashType": -479856663,
+"branchId": 4179206552,
+"sigHash": "4526e487ef22fa0dec5d3d7f174c1dcff640715165e2f46bf997e3c89c87a280",
+"hashShieldedSpends": "280f7a47153bda2c61754d11a9656360170da90c7d0fa4145cedfa30bc8fd9aa",
+"hashShieldedOutputs": "7511e27819deb463cc479e4625030a1c7caf7064f2bdb7c09d7e45f02c759798"
+},
+{
+"inputs": [
+{
+"txid": "4d809e2dfb0550ed63bfc7a9b953be71edfd2a6aa5907bb2be9843a9367380dd",
+"index": 0,
+"sequence": 918051577
+},
+{
+"txid": "6d310eb1b74d59817a04f39e32c90e7144ace56455bea436528632e40d9d314f",
+"index": 3,
+"sequence": 4294967295
+},
+{
+"txid": "0abf38fd55376ce830bb1c0174705e279ef941de0d858dd1fe69d85bf6840f84",
+"index": 0,
+"sequence": 4294967295
+}
+],
+"outputs": [
+{
+"value": 15366075,
+"script": "630063630063006a51"
+},
+{
+"value": 79802718,
+"script": "53535200"
+},
+{
+"value": 17441828,
+"script": "ac515151"
+},
+{
+"value": 64982560,
+"script": "0052"
+}
+],
+"lockTime": 0,
+"expiryHeight": 0,
+"valueBalance": 39313297,
+"scriptCode": "63006a5300",
+"index": 0,
+"hashType": 1272519623,
+"branchId": 4179206552,
+"sigHash": "f237954188ff30a77538add8203adaabe830d04916422b9596f93162cb02ebff",
+"hashShieldedSpends": "22e54d57bd9723e9e488dc199227ceba1ca98a1b06e21983655b09ef2c8ce247",
+"hashShieldedOutputs": "b89a120ef381158af94589ba1c7f6f5805cea212218fe39d3ac0dc1f5a71c5e3"
+},
+{
+"inputs": [
+{
+"txid": "2d867d20b6698cf4fc437837b63ce79f3031a1e33c2aeb7315cf0b8605ea0ee6",
+"index": 2,
+"sequence": 142670718
+},
+{
+"txid": "b765e49fea0b705af0dd260e84e858954bbb3dac00a0ebb00eacb69f43be1569",
+"index": 1,
+"sequence": 3176641909
+},
+{
+"txid": "189f8849f20a0c6fe0f3dea14af1615a31f97d9f1186bc7d11127eded50e0744",
+"index": 3,
+"sequence": 12326473
+}
+],
+"outputs": [
+{
+"value": 23967791,
+"script": "516565ac0051ac63"
+},
+{
+"value": 58069815,
+"script": "51536a53655163ac63"
+},
+{
+"value": 19307130,
+"script": "ac5153ac656a52"
+}
+],
+"lockTime": 3854432850,
+"expiryHeight": 0,
+"valueBalance": 28199613,
+"scriptCode": "6a5363006a635200",
+"index": 1,
+"hashType": 886887952,
+"branchId": 1953719636,
+"sigHash": "36b2b49c15494be480178659c0d3dd50259edfffdeb253ffd3c3bf2450585bb6",
+"hashShieldedSpends": "095370ea6c3330cab8bea731c364a31c94019839d21484c762775c7059c7d2e7",
+"hashShieldedOutputs": "3d29324d5ebfefabb26f769ce1108b7cff11ada66f55e200ea8c8614ed5f952f"
+},
+{
+"inputs": [
+{
+"txid": "fdb8cadde334e3e3f8aac211f2e8613da4590038a5e55beccc293f8f31d0ec71",
+"index": 2,
+"sequence": 4294967295
+},
+{
+"txid": "b7137443bf09d4a559319c1958b9312f7cc7cdc96115ab73a59a1a7c8c38342f",
+"index": 3,
+"sequence": 1296136570
+}
+],
+"outputs": [
+{
+"value": 48342069,
+"script": "52525265"
+},
+{
+"value": 28667338,
+"script": "51"
+},
+{
+"value": 81696126,
+"script": "63656a0053526a52"
+}
+],
+"lockTime": 3490178442,
+"expiryHeight": 0,
+"valueBalance": 59830980,
+"scriptCode": "6500656a00",
+"index": 0,
+"hashType": 914452598,
+"branchId": 1537743641,
+"sigHash": "00d4c0a82fede02a823aa5d60c3345bc869838cbb6873121f80822206631030b",
+"hashShieldedSpends": "ef131cc651e77b9a0e39a7b41ed6ba4accf54d50d2b0871a804e098e547ea181",
+"hashShieldedOutputs": "79513da46af8f3ff9c075e81df98a6e32a17751c2b452a335b0e1eeb182d0a0d"
+},
+{
+"inputs": [
+{
+"txid": "9df20f8101d1e3bc11d758eca3609d30adba709c503a71152a696645c71d05f8",
+"index": 0,
+"sequence": 4294967295
+},
+{
+"txid": "8d5e44ea0d310621572b7dd1a464de9900b97796379713077b7458e2b57caf8f",
+"index": 0,
+"sequence": 4294967295
+}
+],
+"outputs": [
+{
+"value": 63667754,
+"script": "51630052"
+},
+{
+"value": 18947599,
+"script": "0063650052636500"
+}
+],
+"lockTime": 0,
+"expiryHeight": 56377895,
+"valueBalance": 32465707,
+"scriptCode": "5153",
+"index": 1,
+"hashType": -1706293433,
+"branchId": 3925833126,
+"sigHash": "e3cdaa71f86c4fefa107a60d8f5e30f80095fe3774a9eaf16aa602ae8fd8f33e",
+"hashShieldedSpends": "6f217a3c952d9ecb6a13616b2d2ba31bcf5ba3a275b68039965f14069d52829d",
+"hashShieldedOutputs": "e848af878790fc6b59d09d577f0f294783c13f0ed4cfd51bbf4870f09b579a3d"
+},
+{
+"inputs": [
+{
+"txid": "688b61f77163d121760ef9676a839d33b6a2f67ddb042460662b8f9fd1ef8179",
+"index": 0,
+"sequence": 4294967295
+}
+],
+"outputs": [
+{
+"value": 20308438,
+"script": "630063636363526352"
+}
+],
+"lockTime": 0,
+"expiryHeight": 72735552,
+"valueBalance": 58965603,
+"scriptCode": "ac",
+"index": 0,
+"hashType": -1520760546,
+"branchId": 733220448,
+"sigHash": "de327aa76eac22384cd6795a982590bd590f71c66cd49d987870cc6184bc32af",
+"hashShieldedSpends": "07b76d802228b22006b98216148e21494bd420bb5a99e8c7a4c5a89dbbad8835",
+"hashShieldedOutputs": "87aab4cfacf7778bcf04ee5ca5e430b679f97f2e6e579063c6aebbc220c8fe04"
+},
+{
+"inputs": [
+{
+"txid": "79aa52ac471fcaaacab645b2c2826c919d66050dbbe915fcc7ed68e1d4362af9",
+"index": 2,
+"sequence": 4294967295
+}
+],
+"outputs": [
+{
+"value": 49992357,
+"script": ""
+},
+{
+"value": 16999878,
+"script": "63636352536a0063"
+},
+{
+"value": 9837998,
+"script": "5100005352636565"
+}
+],
+"lockTime": 1751214707,
+"expiryHeight": 0,
+"valueBalance": 42462852,
+"scriptCode": "636a5151ac526a52",
+"index": 0,
+"hashType": 1460321845,
+"branchId": 3925833126,
+"sigHash": "86b92e2424063a7de5f4b43ec4fce8d01db48bd680ed18b22a5143a7edf7bf70",
+"hashShieldedSpends": "f646eb2c865da23017c1e494f73049596ef13ba9a7612d21b00a2e79aee7587d",
+"hashShieldedOutputs": "0db72161ed3a2dcfd025ab64ddad1844498eeb5ebf9d0f4b7df228bad4afa9e9"
+},
+{
+"inputs": [
+{
+"txid": "41e1e599a51c59daf3009e61c541b95add5e636106e0d99624ad7dbe25a5e0bd",
+"index": 1,
+"sequence": 2404909567
+},
+{
+"txid": "861848d1e83a3633d3f515dfd22ca2f0a79d8cc956f323b6b9dbd1a7ed69f6a6",
+"index": 2,
+"sequence": 3683414397
+}
+],
+"outputs": [
+{
+"value": 46502183,
+"script": "525100ac00"
+},
+{
+"value": 62207514,
+"script": "5252635100ac"
+}
+],
+"lockTime": 0,
+"expiryHeight": 0,
+"valueBalance": 35505196,
+"scriptCode": "6a53",
+"index": 0,
+"hashType": 318748078,
+"branchId": 0,
+"sigHash": "561ad0cf8f844421e71f1642689ff86a4c3d37ef17c9b8dcaff8439e928db0ee",
+"hashShieldedSpends": "62f50c70325ba3577487c1c5bfdcc3c4425ac4af9e0bc94d0225440e15510f85",
+"hashShieldedOutputs": "46e637810329527f3303b7ecc3bbbf91a280a564fb874be48079ffb11a0f5134"
+}
+]

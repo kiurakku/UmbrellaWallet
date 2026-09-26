@@ -618,6 +618,25 @@ public sealed class HdAddressDeriver
         return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"44'/144'/0'/0/{addressIndex}")).PrivateKey.PubKey;
     }
 
+    /// <summary>
+    /// Zcash transparent signing key at m/44'/133'/0'/0/{index} — the key behind the displayed t1…
+    /// address. The path is written out here rather than routed through the BIP84 UTXO machinery,
+    /// because Zcash is BIP44/P2PKH and a shared helper that drifted would sign for an address the
+    /// user was never shown. The caller disposes it.
+    /// </summary>
+    public Key DeriveZcashKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var validation = _mnemonicService.Validate(mnemonic);
+        if (!validation.IsValid || validation.NormalizedMnemonic is null)
+        {
+            throw new ArgumentException(validation.Error ?? "Invalid mnemonic.", nameof(mnemonic));
+        }
+
+        var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
+        return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"44'/133'/0'/0/{addressIndex}")).PrivateKey;
+    }
+
     private static ReceiveAddress DeriveTron(ExtKey masterKey, uint addressIndex)
     {
         var path = new KeyPath($"44'/195'/0'/0/{addressIndex}");

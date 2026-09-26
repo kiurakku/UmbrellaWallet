@@ -25,6 +25,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Zcash's own sighash vectors, trimmed to the transparent-signing cases this wallet builds. -->
+    <None Include="TestData\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Umbrella.Wallet.Core\Umbrella.Wallet.Core.csproj" />
     <ProjectReference Include="..\..\src\Umbrella.Wallet.Infrastructure\Umbrella.Wallet.Infrastructure.csproj" />
     <!-- Lets tests drive MainViewModel commands directly, which is where the reported

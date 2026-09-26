@@ -203,8 +203,28 @@ public sealed class CapabilityMatrixTests
         var bitcoin = Assert.Single(rows, r => r.Symbol.Equals("BTC", StringComparison.OrdinalIgnoreCase));
         Assert.True(bitcoin.ClaimsSend);
 
-        // And a row that says it cannot send is read as such — Zcash is transparent-receive only.
-        var zcash = Assert.Single(rows, r => r.Symbol.Equals("ZEC", StringComparison.OrdinalIgnoreCase));
-        Assert.False(zcash.ClaimsSend);
+        // And a row that says it cannot send has to be read as such. There is no longer a coin in the
+        // README that cannot send — every one of them can, which is the whole point — so the negative
+        // case is a table written for this test rather than a coin that might gain a send path later.
+        var fixturePath = Path.Combine(Path.GetTempPath(), $"umbrella-matrix-{Guid.NewGuid():N}.md");
+        try
+        {
+            File.WriteAllText(fixturePath, string.Join(Environment.NewLine,
+            [
+                "| Coin | Receive | Balance | Send |",
+                "|---|:---:|:---:|:---:|",
+                "| Bitcoin (BTC) | ✅ | ✅ | ✅ |",
+                "| Example (EXMPL) | ✅ | ✅ | — |",
+            ]));
+
+            var fixture = ReadTable(fixturePath, "| Coin | Receive | Balance | Send |", 3);
+            Assert.Equal(2, fixture.Count);
+            Assert.True(Assert.Single(fixture, r => r.Symbol == "BTC").ClaimsSend);
+            Assert.False(Assert.Single(fixture, r => r.Symbol == "EXMPL").ClaimsSend);
+        }
+        finally
+        {
+            File.Delete(fixturePath);
+        }
     }
 }

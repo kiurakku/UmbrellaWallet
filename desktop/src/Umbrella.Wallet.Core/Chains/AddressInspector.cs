@@ -65,8 +65,10 @@ public static class AddressInspector
         // TRON / Zcash-transparent: plain base58check.
         if (a.StartsWith('T') && a.Length == 34)
             return new("TRX", Base58CheckOk(a) ? AddressValidity.Valid : AddressValidity.Invalid);
-        if (a.StartsWith("t1", StringComparison.Ordinal) && a.Length == 35)
-            return new("ZEC", Base58CheckOk(a) ? AddressValidity.Valid : AddressValidity.Invalid);
+        // Zcash transparent: the leading "t1"/"t3" is only how the two-byte version prefix RENDERS, so
+        // the decoder checks the prefix bytes themselves rather than the letters.
+        if (a.StartsWith("t1", StringComparison.Ordinal) || a.StartsWith("t3", StringComparison.Ordinal))
+            return new("ZEC", ZcashAddress.IsValid(a) ? AddressValidity.Valid : AddressValidity.Invalid);
 
         // XRP: its own base58 alphabet plus a double-SHA256 checksum, so this is a definitive answer
         // rather than a guess from the shape. Worth checking early — XRP is one of the coins people

@@ -233,9 +233,10 @@ public sealed class MainViewModelTests : IDisposable
         Assert.Contains("Monero wallet service", vm.SendError);
         Assert.False(vm.HasSendQuote);
 
-        // A coin with a real address but no send path (ZEC — transparent receive only) is refused
-        // outright — the send picker never offers it, and the guard rejects it if reached programmatically.
-        vm.SendChain = "ZEC";
+        // A ticker with no send path is refused outright — the send picker never offers one, and the
+        // guard rejects it if reached programmatically. Every coin the wallet holds can send now
+        // (Zcash was the last), so the example is a ticker no chain here answers to.
+        vm.SendChain = "EXMPL";
         vm.SendTo = "t1XVXWCvpMgBvUaed4XDqWtgQgJSu1Ghz7F";
         await vm.PrepareSendCommand.ExecuteAsync(null);
         Assert.Contains("not available", vm.SendError);

@@ -6,6 +6,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+### Zcash can now be sent, not only received
+
+- **Every coin in the wallet can now be spent.** Zcash was the last one that could take money and not
+  move it. Transparent (`t1…`) sending is here: a v4 Sapling transaction signed with the **ZIP-243**
+  digest, bound to the consensus branch id in force at the height it expires under — so a signature
+  made for Zcash cannot be replayed onto another fork of it. It expires before the next network
+  upgrade, as Zcash's own wallet does, so it can never outlive the rules it was signed under.
+- The digest is pinned to **Zcash's own signature-hash vectors**, 25 of them, covering every hash type
+  including the awkward ANYONECANPAY / NONE / SINGLE combinations. The first run failed all of them and
+  was right to: Zcash prints these hashes byte-reversed. The wire format is checked against a live
+  mainnet node, which decodes a transaction built exactly as a send is and stops only at the invented
+  coin it spends.
+- The fee is **ZIP-317**, the rule every Zcash node applies, worked out together with coin selection
+  because it depends on how many coins pay for the transaction. Change smaller than Zcash's own
+  54-zatoshi dust limit goes to the fee instead of becoming an output no node would accept.
+- Addresses are decoded by their **two version bytes**, not by the `t1` / `t3` letters. A Bitcoin
+  address pasted into a Zcash send is told it belongs to another chain, and a shielded `z…` or `u1…`
+  address is told plainly that this wallet holds transparent Zcash only — rather than "invalid
+  address", which would be a lie about which one of us cannot do it.
+- Unconfirmed coins are never spent, the signing key is checked against the address you reviewed, and
+  the transaction id is computed **before** the broadcast — so an answer that never arrives is settled
+  against the chain and shown as Pending, never as a failure with a Retry button that could pay twice.
+- Zcash here is still the **public** side of Zcash. Shielded sending is a different scheme, and the
+  wallet says so instead of letting the coin's reputation imply privacy it is not providing.
+
 ### zkSync Era sends, and every EVM network prices its own gas
 
 - The wallet signed every EVM transfer with a flat **21,000 gas** — right on Ethereum and its
