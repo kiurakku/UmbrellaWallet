@@ -177,8 +177,8 @@ is the most common way people lose money.
 | TON | ✅ | ✅ | ✅ | ✅ | — | wallet v4R2, pinned to `@ton/ton` |
 | Cardano (ADA) | ✅ | ✅ | ✅ | ✅ | — | CIP-1852, BIP32-Ed25519 |
 | Zcash (ZEC) | ✅ | ✅ | ✅ | — | — | **transparent `t1…` only** — not shielded |
-| XRP Ledger (XRP) | ✅ | ✅ | ✅ | — | — | destination tag for exchange deposits; an address becomes an account once it receives the network's reserve |
-| Stellar (XLM) | ✅ | ✅ | ✅ | — | — | SEP-0005, restores in LOBSTR / Solar / Ledger; memo for exchange deposits |
+| XRP Ledger (XRP) | ✅ | ✅ | ✅ | ✅ | — | destination tag for exchange deposits; an address becomes an account once it receives the network's reserve |
+| Stellar (XLM) | ✅ | ✅ | ✅ | ✅ | — | SEP-0005, restores in LOBSTR / Solar / Ledger; memo for exchange deposits |
 | Cosmos Hub (ATOM) | ✅ | ✅ | ✅ | — | — | memo for exchange deposits; the balance is *available* ATOM — staked ATOM is not counted |
 | NEAR Protocol (NEAR) | ✅ | ✅ | ✅ | — | — | from your implicit account, to any `.near` name or implicit account |
 | Polkadot (DOT) | ✅ | ✅ | ✅ | — | — | sr25519, same account as Polkadot.js / Nova; balance adds Asset Hub + relay; sends from Asset Hub |

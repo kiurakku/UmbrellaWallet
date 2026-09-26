@@ -92,7 +92,7 @@ public static class ChainCatalog
             // destination tag, pinned byte-for-byte to xrpl.js (XrpSendTests).
             new ChainInfo(
                 ChainId.Xrp, "XRP", "XRP Ledger", ChainSupportLevel.Supported, "BIP44 · secp256k1", "m/44'/144'/0'/0/0",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. An XRP address only becomes an account once it has received the network's reserve, which then stays locked while the account exists — a smaller first payment is refused by the network."),
             // Stellar — receive, balance and send (roadmap N.5). SEP-0005: SLIP-0010 ed25519 at
@@ -102,7 +102,7 @@ public static class ChainCatalog
             // One account per seed for the same reason as XRP: an account locks a minimum balance.
             new ChainInfo(
                 ChainId.Xlm, "XLM", "Stellar", ChainSupportLevel.Supported, "SEP-0005 · ed25519", "m/44'/148'/0'",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. A Stellar address only becomes an account once someone funds it with the network's minimum balance, which stays locked while the account exists."),
             // Cosmos Hub — receive, balance and send (roadmap N.6). BIP44 coin type 118, secp256k1, the
