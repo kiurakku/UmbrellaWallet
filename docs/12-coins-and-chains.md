@@ -31,7 +31,7 @@
 | **CRO** | Cronos | ✅ | ✅ | All ERC-20 | Crypto.com chain |
 | **ETH** | Arbitrum, Base, Optimism, Linea | ✅ | ✅ | All ERC-20 | Layer 2 — same 0x address, far cheaper |
 | **ETH** | zkSync Era | ✅ | ✅ | — | Sends too: the gas limit comes from zkSync's own estimate, not Ethereum's flat 21,000 |
-| **ZEC** | Zcash | — | ✅ | — | Receive only for now |
+| **ZEC** | Zcash | ✅ | ✅ | — | Transparent `t1…` addresses only — Zcash's PUBLIC side, not a shielded z-address. The fee follows ZIP-317 and depends on how many coins fund the spend |
 | **XRP** | XRP Ledger | ✅ | ✅ | — | With a destination tag for exchange deposits. An address becomes an account once it receives the network's reserve, which then stays locked |
 | **XLM** | Stellar | ✅ | ✅ | — | Native XLM, with a text or ID memo for exchange deposits. An address becomes an account once someone funds it with 1 XLM; the first payment to a new address creates it |
 | **ATOM** | Cosmos Hub | ✅ | ✅ | — | With a memo for exchange deposits. The balance is *available* ATOM — staked ATOM is not counted |
@@ -502,7 +502,7 @@ threat model names each one as an open gap rather than implying it away.
 | 16 | Litecoin | LTC | ✅ Stable | Send, receive, balance, history |
 | 17 | Bitcoin Cash | BCH | ✅ Working | Send, receive, balance, history, fresh address per receive |
 | 18 | Dogecoin | DOGE | ✅ Working | Send, receive, balance, fresh address per receive |
-| 19 | Zcash | ZEC | ⚠️ Partial | Receive + balance only |
+| 19 | Zcash | ZEC | ✅ Working | Send, receive, balance — transparent only |
 | 20 | Linea | ETH | ✅ Working | Send, receive, balance, ERC-20 |
 | 21 | zkSync Era | ETH | ✅ Full | Receive, balance and send |
 | 22 | XRP Ledger | XRP | ✅ Full | Receive, balance and send (destination tag) |

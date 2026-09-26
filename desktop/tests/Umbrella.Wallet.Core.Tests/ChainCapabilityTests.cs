@@ -18,6 +18,7 @@ public sealed class ChainCapabilityTests
         ChainId.Xrp, // a plain XRP Payment + destination tag, pinned to xrpl.js (XrpSendTests)
         ChainId.Atom, // one bank MsgSend + memo, pinned to cosmjs (CosmosSendTests)
         ChainId.Dot, // transfer_keep_alive on Asset Hub; sr25519 pinned to polkadot.js, validated by the node (PolkadotSend*Tests)
+        ChainId.Zec, // transparent v4 spend, ZIP-243 digest pinned to Zcash's own sighash vectors (ZcashSigHashTests)
     };
 
     [Fact]
@@ -41,6 +42,7 @@ public sealed class ChainCapabilityTests
     [InlineData(ChainId.Ton)]
     [InlineData(ChainId.Ada)]
     [InlineData(ChainId.Bch)]
+    [InlineData(ChainId.Zec)]
     public void Sendable_chains_are_marked_can_send(ChainId id) =>
         Assert.True(ChainCatalog.Get(id).CanSend);
 

@@ -73,14 +73,16 @@ public static class ChainCatalog
                 CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger — use Tor and a fresh address per receive to reduce linking."),
-            // Zcash — TRANSPARENT (t-addr) receive only. A t-addr is a normal P2PKH (BIP44 coinType 133)
-            // with Zcash's two-byte version prefix; balance comes from Blockchair. This is the PUBLIC
-            // side of Zcash: shielded (z-addr) receiving is a different scheme the wallet does not derive,
-            // so the privacy note says so plainly rather than implying Zcash's shielded privacy. CanSend
-            // and HasHistory stay off until their paths are wired and tested.
+            // Zcash — TRANSPARENT (t-addr) only. A t-addr is a normal P2PKH (BIP44 coinType 133) with
+            // Zcash's two-byte version prefix; balance comes from Blockchair. This is the PUBLIC side of
+            // Zcash: shielded (z-addr) sending and receiving is a different scheme the wallet does not
+            // derive, so the privacy note says so plainly rather than implying Zcash's shielded privacy.
+            // Sends a v4 (Sapling) transparent transaction signed with the ZIP-243 digest, pinned to
+            // Zcash's own sighash vectors (ZcashSigHashTests), with the ZIP-317 fee. HasHistory stays
+            // off until that path is wired and tested.
             new ChainInfo(
                 ChainId.Zec, "ZEC", "Zcash", ChainSupportLevel.Supported, "BIP44 · transparent", "m/44'/133'/0'/0/{index}",
-                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Transparent address — this is Zcash's PUBLIC ledger, not a shielded z-address. Use Tor and a fresh address per receive."),
             // XRP Ledger — receive and balance (roadmap N.4). BIP44 coin type 144, secp256k1, the same
