@@ -40,6 +40,26 @@ public sealed class AccountHistoryTests
         Assert.Equal("https://livenet.xrpl.org/transactions/9FAF70B356A2DA2F5340CAA878A83AB6FC7275F3BDB9D05C92DD5E65FC0197DE", row.Explorer);
     }
 
+    [Theory]
+    // API v2: tx_json without a date, the close time beside it as seconds…
+    [InlineData(""" "date":843725290, """)]
+    // …or only as an ISO timestamp (Clio).
+    [InlineData(""" "close_time_iso":"2026-09-26T08:08:10Z", """)]
+    public void A_newer_api_answer_keeps_the_transactions_time(string closeTime)
+    {
+        var json = """
+            {"result":{"transactions":[
+              {"meta":{"TransactionResult":"tesSUCCESS","delivered_amount":"1000000"},
+               "tx_json":{"TransactionType":"Payment","Account":"@Them@","Destination":"@Me@","DeliverMax":"1000000"},
+               @close@ "hash":"AB12","validated":true}
+            ]}}
+            """.Replace("@Them@", Them).Replace("@Me@", Me).Replace("@close@", closeTime);
+
+        var row = Assert.Single(AccountHistoryClient.ParseXrp(json, Me));
+        Assert.Equal(new DateTimeOffset(2026, 9, 26, 8, 8, 10, TimeSpan.Zero).ToUnixTimeMilliseconds(), row.UnixMs);
+        Assert.Equal("AB12", row.Hash);
+    }
+
     [Fact]
     public void A_partial_payment_shows_what_was_delivered_not_what_it_claimed()
     {

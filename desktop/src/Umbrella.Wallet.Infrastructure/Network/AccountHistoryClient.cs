@@ -92,8 +92,7 @@ public sealed class AccountHistoryClient
             var hash = Str(entry, "hash");
             if (hash.Length == 0) hash = Str(tx, "hash");
 
-            var seconds = Long(tx, "date");
-            var ts = seconds > 0 ? (seconds + RippleEpoch) * 1000 : 0;
+            var ts = XrpCloseTime(entry, tx);
 
             list.Add(new ChainTx(
                 incoming ? "Received" : "Sent", "XRP", OnChainHistoryClient.ScaleDown(delivered.GetString()!, 6),
@@ -101,6 +100,22 @@ public sealed class AccountHistoryClient
         }
 
         return list;
+    }
+
+    /// <summary>
+    /// When the ledger holding the transaction closed, in Unix milliseconds, or 0 when the answer does not
+    /// say. API v1 puts <c>date</c> (seconds since 2000) inside <c>tx</c>; API v2 and Clio put it — or
+    /// <c>close_time_iso</c> — on the entry beside <c>tx_json</c>. All three are read, so a row never
+    /// loses its time because the chosen server speaks the newer API.
+    /// </summary>
+    private static long XrpCloseTime(JsonElement entry, JsonElement tx)
+    {
+        var seconds = Long(tx, "date");
+        if (seconds <= 0) seconds = Long(entry, "date");
+        if (seconds > 0) return (seconds + RippleEpoch) * 1000;
+
+        return DateTimeOffset.TryParse(Str(entry, "close_time_iso"), CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal, out var at) ? at.ToUnixTimeMilliseconds() : 0;
     }
 
     // --- Stellar -------------------------------------------------------------------------------------
