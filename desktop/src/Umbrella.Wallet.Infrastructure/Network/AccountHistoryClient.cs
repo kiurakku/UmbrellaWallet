@@ -13,8 +13,8 @@ namespace Umbrella.Wallet.Infrastructure.Network;
 /// does not answer yields an empty list, and the Activity screen's coverage note keeps saying which
 /// coins' history could not be read, rather than an empty list passing for "no transactions".
 ///
-/// The explorer links are the ones the Send screen already gives a transaction, so a payment made in
-/// this wallet and the same payment read back from the chain collapse into one row.
+/// The explorer links are exactly the ones the Send screen stores for a transaction (scheme included),
+/// so a payment made in this wallet and the same payment read back from the chain collapse into one row.
 ///
 /// Cosmos Hub is NOT here, on purpose. Its public REST servers prune their transaction index: the same
 /// search for an account with known sends answered with them once in nine tries across three servers,
@@ -97,7 +97,7 @@ public sealed class AccountHistoryClient
 
             list.Add(new ChainTx(
                 incoming ? "Received" : "Sent", "XRP", OnChainHistoryClient.ScaleDown(delivered.GetString()!, 6),
-                incoming ? from : to, ts, $"livenet.xrpl.org/transactions/{hash}", hash));
+                incoming ? from : to, ts, $"https://livenet.xrpl.org/transactions/{hash}", hash));
         }
 
         return list;
@@ -165,7 +165,7 @@ public sealed class AccountHistoryClient
 
             list.Add(new ChainTx(
                 incoming ? "Received" : "Sent", "XLM", TrimAmount(amount),
-                incoming ? from : to, ts, $"stellar.expert/explorer/public/tx/{hash}", hash));
+                incoming ? from : to, ts, $"https://stellar.expert/explorer/public/tx/{hash}", hash));
         }
 
         return list;

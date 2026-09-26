@@ -37,7 +37,7 @@ public sealed class AccountHistoryTests
         Assert.Equal(Them, row.Counterparty);
         // 843725290 seconds after 2000-01-01 is 2026-09-26.
         Assert.Equal(new DateTimeOffset(2026, 9, 26, 8, 8, 10, TimeSpan.Zero).ToUnixTimeMilliseconds(), row.UnixMs);
-        Assert.Equal("livenet.xrpl.org/transactions/9FAF70B356A2DA2F5340CAA878A83AB6FC7275F3BDB9D05C92DD5E65FC0197DE", row.Explorer);
+        Assert.Equal("https://livenet.xrpl.org/transactions/9FAF70B356A2DA2F5340CAA878A83AB6FC7275F3BDB9D05C92DD5E65FC0197DE", row.Explorer);
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public sealed class AccountHistoryTests
         Assert.Equal(2, rows.Count);   // the USDC payment is not XLM and is left out
         Assert.Equal("12.5", rows[0].Amount);
         Assert.Equal("Received", rows[0].Kind);
-        Assert.Equal("stellar.expert/explorer/public/tx/b56f891b", rows[0].Explorer);
+        Assert.Equal("https://stellar.expert/explorer/public/tx/b56f891b", rows[0].Explorer);
         Assert.Equal("2", rows[1].Amount);
         Assert.Equal(StellarThem, rows[1].Counterparty);
     }
@@ -106,6 +106,17 @@ public sealed class AccountHistoryTests
             ]}}
             """.Replace("@StellarMe@", StellarMe).Replace("@StellarThem@", StellarThem);
         Assert.Empty(AccountHistoryClient.ParseStellar(json, StellarMe));
+    }
+
+    [Fact]
+    public void History_links_are_the_links_a_send_stores_so_the_two_rows_merge()
+    {
+        // The Send screen stores "https://" + the explorer path (FinishSendAsync); Activity de-duplicates
+        // on the whole string. A bare host here would show every payment sent from this wallet twice.
+        var hash = "9FAF70B356A2DA2F5340CAA878A83AB6FC7275F3BDB9D05C92DD5E65FC0197DE";
+        var sendPath = $"livenet.xrpl.org/transactions/{hash}";
+        var row = Assert.Single(AccountHistoryClient.ParseXrp(XrpAnswer(XrpPayment(Them, Me, "\"1\"", "\"1\"", hash: hash)), Me));
+        Assert.Equal($"https://{sendPath}", row.Explorer);
     }
 
     [Theory]
