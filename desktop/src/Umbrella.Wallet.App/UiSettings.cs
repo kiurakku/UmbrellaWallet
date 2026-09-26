@@ -29,6 +29,13 @@ public sealed class UiSettings
     /// shows a still photo instead — for people who don't want motion. Gated by AnimationsEnabled.</summary>
     public bool PortfolioVideo { get; set; } = true;
 
+    /// <summary>Look for a newer release without being asked (shortly after start, then twice a day).
+    /// Goes through the same route as everything else, Tor included. Installing still takes a click.</summary>
+    public bool AutoUpdateCheck { get; set; } = true;
+
+    /// <summary>Download a newer release as soon as it is found, and verify it, so installing is one click.</summary>
+    public bool AutoUpdateDownload { get; set; } = true;
+
     /// <summary>Idle minutes before the vault auto-locks; 0 disables auto-lock entirely.</summary>
     public int AutoLockMinutes { get; set; } = 5;
 

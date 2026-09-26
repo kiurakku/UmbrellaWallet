@@ -35,7 +35,7 @@ means saying your address.
 | Your wallet addresses | Block explorers and RPC nodes | To read balances and history |
 | A signed transaction | The same | To broadcast it |
 | Coin symbols | CoinGecko, Binance | To price what you hold |
-| Nothing identifying | GitHub | Only when you check for an update |
+| Nothing identifying | GitHub | Shortly after start and twice a day, to look for a new release (Settings → Updates can turn this off); and when a release is downloaded |
 
 **Tor hides your IP from these servers. It does not un-send the address.** That sentence is the whole
 honest summary of wallet privacy on a transparent chain.
