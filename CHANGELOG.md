@@ -6,6 +6,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+### Nano (XNO): receive and balance
+
+- **A Nano account from the same recovery phrase** — `m/44'/165'/0'`, the path Ledger, Trust Wallet and
+  Nault's BIP39 mode use, so the phrase shows the same account there. Nano signs with ed25519 over
+  BLAKE2b instead of SHA-512; the whole pipeline (seed → private key → public key → address) is pinned to
+  the Nano documentation's own test vector, so a wrong step fails the build instead of producing an
+  address nobody can spend from.
+- Addresses are checked by their BLAKE2b checksum; the old `xrb_` prefix is accepted as the same
+  account, and a pasted Nano address is recognised by its checksum.
+- **The balance counts receivable XNO.** Nano holds incoming funds as "receivable" until a signed receive
+  block pockets them; that money is yours either way, so it is shown. Sending — and pocketing — needs
+  signed blocks with proof of work, which this build does not do yet: the row says "Receive only", and the
+  note says to restore the phrase in Nault or a Ledger to move it.
+- The node is choosable (Nano.to, NanoSLO, SomeNano) with failover, and all three are named on the list
+  of who can see your addresses.
+
 ### Updates arrive by themselves — and still install only when you say so
 
 - **The wallet now looks for a new release on its own** — shortly after it starts, then twice a day —

@@ -21,4 +21,5 @@ public enum ChainId
     Atom,
     Near,
     Dot,
+    Nano,
 }

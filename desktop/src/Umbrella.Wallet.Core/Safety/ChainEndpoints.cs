@@ -116,6 +116,13 @@ public static class ChainEndpoints
                 new("https://polkadot-rpc.publicnode.com", "PublicNode (relay chain)"),
                 new("https://polkadot.api.onfinality.io/public", "OnFinality (relay chain)"),
             ],
+            // Nano node RPC (account_balance). Each answered for a real account on 2026-09-26.
+            ["XNO"] =
+            [
+                new("https://rpc.nano.to", "Nano.to"),
+                new("https://nanoslo.0x.no/proxy", "NanoSLO"),
+                new("https://node.somenano.com/proxy", "SomeNano"),
+            ],
             // NEAR JSON-RPC. near.lava.build was discontinued in 2025 — these two answered view_account.
             ["NEAR"] =
             [

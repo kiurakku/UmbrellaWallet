@@ -97,6 +97,7 @@ public sealed class HdAddressDeriver
             ChainId.Xlm => DeriveStellar(parsed, addressIndex, passphrase),
             ChainId.Atom => DeriveCosmos(masterKey, addressIndex),
             ChainId.Near => DeriveNear(parsed, addressIndex, passphrase),
+            ChainId.Nano => DeriveNano(parsed, addressIndex, passphrase),
             ChainId.Dot => DerivePolkadot(parsed, passphrase),
             ChainId.Eth => DeriveEthereum(masterKey, addressIndex),
             ChainId.Tron => DeriveTron(masterKey, addressIndex),
@@ -185,6 +186,19 @@ public sealed class HdAddressDeriver
     /// NEAR implicit account at m/44'/397'/{index}' (SLIP-0010 ed25519): the account id is the hex of
     /// the public key (roadmap N.7). Pinned to near-seed-phrase's own parse test.
     /// </summary>
+    /// <summary>
+    /// Nano account at m/44'/165'/{index}' (SLIP-0010, then Nano's ed25519-BLAKE2b public key), the
+    /// scheme Ledger, Trust Wallet and Nault's BIP39 mode use. Pinned to the Nano documentation's own
+    /// test vector (NanoReceiveTests).
+    /// </summary>
+    private static ReceiveAddress DeriveNano(Mnemonic parsed, uint addressIndex, string passphrase = "")
+    {
+        var priv = NanoAccounts.DerivePrivateKey(parsed.DeriveSeed(passphrase), addressIndex);
+        var pub = NanoAccounts.PublicKey(priv);
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(priv);
+        return new ReceiveAddress(ChainId.Nano, NanoAccounts.Address(pub), $"m/44'/{NanoAccounts.CoinType}'/{addressIndex}'", addressIndex);
+    }
+
     private static ReceiveAddress DeriveNear(Mnemonic parsed, uint addressIndex, string passphrase = "")
     {
         var pub = DeriveNearPublicKey(parsed, addressIndex, passphrase);
