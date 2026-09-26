@@ -78,7 +78,7 @@ public partial class MainViewModel
         foreach (var c in StaticCommands)
             if (Match(c.Label) || Match(c.Hint)) CommandResults.Add(c);
         // Every other wallet, one Enter away — by name, or by typing "wallet".
-        if (IsUnlocked && _registry.Wallets.Count > 1)
+        if (IsWorkspace && _registry.Wallets.Count > 1)
         {
             var hint = Loc.Instance["wallets.paletteHint"];
             foreach (var w in _registry.Wallets.Where(w => w.Id != _registry.Active?.Id))

@@ -432,6 +432,35 @@ public sealed class MainViewModelTests : IDisposable
         Assert.Equal("Savings", vm.ActiveWalletLabel);   // nothing was switched either
     }
 
+    /// <summary>
+    /// A new wallet's recovery phrase is on screen until "I've written it down". Switching away would
+    /// lock it and clear the phrase before it was ever confirmed — so neither the switcher, the shortcut
+    /// nor the palette may do it.
+    /// </summary>
+    [Fact]
+    public async Task MultiWallet_NoSwitchingAwayFromAnUnconfirmedBackup()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        var mainId = vm.Wallets.Single(w => w.IsActive).Id;
+
+        vm.NewWalletLabel = "Savings";
+        vm.BeginAddWalletCommand.Execute(null);
+        await vm.CreateWalletCommand.ExecuteAsync(null);   // backup screen now showing — not confirmed
+        Assert.True(vm.IsBackupStage);
+
+        await vm.SwitchWalletCommand.ExecuteAsync(mainId);
+        await vm.SwitchToNextWalletCommand.ExecuteAsync(null);
+        vm.OpenCommandPaletteCommand.Execute(null);
+
+        Assert.True(vm.IsBackupStage);
+        Assert.Equal("Savings", vm.ActiveWalletLabel);
+        Assert.DoesNotContain(vm.CommandResults, r => r.Target.StartsWith("wallet:", StringComparison.Ordinal));
+    }
+
     /// <summary>Cancelling an add-wallet must de-register the pending wallet and leave exactly the
     /// original wallet behind.</summary>
     [Fact]

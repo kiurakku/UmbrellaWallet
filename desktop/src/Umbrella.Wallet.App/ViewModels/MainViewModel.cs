@@ -3291,6 +3291,7 @@ public partial class MainViewModel : ViewModelBase
     public void LockVault()
     {
         _lockEpoch++;   // anything that was opening a vault when this happened must not finish the job
+        ToastVisible = false;   // a notice about this wallet (or the one being opened) never outlives the lock
         _refreshCts?.Cancel();
         if (_unlockedMnemonic is not null)
         {
@@ -3466,15 +3467,25 @@ public partial class MainViewModel : ViewModelBase
     private async Task SwitchWalletAsync(string? id)
     {
         if (string.IsNullOrWhiteSpace(id) || id == _registry.Active?.Id || _switchingWallet) return;
+
+        // Never away from the recovery-phrase backup: switching locks this wallet, which would clear the
+        // phrase and the "I've written it down" gate with it, before it was ever confirmed.
+        if (PendingPhraseBackup) return;
+
+        bool opened;
         _switchingWallet = true;
         try
         {
-            await SwitchWalletCoreAsync(id);
+            opened = await SwitchWalletCoreAsync(id);
         }
         finally
         {
+            // Released as soon as the vault question is settled — not after the balance refresh below,
+            // which can take many seconds and would silently swallow the user's next choice.
             _switchingWallet = false;
         }
+
+        if (opened) await RefreshLiveDataAsync();
     }
 
     /// <summary>True while a switch is opening the next vault: a second click (or Ctrl+Shift+W held
@@ -3493,18 +3504,19 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task SwitchToNextWalletAsync()
     {
-        if (!IsUnlocked) return;
+        if (!IsWorkspace) return;
         var wallets = _registry.Wallets.ToList();
         if (wallets.Count < 2) return;
         var at = wallets.FindIndex(w => w.Id == _registry.Active?.Id);
         await SwitchWalletAsync(wallets[(at + 1) % wallets.Count].Id);
     }
 
-    private async Task SwitchWalletCoreAsync(string id)
+    /// <returns>True when the target wallet ended up open, so its balances should be read.</returns>
+    private async Task<bool> SwitchWalletCoreAsync(string id)
     {
         var pw = _sessionPassword;               // capture before LockVault wipes it
         var target = _registry.Wallets.FirstOrDefault(w => w.Id == id);
-        if (target is null) return;
+        if (target is null) return false;
         var targetVault = new EncryptedFileSeedVault(_registry.VaultPathFor(target));
 
         // Open the next wallet BEFORE closing this one. The key derivation takes a moment by design;
@@ -3527,7 +3539,7 @@ public partial class MainViewModel : ViewModelBase
 
         // Locked while the vault was being opened: the lock wins. Nothing is switched and nothing is
         // left unlocked; the user unlocks again, from the wallet they were in.
-        if (_lockEpoch != epoch) return;
+        if (_lockEpoch != epoch) return false;
 
         _registry.SetActive(id);
         LockVault();
@@ -3543,14 +3555,14 @@ public partial class MainViewModel : ViewModelBase
             ActiveSection = "Portfolio";
             StatusMessage = string.Format(Loc.Instance["status.switchedTo"], ActiveWalletLabel);
             ShowToast(StatusMessage, isError: false);
-            await RefreshLiveDataAsync();
-            return;
+            return true;
         }
 
         SetupStage = HasVault ? SetupStage : "Welcome";
         StatusMessage = HasVault
             ? $"Switched to “{ActiveWalletLabel}” · enter its password"
             : $"“{ActiveWalletLabel}” · create or import to set it up";
+        return false;
     }
 
     /// <summary>Begin adding a new, independent wallet: registers it, makes it active, locks the current
