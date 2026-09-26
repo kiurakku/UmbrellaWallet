@@ -164,6 +164,20 @@ public sealed class SendPickerBalanceTests : IDisposable
     }
 
     [Fact]
+    public void Syncing_takes_the_new_display_text_but_keeps_the_object()
+    {
+        // A language change rebuilds a token's network line; the entry must say it in the new language
+        // without being replaced, or the selection would jump.
+        var usdc = new SendOption("ERC20:0xa0b8", "USD Coin", "Ethereum · ERC-20", "USDC");
+        var list = new ObservableCollection<SendOption> { usdc };
+
+        MainViewModel.SyncInPlace(list, [new SendOption("ERC20:0xa0b8", "USD Coin", "Ethereum · токен ERC-20", "USDC")]);
+
+        Assert.Same(usdc, Assert.Single(list));
+        Assert.Equal("Ethereum · токен ERC-20", usdc.Network);
+    }
+
+    [Fact]
     public void Options_are_equal_by_route_not_by_balance()
     {
         var one = new SendOption("BTC", "Bitcoin", "net") { Balance = "1 BTC" };

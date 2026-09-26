@@ -460,7 +460,8 @@ public static class CoinBadge
 /// It also carries what the active wallet holds of the asset, which changes on every refresh — so the
 /// item is updated in place, never replaced. A replaced item is a different object to the ComboBox:
 /// the selection would jump, and the Send screen would reset in the middle of a review. Two options
-/// are therefore equal when they ROUTE the same way; the balance is not part of what the option is.
+/// are therefore equal when they ROUTE the same way; the balance and the display text are not part of
+/// what the option is.
 /// </para>
 /// </summary>
 public sealed class SendOption : ObservableObject, IEquatable<SendOption>
@@ -468,20 +469,49 @@ public sealed class SendOption : ObservableObject, IEquatable<SendOption>
     public SendOption(string symbol, string name, string network, string? ticker = null)
     {
         Symbol = symbol;
-        Name = name;
-        Network = network;
-        Ticker = ticker;
+        _name = name;
+        _network = network;
+        _ticker = ticker;
     }
 
+    /// <summary>The routing key. Never changes: it is what the option IS.</summary>
     public string Symbol { get; }
-    public string Name { get; }
-    public string Network { get; }
-    public string? Ticker { get; }
+
+    private string _name;
+    private string _network;
+    private string? _ticker;
+
+    /// <summary>Display text, so it can follow the language (a token's network line is translated)
+    /// without the item being replaced — see <see cref="CopyDisplayFrom"/>.</summary>
+    public string Name { get => _name; private set { if (SetProperty(ref _name, value)) OnPropertyChanged(nameof(Display)); } }
+
+    public string Network { get => _network; private set => SetProperty(ref _network, value); }
+
+    public string? Ticker
+    {
+        get => _ticker;
+        private set
+        {
+            if (!SetProperty(ref _ticker, value)) return;
+            OnPropertyChanged(nameof(DisplayTicker));
+            OnPropertyChanged(nameof(Display));
+        }
+    }
 
     /// <summary>What to show for this asset: the ticker, never the routing key.</summary>
     public string DisplayTicker => Ticker ?? Symbol;
 
     public string Display => $"{DisplayTicker} · {Name}";
+
+    /// <summary>Takes the display text of a freshly built option for the same asset — how a picker
+    /// entry follows a language change while staying the same object.</summary>
+    public void CopyDisplayFrom(SendOption other)
+    {
+        if (!string.Equals(Symbol, other.Symbol, StringComparison.OrdinalIgnoreCase)) return;
+        Name = other.Name;
+        Network = other.Network;
+        Ticker = other.Ticker;
+    }
 
     private string _balance = string.Empty;
 
@@ -511,11 +541,7 @@ public sealed class SendOption : ObservableObject, IEquatable<SendOption>
     }
 
     public bool Equals(SendOption? other) =>
-        other is not null
-        && string.Equals(Symbol, other.Symbol, StringComparison.OrdinalIgnoreCase)
-        && Name == other.Name
-        && Network == other.Network
-        && Ticker == other.Ticker;
+        other is not null && string.Equals(Symbol, other.Symbol, StringComparison.OrdinalIgnoreCase);
 
     public override bool Equals(object? obj) => Equals(obj as SendOption);
 

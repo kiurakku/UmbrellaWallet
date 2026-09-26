@@ -290,6 +290,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(TotalIncompleteLabel));
             OnPropertyChanged(nameof(BalanceDisplayCents));
             OnPropertyChanged(nameof(HeroEndLabel));
+            OnPropertyChanged(nameof(SendBalancesFromLabel));   // "Balances from …" above the Send picker
             MarkMoneroUnreadReason();           // the XMR row's reason, in the new language
             _ = RefreshPortfolioChartAsync();   // the chart's note and status are prose
             RefreshHoldings();     // re-render money labels (Fx.Money/Price) in the new locale

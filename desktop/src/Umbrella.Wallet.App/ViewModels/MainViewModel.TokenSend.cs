@@ -153,9 +153,15 @@ public partial class MainViewModel
                 if (target[j].Symbol.Equals(wanted[i].Symbol, StringComparison.OrdinalIgnoreCase)) { at = j; break; }
             }
 
-            if (at == i) continue;
-            if (at < 0) target.Insert(i, wanted[i]);
-            else target.Move(at, i);
+            if (at < 0)
+            {
+                target.Insert(i, wanted[i]);
+                continue;
+            }
+
+            // Kept as the same object, but with today's display text: the language may have changed.
+            target[at].CopyDisplayFrom(wanted[i]);
+            if (at != i) target.Move(at, i);
         }
     }
 
