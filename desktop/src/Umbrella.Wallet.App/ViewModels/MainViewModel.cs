@@ -3531,31 +3531,43 @@ public partial class MainViewModel : ViewModelBase
     private async Task SwitchWalletCoreAsync(string id)
     {
         var pw = _sessionPassword;               // capture before LockVault wipes it
-        _registry.SetActive(id);
-        LockVault();
-        _vault = BuildActiveVault();
-        HasVault = _vault.Exists;
-        RefreshWalletList();
+        var target = _registry.Wallets.FirstOrDefault(w => w.Id == id);
+        if (target is null) return;
+        var targetVault = new EncryptedFileSeedVault(_registry.VaultPathFor(target));
 
-        // Seamless switch when the common password matches (the normal case).
-        if (HasVault && !string.IsNullOrEmpty(pw))
+        // Open the next wallet BEFORE closing this one. The key derivation takes a moment by design;
+        // meanwhile the current screen stays up with a notice, instead of dropping to the lock screen
+        // and leaving the user to wonder whether the click did anything.
+        string? mnemonic = null;
+        if (targetVault.Exists && !string.IsNullOrEmpty(pw))
         {
-            // The key derivation takes a moment by design; say what is happening meanwhile.
-            StatusMessage = string.Format(Loc.Instance["status.openingWallet"], ActiveWalletLabel);
+            ShowToast(string.Format(Loc.Instance["status.openingWallet"], target.Label), isError: false);
             try
             {
-                var mnemonic = await _vault.UnlockAsync(pw);
-                SetSessionPassword(pw);
-                SetUnlocked(mnemonic);
-                ActiveSection = "Portfolio";
-                StatusMessage = string.Format(Loc.Instance["status.switchedTo"], ActiveWalletLabel);
-                await RefreshLiveDataAsync();
-                return;
+                mnemonic = await targetVault.UnlockAsync(pw);
             }
             catch
             {
                 // This wallet uses a different password — ask for it below.
             }
+        }
+
+        _registry.SetActive(id);
+        LockVault();
+        _vault = targetVault;
+        HasVault = _vault.Exists;
+        RefreshWalletList();
+
+        // Seamless switch when the common password matches (the normal case).
+        if (mnemonic is not null)
+        {
+            SetSessionPassword(pw!);
+            SetUnlocked(mnemonic);
+            ActiveSection = "Portfolio";
+            StatusMessage = string.Format(Loc.Instance["status.switchedTo"], ActiveWalletLabel);
+            ShowToast(StatusMessage, isError: false);
+            await RefreshLiveDataAsync();
+            return;
         }
 
         SetupStage = HasVault ? SetupStage : "Welcome";
