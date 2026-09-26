@@ -19,6 +19,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 - The lock screen deliberately does **not** list your wallets: it would show their names to anyone who
   can see a locked screen. Unlock, then switch.
 
+### Updates arrive by themselves — and still install only when you say so
+
+- **The wallet now looks for a new release on its own** — shortly after it starts, then twice a day —
+  downloads it, and tells you with a strip across the top: "Umbrella vX is downloaded and verified —
+  Restart and update". The release notes are one click away.
+- **Every download is checked twice.** The file is kept only if its SHA-256 matches both the release's
+  `SHA256SUMS` list and GitHub's own digest for it; if the two disagree, or the file does not match,
+  it is deleted and nothing is installed. It is hashed again right before it runs, so a file swapped in
+  the download folder afterwards is caught too.
+- Only a **newer** version is ever offered (an old release cannot be pushed back as an "update"), only
+  from this project's own release downloads, and never a draft or pre-release.
+- **Installing always takes your click.** Setup installs upgrade in place, the portable exe replaces
+  itself and restarts, Linux gets the verified tarball to unpack. The vault is locked first; the data
+  folder is never touched.
+- Both the check and the download go through Tor when it is on, carry nothing about you, and can be
+  switched off in Settings → Updates. The counterparty list now names GitHub's API and download hosts
+  as contacted automatically.
+
 ### The Send picker shows what each coin holds, in the wallet that is open
 
 - **Every coin in the Send picker now shows its balance** — in the active wallet, which the picker names

@@ -87,9 +87,17 @@ There is no funded bounty programme yet. Being straight about that rather than i
 | 4.5.x | ⚠️ critical fixes only |
 | < 4.5 | ❌ |
 
-Always run the latest release. The wallet tells you when one is available; it does not auto-update,
-because a wallet that can silently replace its own binary is a wallet with a very attractive update
-channel.
+Always run the latest release. The wallet looks for one by itself (shortly after start, then twice a
+day), downloads it and keeps it only if its SHA-256 matches **both** the release's `SHA256SUMS` file and
+GitHub's own digest for that file — a disagreement between the two means one was changed after the
+release, and the file is deleted. Only a version newer than the one running is ever offered, and only
+from this project's own release downloads.
+
+It still never installs anything by itself. Replacing the program always takes your click, because a
+wallet that can silently replace its own binary is a wallet with a very attractive update channel. Both
+the check and the download can be turned off in Settings → Updates, and both go through Tor when Tor is
+on. A matching checksum proves the file is the one on the release page, not who built it — for that,
+verify the build attestation as below.
 
 ## Verifying what you run
 

@@ -291,6 +291,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(BalanceDisplayCents));
             OnPropertyChanged(nameof(HeroEndLabel));
             OnPropertyChanged(nameof(SendBalancesFromLabel));   // "Balances from …" above the Send picker
+            OnPropertyChanged(nameof(UpdateBannerText));   // "a new version is ready", in the new language
             MarkMoneroUnreadReason();           // the XMR row's reason, in the new language
             _ = RefreshPortfolioChartAsync();   // the chart's note and status are prose
             RefreshHoldings();     // re-render money labels (Fx.Money/Price) in the new locale
@@ -977,42 +978,6 @@ public partial class MainViewModel : ViewModelBase
     private static string CurrentVersion =>
         typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.8.0";
 
-    // --- In-app update check (manual, Tor-aware; data is never touched) ------
-    [ObservableProperty] private string _updateStatus = string.Empty;
-    [ObservableProperty] private bool _updateAvailable;
-
-    [RelayCommand]
-    private async Task CheckForUpdates()
-    {
-        UpdateAvailable = false;
-        UpdateStatus = "Checking for updates…";
-        var r = await UpdateChecker.CheckAsync(CurrentVersion);
-        if (r.Error is not null)
-        {
-            UpdateStatus = $"Could not check right now: {r.Error}";
-            return;
-        }
-
-        if (r.Available)
-        {
-            UpdateAvailable = true;
-            UpdateStatus =
-                $"Update available: v{r.Latest} (you have v{CurrentVersion}). Your vault, keys and " +
-                "settings are kept — an update only replaces the app files, never the data folder.";
-        }
-        else
-        {
-            UpdateStatus = $"You're on the latest version (v{CurrentVersion}).";
-        }
-    }
-
-    [RelayCommand]
-    private async Task CopyReleasesLink()
-    {
-        await CopyTextAsync(UpdateChecker.ReleasesUrl);
-        StatusMessage = Loc.Instance["status.downloadLinkCopied"];
-    }
-
     // ETH send flow: quote → explicit confirm → broadcast result.
     [ObservableProperty] private bool _hasSendQuote;
     [ObservableProperty] private string _sendQuoteSummary = string.Empty;
@@ -1343,6 +1308,7 @@ public partial class MainViewModel : ViewModelBase
         RefreshHoldings();
         RecalcBalance();
         StartAutoRefresh();
+        ScheduleUpdateChecks();
     }
 
     /// <summary>
