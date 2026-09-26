@@ -6,6 +6,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+### History for XRP and Stellar
+
+- **Activity now shows XRP and XLM transactions** — including ones made before this wallet was opened.
+  Each is read from the same server the balance already comes from (the one you chose, or the
+  default), so no new party learns your address.
+- **XRP shows the amount that was delivered**, never the Amount a transaction names. A "partial
+  payment" can claim a large Amount and deliver a sliver — reading the claim is how exchanges have been
+  tricked into crediting money that never arrived. Failed payments and non-XRP payments are left out.
+- Stellar shows native payments and the account's creation; other assets and failed transactions are
+  left out.
+- A payment you sent from this wallet and the same payment read back from the chain are one row.
+- **Cosmos Hub history stays off, on purpose.** Its public servers prune their transaction index: a
+  search for an account with known sends answered once in nine tries and said "none" the other eight.
+  An ATOM history that is usually empty for a reason you cannot see would be worse than the note that
+  says it is not read.
+
 ### The Send picker shows what each coin holds, in the wallet that is open
 
 - **Every coin in the Send picker now shows its balance** — in the active wallet, which the picker names

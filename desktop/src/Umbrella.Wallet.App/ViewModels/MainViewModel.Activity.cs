@@ -234,6 +234,9 @@ public partial class MainViewModel
     /// address (not just #0, so funds received on a rotated address still show), plus ETH and TRON
     /// (TRC-20 incl. USDT). Best-effort and keyless; runs through the same Tor/proxy route as balances,
     /// and is deduped by explorer link so a tx seen on two of the user's addresses appears once.</summary>
+    /// <summary>History for the account chains XRP and XLM, from the servers their balances use.</summary>
+    private readonly AccountHistoryClient _accountHistory = new();
+
     private async Task LoadOnChainHistoryAsync()
     {
         if (string.IsNullOrEmpty(_unlockedMnemonic)) return;
@@ -315,6 +318,20 @@ public partial class MainViewModel
             if (!string.IsNullOrEmpty(sol))
                 foreach (var t in await _history.GetSolanaAsync(sol!))
                     rows.Add((t.UnixMs, ToActivityRow(t)));
+
+            // XRP / XLM: single-account chains, read from the same server as their balance.
+            foreach (var (chain, read) in new (ChainId, Func<string, Task<IReadOnlyList<ChainTx>>>)[]
+                     {
+                         (ChainId.Xrp, a => _accountHistory.GetXrpAsync(a)),
+                         (ChainId.Xlm, a => _accountHistory.GetStellarAsync(a)),
+                     })
+            {
+                string? address = null;
+                try { address = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, chain).Address; } catch { }
+                if (string.IsNullOrEmpty(address)) continue;
+                foreach (var t in await read(address!))
+                    rows.Add((t.UnixMs, ToActivityRow(t)));
+            }
 
             // Dedupe by explorer URL (a tx that touches two of the user's own addresses is one event).
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
