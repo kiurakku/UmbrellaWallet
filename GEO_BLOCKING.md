@@ -34,7 +34,7 @@ Additional regions or U.S. states (e.g. regimes requiring money-transmitter or B
 |---|---|
 | Apple / Google / Microsoft store listings | Hidden or blocked in restricted storefronts |
 | In-app (store builds) | May refuse first launch based on locale / IP / store region |
-| GitHub Releases (side-load) | Still published globally as source-available software; **user** must not use where unlawful |
+| GitHub Releases (side-load) | Still published globally as open-source (MIT) software; **user** must not use where unlawful |
 
 IP-based blocking is imperfect and privacy-sensitive; prefer store-region controls where possible. GPS on desktop is not assumed.
 

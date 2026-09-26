@@ -77,7 +77,7 @@ Android planned). There is no web app and no backend that knows who you are.
 | Document | Purpose |
 |---|---|
 | [MANIFESTO.md](../MANIFESTO.md) | The rules the code is held to |
-| [LICENSE](../LICENSE) | Free-use, no-derivatives (source-available) |
+| [LICENSE](../LICENSE) | MIT (since 2026-09-22 — see [LICENSE_CHANGE.md](../LICENSE_CHANGE.md)) |
 | [LICENSE_SUMMARY.md](../LEGAL/LICENSE_SUMMARY.md) | Plain-English license map |
 | [TRADEMARK_POLICY.md](../TRADEMARK_POLICY.md) | Name and logo protection |
 | [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) | Community standards |
