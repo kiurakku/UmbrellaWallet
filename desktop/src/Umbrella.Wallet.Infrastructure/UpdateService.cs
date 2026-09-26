@@ -281,6 +281,14 @@ public static class UpdateService
         return (listed, null);
     }
 
+    /// <summary>
+    /// True when a release found by a later check replaces an update already downloaded and waiting —
+    /// a different version than the file on disk. The waiting file is then dropped, so the banner and
+    /// the file it installs can never name two different versions.
+    /// </summary>
+    public static bool Supersedes(ReleaseInfo latest, VerifiedUpdate? waiting) =>
+        waiting is not null && waiting.Release.Version != latest.Version;
+
     // --- downloading ---------------------------------------------------------------------------------
 
     /// <summary>
@@ -447,21 +455,33 @@ public static class UpdateService
         var current = Environment.ProcessPath;
         if (string.IsNullOrEmpty(current)) return (false, "Could not tell where this copy of the wallet is.");
 
+        return SwapExecutable(current, newExe, path => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }));
+    }
+
+    /// <summary>
+    /// The swap itself, with the start step passed in so the roll-back can be tested: when the copy or
+    /// the start fails, <paramref name="current"/> is the old program again and nothing is left behind
+    /// under <c>.old</c>. Throws the original failure after restoring.
+    /// </summary>
+    public static (bool Started, string? Error) SwapExecutable(string current, string newExe, Action<string> start)
+    {
         var old = current + ".old";
         TryDelete(old);
         File.Move(current, old);
         try
         {
             File.Copy(newExe, current);
+            start(current);
+            return (true, null);
         }
         catch
         {
+            // Whatever failed — the copy or the start — the working exe goes back where it was, so the
+            // copy that is running now is still the one that starts next time.
+            TryDelete(current);
             File.Move(old, current);
             throw;
         }
-
-        Process.Start(new ProcessStartInfo(current) { UseShellExecute = true });
-        return (true, null);
     }
 
     /// <summary>Removes what a previous portable update left behind. Safe to call on every start.</summary>

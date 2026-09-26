@@ -190,6 +190,69 @@ public sealed class UpdateServiceTests
         }
     }
 
+    [Fact]
+    public void A_newer_release_supersedes_the_update_already_waiting()
+    {
+        var v49 = UpdateService.ParseRelease(ReleaseJson)!;
+        var v410 = UpdateService.ParseRelease(ReleaseJson.Replace("v4.9.0", "v4.10.0"))!;
+        var waiting = new VerifiedUpdate(v49, InstallKind.WindowsInstaller, "setup.exe", Hash);
+
+        Assert.True(UpdateService.Supersedes(v410, waiting));    // drop 4.9.0, fetch 4.10.0
+        Assert.False(UpdateService.Supersedes(v49, waiting));    // the same release: keep what is here
+        Assert.False(UpdateService.Supersedes(v410, null));      // nothing waiting
+    }
+
+    [Fact]
+    public void A_portable_swap_that_cannot_start_puts_the_old_program_back()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"umbrella-swap-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var current = Path.Combine(dir, "Umbrella.exe");
+            var fresh = Path.Combine(dir, "new.exe");
+            File.WriteAllText(current, "old program");
+            File.WriteAllText(fresh, "new program");
+
+            Assert.Throws<InvalidOperationException>(() =>
+                UpdateService.SwapExecutable(current, fresh, _ => throw new InvalidOperationException("cannot start")));
+
+            // The copy that runs next time is still the working one, and nothing is left half-swapped.
+            Assert.Equal("old program", File.ReadAllText(current));
+            Assert.False(File.Exists(current + ".old"));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_portable_swap_that_starts_leaves_the_new_program_in_place()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"umbrella-swap-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var current = Path.Combine(dir, "Umbrella.exe");
+            var fresh = Path.Combine(dir, "new.exe");
+            File.WriteAllText(current, "old program");
+            File.WriteAllText(fresh, "new program");
+            string? started = null;
+
+            var (ok, _) = UpdateService.SwapExecutable(current, fresh, path => started = path);
+
+            Assert.True(ok);
+            Assert.Equal(current, started);
+            Assert.Equal("new program", File.ReadAllText(current));
+            Assert.Equal("old program", File.ReadAllText(current + ".old"));   // removed on the next start
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private static string? FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

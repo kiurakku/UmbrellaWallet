@@ -183,6 +183,15 @@ public partial class MainViewModel
 
             var release = result.Release;
             var newVersion = !string.Equals(UpdateLatestVersion, VersionText(release.Version), StringComparison.Ordinal);
+
+            // A release newer than the one already downloaded supersedes it. Keeping the old file as
+            // "ready" would name the new version on the banner and install the old one on the click.
+            if (UpdateService.Supersedes(release, _verifiedUpdate))
+            {
+                _verifiedUpdate = null;
+                UpdateReady = false;
+            }
+
             _latestRelease = release;
             UpdateLatestVersion = VersionText(release.Version);
             UpdateNotes = TrimNotes(release.Notes);
