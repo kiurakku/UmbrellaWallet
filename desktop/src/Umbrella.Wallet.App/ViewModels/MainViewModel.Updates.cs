@@ -213,6 +213,7 @@ public partial class MainViewModel
     private async Task DownloadUpdateAsync()
     {
         if (_latestRelease is null || IsUpdateDownloading || UpdateReady) return;
+        var stale = false;
 
         IsUpdateDownloading = true;
         UpdateProgress = 0;
@@ -231,6 +232,16 @@ public partial class MainViewModel
                 return;
             }
 
+            // A newer release may have been found while this one downloaded. The file is then already
+            // out of date: it is dropped and the newer one fetched, so the banner and the file it installs
+            // can never name two different versions.
+            if (_latestRelease.Version != update.Release.Version)
+            {
+                stale = true;
+                TryDeleteFile(update.FilePath);
+                return;
+            }
+
             _verifiedUpdate = update;
             UpdateReady = true;
             UpdateStatus = string.Format(Loc.Instance["update.ready"], UpdateLatestVersion) + " " +
@@ -245,6 +256,24 @@ public partial class MainViewModel
             IsUpdateDownloading = false;
             _updateCts?.Dispose();
             _updateCts = null;
+        }
+
+        if (stale) await DownloadUpdateAsync();
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException)
+        {
+            // A leftover in the updates folder; removed with the rest on a later start.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Same.
         }
     }
 
@@ -263,14 +292,16 @@ public partial class MainViewModel
             return;
         }
 
+        // Locked BEFORE anything is started: the new copy must never run beside an unlocked old one.
+        LockVault();
         var (started, error) = UpdateService.Install(_verifiedUpdate);
         if (!started)
         {
             UpdateStatus = string.Format(Loc.Instance["update.installFailed"], error);
+            ShowToast(UpdateStatus, isError: true);   // the wallet is locked now, so Settings is out of sight
             return;
         }
 
-        LockVault();
         (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
     }
 

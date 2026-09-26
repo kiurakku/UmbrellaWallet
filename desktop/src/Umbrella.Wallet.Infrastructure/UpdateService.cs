@@ -455,7 +455,13 @@ public static class UpdateService
         var current = Environment.ProcessPath;
         if (string.IsNullOrEmpty(current)) return (false, "Could not tell where this copy of the wallet is.");
 
-        return SwapExecutable(current, newExe, path => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }));
+        // The new copy waits for this one to exit before it starts (Program.WaitForThePreviousCopy):
+        // until then this process still holds Tor's port and the data folder.
+        return SwapExecutable(current, newExe, path => Process.Start(new ProcessStartInfo(path)
+        {
+            UseShellExecute = true,
+            Arguments = $"--after-update {Environment.ProcessId}",
+        }));
     }
 
     /// <summary>
