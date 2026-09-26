@@ -170,11 +170,21 @@ public static class NetworkCounterpartyCatalog
             CounterpartyContact.OptIn, CounterpartyLearns.YourIpAddress | CounterpartyLearns.YourAccountWithThem),
 
         // --- Updates and the Tor check. -------------------------------------------------------------
-        new("github.com", "GitHub", CounterpartyPurpose.Updates,
-            CounterpartyContact.OnDemand,
+        // Automatic while "check for updates automatically" is on (the default): shortly after start and
+        // twice a day. The request names nothing about the wallet; GitHub learns that someone at this IP
+        // (a Tor exit, when Tor is on) runs Umbrella. The file hosts are where GitHub's release downloads
+        // redirect to; the wallet refuses a download that ends anywhere else.
+        new("api.github.com", "GitHub", CounterpartyPurpose.Updates,
+            CounterpartyContact.Automatic,
             CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline),
-        new("raw.githubusercontent.com", "GitHub", CounterpartyPurpose.Updates,
-            CounterpartyContact.OnDemand,
+        new("github.com", "GitHub", CounterpartyPurpose.Updates,
+            CounterpartyContact.Automatic,
+            CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline),
+        new("objects.githubusercontent.com", "GitHub", CounterpartyPurpose.Updates,
+            CounterpartyContact.Automatic,
+            CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline),
+        new("release-assets.githubusercontent.com", "GitHub", CounterpartyPurpose.Updates,
+            CounterpartyContact.Automatic,
             CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline),
         new("check.torproject.org", "Tor Project", CounterpartyPurpose.TorCheck,
             CounterpartyContact.OnDemand, CounterpartyLearns.YourIpAddress),

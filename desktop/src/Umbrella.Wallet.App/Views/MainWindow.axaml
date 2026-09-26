@@ -776,6 +776,28 @@
                  sits over a card's right edge (which clipped rows on Activity). -->
             <StackPanel Spacing="24" Margin="34,32,38,88" MaxWidth="{Binding ContentMaxWidth}" HorizontalAlignment="Center">
 
+              <!-- An update is waiting: found, downloading, or downloaded and verified. Installing it is
+                   always the user's click; closing this only hides it for the session. -->
+              <Border IsVisible="{Binding ShowUpdateBanner}" Background="{DynamicResource UmCardAlt}"
+                      BorderBrush="{DynamicResource UmAccent}" BorderThickness="1" CornerRadius="12" Padding="14,10">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                  <StackPanel Spacing="6" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding UpdateBannerText}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    <ProgressBar IsVisible="{Binding IsUpdateDownloading}" Value="{Binding UpdateProgress}" Maximum="100" Height="4" MinHeight="4"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Classes="primary" Content="{Binding [update.install], Source={x:Static app:Loc.Instance}}" Command="{Binding InstallUpdateCommand}"
+                            IsVisible="{Binding UpdateReady}"/>
+                    <Button Classes="ghost" Content="{Binding [update.download], Source={x:Static app:Loc.Instance}}" Command="{Binding DownloadUpdateCommand}"
+                            IsVisible="{Binding CanDownloadUpdate}"/>
+                    <Button Classes="ghost" Content="{Binding [update.whatsNew], Source={x:Static app:Loc.Instance}}" Command="{Binding ShowUpdateDetailsCommand}"/>
+                    <Button Classes="chip" Content="✕" Command="{Binding DismissUpdateBannerCommand}"
+                            ToolTip.Tip="{Binding [update.later], Source={x:Static app:Loc.Instance}}"
+                            AutomationProperties.Name="{Binding [update.later], Source={x:Static app:Loc.Instance}}"/>
+                  </StackPanel>
+                </Grid>
+              </Border>
+
               <!-- Portfolio -->
               <StackPanel Classes="page" IsVisible="{Binding IsPortfolio}" Spacing="18">
                 <!-- Top row: the balance card on the left, a 2×2 grid of live stat tiles filling the
@@ -3530,19 +3552,45 @@
                   </StackPanel>
                 </Border>
 
-                <!-- Updates: manual, Tor-aware. Data is never touched by an update. -->
+                <!-- Updates: found and downloaded by themselves, verified against two checksums, and
+                     installed only on the user's click. Data is never touched by an update. -->
                 <Border Classes="card" IsVisible="{Binding IsTabAppearance}">
                   <StackPanel Spacing="10">
                     <TextBlock Classes="eyebrow" Text="{Binding [settings.updates], Source={x:Static app:Loc.Instance}}"/>
                     <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
                                Text="{Binding [settings.updatesHint], Source={x:Static app:Loc.Instance}}"/>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                      <Button Classes="primary" Content="{Binding [settings.checkUpdates], Source={x:Static app:Loc.Instance}}" Command="{Binding CheckForUpdatesCommand}"/>
-                      <Button Classes="ghost" Content="{Binding [settings.copyDownload], Source={x:Static app:Loc.Instance}}" Command="{Binding CopyReleasesLinkCommand}"
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding [settings.autoUpdateCheck], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
+                      <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoUpdateCheck, Mode=TwoWay}" OnContent="" OffContent=""/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding AutoUpdateCheck}">
+                      <TextBlock Text="{Binding [settings.autoUpdateDownload], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
+                      <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoUpdateDownload, Mode=TwoWay}" OnContent="" OffContent=""/>
+                    </Grid>
+                    <WrapPanel Orientation="Horizontal">
+                      <Button Classes="primary" Margin="0,0,8,6" Content="{Binding [settings.checkUpdates], Source={x:Static app:Loc.Instance}}" Command="{Binding CheckForUpdatesCommand}"/>
+                      <Button Classes="ghost" Margin="0,0,8,6" Content="{Binding [update.download], Source={x:Static app:Loc.Instance}}" Command="{Binding DownloadUpdateCommand}"
+                              IsVisible="{Binding CanDownloadUpdate}"/>
+                      <Button Classes="primary" Margin="0,0,8,6" Content="{Binding [update.install], Source={x:Static app:Loc.Instance}}" Command="{Binding InstallUpdateCommand}"
+                              IsVisible="{Binding UpdateReady}"/>
+                      <Button Classes="ghost" Margin="0,0,8,6" Content="{Binding [update.openFolder], Source={x:Static app:Loc.Instance}}" Command="{Binding OpenUpdateFolderCommand}"
+                              IsVisible="{Binding UpdateReady}"/>
+                      <Button Classes="ghost" Margin="0,0,8,6" Content="{Binding [settings.copyDownload], Source={x:Static app:Loc.Instance}}" Command="{Binding CopyReleasesLinkCommand}"
                               IsVisible="{Binding UpdateAvailable}"/>
-                    </StackPanel>
+                    </WrapPanel>
+                    <ProgressBar IsVisible="{Binding IsUpdateDownloading}" Value="{Binding UpdateProgress}" Maximum="100" Height="4" MinHeight="4"/>
                     <TextBlock Foreground="{DynamicResource UmAccent}" FontSize="12" TextWrapping="Wrap"
                                Text="{Binding UpdateStatus}" IsVisible="{Binding UpdateStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <!-- What the release says about itself, before anyone installs it. -->
+                    <StackPanel Spacing="4" IsVisible="{Binding HasUpdateNotes}">
+                      <TextBlock Classes="eyebrow" Text="{Binding [update.whatsNew], Source={x:Static app:Loc.Instance}}"/>
+                      <ScrollViewer MaxHeight="220" HorizontalScrollBarVisibility="Disabled">
+                        <SelectableTextBlock Text="{Binding UpdateNotes}" FontSize="12" TextWrapping="Wrap"
+                                             Foreground="{DynamicResource UmTextDim}"/>
+                      </ScrollViewer>
+                    </StackPanel>
+                    <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap"
+                               Text="{Binding [settings.updateProvenance], Source={x:Static app:Loc.Instance}}"/>
                   </StackPanel>
                 </Border>
 
